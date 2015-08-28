@@ -1,7 +1,15 @@
 # Adapted from PiecewiseAffineTransforms.jl
 # https://github.com/dfdx/PiecewiseAffineTransforms.jl
 
-import Bounding: BoundingBox, snap_bb, find_mesh_bb
+function meshwarp(mesh::Mesh)
+    img = getFloatImage(mesh)
+    src_nodes = hcat(mesh.nodes...)'
+    dst_nodes = hcat(mesh.nodes_t...)'
+    offset = mesh.disp
+    node_dict = incidence2dict(mesh.edges)
+    triangles = dict2triangles(node_dict)
+    return @time meshwarp(img, src_nodes, dst_nodes, triangles, offset)
+end
 
 """
 `MESHWARP` - Apply piecewise affine transform to image using bilinear interpolation
@@ -32,7 +40,7 @@ See definitions in IMWARP documentation for further help.
 function meshwarp{N}(img::Array{Float64, N},
                     src::Matrix{Float64}, dst::Matrix{Float64},
                     trigs::Matrix{Int64}, offset=[0,0], interp=true)
-    bb = Bounding.snap_bb(find_mesh_bb(dst))
+    bb = snap_bb(find_mesh_bb(dst))
     warped_img = similar(img, bb.h+1, bb.w+1)
     warped_offset = [bb.i, bb.j]
 
@@ -240,88 +248,34 @@ function poly2mask(vi::Vector{Float64}, vj::Vector{Float64})
     mask, offset
 end
 
-function warp_pts(affine, pts)
-    pts = hcat(pts, ones(size(pts,1)))
-    tpts = pts * affine
-    return tpts[:,1:2]
-end
+function demo_meshwarp()
+# Demo the updated meshwarp function that runs faster than original package
+    img = imread(joinpath(BUCKET, "test_images", "turtle.jpg"))
+    img = convert(Array{Float64, 3}, data(separate(img)))[:,:,1]
+    src_nodes = [20.0 20.0;
+                    620.0 20.0;
+                    620.0 560.0;
+                    20.0 560.0;
+                    320.0 290.0]'
+    dst_nodes = [20.0 20.0;
+                    620.0 20.0;
+                    620.0 560.0;
+                    20.0 560.0;
+                    400.0 460.0]'
+    incidence = [1 1 1 0 0 0 0 0;
+                -1 0 0 1 1 0 0 0;
+                0 0 0 -1 0 1 1 0;
+                0 -1 0 0 0 0 -1 1;
+                0 0 -1 0 -1 -1 0 -1]
+    triangles = [1 2 5;
+                1 4 5;
+                2 3 5;
+                3 4 5];
+    node_dict = incidence2dict(incidence)
+    draw_mesh(img, src_nodes, node_dict)
+    println(size(img))
 
-function test_meshwarp()
-    img = reshape(float(collect(1:121).%2), 11, 11) # 11x11 checkerboard
-    triangles = [1 2 3]
-
-    tform = [1 0 0;
-            0 1 0;
-            0 0 1]
-    src = [0.0 0.0;
-            0.0 10.0;
-            10.0 0.0]   
-    dst = warp_pts(tform, src)
-    offset = [0,0]
-    img_warped, warped_offset = meshwarp(img, src, dst, triangles, offset)
-    @test warped_offset == [0,0] 
-
-    tform = [1 0 0;
-            0 1 0;
-            0 0 1]
-    src = [0.0 0.0;
-            0.0 10.0;
-            10.0 0.0]   
-    dst = warp_pts(tform, src)
-    offset = [5,10]
-    img_warped, warped_offset = meshwarp(img, src, dst, triangles, offset)
-    @test_approx_eq_eps img_warped zeros(11,11) 1e-10
-    @test warped_offset == [0,0] 
-
-    tform = [1 0 0;
-            0 1 0;
-            0 0 1]
-    src = [0.0 0.0;
-            0.0 20.0;
-            20.0 0.0]   
-    dst = warp_pts(tform, src)
-    offset = [5,10]
-    img_warped, warped_offset = meshwarp(img, src, dst, triangles, offset)
-    @test img_warped[6,11] == 1.0 
-    @test warped_offset == [0,0] 
-
-    src = [2.0 2.0;
-            10.0 2.0;
-            6.0 10.0]
-    dst = [4.0 2.0;
-            8.0 2.0;
-            6.0 10.0]
-    offset = [0, 0]
-    img_warped, warped_offset = meshwarp(img, src, dst, triangles, offset)
-    @test warped_offset == [4,2]
-end
-
-function test_poly2mask()
-    vertices=[1.5 2.5; 2.5 1.5; 3.5 4.5]
-    img, off = poly2mask(vertices[:,1],vertices[:,2])
-    """ off should be [1,1] and img should be:
-    false  false  false  false  false
-    false   true   true  false  false
-    false  false   true   true  false
-    false  false  false  false  false
-    """
-    vertices=[1.5 2.4; 2.5 1.5; 3.5 4.5]
-    img, off = poly2mask(vertices[:,1],vertices[:,2])
-    """ off should be [1,1] and img should be:
-    false  false  false  false  false
-    false   true  false  false  false
-    false  false   true  false  false
-    false  false  false  false  false,
-    """
-    vertices=[1 2; 2.5 1.5; 3.5 4.5]
-    img, off = poly2mask(vertices[:,1],vertices[:,2])
-    """ corner case: off should be [1,1] and img should be:
-    false   true  false  false  false
-    false   true   true  false  false
-    false  false   true   true  false
-    false  false  false  false  false
-    """
-    p=plot(x=vertices[:,1],y=vertices[:,2])
-    display(p)
-    img,off
+    warp = meshwarp(img, src_nodes, dst_nodes, triangles)
+    draw_mesh(warp, dst_nodes, node_dict)
+    println(size(warp))
 end

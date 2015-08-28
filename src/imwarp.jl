@@ -1,11 +1,3 @@
-using Images
-using ImageView
-using TestImages
-# using AffineTransforms    # incompatible with MATLAB convention
-using Base.Test
-# using Colors
-import Bounding: BoundingBox, snap_bb, tform_bb
-
 """
 `IMWARP` - Apply affine transform to image using bilinear interpolation
 
@@ -99,7 +91,7 @@ function imwarp{T}(img::Array{T}, tform, offset=[0.0,0.0])
         # apply inv(tform), conversion back to pixel space included
         # x, y = [u, v, 1] * M - but writing it out moves faster
         x, y = M[1,1]*u + M[2,1]*v + M[3,1], M[1,2]*u + M[2,2]*v + M[3,2]
-#        x, y = M[1,1]*u + M[1,2]*v + M[1,3], M[2,1]*u + M[2,2]*v + M[2,3]  # faster but differs by a matrix transpose
+        # x, y = M[1,1]*u + M[1,2]*v + M[1,3], M[2,1]*u + M[2,2]*v + M[2,3]  # faster but differs by a matrix transpose
 
         # Slow...
         #warped_img[i,j] = round(Uint8, bilinear(img, x, y))
@@ -139,42 +131,6 @@ end
 
 function writepixel{T<:FloatingPoint}(img::Array{T},i,j,pixelvalue)
     img[i,j]=pixelvalue
-end
-
-function test_imwarp()
-  img = reshape(float(collect(1:121).%2), 11, 11) # 11x11 checkerboard
-  warp = img
-
-  tform = [1 0 0;
-          0 1 0;
-          0 0 1]
-  offset = [0, 0]
-  img_warped, warped_offset = imwarp(img, tform, offset)
-  @test_approx_eq warp img_warped
-  @test warped_offset == [0, 0]
-
-  tform = [1 0 0;
-          0 1 0;
-          0 0 1]
-  offset = [10, 20]
-  img_warped, warped_offset = imwarp(img, tform, offset)
-  @test_approx_eq warp img_warped
-  @test warped_offset == [10, 20]
-
-  tform = [1 0 0;
-          0 1 0;
-          10 10 1]
-  offset = [0, 0]
-  img_warped, warped_offset = imwarp(img, tform, offset)
-  @test_approx_eq warp img_warped
-  @test warped_offset == [10, 10]
-
-  tform = [cos(0.5) -sin(0.5) 0;
-          sin(0.5) cos(0.5) 0;
-          0 0 1]
-  offset = [0.0, 0.0]
-  img_warped, warped_offset = imwarp(img, tform, offset)
-  @test warped_offset == [0, -5]
 end
 
 # Not used - slow.

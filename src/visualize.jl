@@ -108,7 +108,7 @@ function demo_draw_vectors()
     draw_vectors(a, vectors)
 end
 
-function draw_points(imgc, img2, pts, color=RGB(0,0,1))
+function draw_points(imgc, img2, points, color=RGB(0,0,1))
 # Display match displacement vectors on images
 # Args:
 #   imgc: ImageCanvas object
@@ -118,17 +118,14 @@ function draw_points(imgc, img2, pts, color=RGB(0,0,1))
 #   imgc: ImageCanvas object
 #   img2: ImageSliced2d object
 #   an_points: annotation object for the points
-    points = Array(Float64, 2, 0)
-    for j in 1:size(pts, 2)
-        points = hcat(points, pts[1:2, j])
-    end
+    points = [points[2,:]; points[1,:]]
     an_points = annotate!(imgc, img2, AnnotationPoints(points, color=color))
     return imgc, img2, an_points
 end 
 
-function draw_points(img, pts)
+function draw_points(img, points)
     imgc, img2 = view(img)
-    return draw_points(imgc, img2, pts)
+    return draw_points(imgc, img2, points)
 end  
 
 function draw_imfuse_meshes(Oc, O2, dst_nodes_A, SR_A, dst_nodes_B, SR_B)

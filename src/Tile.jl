@@ -1,8 +1,8 @@
-using Julimaps
-using Params
-using MeshModule
-using IO
-using Bounding: BoundingBox, snap_bb, find_mesh_bb
+# using Julimaps
+# using Params
+# using MeshModule
+# using IO
+# using Bounding: BoundingBox, snap_bb, find_mesh_bb
 
 type Tile
 	name::String
