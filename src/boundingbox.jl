@@ -89,7 +89,7 @@ function snap_bb(bb)
   j = floor(Int,bb.j)
   h = ceil(Int,r[2,1]) - i
   w = ceil(Int,r[3,2]) - j
-  return BoundingBox{Int}(i, j, h, w)
+  return BoundingBox{Int64}(i, j, h, w)
 end
 
 """
@@ -109,4 +109,11 @@ Convert Tuple for image size into a BoundingBox at (1,1)
 """
 function sz2bb(sz)
   return BoundingBox(0, 0, sz[1]-1, sz[2]-1)
+end
+
+"""
+Scale BoundingBox
+"""
+function scale_bb(bb, scale)
+  return snap_bb(BoundingBox(bb.i*scale, bb.j*scale, bb.h*scale, bb.w*scale))
 end

@@ -140,12 +140,24 @@ function imwrite_box(img, point, radius, path, color=RGB(0,1,0), linewidth=1.0)
                                         color=color, 
                                         linewidth=linewidth,
                                         coord_order="yxyx"))
-  Cairo.write_to_png(imgc.c.back, path)
-  destroy(toplevel(imgc))
+  write_canvas(imgc, path)
+  close_image(imgc)
 end    
 
+function write_canvas(imgc, path)
+  Cairo.write_to_png(imgc.c.back, path)
+end
+
+function close_image(imgc)
+  destroy(toplevel(imgc))
+end
+
+function set_canvas_size(imgc, w, h)
+  ImageView.set_size(toplevel(imgc), floor(Int64, w), floor(Int64, h))
+end
+
 function create_image(bb)
-    z = zeros(bb.h, bb.w)
+    z = ones(bb.h, bb.w)
     return view(z, pixelspacing=[1,1]), [bb.i, bb.j]
 end
 
@@ -165,26 +177,49 @@ function draw_box(imgc, img2, bb, color=RGB(0,1,0), linewidth=1.0)
   return an_box
 end
 
-function quick_match_plot(meshset, match_no)
-    matches = meshset.matches[match_no]
-    src_index = matches.src_index
-    dst_index = matches.dst_index
-    src_mesh = meshset.meshes[find_index(meshset, src_index)]
-    dst_mesh = meshset.meshes[find_index(meshset, dst_index)]
-    src_nodes, dst_nodes = get_matched_points(meshset, match_no)
-    src_pts = points_to_Nx3_matrix(src_nodes)
-    dst_pts = points_to_Nx3_matrix(dst_nodes)
+function indices2string(indexA, indexB)
+  return string(join(indexA[1:2], ","), "-", join(indexB[1:2], ","))
+end
 
-    src_bb = find_mesh_bb(src_pts)
-    dst_bb = find_mesh_bb(dst_pts)
+function plot_match_outline(meshset, match_no, factor=10)
+  scale = 0.05
+  matches = meshset.matches[match_no]
+  src_index = matches.src_index
+  dst_index = matches.dst_index
+  src_mesh = meshset.meshes[find_index(meshset, src_index)]
+  dst_mesh = meshset.meshes[find_index(meshset, dst_index)]
+  src_pts, dst_pts = get_matched_points_t(meshset, match_no)
+  src_pts = points_to_Nx3_matrix(src_pts*scale)
+  dst_pts = points_to_Nx3_matrix(dst_pts*scale)
 
-    bb = GLOBAL_BB
-    img, offset = create_image(bb)
-    draw_box(img..., src_bb, RGB(0,1,0))
-    draw_box(img..., dst_bb, RGB(1,0,0))
+  src_nodes = points_to_Nx3_matrix(src_mesh.nodes*scale)
+  dst_nodes = points_to_Nx3_matrix(dst_mesh.nodes*scale)
+  src_bb = find_mesh_bb(src_nodes)
+  dst_bb = find_mesh_bb(dst_nodes)
 
-    vectors = [src_pts; dst_pts]
-    draw_vectors(img..., vectors, RGB(0,0,1), RGB(1,0,1), 10)
+  bb = src_bb+dst_bb
+  img, offset = create_image(bb)
+  set_canvas_size(img[1], bb.w/2, bb.h/2)
+  draw_box(img..., src_bb, RGB(0,1,0))
+  draw_box(img..., dst_bb, RGB(1,0,0))
+
+  vectors = [src_pts[:,1:2]'; dst_pts[:,1:2]']
+  draw_vectors(img..., vectors, RGB(0,0,1), RGB(1,0,1), factor)
+  dir = PREALIGNED_DIR
+  if src_index[3] <= -3
+    dir = ALIGNED_DIR
+  end
+  fn = string("outline_", indices2string(src_index, dst_index), ".png")
+  path = joinpath(dir, "review", fn)
+  return img[1], img[2], path
+end
+
+function write_meshset_match_outlines(meshset)
+  for k in 1:length(meshset.matches)
+    imgc, img2, path = plot_match_outline(meshset, k)
+    write_canvas(imgc, path)
+    close_image(imgc)
+  end
 end
 
 function draw_points(img, points)
