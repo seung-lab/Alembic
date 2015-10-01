@@ -37,7 +37,8 @@ function draw_mesh(imgc, img2, nodes, node_dict, color=RGB(1,1,1))
             lines = hcat(lines, vcat(a, b))
         end
     end
-    an_lines = annotate!(imgc, img2, AnnotationLines(lines, color=color, coord_order="yyxx"))
+    an_lines = annotate!(imgc, img2, AnnotationLines(lines, color=color, 
+                                                            coord_order="yyxx"))
     return an_lines
 end
 
@@ -46,18 +47,22 @@ function draw_mesh(img, nodes, node_dict)
     return draw_mesh(imgc, img2, nodes, node_dict)
 end
 
-function draw_vectors(imgc, img2, vectors, pt_color=RGB(0,0,1), vec_color=RGB(1,0,1), k=100)
-# Args:
-#   imgc: ImageCanvas object
-#   img2: ImageSliced2d object 
-#   vectors: 4xN array of vector start and end points
-#   pt_color: optional color argument for points
-#   vec_color: optional color argument for vectors
-# Returns:
-#   imgc: ImageCanvas object
-#   img2: ImageSliced2d object
-#   an_points: annotation object for the points
-#   an_vectors: annotation object for the vectors
+"""
+Draw vectors on image plot
+Args:
+  imgc: ImageCanvas object
+  img2: ImageSliced2d object 
+  vectors: 4xN array of vector start and end points
+  pt_color: optional color argument for points
+  vec_color: optional color argument for vectors
+Returns:
+  imgc: ImageCanvas object
+  img2: ImageSliced2d object
+  an_points: annotation object for the points
+  an_vectors: annotation object for the vectors
+"""
+function draw_vectors(imgc, img2, vectors, pt_color=RGB(0,0,1), 
+                                                vec_color=RGB(1,0,1), k=100)
     vectors = [vectors[2,:]; 
                 vectors[1,:]; 
                 (vectors[4,:]-vectors[2,:])*k + vectors[2,:]; 
@@ -106,16 +111,18 @@ function demo_draw_vectors()
     draw_vectors(a, vectors)
 end
 
+"""
+Display match displacement vectors on images
+Args:
+  imgc: ImageCanvas object
+  img2: ImageSliced2d object 
+  nodes: 2xN array of points
+Returns:
+  imgc: ImageCanvas object
+  img2: ImageSliced2d object
+  an_points: annotation object for the points
+"""
 function draw_points(imgc, img2, points, color=RGB(0,0,1), linewidth=1.0, shape='x')
-# Display match displacement vectors on images
-# Args:
-#   imgc: ImageCanvas object
-#   img2: ImageSliced2d object 
-#   nodes: 2xN array of points
-# Returns:
-#   imgc: ImageCanvas object
-#   img2: ImageSliced2d object
-#   an_points: annotation object for the points
     points = [points[2,:]; points[1,:]]
     an_points = annotate!(imgc, img2, AnnotationPoints(points, 
                                                         color=color, 
@@ -136,6 +143,49 @@ function imwrite_box(img, point, radius, path, color=RGB(0,1,0), linewidth=1.0)
   Cairo.write_to_png(imgc.c.back, path)
   destroy(toplevel(imgc))
 end    
+
+function create_image(bb)
+    z = zeros(bb.h, bb.w)
+    return view(z, pixelspacing=[1,1]), [bb.i, bb.j]
+end
+
+function bb2corners(bb)
+    upper_left = [bb.i, bb.j]
+    lower_right = [bb.i+bb.h+1, bb.j+bb.w+1]
+    return upper_left, lower_right
+end
+
+function draw_box(imgc, img2, bb, color=RGB(0,1,0), linewidth=1.0)
+    upper_left, lower_right = bb2corners(bb) 
+    an_box = annotate!(imgc, img2, AnnotationBox(tuple(upper_left...), 
+                                                    tuple(lower_right...),
+                                                    color=color, 
+                                                    linewidth=linewidth,
+                                                    coord_order="yxyx"))
+  return an_box
+end
+
+function quick_match_plot(meshset, match_no)
+    matches = meshset.matches[match_no]
+    src_index = matches.src_index
+    dst_index = matches.dst_index
+    src_mesh = meshset.meshes[find_index(meshset, src_index)]
+    dst_mesh = meshset.meshes[find_index(meshset, dst_index)]
+    src_nodes, dst_nodes = get_matched_points(meshset, match_no)
+    src_pts = points_to_Nx3_matrix(src_nodes)
+    dst_pts = points_to_Nx3_matrix(dst_nodes)
+
+    src_bb = find_mesh_bb(src_pts)
+    dst_bb = find_mesh_bb(dst_pts)
+
+    bb = GLOBAL_BB
+    img, offset = create_image(bb)
+    draw_box(img..., src_bb, RGB(0,1,0))
+    draw_box(img..., dst_bb, RGB(1,0,0))
+
+    vectors = [src_pts; dst_pts]
+    draw_vectors(img..., vectors, RGB(0,0,1), RGB(1,0,1), 10)
+end
 
 function draw_points(img, points)
     imgc, img2 = view(img)

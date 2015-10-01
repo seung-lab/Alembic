@@ -1,5 +1,3 @@
-improcessing.jl
-
 """
 `MERGE_IMAGES` - Place images in global reference image
 

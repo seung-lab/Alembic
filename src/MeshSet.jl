@@ -113,9 +113,6 @@ function affine_solve_meshset!(Ms)
   return Ms
 end
 
-function rigid_solve_meshset!(Ms)
-end
-
 function solve_meshset!(Ms)
   match_coeff = Ms.params["match_coeff"]
   eta_gradient = Ms.params["eta_gradient"]
