@@ -5,7 +5,7 @@ JULia IMAge Processing Suite:
 A set of tools for elastic image registration in Julia.
 
 # Process
-(per section)
+(per section: 16 60 MB tiles)
 
 | Step | Blockmatch (s) | Render (s) | Review Method |
 | --- | --- | --- | --- |
@@ -22,7 +22,6 @@ A set of tools for elastic image registration in Julia.
 | prealignment | 1 GB | 5 MB |
 | alignment | 1.2 GB | 0.6 GB |
 | total (section) | 4.8 GB |
-| total (1000 sections) | 4.8 TB |
 
 # Milestones
 * Montage two tiles (8/9)
