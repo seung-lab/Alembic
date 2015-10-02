@@ -511,19 +511,18 @@ function make_stack(offsets, wafer_num, batch::UnitRange{Int64})
   dx = 0
 
   for i in indices
-  name = offsets[i, 1]
-  index = offsets[i, 2]
-  dy += offsets[i, 3]
-  dx += offsets[i, 4]
-  size_i = offsets[i, 5]
-  size_j = offsets[i, 6]
-
-  add_mesh(Mesh(name, size_i, size_j, index, dy, dx, false, PARAMS_ALIGNMENT), Ms)
-end
+    name = offsets[i, 1]
+    index = offsets[i, 2]
+    dy += offsets[i, 3]
+    dx += offsets[i, 4]
+    size_i = offsets[i, 5]
+    size_j = offsets[i, 6]
+    add_mesh(Mesh(name, size_i, size_j, index, dy, dx, false, PARAMS_ALIGNMENT), Ms)
+  end
   optimize_all_cores(Ms.params)
-
   return Ms
 end
+
 function affine_make_stack(offsets, wafer_num, a::Int64, b::Int64, optimize = true)
   i_dst = findfirst(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == a, 1:size(offsets, 1))
   i_src = findfirst(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == b, 1:size(offsets, 1))
@@ -576,6 +575,7 @@ function make_stack(offsets, wafer_num, a::Int64, b::Int64)
 
   return Ms
 end
+
 function make_stack(offsets, wafer_num, section_range, fixed_interval)
   indices = find(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] in section_range, 1:size(offsets, 1))
   Ms = MeshSet(PARAMS_ALIGNMENT)

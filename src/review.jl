@@ -492,7 +492,7 @@ function imfuse_section(meshset, downsample=3)
       O = restrict(O)
   end
   index = meshset.meshes[1].index
-  imwrite(O, joinpath(MONTAGED_DIR, "review", string(join(index[1:2], ","), "_review.jpg")))
+  imwrite(O, joinpath(MONTAGED_DIR, "review", string(join(index[1:2], ","), "_review.tif")))
 end 
 
 """
