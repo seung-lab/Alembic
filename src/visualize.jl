@@ -181,7 +181,7 @@ function indices2string(indexA, indexB)
   return string(join(indexA[1:2], ","), "-", join(indexB[1:2], ","))
 end
 
-function plot_match_outline(meshset, match_no, factor=10)
+function plot_match_outline(meshset, match_no, factor=50)
   scale = 0.05
   matches = meshset.matches[match_no]
   src_index = matches.src_index
@@ -205,6 +205,7 @@ function plot_match_outline(meshset, match_no, factor=10)
 
   vectors = [src_pts[:,1:2]'; dst_pts[:,1:2]']
   draw_vectors(img..., vectors, RGB(0,0,1), RGB(1,0,1), factor)
+  draw_indices(img..., vectors[1:2,:], 14.0, [-8,-20])
   dir = PREALIGNED_DIR
   if src_index[3] <= -3
     dir = ALIGNED_DIR
