@@ -5,14 +5,23 @@ JULia IMAge Processing Suite:
 A set of tools for elastic image registration in Julia.
 
 # Process
-(time in seconds per section)
+(per section: 16 60 MB tiles)
 
-| Step | Read | Match | Solve | Render | Write | Total | Review Method | Intervene Method |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| premontage | 30 | 10 | 10 | 0 | 30 | 80 | (overlay tiles on overview) | NA |
-| montage | 30 | 40 | 20 | 60 | 30 | 180 | (section overlay as checkerboard) | blockmatch image select |
-| prealignment | 30 | 25 | 5 | 30 | 30 | 120 | overlay sections | blockmatch image select |
-| alignment | 30 | 480 | 20 | 80 | 60 | 670 | movie of sections in FIJI | blockmatch image select |
+| Step | Blockmatch (s) | Render (s) | Review Method |
+| --- | --- | --- | --- |
+| premontage | 80 | 0 | overlay tiles on overview |
+| montage | 210 | 480 | section overlay as checkerboard |
+| prealignment | 120 | 60 | overlay sections, match outline|
+| alignment | 280 | 60 | FIJI movie of sections, match outline, orthogonal views |
+
+| Step | Full | Review |  
+| --- | --- | --- |
+| initial | 1 GB | 0 | 
+| premontage | 0 | 5 MB | 
+| montage | 1 GB | 5 MB |
+| prealignment | 1 GB | 5 MB |
+| alignment | 1.2 GB | 0.6 GB |
+| total (section) | 4.8 GB |
 
 # Milestones
 * Montage two tiles (8/9)
