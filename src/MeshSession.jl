@@ -17,10 +17,11 @@ end
 
 function align_stack(wafer_num, k::UnitRange{Int64})
   @time Ms = make_stack(PREALIGNED_OFFSETS, wafer_num, k);
-  @time for i in 1:Ms.N-1
+  for i in 1:Ms.N-1
     @time a = Ms.meshes[i].index[2];
     @time b = Ms.meshes[i+1].index[2];
-    @time add_pair_matches!(Ms, a, b); 
+    @time add_pair_matches!(Ms, a, b);
+    @time add_pair_matches!(Ms, b, a); 
   end
   save(Ms)
   solve_meshset!(Ms);
@@ -29,10 +30,11 @@ end
 
 function align_stack(wafer_num, k::UnitRange{Int64}, fixed_interval)
   @time Ms = make_stack(PREALIGNED_OFFSETS, wafer_num, k, fixed_interval);
-  @time for i in 1:Ms.N-1
+  for i in 1:Ms.N-1
     @time a = Ms.meshes[i].index[2];
     @time b = Ms.meshes[i+1].index[2];
-    @time add_pair_matches!(Ms, a, b); 
+    @time add_pair_matches!(Ms, a, b);
+    @time add_pair_matches!(Ms, b, a); 
   end
   save(Ms)
   solve_meshset!(Ms);
@@ -41,43 +43,46 @@ end
 
 function align_batch_to_fixed(wafer_num, aligned, batch::UnitRange{Int64})
   @time Ms = make_stack(PREALIGNED_OFFSETS, wafer_num, aligned, batch);
-  @time for i in 1:Ms.N-1
+  for i in 1:Ms.N-1
     @time a = Ms.meshes[i].index[2];
     @time b = Ms.meshes[i+1].index[2];
-   @time add_pair_matches!(Ms, a, b); 
+    @time add_pair_matches!(Ms, a, b);
+    @time add_pair_matches!(Ms, b, a); 
   end
   save(Ms)
   solve_meshset!(Ms);
   save(Ms);
 end
 
-function prealign(wafer_num, src, dst)# k::UnitRange{Int64})
-  image_src, image_dst, offset = affine_load_section_pair(MONTAGED_OFFSETS, wafer_num, src, dst);
-  @time Ms = affine_make_stack(offset, wafer_num, dst, src);
-  @time affine_add_pair_matches!(Ms, image_src, image_dst, src, dst);
+function prealign(wafer_num, dst, src)# k::UnitRange{Int64})
+  @time Ms = affine_make_stack(MONTAGED_OFFSETS, wafer_num, dst, src);
+  @time add_pair_matches!(Ms, src, dst);
   @time affine_solve_meshset!(Ms);
   save(Ms);
   return Ms;
 end
 
 function prealign(wafer_num_a, sec_num_a, wafer_num_b, sec_num_b)# k::UnitRange{Int64})
-if wafer_num_a != wafer_num_b println("No support for different wafers yet."); return; end
-optimize_all_cores(PARAMS_PREALIGNMENT);
-for src in sec_num_a:sec_num_b
-dst = src - 1;
-  @time Ms = affine_make_stack(MONTAGED_OFFSETS, wafer_num_a, dst, src, false);
-  @time affine_add_pair_matches!(Ms, src, dst);
-  @time affine_solve_meshset!(Ms);
-  save(Ms);
+  if wafer_num_a != wafer_num_b println("No support for different wafers yet.")
+    return
+  end
+  optimize_all_cores(PARAMS_PREALIGNMENT);
+  for src in sec_num_a:sec_num_b
+    dst = src - 1;
+    @time Ms = affine_make_stack(MONTAGED_OFFSETS, wafer_num_a, dst, src, false);
+    @time add_pair_matches!(Ms, src, dst);
+    @time affine_solve_meshset!(Ms);
+    save(Ms);
   end
 end
 
 function align_to_fixed(wafer_num, aligned, prealigned)
   @time Ms = make_stack(PREALIGNED_OFFSETS, wafer_num, aligned, prealigned);
-  @time for i in 1:Ms.N-1
+  for i in 1:Ms.N-1
     @time a = Ms.meshes[i].index[2];
     @time b = Ms.meshes[i+1].index[2];
-   @time add_pair_matches!(Ms, a, b); 
+    @time add_pair_matches!(Ms, a, b);
+    @time add_pair_matches!(Ms, b, a); 
   end
   save(Ms)
   solve_meshset!(Ms);

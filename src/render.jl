@@ -95,6 +95,18 @@ function calculate_global_tform(index, dir=PREALIGNED_DIR)
 end
 
 """
+INCOMPLETE
+"""
+function write_prealignment_thumbnail(imgA, imgB, tformA, tformB, 
+                                              offsetA, offsetB, scale=0.05)
+  s = [scale 0 0; 0 scale 0; 0 0 1]
+  thumbA, thumboffA = imwarp(imgA, tformA*s, offsetA)
+  thumbB, thumboffB = imwarp(imgB, tformB*s, offsetB)
+  moving_nodes, fixed_nodes = get_matched_points(meshset, 1)
+  return
+end
+
+"""
 Return Dictionary of staged image to remove redundancy in loading
 """
 function stage_image(mesh, tform, scale=0.05)
