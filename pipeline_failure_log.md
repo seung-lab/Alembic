@@ -31,5 +31,79 @@
 | 09/29/15 | Premontage | 3,22 has bad premontage due to an extra tile | NA | NA | No |
 | 09/29/15 | Premontage | 3,90 has bad premontage | NA | NA | No |
 | 09/29/15 | Premontage | 3,133 has bad premontage | NA | NA | No |
-| 09/30/15 | Premontage | 3,147 has bad premontage | NA | NA | No |
+| 10/05/15 | Montage | 6,1 has bad montage | Missing tile | NA | No |
+| 10/05/15 | Montage | 6,5 has bad montage | Missing tile | NA | No |
+| 10/05/15 | Montage | 6,26 has bad montage | No overlap | NA | No |
+| 10/05/15 | Montage | 6,53 has bad montage | No overlap | NA | No |
+| 10/05/15 | Montage | 6,170 has bad montage | Little overlap | NA | No |
+| 10/05/15 | Montage | 7,2 has bad montage | Missing tile | NA | No |
+| 10/05/15 | Montage | 7,12 has bad montage | Missing tile | NA | No |
+| 10/05/15 | Montage | 7,45 has bad montage | Little overlap (premontage) | NA | No |
+| 10/05/15 | Montage | 7,50 has bad montage | Weird tile offsets | NA | No |
+| 10/05/15 | Montage | 7,51 has bad montage | Missing tile | No | No |
+| 10/05/15 | Montage | 7,63 has bad montage | Little overlap | No | No |
+| 10/05/15 | Montage | 7,64 has bad montage | Little overlap | No | No |
+| 10/05/15 | Montage | 7,70 has bad montage | Premontage failure | SKIP | No |
+| 10/05/15 | Montage | 7,72 has bad montage | Premontage failure? | SKIP | No |
+| 10/05/15 | Montage | 7,76 has bad montage | Little overlap | NA | No |
+| 10/05/15 | Montage | 7,79 has bad montage | No overlap | NA | No |
+| 10/05/15 | Montage | 7,87 has bad montage | Premontage far | NA | No |
+| 10/05/15 | Montage | 7,99 has bad montage | Premontage far | NA | No |
+| 10/05/15 | Montage | 7,102 has bad montage | Premontage far | NA | No |
+| 10/05/15 | Montage | 7,105 has bad montage | Premontage far | NA | No |
+| 10/05/15 | Montage | 7,117 has bad montage | No tiles | NA | No |
+| 10/05/15 | Montage | 8,14 has bad montage | OOF | NA | No |
+| 10/05/15 | Montage | 8,27 has bad montage | Small overlap | NA | No |
+| 10/05/15 | Montage | 8,31-33 has bad montage | OOF | NA | No |
+| 10/05/15 | Montage | 8,40 has bad montage | OOF | NA | No |
+| 10/05/15 | Montage | 8,45 has bad montage | OOF | NA | No |
+| 10/05/15 | Montage | 8,47 has bad montage | OOF | NA | No |
+| 10/05/15 | Montage | 8,49 has bad montage | Small overlap | NA | No |
+| 10/05/15 | Montage | 8,50 has bad montage | Small overlap | NA | No |
+| 10/05/15 | Montage | 8,55 has bad montage | Small overlap | NA | No |
+| 10/05/15 | Montage | 8,66 has bad montage | OOF | NA | No |
+| 10/05/15 | Montage | 8,80 has bad montage | Missing tile | NA | No |
+| 10/05/15 | Montage | 8,82 has bad montage | Missing tile | NA | No |
+| 10/05/15 | Montage | 8,97 has bad montage | OOF | NA | No |
+| 10/05/15 | Montage | 8,121 has bad montage | OOF | NA | No |
+| 10/05/15 | Montage | 8,125 has bad montage | OOF | NA | No |
+| 10/05/15 | Montage | 8,145 has bad montage | Missing tile | NA | No |
+| 10/05/15 | Montage | 8,155 has bad montage | Missing tile | NA | No |
+| 10/05/15 | Montage | 8,166 has bad montage | OOF | NA | No |
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
