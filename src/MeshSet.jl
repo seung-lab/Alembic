@@ -621,7 +621,7 @@ function affine_load_section_pair(offsets, wafer_num, a, b)
   dst_scaled = imwarp(A_image, SCALING_FACTOR_TRANSLATE)[1]; 
   src_scaled = imwarp(B_image, SCALING_FACTOR_TRANSLATE)[1]; 
  
-  src_cropped = crop_center(src_scaled, 0.75);
+  src_cropped = crop_center(src_scaled, 0.5);
 
   offset_vect, xc = get_max_xc_vector(src_cropped, dst_scaled);
 
@@ -630,7 +630,7 @@ function affine_load_section_pair(offsets, wafer_num, a, b)
 
   println("Offset_i: $offset_i");
   println("Offset_j: $offset_j");
-  println("r: $offset_vect[3]");
+  println("r: $(offset_vect[3])");
 
   dst_row = offsets[i_dst, :];
   src_row = offsets[i_src, :];
