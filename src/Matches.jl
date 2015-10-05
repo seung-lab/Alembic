@@ -67,10 +67,15 @@ end
 Write out blockmatches during the blockmatching process
 """
 function write_blockmatches(A, B, xc, idx, partial_fn)        
-  imwrite(grayim((A[idx]/255)'), string(partial_fn, "_src.jpg"))
+  #=imwrite(grayim((A[idx]/255)'), string(partial_fn, "_src.jpg"))
   imwrite(grayim((B[idx]/255)'), string(partial_fn, "_dst.jpg"))
   if (!isnan(sum(xc[idx])))   
     imwrite(grayim(xc[idx]'), string(partial_fn, "_xc.jpg"))
+  end=#
+  imwrite(grayim((A[idx]/255)'), string(partial_fn, "_src.tif"))
+  imwrite(grayim((B[idx]/255)'), string(partial_fn, "_dst.tif"))
+  if (!isnan(sum(xc[idx])))   
+    imwrite(grayim(xc[idx]'), string(partial_fn, "_xc.tif"))
   end
 end
 

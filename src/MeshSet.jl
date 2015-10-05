@@ -255,11 +255,11 @@ diagonal_pairs = Pairings(0)
   return pairs
 end
 
-function affine_add_pair_matches!(Ms, a, b)
+function affine_add_pair_matches!(Ms, image_a, image_b, a, b)
 
-images = load_section_pair(Ms, a, b)
+#images = load_section_pair(Ms, a, b)
 
-matches_atob = Matches(images[1], Ms.meshes[find_section(Ms,a)], images[2], Ms.meshes[find_section(Ms,b)], Ms.params)
+matches_atob = Matches(image_a, Ms.meshes[find_section(Ms,a)], image_b, Ms.meshes[find_section(Ms,b)], Ms.params)
 
 if typeof(matches_atob) != Void && (matches_atob) != Void
     add_matches(matches_atob, Ms)
@@ -267,6 +267,7 @@ if typeof(matches_atob) != Void && (matches_atob) != Void
   return Ms
 
 end
+
 function add_pair_matches!(Ms, a, b)
 
 images = load_section_pair(Ms, a, b)
@@ -597,6 +598,48 @@ function make_stack(offsets, wafer_num, section_range, fixed_interval)
   optimize_all_cores(Ms.params)
 
   return Ms
+end
+
+function crop_center(image, rad_ratio)
+	size_i, size_j = size(image);
+	rad = round(Int64, rad_ratio * (minimum([size_i, size_j]) / 2));
+	range_i = round(Int64, size_i / 2) + (-rad:rad);
+	range_j = round(Int64, size_j / 2) + (-rad:rad);
+	return image[range_i, range_j];
+end
+
+function affine_load_section_pair(offsets, wafer_num, a, b)
+  i_dst = findfirst(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == a, 1:size(offsets, 1))
+  i_src = findfirst(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == b, 1:size(offsets, 1))
+
+  name_dst = offsets[i_dst, 1];
+  name_src = offsets[i_src, 1];
+
+  @time A_image = get_image(get_path(name_dst))
+  @time B_image = get_image(get_path(name_src))
+ 
+  dst_scaled = imwarp(A_image, SCALING_FACTOR_TRANSLATE)[1]; 
+  src_scaled = imwarp(B_image, SCALING_FACTOR_TRANSLATE)[1]; 
+ 
+  src_cropped = crop_center(src_scaled, 0.75);
+
+  offset_vect, xc = get_max_xc_vector(src_cropped, dst_scaled);
+
+  offset_i = round(Int64, offset_vect[1] / SCALING_FACTOR_TRANSLATE);
+  offset_j = round(Int64, offset_vect[2] / SCALING_FACTOR_TRANSLATE);
+
+  println("Offset_i: $offset_i");
+  println("Offset_j: $offset_j");
+  println("r: $offset_vect[3]");
+
+  dst_row = offsets[i_dst, :];
+  src_row = offsets[i_src, :];
+
+  dst_row[3] = 0; dst_row[4] = 0;
+  src_row[3] = offset_i; src_row[4] = offset_j;
+  pair_offsets = vcat(dst_row, src_row);
+
+  return A_image, B_image, pair_offsets;
 end
 
 function load_section_pair(Ms, a, b)
