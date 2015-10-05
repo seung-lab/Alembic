@@ -236,6 +236,7 @@ function load(firstindex::Index, lastindex::Index)
   println("Loading meshset from", filename)
   return load(filename)
   end
+
 function load(filename::String)
   Ms = JLD.load(filename, "MeshSet"); 
   return Ms
@@ -255,33 +256,33 @@ diagonal_pairs = Pairings(0)
   return pairs
 end
 
-function affine_add_pair_matches!(Ms, a, b)
-
-images = load_section_pair(Ms, a, b)
-
-matches_atob = Matches(images[1], Ms.meshes[find_section(Ms,a)], images[2], Ms.meshes[find_section(Ms,b)], Ms.params)
-
-if typeof(matches_atob) != Void && (matches_atob) != Void
-    add_matches(matches_atob, Ms)
-        end
+function add_pair_matches!(Ms, src_index, dst_index)
+  images = load_section_pair(Ms, src_index, dst_index)
+  matches = Matches(images[1], Ms.meshes[find_section(Ms,src_index)], 
+                              images[2], Ms.meshes[find_section(Ms,dst_index)], 
+                              Ms.params)
+  add_matches(matches, Ms)
   return Ms
-
 end
-function add_pair_matches!(Ms, a, b)
 
-images = load_section_pair(Ms, a, b)
+"""
+INCOMPLETE
 
-matches_atob = Matches(images[1], Ms.meshes[find_section(Ms,a)], images[2], Ms.meshes[find_section(Ms,b)], Ms.params)
-matches_btoa = Matches(images[2], Ms.meshes[find_section(Ms,b)], images[1], Ms.meshes[find_section(Ms,a)], Ms.params)
+Include prealignment review image with prealignment process for faster review
+"""
+function add_pair_matches_with_thumbnails(Ms, src_index, dst_index)
+  images = load_section_pair(Ms, src_index, dst_index)
+  src_mesh = Ms.meshes[find_section(Ms, src_index)]
+  dst_mesh = Ms.meshes[find_section(Ms, dst_index)]
+  matches = calculate_matches(images..., src_mesh, dst_mesh, Ms.params)
+  add_matches(matches, Ms)  
+  affine_solve_meshset!(Ms)
+  tform = regularized_approximate(Ms, lambda=0.9)
+  write_prealignment_thumbnail(images..., tform, Ms, src_index, dst_index)
+end
 
-if typeof(matches_atob) != Void && (matches_atob) != Void
-    add_matches(matches_atob, Ms)
-        end
-if typeof(matches_btoa) != Void && (matches_btoa) != Void
-    add_matches(matches_btoa, Ms)
-        end
-  return Ms
-
+function calculate_matches(src_img, dst_img, src_mesh, dst_mesh, params)
+  return Matches(src_img, src_mesh, dst_img, dst_mesh, params)
 end
 
 function add_all_matches!(Ms, images)
