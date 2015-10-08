@@ -45,6 +45,7 @@
 | 10/05/15 | Montage | 7,64 has bad montage | Little overlap | No | No |
 | 10/05/15 | Montage | 7,70 has bad montage | Premontage failure | SKIP | No |
 | 10/05/15 | Montage | 7,72 has bad montage | Premontage failure? | SKIP | No |
+| 10/05/15 | Montage | 7,74 has failed to montage | Premontage failure? | No | No |
 | 10/05/15 | Montage | 7,76 has bad montage | Little overlap | NA | No |
 | 10/05/15 | Montage | 7,79 has bad montage | No overlap | NA | No |
 | 10/05/15 | Montage | 7,87 has bad montage | Premontage far | NA | No |
