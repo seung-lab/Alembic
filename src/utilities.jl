@@ -72,21 +72,23 @@ function update_offsets(index::Index, offset, sz=[0, 0])
   elseif is_prealigned(index) offsets_fp = prealigned_offsets_path;
   elseif is_aligned(index) offsets_fp = aligned_offsets_path;
   else offsets_fp = premontaged_offsets_path; end
-  
+
+  image_fn = string(get_name(index), ".tif");
+
   if !isfile(offsets_fp)
     f = open(offsets_fp, "w")
     close(f)
-    offsets = [get_name(index), offset..., sz...]'
+    offsets = [image_fn, offset..., sz...]'
   else  
     offsets = readdlm(offsets_fp)
-    idx = findfirst(offsets[:,1], get_name(index))
+    idx = findfirst(offsets[:,1], image_fn)
     if idx != 0
       offsets[idx, 2:3] = collect(offset)
-      if sz != 0
+      if sz != [0, 0]
         offsets[idx, 4:5] = collect(sz)
       end
     else
-      offsets_line = [get_name(index), offset..., sz...]
+      offsets_line = [image_fn, offset..., sz...]
       offsets = vcat(offsets, offsets_line')
     end
   end
@@ -100,8 +102,8 @@ function update_offsets(index::Index, offset, sz=[0, 0])
   end
 end
 
-function update_offsets(name, offset, sz)
-  update_offsets(get_index(name), offset, sz);
+function update_offsets(name, offset, sz=[0, 0])
+  update_offsets(parse_name(name), offset, sz);
 end
 """
 Create array of alphabetized filenames that have file extension in directory

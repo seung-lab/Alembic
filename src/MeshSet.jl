@@ -610,38 +610,29 @@ function crop_center(image, rad_ratio)
 	return image[range_i, range_j];
 end
 
-function affine_load_section_pair(offsets, wafer_num, a, b)
-  i_dst = findfirst(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == a, 1:size(offsets, 1))
-  i_src = findfirst(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == b, 1:size(offsets, 1))
+function affine_load_section_pair(offsets, wafer_num, src, dst)
+  i_dst = findfirst(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == dst, 1:size(offsets, 1))
+  i_src = findfirst(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == src, 1:size(offsets, 1))
 
   name_dst = offsets[i_dst, 1];
   name_src = offsets[i_src, 1];
 
-  @time A_image = get_image(get_path(name_dst))
-  @time B_image = get_image(get_path(name_src))
+  @time dst_image = get_image(get_path(name_dst))
+  @time src_image = get_image(get_path(name_src))
  
-  dst_scaled = imwarp(A_image, SCALING_FACTOR_TRANSLATE)[1]; 
-  src_scaled = imwarp(B_image, SCALING_FACTOR_TRANSLATE)[1]; 
+  dst_scaled = imwarp(dst_image, SCALING_FACTOR_TRANSLATE)[1]; 
+  src_scaled = imwarp(src_image, SCALING_FACTOR_TRANSLATE)[1]; 
  
   src_cropped = crop_center(src_scaled, 0.5);
 
   offset_vect, xc = get_max_xc_vector(src_cropped, dst_scaled);
 
-  offset_i = round(Int64, offset_vect[1] / SCALING_FACTOR_TRANSLATE);
-  offset_j = round(Int64, offset_vect[2] / SCALING_FACTOR_TRANSLATE);
+  offset_unscaled = round(Int64, offset_vect[1:2] / SCALING_FACTOR_TRANSLATE);
 
-  println("Offset_i: $offset_i");
-  println("Offset_j: $offset_j");
+  println("Offsets from scaled blockmatches: $offset_unscaled");
   println("r: $(offset_vect[3])");
-
-  dst_row = offsets[i_dst, :];
-  src_row = offsets[i_src, :];
-
-  dst_row[3] = 0; dst_row[4] = 0;
-  src_row[3] = offset_i; src_row[4] = offset_j;
-  pair_offsets = vcat(dst_row, src_row);
-
-  return A_image, B_image, pair_offsets;
+  update_offsets(name_src, offset_unscaled);
+  return src_image, dst_image;
 end
 
 function load_section_pair(Ms, a, b)
