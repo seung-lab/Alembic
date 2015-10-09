@@ -20,8 +20,7 @@ function align_stack(wafer_num, k::UnitRange{Int64})
   for i in 1:Ms.N-1
     @time a = Ms.meshes[i].index[2];
     @time b = Ms.meshes[i+1].index[2];
-    @time add_pair_matches!(Ms, a, b);
-    @time add_pair_matches!(Ms, b, a); 
+    @time add_pair_matches_reflexive!(Ms, a, b);
   end
   save(Ms)
   solve_meshset!(Ms);
@@ -33,8 +32,7 @@ function align_stack(wafer_num, k::UnitRange{Int64}, fixed_interval)
   for i in 1:Ms.N-1
     @time a = Ms.meshes[i].index[2];
     @time b = Ms.meshes[i+1].index[2];
-    @time add_pair_matches!(Ms, a, b);
-    @time add_pair_matches!(Ms, b, a); 
+    @time add_pair_matches_reflexive!(Ms, a, b);
   end
   save(Ms)
   solve_meshset!(Ms);
@@ -46,8 +44,7 @@ function align_batch_to_fixed(wafer_num, aligned, batch::UnitRange{Int64})
   for i in 1:Ms.N-1
     @time a = Ms.meshes[i].index[2];
     @time b = Ms.meshes[i+1].index[2];
-    @time add_pair_matches!(Ms, a, b);
-    @time add_pair_matches!(Ms, b, a); 
+    @time add_pair_matches_reflexive!(Ms, a, b);
   end
   save(Ms)
   solve_meshset!(Ms);
@@ -56,8 +53,8 @@ end
 
 function prealign(wafer_num, dst, src)# k::UnitRange{Int64})
   @time Ms = affine_make_stack(MONTAGED_OFFSETS, wafer_num, dst, src);
-  @time add_pair_matches!(Ms, src, dst);
-  @time affine_solve_meshset!(Ms);
+  @time add_pair_matches_with_thumbnails!(Ms, src, dst);
+  stats(Ms);
   save(Ms);
   return Ms;
 end
@@ -70,8 +67,8 @@ function prealign(wafer_num_a, sec_num_a, wafer_num_b, sec_num_b)# k::UnitRange{
   for src in sec_num_a:sec_num_b
     dst = src - 1;
     @time Ms = affine_make_stack(MONTAGED_OFFSETS, wafer_num_a, dst, src, false);
-    @time add_pair_matches!(Ms, src, dst);
-    @time affine_solve_meshset!(Ms);
+    @time add_pair_matches_with_thumbnails!(Ms, src, dst);
+    stats(Ms);
     save(Ms);
   end
 end
@@ -81,8 +78,7 @@ function align_to_fixed(wafer_num, aligned, prealigned)
   for i in 1:Ms.N-1
     @time a = Ms.meshes[i].index[2];
     @time b = Ms.meshes[i+1].index[2];
-    @time add_pair_matches!(Ms, a, b);
-    @time add_pair_matches!(Ms, b, a); 
+    @time add_pair_matches_reflexive!(Ms, a, b);
   end
   save(Ms)
   solve_meshset!(Ms);

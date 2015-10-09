@@ -19,9 +19,7 @@ function find_rigid(points1, points2; homogeneous_coord = true)
   p1 = points1 .- p1_bar
   p2 = points2 .- p2_bar
   C = p2.' * p1 / n
-  println(C)
   U,s,V = svd(C)
-  println(U,s,V)
   # Rotation R in least squares sense:  points2 - p2_bar = (points1 - p1_bar) * R
   R = ( U * diagm(vcat(ones(dim-1), det(U*V.'))) * V.' ).'
   trans = p2_bar - p1_bar * R
@@ -32,4 +30,11 @@ function find_rigid(points1, points2; homogeneous_coord = true)
     T = [R zeros(dim); trans 1]
     return T
   end
+end
+
+"""
+moving_pts * tform = fixed_pts
+"""
+function find_affine(moving_pts, fixed_pts)
+  return moving_pts \ fixed_pts
 end

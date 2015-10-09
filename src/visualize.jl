@@ -189,6 +189,8 @@ function plot_match_outline(meshset, match_no, factor=50)
   src_mesh = meshset.meshes[find_index(meshset, src_index)]
   dst_mesh = meshset.meshes[find_index(meshset, dst_index)]
   src_pts, dst_pts = get_matched_points_t(meshset, match_no)
+  src_pts = src_mesh.nodes
+  dst_pts = src_mesh.nodes_t
   src_pts = points_to_Nx3_matrix(src_pts*scale)
   dst_pts = points_to_Nx3_matrix(dst_pts*scale)
 

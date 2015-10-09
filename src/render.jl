@@ -87,40 +87,50 @@ function calculate_global_tform(index, dir=PREALIGNED_DIR)
     for (indexA, indexB) in index_pairs
       meshset = load(indexA, indexB)
       # tform = affine_approximate(meshset)
-      tform = regularized_approximate(meshset, lambda=0.9)
-      global_tform *= tform
+      offset = load_offset(indexB)
+      translation = [1 0 0; 0 1 0; offset[1] offset[2] 1]
+      tform = translation*regularized_solve(meshset, lambda=0.9)
+      global_tform = global_tform*tform
     end
   end
   return global_tform
 end
 
 """
-INCOMPLETE
+Scale & transform moving image for thumbnail using first matches type in meshset
 """
-function write_prealignment_thumbnail(imgA, imgB, tformA, tformB, 
-                                              offsetA, offsetB, scale=0.05)
+function write_prealignment_thumbnail(moving_img, fixed_img, meshset, scale=0.05)
+  moving = Dict()
+  fixed = Dict()
   s = [scale 0 0; 0 scale 0; 0 0 1]
-  thumbA, thumboffA = imwarp(imgA, tformA*s, offsetA)
-  thumbB, thumboffB = imwarp(imgB, tformB*s, offsetB)
+  moving_offset = meshset.meshes[2].disp
+  tform = regularized_solve(meshset, lambda=0.9)
   moving_nodes, fixed_nodes = get_matched_points(meshset, 1)
-  return
+  fixed["nodes"] = points_to_Nx3_matrix(fixed_nodes)
+  moving["nodes"] = points_to_Nx3_matrix(moving_nodes)*tform
+  stage["thumb_fixed"], stage["thumb_offset_fixed"] = imwarp(fixed_img, s)
+  stage["thumb_moving"], stage["thumb_offset_moving"] = imwarp(moving_img, tform*s, moving_offset)
+  stage["scale"] = scale
+  save_prealignment_thumbnails(fixed, moving)
 end
 
 """
 Return Dictionary of staged image to remove redundancy in loading
 """
-function stage_image(mesh, tform, scale=0.05)
+function stage_image(mesh, global_tform, tform, scale=0.05)
   s = [scale 0 0; 0 scale 0; 0 0 1]
   stage = Dict()
   stage["index"] = mesh.index
   img = get_ufixed8_image(mesh)
-  montaged_offset = load_offset(mesh.index)
+  offset = load_offset(mesh.index)
   println("tform: ", tform)
-  println("montaged_offset: ", montaged_offset)
+  println("montaged_offset: ", offset)
   println("Warping ", mesh.name)
-  stage["img"], stage["offset"] = imwarp(img, tform, montaged_offset)
+  translation = [1 0 0; 0 1 0; offset[1] offset[2] 1]
+  @time stage["img"], stage["offset"] = imwarp(img, global_tform*translation*tform, [0,0])
   println("Warping thumbnail for ", mesh.name)
-  stage["thumb"], stage["thumb_offset"] = imwarp(img, tform*s, montaged_offset)
+  stage["thumb_fixed"], stage["thumb_offset_fixed"] = imwarp(img, s, [0,0])
+  stage["thumb_moving"], stage["thumb_offset_moving"] = imwarp(img, translation*tform*s, [0,0])
   stage["scale"] = scale
   return stage
 end
@@ -134,9 +144,25 @@ function copy_section_through(index)
 end
 
 """
-Prealignment where offsets are global
+Fuse and save thumbnail images
+"""
+function save_prealignment_thumbnails(A, B)
+  dir = PREALIGNED_DIR
+  fn = string(join(B["index"][1:2], ","), "_prealigned_thumbnail.png")
+  println("Saving thumbnail ", fn)
+  path = joinpath(dir, "review", fn)
+  O, O_bb = imfuse(A["thumb_fixed"], A["thumb_offset_fixed"], 
+                            B["thumb_moving"], B["thumb_offset_moving"])
+  moving_nodes = A["nodes"][:,1:2]'*A["scale"]
+  fixed_nodes = B["nodes"][:,1:2]'*B["scale"]
+  moving_nodes .-= O_bb
+  fixed_nodes .-= O_bb
+  vectors = [moving_nodes; fixed_nodes]
+  write_thumbnail(path, O, vectors, 1.0)
+end
 
-INCOMPLETE - Incorrect placement of correspondences on the thumbnails
+"""
+Prealignment where offsets are global
 """
 function render_prealigned(indexA, indexB)
   dir = PREALIGNED_DIR
@@ -152,40 +178,30 @@ function render_prealigned(indexA, indexB)
     @time imwrite(stage["img"], joinpath(dir, fn))
   end
 
-  function save_thumbnails(A, B)
-    fn = string(join(B["index"][1:2], ","), "_prealigned_thumbnail.png")
-    println("Saving thumbnail ", fn)
-    path = joinpath(dir, "review", fn)
-    O, O_bb = imfuse(A["thumb"], A["thumb_offset"], B["thumb"], B["thumb_offset"])
-    moving_nodes = A["nodes"][:,1:2]'*A["scale"]
-    fixed_nodes = B["nodes"][:,1:2]'*B["scale"]
-    moving_nodes .-= O_bb
-    fixed_nodes .-= O_bb
-    vectors = [moving_nodes; fixed_nodes]
-    write_thumbnail(path, O, vectors, 1.0)
-  end
-
   index_pairs = create_sequential_index_pairs(indexA, indexB)
   for (k, (indexA, indexB)) in enumerate(index_pairs)
     println("\nPrealigning ", indexA, " & ", indexB)
     meshset = load(indexA, indexB)
     if k==1
-      fixed = stage_image(meshset.meshes[1], global_tform)
+      fixed = stage_image(meshset.meshes[1], global_tform, eye(3))
       if is_first_section(indexA)
         save_image(fixed, dir, log_path)
       end
     end
-    tform = regularized_approximate(meshset, lambda=0.9)
-    moving = stage_image(meshset.meshes[2], global_tform*tform)
+    offset = load_offset(indexB)
+    translation = [1 0 0; 0 1 0; offset[1] offset[2] 1]
+    tform = regularized_solve(meshset, lambda=0.9)
+    # tform = affine_approximate(meshset)
+    moving = stage_image(meshset.meshes[2], global_tform, tform)
     save_image(moving, dir, log_path)
     moving_nodes, fixed_nodes = get_matched_points(meshset, 1)
-    fixed["nodes"] = points_to_Nx3_matrix(fixed_nodes)*global_tform
-    moving["nodes"] = points_to_Nx3_matrix(moving_nodes)*global_tform*tform
-    save_thumbnails(fixed, moving)
+    fixed["nodes"] = points_to_Nx3_matrix(fixed_nodes)
+    moving["nodes"] = points_to_Nx3_matrix(moving_nodes)*tform
+    save_prealignment_thumbnails(fixed, moving)
     fixed = 0
     fixed = moving
     moving = 0
-    global_tform *= tform
+    global_tform = global_tform*translation*tform
   end
 end
 

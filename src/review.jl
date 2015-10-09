@@ -37,6 +37,19 @@ function remove_matches_from_meshset!(indices_to_remove, match_index, meshset)
   end
 end
 
+function remove_matches_from_prealigned_meshset!(indices_to_remove, meshset)
+  println("Removing ", length(indices_to_remove), " points")
+  if length(indices_to_remove) > 0
+    no_pts_removed = length(indices_to_remove)
+    matches = meshset.matches[1]
+    flag = trues(matches.n)
+    flag[indices_to_remove] = false
+    matches.src_points_indices = matches.src_points_indices[flag]
+    matches.n -= no_pts_removed
+    matches.dst_points = matches.dst_points[flag]
+  end
+end
+
 """
 Find index of location in array with point closest to the given point (if there
 exists such a unique point within a certain pixel limit).
@@ -718,7 +731,7 @@ function write_alignment_thumbnails(meshset, k, step="post")
   dst_index = (dst_mesh.index[1], dst_mesh.index[2], dst_mesh.index[3]-1, dst_mesh.index[4]-1)
   global_bb = get_global_bb(meshset)
   src_offset = [global_bb.i, global_bb.j]
-  dst_offset = [global_bb.i, global_bb.j]
+  # dst_offset = [global_bb.i, global_bb.j]
 
   scale = 0.0625
   s = [scale 0 0; 0 scale 0; 0 0 1]

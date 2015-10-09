@@ -256,6 +256,19 @@ diagonal_pairs = Pairings(0)
   return pairs
 end
 
+function add_pair_matches_reflexive!(Ms, src_index, dst_index)
+  images = load_section_pair(Ms, src_index, dst_index)
+  matches_src_dst = Matches(images[1], Ms.meshes[find_section(Ms,src_index)], 
+                              images[2], Ms.meshes[find_section(Ms,dst_index)], 
+                              Ms.params)
+  matches_dst_src = Matches(images[2], Ms.meshes[find_section(Ms,dst_index)], 
+                              images[1], Ms.meshes[find_section(Ms,src_index)], 
+                              Ms.params)
+  add_matches(matches_src_dst, Ms)
+  add_matches(matches_dst_src, Ms)
+  return Ms
+end
+
 function add_pair_matches!(Ms, src_index, dst_index)
   images = load_section_pair(Ms, src_index, dst_index)
   matches = Matches(images[1], Ms.meshes[find_section(Ms,src_index)], 
@@ -266,19 +279,15 @@ function add_pair_matches!(Ms, src_index, dst_index)
 end
 
 """
-INCOMPLETE
-
 Include prealignment review image with prealignment process for faster review
 """
-function add_pair_matches_with_thumbnails(Ms, src_index, dst_index)
-  images = load_section_pair(Ms, src_index, dst_index)
-  src_mesh = Ms.meshes[find_section(Ms, src_index)]
-  dst_mesh = Ms.meshes[find_section(Ms, dst_index)]
-  matches = calculate_matches(images..., src_mesh, dst_mesh, Ms.params)
-  add_matches(matches, Ms)  
-  affine_solve_meshset!(Ms)
-  tform = regularized_approximate(Ms, lambda=0.9)
-  write_prealignment_thumbnail(images..., tform, Ms, src_index, dst_index)
+function add_pair_matches_with_thumbnails!(meshset, src_index, dst_index)
+  images = load_section_pair(meshset, src_index, dst_index)
+  src_mesh = meshset.meshes[find_section(meshset, src_index)]
+  dst_mesh = meshset.meshes[find_section(meshset, dst_index)]
+  matches = calculate_matches(images..., src_mesh, dst_mesh, meshset.params)
+  add_matches(matches, meshset)  
+  write_prealignment_thumbnail(images..., meshset)
 end
 
 function calculate_matches(src_img, dst_img, src_mesh, dst_mesh, params)
@@ -320,40 +329,39 @@ end
 function get_matched_points(Ms::MeshSet)
   src_points = Points(0); 
   dst_points = Points(0); 
-    for k in 1:Ms.M
-  pts = get_matched_points(Ms, k)
-  src_points = vcat(src_points,pts[1])
-  dst_points = vcat(dst_points,pts[2])
-   end
+  for k in 1:Ms.M
+    pts = get_matched_points(Ms, k)
+    src_points = vcat(src_points,pts[1])
+    dst_points = vcat(dst_points,pts[2])
+  end
   return src_points, dst_points
 end
 
 function get_matched_points_t(Ms::MeshSet, k)
+  src_pts = Points(0)
+  dst_pts = Points(0)
 
-src_pts = Points(0)
-dst_pts = Points(0)
-
-for i in 1:Ms.matches[k].n
-    w = Ms.matches[k].dst_weights[i]
-    t = Ms.matches[k].dst_triangles[i]
-    p = Ms.matches[k].src_points_indices[i]
-    src = Ms.meshes[find_index(Ms, Ms.matches[k].src_index)]
-    dst = Ms.meshes[find_index(Ms, Ms.matches[k].dst_index)]
-    p1 = src.nodes_t[p]
-    p2 = dst.nodes_t[t[1]] * w[1] + dst.nodes_t[t[2]] * w[2] + dst.nodes_t[t[3]] * w[3]
-    push!(src_pts, p1)
-    push!(dst_pts, p2)
-end
+  for i in 1:Ms.matches[k].n
+      w = Ms.matches[k].dst_weights[i]
+      t = Ms.matches[k].dst_triangles[i]
+      p = Ms.matches[k].src_points_indices[i]
+      src = Ms.meshes[find_index(Ms, Ms.matches[k].src_index)]
+      dst = Ms.meshes[find_index(Ms, Ms.matches[k].dst_index)]
+      p1 = src.nodes_t[p]
+      p2 = dst.nodes_t[t[1]] * w[1] + dst.nodes_t[t[2]] * w[2] + dst.nodes_t[t[3]] * w[3]
+      push!(src_pts, p1)
+      push!(dst_pts, p2)
+  end
   return src_pts, dst_pts
 end
 
 function get_matched_points_t(Ms::MeshSet)
   src_points = Points(0); 
   dst_points = Points(0); 
-    for k in 1:Ms.M
-  pts = get_matched_points_t(Ms, k)
-  src_points = vcat(src_points,pts[1])
-  dst_points = vcat(dst_points,pts[2])
+  for k in 1:Ms.M
+    pts = get_matched_points_t(Ms, k)
+    src_points = vcat(src_points,pts[1])
+    dst_points = vcat(dst_points,pts[2])
    end
   return src_points, dst_points
 end
@@ -384,6 +392,11 @@ function load_section(offsets, wafer_num, section_num)
 end
 
 """
+`[method]_APPROXIMATE` - apply transform to the Mesh type
+`[method]_SOLVE` - apply transform to the Matches type
+"""
+
+"""
 Retrieve nodes and nodes_t of mesh, make homogenous, and transpose to Nx3
 """
 function get_homogeneous_correspondences(M::Mesh)
@@ -400,10 +413,21 @@ function get_homogeneous_correspondences(M::Mesh)
 end
 
 """
-Apply some weighted combination of affine and rigid, gauged by lambda
+Return right-hand matrix for the mesh
+`nodes*T ~= nodes_T`
 """
-function regularized_approximate(Ms::MeshSet; lambda=0.9, ind=2)
-  return regularized_approximate(Ms.meshes[ind], lambda)
+function rigid_approximate(M::Mesh)
+  pts_src, pts_dst = get_homogeneous_correspondences(M)
+  return find_rigid(pts_src, pts_dst)
+end
+
+"""
+Return the right-hand matrix for the mesh
+`nodes*T ~= nodes_T`
+"""
+function affine_approximate(M::Mesh)
+  pts_src, pts_dst = get_homogeneous_correspondences(M)
+  return find_affine(pts_src, pts_dst)
 end
 
 """
@@ -416,82 +440,79 @@ function regularized_approximate(M::Mesh, lambda=0.9)
 end
 
 """
-Return left-hand matrix for the moving mesh in the prealigned meshset
+Use in montage?
 """
-function rigid_approximate(Ms::MeshSet, ind=2)
-  return rigid_approximate(Ms.meshes[ind])
-end
-
-"""
-Return left-hand matrix for the mesh
-`nodes*T ~= nodes_T`
-"""
-function rigid_approximate(M::Mesh)
-  pts, pts_t = get_homogeneous_correspondences(M)
-  return find_rigid(pts, pts_t)
-end
-
-"""
-Return left-hand matrix for the moving mesh in the prealigned meshset
-"""
-function affine_approximate(Ms::MeshSet, ind=2)
-  return affine_approximate(Ms.meshes[ind])
-end
-
-"""
-Return the left-hand matrix for the mesh
-`nodes*T ~= nodes_T`
-"""
-function affine_approximate(M::Mesh)
-  pts, pts_t = get_homogeneous_correspondences(M)
-  return pts \ pts_t
-end
-
 function affine_approximate(Ms::MeshSet, row, col)
 	ind = findfirst(i -> Ms.meshes[i].index[3:4] == (row, col), 1:Ms.N)
  	return affine_approximate(Ms.meshes[ind])
 end
 
-
-function affine_solve(Ms::MeshSet, k)
-  pts_src = get_matched_points(Ms, k)[1]
-  pts_dst = get_matched_points(Ms, k)[2]
-
+"""
+Retrieve nodes and nodes_t of mesh, make homogenous, and transpose to Nx3
+"""
+function get_homogeneous_correspondences(Ms, k)
+  pts_src, pts_dst = get_matched_points(Ms, k)
   num_pts = size(pts_src, 1)
 
   hpts_src = Array{Float64, 2}(3, num_pts)
   hpts_dst = Array{Float64, 2}(3, num_pts)
 
   for i in 1:num_pts
-  hpts_src[:, i] = [pts_src[i]; 1]
-  hpts_dst[:, i] = [pts_dst[i]; 1]
+    hpts_src[:, i] = [pts_src[i]; 1]
+    hpts_dst[:, i] = [pts_dst[i]; 1]
   end
+  return hpts_src', hpts_dst'
+end
 
-  return hpts_src' \ hpts_dst'
+"""
+Return right-hand matrix for the matches
+`pts_src*T ~= pts_dst`
+"""
+function affine_solve(Ms::MeshSet, k=1)
+  pts_src, pts_dst = get_homogeneous_correspondences(Ms, k)
+  return find_affine(pts_src, pts_dst)
+end
+
+"""
+Return right-hand matrix for the matches
+`pts_src*T ~= pts_dst`
+"""
+function rigid_solve(Ms::MeshSet, k=1)
+  pts_src, pts_dst = get_homogeneous_correspondences(Ms, k)
+  return find_rigid(pts_src, pts_dst)
+end
+
+"""
+Apply some weighted combination of affine and rigid, gauged by lambda
+"""
+function regularized_solve(Ms::MeshSet; k=1, lambda=0.9)
+  affine = affine_solve(Ms, k)
+  rigid = rigid_solve(Ms, k)
+  return lambda*affine + (1-lambda)*rigid
 end
 
 function decomp_affine(tform::Array{Float64, 2})
-# http://math.stackexchange.com/questions/78137/decomposition-of-a-nonsquare-affine-matrix
-a = tform[1, 1];
-b = tform[2, 1];
-c = tform[1, 2];
-d = tform[2, 2];
+  # http://math.stackexchange.com/questions/78137/decomposition-of-a-nonsquare-affine-matrix
+  a = tform[1, 1];
+  b = tform[2, 1];
+  c = tform[1, 2];
+  d = tform[2, 2];
 
-p = norm([a, b])
-r = det(tform[1:2, 1:2]) / p
-q = (a * c + b * d) / det(tform)
-theta = rad2deg(atan(b / a))
+  p = norm([a, b])
+  r = det(tform[1:2, 1:2]) / p
+  q = (a * c + b * d) / det(tform)
+  theta = rad2deg(atan(b / a))
 
-t_i = tform[3, 1]
-t_j = tform[3, 2]
+  t_i = tform[3, 1]
+  t_j = tform[3, 2]
 
-println("Affine decomposition: in right-to-left order with the transformation matrix being v*T,")
-println("Translation: i-translation: $t_i, j-translation: $t_j")
-println("Scaling:  i-scaling: $p, j-scaling: $r")
-println("Shearing: j-shear: $q")
-println("Rotation: $theta deg.")
+  println("Affine decomposition: in right-to-left order with the transformation matrix being v*T,")
+  println("Translation: i-translation: $t_i, j-translation: $t_j")
+  println("Scaling:  i-scaling: $p, j-scaling: $r")
+  println("Shearing: j-shear: $q")
+  println("Rotation: $theta deg.")
 
-return t_i, t_j, p, r, q, theta
+  return t_i, t_j, p, r, q, theta
 end
 
 function make_stack(offsets, wafer_num, batch::UnitRange{Int64})
