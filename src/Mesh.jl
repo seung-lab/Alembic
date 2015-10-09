@@ -63,8 +63,9 @@ function Mesh(name, size_i, size_j, index, dy, dx, tile_fixed::Bool, mesh_length
 	(Ai, Aj) = (size_i,size_j);
 
 	dists = [mesh_length * sin(pi / 3); mesh_length];
-	dims = (convert(Int64, div(Ai, dists[1]) + 1), convert(Int64, div(Aj, dists[2]) + 1));
- 	offsets = [rem(Ai, dists[1])/2; rem(Aj, dists[2])/2];
+#	dims = (convert(Int64, div(Ai, dists[1]) + 1), convert(Int64, div(Aj, dists[2]) + 1));
+	dims = (convert(Int64, div(Ai, dists[1]) + 1 + 2), convert(Int64, div(Aj, dists[2]) + 1 + 2));
+ 	offsets = [rem(Ai, dists[1])/2 - dists[1]; rem(Aj, dists[2])/2 - dists[2]];
 	disp = [dy; dx];
 
 	n = maximum([get_mesh_index(dims, dims[1], dims[2]); get_mesh_index(dims, dims[1], dims[2]-1)]);
