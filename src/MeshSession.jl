@@ -51,7 +51,8 @@ function align_batch_to_fixed(wafer_num, aligned, batch::UnitRange{Int64})
   save(Ms);
 end
 
-function prealign(wafer_num, dst, src)# k::UnitRange{Int64})
+function prealign(wafer_num, dst, src)
+  @time images = affine_load_section_pair(MONTAGED_OFFSETS, wafer_num, src, dst);
   @time Ms = affine_make_stack(MONTAGED_OFFSETS, wafer_num, dst, src);
   @time add_pair_matches_with_thumbnails!(Ms, src, dst);
   stats(Ms);

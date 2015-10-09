@@ -256,6 +256,7 @@ diagonal_pairs = Pairings(0)
   return pairs
 end
 
+<<<<<<< HEAD
 function add_pair_matches_reflexive!(Ms, src_index, dst_index)
   images = load_section_pair(Ms, src_index, dst_index)
   matches_src_dst = Matches(images[1], Ms.meshes[find_section(Ms,src_index)], 
@@ -271,6 +272,12 @@ end
 
 function add_pair_matches!(Ms, src_index, dst_index)
   images = load_section_pair(Ms, src_index, dst_index)
+=======
+function add_pair_matches!(Ms, src_index, dst_index, images=Void)
+  if (images == Void)
+    images = load_section_pair(Ms, src_index, dst_index)
+  end
+>>>>>>> 2f4ef51cfd6c3d52dddd0c524c18c7966ab7832d
   matches = Matches(images[1], Ms.meshes[find_section(Ms,src_index)], 
                               images[2], Ms.meshes[find_section(Ms,dst_index)], 
                               Ms.params)
@@ -619,6 +626,39 @@ function make_stack(offsets, wafer_num, section_range, fixed_interval)
   optimize_all_cores(Ms.params)
 
   return Ms
+end
+
+function crop_center(image, rad_ratio)
+	size_i, size_j = size(image);
+	rad = round(Int64, rad_ratio * (minimum([size_i, size_j]) / 2));
+	range_i = round(Int64, size_i / 2) + (-rad:rad);
+	range_j = round(Int64, size_j / 2) + (-rad:rad);
+	return image[range_i, range_j];
+end
+
+function affine_load_section_pair(offsets, wafer_num, src, dst)
+  i_dst = findfirst(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == dst, 1:size(offsets, 1))
+  i_src = findfirst(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == src, 1:size(offsets, 1))
+
+  name_dst = offsets[i_dst, 1];
+  name_src = offsets[i_src, 1];
+
+  @time dst_image = get_image(get_path(name_dst))
+  @time src_image = get_image(get_path(name_src))
+ 
+  dst_scaled = imwarp(dst_image, SCALING_FACTOR_TRANSLATE)[1]; 
+  src_scaled = imwarp(src_image, SCALING_FACTOR_TRANSLATE)[1]; 
+ 
+  src_cropped = crop_center(src_scaled, 0.5);
+
+  offset_vect, xc = get_max_xc_vector(src_cropped, dst_scaled);
+
+  offset_unscaled = round(Int64, offset_vect[1:2] / SCALING_FACTOR_TRANSLATE);
+
+  println("Offsets from scaled blockmatches: $offset_unscaled");
+  println("r: $(offset_vect[3])");
+  update_offsets(name_src, offset_unscaled);
+  return src_image, dst_image;
 end
 
 function load_section_pair(Ms, a, b)

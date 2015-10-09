@@ -66,6 +66,45 @@ function update_offset_log!(log_path, image_name, offset, sz)
   writedlm(log_path, offset_log)
 end
 
+function update_offsets(index::Index, offset, sz=[0, 0])
+  
+  if is_montaged(index) offsets_fp = montaged_offsets_path;
+  elseif is_prealigned(index) offsets_fp = prealigned_offsets_path;
+  elseif is_aligned(index) offsets_fp = aligned_offsets_path;
+  else offsets_fp = premontaged_offsets_path; end
+
+  image_fn = string(get_name(index), ".tif");
+
+  if !isfile(offsets_fp)
+    f = open(offsets_fp, "w")
+    close(f)
+    offsets = [image_fn, offset..., sz...]'
+  else  
+    offsets = readdlm(offsets_fp)
+    idx = findfirst(offsets[:,1], image_fn)
+    if idx != 0
+      offsets[idx, 2:3] = collect(offset)
+      if sz != [0, 0]
+        offsets[idx, 4:5] = collect(sz)
+      end
+    else
+      offsets_line = [image_fn, offset..., sz...]
+      offsets = vcat(offsets, offsets_line')
+    end
+  end
+  offsets = offsets[sortperm(offsets[:, 1], by=parse_name), :];
+  writedlm(offsets_fp, offsets)
+  
+  if is_montaged(index) global MONTAGED_OFFSETS = parse_offsets(offsets_fp);
+  elseif is_prealigned(index) global PREALIGNED_OFFSETS = parse_offsets(offsets_fp);
+  elseif is_aligned(index) global ALIGNED_OFFSETS = parse_offsets(offsets_fp);
+  else global PREMONTAGED_OFFSETS = parse_offsets(offsets_fp);
+  end
+end
+
+function update_offsets(name, offset, sz=[0, 0])
+  update_offsets(parse_name(name), offset, sz);
+end
 """
 Create array of alphabetized filenames that have file extension in directory
 """
