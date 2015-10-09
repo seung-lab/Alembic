@@ -691,30 +691,6 @@ function scan_stack_movie(imgs, bounding_box, divisions=12, perm=[1,2,3])
   end
 end
 
-function write_prealignment_thumbnails(downsample=8)
-  img_filenames = filter(x -> x[end-2:end] == "tif", readdir(PREALIGNED_DIR))
-  for filename_A in img_filenames
-    img_preceding = filter(x -> parse_name(x)[2]-1 == parse_name(filename_A)[2], img_filenames)
-    if length(img_preceding) > 0
-      filename_B = img_preceding[1]
-      println(filename_B, "-", filename_A)
-      A = get_ufixed8_image(joinpath(PREALIGNED_DIR, filename_A))
-      for i = 1:downsample/2
-        A = restrict(A)
-      end
-      B = get_ufixed8_image(joinpath(PREALIGNED_DIR, filename_B))
-      for i = 1:downsample/2
-        B = restrict(B)
-      end
-      B_offset = PREALIGNED_OFFSETS[find(i -> PREALIGNED_OFFSETS[i,1]==filename_B[1:end-4], 1:size(PREALIGNED_OFFSETS, 1)), 3:4]
-      O, O_bb = imfuse(A, [0,0], B, B_offset)
-      println("Writing ", filename_B[1:end-4])
-      fn = string(filename_B[1:end-4], "-", filename_A[1:end-4], ".jpg")
-      imwrite(O, joinpath(PREALIGNED_DIR, "review", fn))
-    end
-  end
-end  
-
 """
 Display index k match pair meshes are two frames in movie to scroll between
 """
