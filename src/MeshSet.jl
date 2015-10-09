@@ -256,8 +256,10 @@ diagonal_pairs = Pairings(0)
   return pairs
 end
 
-function add_pair_matches_reflexive!(Ms, src_index, dst_index)
+function add_pair_matches_reflexive!(Ms, src_index, dst_index, images = Void)
+  if images == Void
   images = load_section_pair(Ms, src_index, dst_index)
+  end
   matches_src_dst = Matches(images[1], Ms.meshes[find_section(Ms,src_index)], 
                               images[2], Ms.meshes[find_section(Ms,dst_index)], 
                               Ms.params)
@@ -269,8 +271,10 @@ function add_pair_matches_reflexive!(Ms, src_index, dst_index)
   return Ms
 end
 
-function add_pair_matches!(Ms, src_index, dst_index)
+function add_pair_matches!(Ms, src_index, dst_index, images = Void)
+  if images == Void
   images = load_section_pair(Ms, src_index, dst_index)
+  end
   matches = Matches(images[1], Ms.meshes[find_section(Ms,src_index)], 
                               images[2], Ms.meshes[find_section(Ms,dst_index)], 
                               Ms.params)
@@ -281,8 +285,10 @@ end
 """
 Include prealignment review image with prealignment process for faster review
 """
-function add_pair_matches_with_thumbnails!(meshset, src_index, dst_index)
+function add_pair_matches_with_thumbnails!(meshset, src_index, dst_index, images = Void)
+  if images == Void
   images = load_section_pair(meshset, src_index, dst_index)
+  end
   src_mesh = meshset.meshes[find_section(meshset, src_index)]
   dst_mesh = meshset.meshes[find_section(meshset, dst_index)]
   matches = calculate_matches(images..., src_mesh, dst_mesh, meshset.params)

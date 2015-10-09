@@ -54,7 +54,8 @@ end
 function prealign(wafer_num, dst, src)
   @time images = affine_load_section_pair(MONTAGED_OFFSETS, wafer_num, src, dst);
   @time Ms = affine_make_stack(MONTAGED_OFFSETS, wafer_num, dst, src);
-  @time add_pair_matches_with_thumbnails!(Ms, src, dst);
+  @time add_pair_matches!(Ms, src, dst, images);
+  @time affine_solve_meshset!(Ms);
   stats(Ms);
   save(Ms);
   return Ms;
