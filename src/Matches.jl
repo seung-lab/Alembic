@@ -101,7 +101,7 @@ function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict)
   if (Am==Bm)
     return Void
   end
-  println("Matching $(Am.index) -> $(Bm.index):")
+  println("Matching $(Am.index) -> $(Bm.index):######\n")
   A = A_orig
   B = B_orig
   if params["gaussian_sigma"] != 0
@@ -145,7 +145,7 @@ function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict)
   block_size = params["block_size"]
   search_r = params["search_r"]
   min_r = params["min_r"]
-  b_rad = block_size + search_r
+  b_rad = block_size + search_r;
 
   # preprocessing
   for idx in 1:n_upperbound
@@ -178,7 +178,6 @@ function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict)
   inc_not_enough_dyn_range() = (n_not_enough_dyn_range += 1;)
   inc_too_much_blotting() = (n_too_much_blotting += 1;)
 
-  println("Completed preprocessing...")
   k = 1
   nextidx() = (idx=k; k+=1; idx)
   @sync begin
@@ -204,11 +203,11 @@ function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict)
           continue
         end
         
-        # if length(find(i-> A_im[i] < blot_threshold, 1:length(A_im))) / length(A_im) > max_blotting_ratio
-        #   disp_vectors_raw[idx] = NO_MATCH
-        #   inc_too_much_blotting()
-        #   continue
-        # end
+         if length(find(i-> A_im[i] < blot_threshold, 1:length(A_im))) / length(A_im) > max_blotting_ratio
+           disp_vectors_raw[idx] = NO_MATCH
+           inc_too_much_blotting()
+           continue;
+         end
 
         max_vect_xc = remotecall_fetch(p, get_max_xc_vector, A_im,  B_im)
         disp_vectors_raw[idx] = max_vect_xc[1] + [range_offsets[idx]; 0];
@@ -225,7 +224,6 @@ function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict)
             A_im_array[idx] = A_im; 
             B_im_array[idx] = matched_im; 
           end           
-        # println("$p: Matched point $idx, with displacement vector $(disp_vectors_raw[idx])")
         end
       end
       end
@@ -233,11 +231,12 @@ function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict)
   end
   end
   
-  println("Starting postprocessing and filtering...")
   bins = hist(r_vals, 20)[1]; counts = hist(r_vals, 20)[2]
+  println("Histogram of r-values:###")
   for i in 1:(length(bins)-1)
     println("$(bins[i])-$(bins[i+1]): $(counts[i])")
   end
+  println("###\n");
 
   disp_vectors_i = Array{Float64, 1}(0)
   disp_vectors_j = Array{Float64, 1}(0)
@@ -317,8 +316,8 @@ function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict)
     push!(dst_weights, get_triangle_weights(Bm, dst_triangle, dst_point[1], dst_point[2]))
   end
 
-  println("###")
-  println("$p1 -> $p2:")
+  #println("######")
+  #println("$p1 -> $p2:")
   println("$n_upperbound in mesh")
   println("$n_total in overlap")
   println("$n accepted\n")
@@ -330,6 +329,7 @@ function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict)
   println("$n_no_triangle (outside triangles)\n")
   
   if n == 0
+  println("######\n")
     return Void
   end
 
@@ -361,7 +361,7 @@ function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict)
   println("mean = $mu_j")
   println("sigma = $sigma_j")
   println("max = $max_j")
-  println("###\n")
+  println("######\n")
 
   matches = Matches(src_index, dst_index, n, src_points_indices, dst_points, dst_triangles, dst_weights, disp_vectors)
   return matches
