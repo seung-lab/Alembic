@@ -108,9 +108,10 @@ function write_prealignment_thumbnail(moving_img, fixed_img, meshset, scale=0.05
   moving_nodes, fixed_nodes = get_matched_points(meshset, 1)
   fixed["nodes"] = points_to_Nx3_matrix(fixed_nodes)
   moving["nodes"] = points_to_Nx3_matrix(moving_nodes)*tform
-  stage["thumb_fixed"], stage["thumb_offset_fixed"] = imwarp(fixed_img, s)
-  stage["thumb_moving"], stage["thumb_offset_moving"] = imwarp(moving_img, tform*s, moving_offset)
-  stage["scale"] = scale
+  fixed["thumb_fixed"], fixed["thumb_offset_fixed"] = imwarp(fixed_img, s)
+  moving["thumb_moving"], moving["thumb_offset_moving"] = imwarp(moving_img, tform*s, moving_offset)
+  fixed["scale"] = scale
+  moving["scale"] = scale
   save_prealignment_thumbnails(fixed, moving)
 end
 
