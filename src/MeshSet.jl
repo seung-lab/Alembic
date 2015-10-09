@@ -256,7 +256,6 @@ diagonal_pairs = Pairings(0)
   return pairs
 end
 
-<<<<<<< HEAD
 function add_pair_matches_reflexive!(Ms, src_index, dst_index)
   images = load_section_pair(Ms, src_index, dst_index)
   matches_src_dst = Matches(images[1], Ms.meshes[find_section(Ms,src_index)], 
@@ -270,14 +269,10 @@ function add_pair_matches_reflexive!(Ms, src_index, dst_index)
   return Ms
 end
 
-function add_pair_matches!(Ms, src_index, dst_index)
-  images = load_section_pair(Ms, src_index, dst_index)
-=======
 function add_pair_matches!(Ms, src_index, dst_index, images=Void)
   if (images == Void)
     images = load_section_pair(Ms, src_index, dst_index)
   end
->>>>>>> 2f4ef51cfd6c3d52dddd0c524c18c7966ab7832d
   matches = Matches(images[1], Ms.meshes[find_section(Ms,src_index)], 
                               images[2], Ms.meshes[find_section(Ms,dst_index)], 
                               Ms.params)
