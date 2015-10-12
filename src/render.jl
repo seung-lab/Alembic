@@ -239,7 +239,10 @@ function render_aligned(file_index)
         @time img = rescopeimage(img, offset, GLOBAL_BB)
         println("Writing ", mesh.name)
         new_fn = string(join(mesh.index[1:2], ","), "_aligned.tif")
-        @time imwrite(img, joinpath(dir, new_fn))
+        f = h5open(joinpath(dir, new_fn), "w")
+        @time f["img", "chunk", (1000,1000)] = img
+        close(f)
+        # @time imwrite(img, joinpath(dir, new_fn))
         img, _ = imwarp(img, s)
 
         # Log image offsets
@@ -276,15 +279,9 @@ function render_aligned(file_index)
 
     imgc, img2 = view(O, pixelspacing=[1,1])
     vectors = [src_nodes; dst_nodes]
-    an_pts, an_vectors = draw_vectors(imgc, img2, vectors, RGB(0,0,1), RGB(1,0,1))
-    c = draw_indices(imgc, img2, src_nodes)
-    # an_src_pts = draw_points(imgc, img2, src_nodes, RGB(1,1,1), 2.0, 'x')
-    # an_dst_pts = draw_points(imgc, img2, dst_nodes, RGB(0,0,0), 2.0, '+')
-
     thumbnail_fn = string(join(dst_index[1:2], ","), "-", join(src_index[1:2], ","), "_aligned_thumbnail.png")
-    println("Writing ", thumbnail_fn)
-    Cairo.write_to_png(imgc.c.back, joinpath(dir, "review", thumbnail_fn))
-    destroy(toplevel(imgc))
+    path = joinpath(dir, "review", thumbnail_fn)
+    write_thumbnail(path, O, vectors, 1.0)
   end
 end
 
