@@ -16,6 +16,18 @@ function get_image(index::Index)
   return get_image(get_path(index))
 end
 
+function ufixed8_to_uint8(img)
+  reinterpret(UInt8, -img)
+end
+
+function get_h5_path(index::Index)
+  return string(get_path(index)[1:end-4], ".h5")
+end
+
+function get_aligned_h5_slice(path::String, slice)
+  return convert(Array{Ufixed8}, h5read(path, "img", slice))
+end
+
 # extensions:
 # Mesh.jl get_float_image(mesh::Mesh)
 function get_float_image(path::String)

@@ -42,8 +42,7 @@ global const ALIGNED_INDEX = -4;
 
 
 # dependencies
-
-# using HDF5
+using HDF5
 using JLD
 using Images
 using ImageView
