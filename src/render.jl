@@ -103,9 +103,11 @@ function write_prealignment_thumbnail(moving_img, fixed_img, meshset, scale=0.05
   moving = Dict()
   fixed = Dict()
   s = [scale 0 0; 0 scale 0; 0 0 1]
-  moving_offset = meshset.meshes[2].disp
+  moving_offset = collect(meshset.meshes[2].disp)
   tform = regularized_solve(meshset, lambda=0.9)
   moving_nodes, fixed_nodes = get_matched_points(meshset, 1)
+  fixed["index"] = meshset.meshes[1].index
+  moving["index"] = meshset.meshes[2].index
   fixed["nodes"] = points_to_Nx3_matrix(fixed_nodes)
   moving["nodes"] = points_to_Nx3_matrix(moving_nodes)*tform
   fixed["thumb_fixed"], fixed["thumb_offset_fixed"] = imwarp(fixed_img, s)

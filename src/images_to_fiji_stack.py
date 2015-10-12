@@ -5,7 +5,7 @@ import os
 import csv
 from ij import IJ, ImagePlus, ImageStack
 
-resize_factor = 0.4
+resize_factor = 0.5
 sec_start = 11
 sec_end = 40
 
@@ -53,8 +53,8 @@ imp.show()
 img_width = imp.width
 img_height = imp.height
 
-win_width = 400
-win_height = 400
+win_width = 200
+win_height = 200
 
 width = img_width/win_width
 height = img_height/win_height
