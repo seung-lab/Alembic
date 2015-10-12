@@ -256,10 +256,19 @@ diagonal_pairs = Pairings(0)
   return pairs
 end
 
+<<<<<<< HEAD
 function add_pair_matches_reflexive!(Ms, src, dst)
   images = load_section_pair(Ms, src, dst)
   matches_src_dst = Matches(images[1], Ms.meshes[find_section(Ms,src)], 
                               images[2], Ms.meshes[find_section(Ms,dst)], 
+=======
+function add_pair_matches_reflexive!(Ms, src_index, dst_index, images = Void)
+  if images == Void
+  images = load_section_pair(Ms, src_index, dst_index)
+  end
+  matches_src_dst = Matches(images[1], Ms.meshes[find_section(Ms,src_index)], 
+                              images[2], Ms.meshes[find_section(Ms,dst_index)], 
+>>>>>>> dac0b62b755ab047b34a39d4c54bac69c6efbba4
                               Ms.params)
   matches_dst_src = Matches(images[2], Ms.meshes[find_section(Ms,dst)], 
                               images[1], Ms.meshes[find_section(Ms,src)], 
@@ -269,10 +278,19 @@ function add_pair_matches_reflexive!(Ms, src, dst)
   return Ms
 end
 
+<<<<<<< HEAD
 function add_pair_matches!(Ms, src, dst)
   images = load_section_pair(Ms, src, dst)
   matches = Matches(images[1], Ms.meshes[find_section(Ms,src)], 
                               images[2], Ms.meshes[find_section(Ms,dst)], 
+=======
+function add_pair_matches!(Ms, src_index, dst_index, images = Void)
+  if images == Void
+  images = load_section_pair(Ms, src_index, dst_index)
+  end
+  matches = Matches(images[1], Ms.meshes[find_section(Ms,src_index)], 
+                              images[2], Ms.meshes[find_section(Ms,dst_index)], 
+>>>>>>> dac0b62b755ab047b34a39d4c54bac69c6efbba4
                               Ms.params)
   add_matches(matches, Ms)
   return Ms
@@ -281,10 +299,19 @@ end
 """
 Include prealignment review image with prealignment process for faster review
 """
+<<<<<<< HEAD
 function add_pair_matches_with_thumbnails!(meshset, src, dst)
   images = load_section_pair(meshset, src, dst)
   src_mesh = meshset.meshes[find_section(meshset, src)]
   dst_mesh = meshset.meshes[find_section(meshset, dst)]
+=======
+function add_pair_matches_with_thumbnails!(meshset, src_index, dst_index, images = Void)
+  if images == Void
+  images = load_section_pair(meshset, src_index, dst_index)
+  end
+  src_mesh = meshset.meshes[find_section(meshset, src_index)]
+  dst_mesh = meshset.meshes[find_section(meshset, dst_index)]
+>>>>>>> dac0b62b755ab047b34a39d4c54bac69c6efbba4
   matches = calculate_matches(images..., src_mesh, dst_mesh, meshset.params)
   add_matches(matches, meshset)  
   write_prealignment_thumbnail(images..., meshset)
