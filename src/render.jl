@@ -1,10 +1,3 @@
-# Author: Thomas Macrina
-# Email: tmacrina@princeton.edu
-# Date: 150807
-#
-# Functions to load meshes, warp images via piecewise affine transforms, and
-# display images with meshes.
-
 """
 Multiple dispatch for imwarp on Mesh object
 """
@@ -81,7 +74,7 @@ Calculate prealignment transforms from first section through section_num
 function calculate_global_tform(index, dir=PREALIGNED_DIR)
   global_tform = eye(3)
   if index != (1,1,-2,-2)
-    index_pairs = create_sequential_index_pairs((1,1,-2,-2), index)
+    index_pairs = get_sequential_index_pairs((1,1,-2,-2), index)
     for (indexA, indexB) in index_pairs
       meshset = load(indexA, indexB)
       # tform = affine_approximate(meshset)
@@ -112,7 +105,7 @@ function write_prealignment_thumbnail(moving_img, fixed_img, meshset, scale=0.05
   moving["thumb_moving"], moving["thumb_offset_moving"] = imwarp(moving_img, tform*s, moving_offset)
   fixed["scale"] = scale
   moving["scale"] = scale
-  save_prealignment_thumbnails(fixed, moving)
+  save_thumbnails(fixed, moving)
 end
 
 """
@@ -147,7 +140,7 @@ end
 """
 Fuse and save thumbnail images
 """
-function save_prealignment_thumbnails(A, B)
+function save_thumbnails(A, B)
   path = get_thumbnail_path(B["index"], A["index"])
   O, O_bb = imfuse(A["thumb_fixed"], A["thumb_offset_fixed"], 
                             B["thumb_moving"], B["thumb_offset_moving"])
@@ -179,7 +172,7 @@ function render_prealigned(indexA, indexB)
     close(f)
   end
 
-  index_pairs = create_sequential_index_pairs(indexA, indexB)
+  index_pairs = get_sequential_index_pairs(indexA, indexB)
   for (k, (indexA, indexB)) in enumerate(index_pairs)
     println("\nPrealigning ", indexA, " & ", indexB)
     meshset = load(indexA, indexB)
@@ -198,7 +191,7 @@ function render_prealigned(indexA, indexB)
     moving_nodes, fixed_nodes = get_matched_points(meshset, 1)
     fixed["nodes"] = points_to_Nx3_matrix(fixed_nodes)
     moving["nodes"] = points_to_Nx3_matrix(moving_nodes)*tform
-    save_prealignment_thumbnails(fixed, moving)
+    save_thumbnails(fixed, moving)
     fixed = 0
     fixed = moving
     moving = 0
