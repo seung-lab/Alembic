@@ -34,6 +34,7 @@ typealias FloatProperty Array{Float64, 1}   	# array of floats
 global const NO_MATCH = [0; 0; -1];
 global const NO_TRIANGLE = (0, 0, 0);
 global const NO_RANGE = (0:0, 0:0);
+global const NO_INDEX = (0, 0, 0, 0);
 
 global const OVERVIEW_INDEX = -1;
 global const MONTAGED_INDEX = -2;

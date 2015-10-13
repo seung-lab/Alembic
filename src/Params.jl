@@ -2,6 +2,10 @@ function is_overview(index::Index)
     if index[3:4] == (OVERVIEW_INDEX, OVERVIEW_INDEX)   return true else return false end
 end
 
+function is_premontaged(index::Index)
+    if index[3] > 0 && index[4] > 0 return true else return false end
+end
+
 function is_montaged(index::Index)
     if index[3:4] == (MONTAGED_INDEX, MONTAGED_INDEX)   return true else return false end
 end
@@ -11,8 +15,7 @@ function is_prealigned(index::Index)
 end
 
 function is_aligned(index::Index)
-    if index[3:4] == (ALIGNED_INDEX, ALIGNED_INDEX) return true else return false 
-end
+    if index[3:4] == (ALIGNED_INDEX, ALIGNED_INDEX) return true else return false end
 end
 
 

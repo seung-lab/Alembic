@@ -1,7 +1,7 @@
 import Base: print
 
 SCALING_FACTOR_MONTAGE = 1.0
-MESH_LENGTH_MONTAGE = 200
+MESH_LENGTH_MONTAGE = 175
 MESH_COEFF_MONTAGE = 1.0
 GAUSSIAN_SIGMA_MONTAGE = 0
 MIN_DYN_RANGE_RATIO_MONTAGE = 5
@@ -37,6 +37,7 @@ FTOL_GRADIENT_PREALIGNMENT = 1/5000
 ETA_NEWTON_PREALIGNMENT = 0.75
 FTOL_NEWTON_PREALIGNMENT = 1/1000000
 WRITE_BLOCKMATCHES_PREALIGNMENT = false
+GLOBAL_OFFSETS_PREALIGNMENT = false
 
 SCALING_FACTOR_ALIGNMENT = 1.0
 MESH_LENGTH_ALIGNMENT = 750
@@ -55,6 +56,7 @@ FTOL_GRADIENT_ALIGNMENT = 1/25000
 ETA_NEWTON_ALIGNMENT = 0.5
 FTOL_NEWTON_ALIGNMENT = 1/10000000
 WRITE_BLOCKMATCHES_ALIGNMENT = false
+GLOBAL_OFFSETS_ALIGNMENT = true
 
 global PARAMS_MONTAGE = Dict("scaling_factor" => SCALING_FACTOR_MONTAGE, 
 								"mesh_length" => MESH_LENGTH_MONTAGE, 
@@ -90,7 +92,8 @@ global PARAMS_PREALIGNMENT = Dict("scaling_factor" => SCALING_FACTOR_PREALIGNMEN
 								"ftol_gradient" => FTOL_GRADIENT_PREALIGNMENT, 
 								"eta_newton" => ETA_NEWTON_PREALIGNMENT, 
 								"ftol_newton" => FTOL_NEWTON_PREALIGNMENT,
-								"write_blockmatches" => WRITE_BLOCKMATCHES_PREALIGNMENT)
+								"write_blockmatches" => WRITE_BLOCKMATCHES_PREALIGNMENT
+								"global_offsets" => GLOBAL_OFFSETS_PREALIGNMENT)
 
 global PARAMS_ALIGNMENT = Dict("scaling_factor" => SCALING_FACTOR_ALIGNMENT, 
 								"mesh_length" => MESH_LENGTH_ALIGNMENT, 
@@ -108,7 +111,8 @@ global PARAMS_ALIGNMENT = Dict("scaling_factor" => SCALING_FACTOR_ALIGNMENT,
 								"ftol_gradient" => FTOL_GRADIENT_ALIGNMENT, 
 								"eta_newton" => ETA_NEWTON_ALIGNMENT, 
 								"ftol_newton" => FTOL_NEWTON_ALIGNMENT,
-								"write_blockmatches" => WRITE_BLOCKMATCHES_ALIGNMENT)
+								"write_blockmatches" => WRITE_BLOCKMATCHES_ALIGNMENT
+								"global_offsets" => GLOBAL_OFFSETS_ALIGNMENT)
 
 function optimize_all_cores(params)
   	img_d = 2 * (params["search_r"] + params["block_size"]) + 1
