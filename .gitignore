@@ -6,3 +6,5 @@ EM_images/
 *.tif
 *.swo
 *.jld
+bucket_dir_path.txt
+bucket_dir_path.txt~
