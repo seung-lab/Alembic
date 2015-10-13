@@ -263,7 +263,7 @@ function make_stack(first_index, last_index, fixed_interval = 0)
 		return Void;
 	end
 
-	registry = get_registry(first_index); params = get_params(first_index); indices = get_range_in_registry;
+	registry = get_registry(first_index); params = get_params(first_index); indices = get_range_in_registry(first_index, last_index);
 
 	Ms = MeshSet(params);
 	dy = 0; dx = 0;
@@ -271,7 +271,7 @@ function make_stack(first_index, last_index, fixed_interval = 0)
   for i in indices
     name = registry[i, 1]
     index = registry[i, 2]
-    if Ms.params["global_registry"] == true
+    if params["global_offsets"] == true
     	dy = registry[i, 3]
     	dx = registry[i, 4]
     elseif i == maximum(indices)
