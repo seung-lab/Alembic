@@ -36,7 +36,7 @@ function prealign_section(src_wafer_num, src_sec_num)
   println("Prealigning $src_index -> $dst_index:")
   @time images = affine_load_section_pair(src_index, dst_index)
   @time Ms = make_stack(dst_index, src_index);
-  @time add_pair_matches_with_thumbnails!(Ms, src_index, dst_index);
+  @time add_pair_matches_with_thumbnails!(Ms, src_index, dst_index, images);
   stats(Ms)
   save(Ms);
   return Ms;

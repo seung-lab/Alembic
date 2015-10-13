@@ -283,6 +283,7 @@ function make_stack(first_index, last_index, fixed_interval = 0)
     add_mesh(Mesh(name, size_i, size_j, index, dy, dx, false, params), Ms)
   end
   optimize_all_cores(Ms.params)
+  return Ms;
 end
 
 function crop_center(image, rad_ratio)
