@@ -5,6 +5,4 @@ EM_images/
 *.swp
 *.tif
 *.swo
-bucket_dir_path.txt
-bucket_dir_path.txt~
 *.jld
