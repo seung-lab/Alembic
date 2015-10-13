@@ -325,3 +325,85 @@ function load_section_pair(Ms, a, b)
   @time B_image = get_ufixed8_image(get_path(Ms.meshes[find_index(Ms,b)].name))
   return A_image, B_image; 
 end
+
+function load_stack(offsets, wafer_num, section_range)
+  indices = find(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] in section_range, 1:size(offsets, 1))
+  Ms = MeshSet(PARAMS_ALIGNMENT)
+  images = Array{SharedArray{UInt8, 2}, 1}(0)
+
+  for i in indices
+  name = offsets[i, 1]
+  index = offsets[i, 2]
+  dx = offsets[i, 4]
+  dy = offsets[i, 3]
+  image = get_image(get_path(name))
+  add_mesh(Mesh(name, image, index, dy, dx, false, PARAMS_ALIGNMENT), Ms)
+  
+  image_shared = SharedArray(UInt8, size(image, 1), size(image, 2))
+  image_shared[:, :] = image[:, :]
+  push!(images, image_shared)
+  end
+
+  optimize_all_cores(Ms.params)
+
+  return Ms, images
+end
+
+function stats(Ms::MeshSet)
+  residuals = Points(0)
+  residuals_t = Points(0)
+  movement_src = Points(0)
+  movement_dst = Points(0)
+  for k in 1:Ms.M
+    for i in 1:Ms.matches[k].n
+      w = Ms.matches[k].dst_weights[i]
+      t = Ms.matches[k].dst_triangles[i]
+      p = Ms.matches[k].src_points_indices[i]
+      src = Ms.meshes[find_index(Ms, Ms.matches[k].src_index)]
+      dst = Ms.meshes[find_index(Ms, Ms.matches[k].dst_index)]
+      p1 = src.nodes[p]
+      p2 = dst.nodes[t[1]] * w[1] + dst.nodes[t[2]] * w[2] + dst.nodes[t[3]] * w[3]
+      p1_t = src.nodes_t[p]
+      p2_t = dst.nodes_t[t[1]] * w[1] + dst.nodes_t[t[2]] * w[2] + dst.nodes_t[t[3]] * w[3]
+      push!(residuals, p2-p1)
+      push!(residuals_t, p2_t-p1_t)
+      push!(movement_src, p1_t-p1)
+      push!(movement_dst, p2_t-p2)
+    end
+  end
+
+
+   res_norm = map(norm, residuals)
+   rms = sqrt(mean(res_norm.^2))
+   avg = mean(res_norm)
+   sig = std(res_norm)
+   max = maximum(res_norm)
+
+
+   res_norm_t = map(norm, residuals_t)
+   rms_t = sqrt(mean(res_norm_t.^2))
+   avg_t = mean(res_norm_t)
+   sig_t = std(res_norm_t)
+   max_t = maximum(res_norm_t)
+
+   println("Residuals before solving: rms: $rms,  mean: $avg, sigma = $sig, max = $max\n")
+   println("Residuals after solving: rms: $rms_t,  mean: $avg_t, sigma = $sig_t, max = $max_t\n")
+ # decomp_affine(affine_solve(Ms))
+end
+
+"""
+Calculate the maximum bounding box of all the meshes in a meshset
+"""
+function get_global_bb(meshset)
+  bbs = []
+  println("Calculating global bounding box")
+  for mesh in meshset.meshes
+      nodes = hcat(mesh.nodes_t...)'
+      push!(bbs, snap_bb(find_mesh_bb(nodes)))
+  end
+  global_bb = sum(bbs)
+  global_bb.h += 1
+  global_bb.w += 1
+  println(global_bb)
+  return global_bb
+end  

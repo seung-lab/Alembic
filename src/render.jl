@@ -29,19 +29,18 @@ function meshwarp(mesh::Mesh)
   return @time meshwarp(img, src_nodes, dst_nodes, triangles, offset)
 end
 
-function get_global_bb(meshset)
-  bbs = []
-  println("Calculating global bounding box")
-  for mesh in meshset.meshes
-      nodes = hcat(mesh.nodes_t...)'
-      push!(bbs, snap_bb(find_mesh_bb(nodes)))
-  end
-  global_bb = sum(bbs)
-  global_bb.h += 1
-  global_bb.w += 1
-  println(global_bb)
-  return global_bb
-end    
+"""
+Load image from hdf5, then apply meshwarp
+"""
+function meshwarp_h5(mesh::Mesh)
+  @time img = get_h5_image(mesh)
+  src_nodes = hcat(mesh.nodes...)'
+  dst_nodes = hcat(mesh.nodes_t...)'
+  offset = mesh.disp
+  node_dict = incidence2dict(mesh.edges)
+  triangles = dict2triangles(node_dict)
+  return @time meshwarp(img, src_nodes, dst_nodes, triangles, offset)
+end  
 
 """
 Cycle through JLD files in montaged directory and render montage
@@ -61,20 +60,19 @@ function render_montaged(section_range::Array{Int64})
     @time imwrite(img, joinpath(MONTAGED_DIR, new_filename))
     update_offset_log!(log_path, new_filename, [0,0], size(img))
 
-    imfuse_section(meshset)
+    O = imfuse_section(meshset.meshes)
+    path = get_thumbnail_path(meshset.meshes[1].index)
+    imwrite(O, path)
   end
 end
 
 """
-Write thumbnail image with vectors and match indices overlayed
+Write thumbnail image, with whatever drawings included
 """
-function write_thumbnail(path, img, vectors, factor, fontsize=24.0, offset=[-20,-20])
-  imgc, img2 = view(img, pixelspacing=[1,1])
-  a, b = draw_vectors(imgc, img2, vectors, RGB(0,0,1), RGB(1,0,1), factor)
-  c = draw_indices(imgc, img2, vectors[1:2,:], fontsize, offset)
+function write_thumbnail(path, imgc, img2)
   println("Writing ", path)
-  Cairo.write_to_png(imgc.c.back, path)
-  destroy(toplevel(imgc))
+  write_canvas(imgc, path)
+  close_image(imgc)
 end
 
 """
@@ -150,10 +148,7 @@ end
 Fuse and save thumbnail images
 """
 function save_prealignment_thumbnails(A, B)
-  dir = PREALIGNED_DIR
-  fn = string(join(B["index"][1:2], ","), "_prealigned_thumbnail.png")
-  println("Saving thumbnail ", fn)
-  path = joinpath(dir, "review", fn)
+  path = get_thumbnail_path(B["index"], A["index"])
   O, O_bb = imfuse(A["thumb_fixed"], A["thumb_offset_fixed"], 
                             B["thumb_moving"], B["thumb_offset_moving"])
   moving_nodes = A["nodes"][:,1:2]'*A["scale"]
@@ -161,7 +156,7 @@ function save_prealignment_thumbnails(A, B)
   moving_nodes .-= O_bb
   fixed_nodes .-= O_bb
   vectors = [moving_nodes; fixed_nodes]
-  write_thumbnail(path, O, vectors, 1.0)
+  write_thumbnail(path, view_matches(O, vectors, 1.0))
 end
 
 """
@@ -175,7 +170,7 @@ function render_prealigned(indexA, indexB)
   log_path = joinpath(dir, "prealigned_offsets.txt")
 
   function save_image(stage, dir, log_path)
-    new_fn = string(join(stage["index"][1:2], ","), "_prealigned.tif")
+    new_fn = string(join(stage["index"][1:2], ","), "_prealigned.h5")
     update_offset_log!(log_path, new_fn, stage["offset"], size(stage["img"]))
     println("Writing ", new_fn)
     # @time imwrite(stage["img"], joinpath(dir, fn))
@@ -214,17 +209,14 @@ end
 """
 Cycle through JLD files in aligned directory and render alignment
 """
-function render_aligned(file_index, start=1, finish=0)
+function render_aligned(indexA, indexB, start=1, finish=0)
   dir = ALIGNED_DIR
   scale = 0.02
   s = [scale 0 0; 0 scale 0; 0 0 1]
 
   # Log file for image offsets
   log_path = joinpath(dir, "aligned_offsets.txt")
-
-  filename = sort_dir(dir)[file_index]
-  println("Rendering meshes in ", filename)
-  meshset = JLD.load(joinpath(dir, filename))["MeshSet"]
+  meshset = load(indexA, indexB)
   if start == 0
     start = 1
   end
@@ -239,12 +231,8 @@ function render_aligned(file_index, start=1, finish=0)
     if index in keys(images)
       img = images[index]
     else
-      path = get_path(index)
-      # if isfile(path)
-      #   img, _ = imwarp(get_ufixed8_image(index), s)
-      # else
       println("Warping ", mesh.name)
-      @time img, offset = meshwarp(mesh)
+      @time img, offset = meshwarp_h5(mesh)
       @time img = rescopeimage(img, offset, GLOBAL_BB)
       println("Writing ", mesh.name)
       new_fn = string(join(mesh.index[1:2], ","), "_aligned.h5")
@@ -284,21 +272,11 @@ function render_aligned(file_index, start=1, finish=0)
 
       O, O_bb = imfuse(src_img, src_offset, dst_img, dst_offset)
 
-      src_nodes = hcat(src_nodes...)[1:2, :]*scale .- src_offset
-      dst_nodes = hcat(dst_nodes...)[1:2, :]*scale .- dst_offset
-      vectors = [src_nodes; dst_nodes]
-      thumbnail_fn = string(join(dst_index[1:2], ","), "-", join(src_index[1:2], ","), "_aligned_thumbnail.png")
-      path = joinpath(dir, "review", thumbnail_fn)
-      write_thumbnail(path, O, vectors, 0.5, 6.0, [-10,-10])
+      # src_nodes = hcat(src_nodes...)[1:2, :]*scale .- src_offset
+      # dst_nodes = hcat(dst_nodes...)[1:2, :]*scale .- dst_offset
+      # vectors = [src_nodes; dst_nodes]
+      path = get_thumbnail_path(dst_index, src_index)
+      write_thumbnail(path, view_isotropic(O))
     end
   end
 end
-
-function write_alignment_blockmatches(section_range::Array{Int64})
-  filenames = sort_dir(ALIGNED_DIR)[section_range]
-  for filename in filenames
-    println("Rendering meshes in ", filename)
-    meshset = JLD.load(joinpath(ALIGNED_DIR, filename))["MeshSet"]
-    save_blockmatch_imgs(meshset, k, [], joinpath(ALIGNED_DIR, "blockmatches"))
-  end
-end  

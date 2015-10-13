@@ -19,16 +19,32 @@ function make_isotropic(img)
     return img
 end
 
-function draw_mesh(imgc, img2, nodes, node_dict, color=RGB(1,1,1))
-# Display mesh on image
-# Args:
-#   imgc: ImageCanvas object
-#   img2: ImageSliced2d object  
-#   nodes: Nx2 array of mesh node positions
-#   node_dict: dictionary of edges, indexed by node, containing connected nodes
-# Returns:
-#   imgc: ImageCanvas object
-#   img2: ImageSliced2d object    
+function view_isotropic(img)
+    return view(img, pixelspacing=[1,1])
+end
+
+"""
+Display thumbnail image with vectors and match indices overlayed
+"""
+function view_matches(img, vectors, factor)
+  imgc, img2 = view_isotropic(img)
+  a, b = draw_vectors(imgc, img2, vectors, RGB(0,0,1), RGB(1,0,1), factor)
+  c = draw_indices(imgc, img2, vectors[1:2,:])
+  return imgc, img2
+end
+
+"""
+Display mesh on image
+Args:
+  imgc: ImageCanvas object
+  img2: ImageSliced2d object  
+  nodes: Nx2 array of mesh node positions
+  node_dict: dictionary of edges, indexed by node, containing connected nodes
+Returns:
+  imgc: ImageCanvas object
+  img2: ImageSliced2d object 
+"""
+function draw_mesh(imgc, img2, nodes, node_dict, color=RGB(1,1,1))   
     lines = Array(Float64, 4, 0)
     for k in sort(collect(keys(node_dict)))
         for v in node_dict[k]
@@ -158,13 +174,7 @@ end
 
 function create_image(bb)
     z = ones(bb.h, bb.w)
-    return view(z, pixelspacing=[1,1]), [bb.i, bb.j]
-end
-
-function bb2corners(bb)
-    upper_left = [bb.i, bb.j]
-    lower_right = [bb.i+bb.h+1, bb.j+bb.w+1]
-    return upper_left, lower_right
+    return view_isotropic(z), [bb.i, bb.j]
 end
 
 function draw_box(imgc, img2, bb, color=RGB(0,1,0), linewidth=1.0)
@@ -179,50 +189,6 @@ end
 
 function indices2string(indexA, indexB)
   return string(join(indexA[1:2], ","), "-", join(indexB[1:2], ","))
-end
-
-function plot_match_outline(meshset, match_no, factor=50)
-  scale = 0.05
-  matches = meshset.matches[match_no]
-  src_index = matches.src_index
-  dst_index = matches.dst_index
-  src_mesh = meshset.meshes[find_index(meshset, src_index)]
-  dst_mesh = meshset.meshes[find_index(meshset, dst_index)]
-  src_pts, dst_pts = get_matched_points_t(meshset, match_no)
-  src_pts = src_mesh.nodes
-  dst_pts = src_mesh.nodes_t
-  src_pts = points_to_Nx3_matrix(src_pts*scale)
-  dst_pts = points_to_Nx3_matrix(dst_pts*scale)
-
-  src_nodes = points_to_Nx3_matrix(src_mesh.nodes*scale)
-  dst_nodes = points_to_Nx3_matrix(dst_mesh.nodes*scale)
-  src_bb = find_mesh_bb(src_nodes)
-  dst_bb = find_mesh_bb(dst_nodes)
-
-  bb = src_bb+dst_bb
-  img, offset = create_image(bb)
-  set_canvas_size(img[1], bb.w/2, bb.h/2)
-  draw_box(img..., src_bb, RGB(0,1,0))
-  draw_box(img..., dst_bb, RGB(1,0,0))
-
-  vectors = [src_pts[:,1:2]'; dst_pts[:,1:2]']
-  draw_vectors(img..., vectors, RGB(0,0,1), RGB(1,0,1), factor)
-  draw_indices(img..., vectors[1:2,:], 14.0, [-8,-20])
-  dir = PREALIGNED_DIR
-  if src_index[3] <= -3
-    dir = ALIGNED_DIR
-  end
-  fn = string("outline_", indices2string(src_index, dst_index), ".png")
-  path = joinpath(dir, "review", fn)
-  return img[1], img[2], path
-end
-
-function write_meshset_match_outlines(meshset)
-  for k in 1:length(meshset.matches)
-    imgc, img2, path = plot_match_outline(meshset, k)
-    write_canvas(imgc, path)
-    close_image(imgc)
-  end
 end
 
 function draw_points(img, points)

@@ -452,14 +452,14 @@ end
 """
 `IMFUSE_SECTION` - Stitch section with seam overlays.
 """
-function imfuse_section(meshset, downsample=3)
+function imfuse_section(meshes, downsample=3)
   img_reds = []
   img_greens = []
   bbs_reds = []
   bbs_greens = []
   # red_meshes = []
   # green_meshes = []
-  for mesh in meshset.meshes
+  for mesh in meshes
     img, bb = meshwarp(mesh)
     img = restrict(img)
     bb = BoundingBox(floor(Int,bb/2)..., size(img)[1], size(img)[2])
@@ -504,27 +504,8 @@ function imfuse_section(meshset, downsample=3)
   for i = 2:downsample
       O = restrict(O)
   end
-  index = meshset.meshes[1].index
-  imwrite(O, joinpath(MONTAGED_DIR, "review", string(join(index[1:2], ","), "_review.tif")))
+  return O
 end 
-
-"""
-Load meshset rendered images at downsampled rate as list
-"""
-function load_images(meshset, section_range=1:10, downsample=1)
-  imgs = []
-  for mesh in meshset.meshes[section_range]
-    img = get_ufixed8_image((mesh.index[1:2]..., mesh.index[3]-1, mesh.index[4]-1))
-    for i = 1:downsample
-      img = restrict(img)
-    end
-    push!(imgs, img)
-  end
-  reduction = 2^downsample
-  bounding_box = BoundingBox(GLOBAL_BB.i, GLOBAL_BB.j,
-                              GLOBAL_BB.h/reduction, GLOBAL_BB.w/reduction)
-  return imgs, bounding_box
-end
 
 """
 Load aligned meshset mesh nodes
@@ -643,11 +624,11 @@ end
 """
 Cycle through sections of the stack movie, with images staged for easier viewing
 """
-function stack_movie(meshset, section_range=(1:2), slice=(1:200,1:200), perm=[1,2,3])
+function view_stack(meshset, section_range=(1:2), slice=(1:200,1:200), perm=[1,2,3])
   imgs = []
   for mesh in meshset.meshes[section_range]
     index = (mesh.index[1:2]..., mesh.index[3]-1, mesh.index[4]-1)
-    img = get_aligned_h5_slice(get_h5_path(index), slice)
+    img = get_h5_slice(get_h5_path(index), slice)
     push!(imgs, img)
   end
 
@@ -682,140 +663,6 @@ function stack_movie(meshset, section_range=(1:2), slice=(1:200,1:200), perm=[1,
 end
 
 """
-Cycle through sections of the stack movie, with images staged for easier viewing
-"""
-function scan_stack_movie(imgs, bounding_box, divisions=12, perm=[1,2,3])
-  ispan = ceil(Int64, bounding_box.h/divisions)
-  jspan = ceil(Int64, bounding_box.w/divisions)
-  overlap = 200
-
-  overview = restrict(restrict(imgs[1]))
-  imgc_overview, img2_overview = view(overview, pixelspacing=[1,1])
-  box = annotate!(imgc_overview, img2_overview, AnnotationBox((0,0), (0,0),
-                                                          color=RGB(0,1,0),
-                                                          coord_order="yxyx"))
-
-  println("Displaying axes with permutation: ", perm)
-  for j=1:divisions, i=1:divisions
-    imin = max((i-1)*ispan - overlap, 1)
-    jmin = max((j-1)*jspan - overlap, 1)
-    imax = min(i*ispan, floor(Int64, bounding_box.h))
-    jmax = min(j*jspan, floor(Int64, bounding_box.w))
-    slice_range = (imin:imax, jmin:jmax)
-
-    box.ann.data.top = imin/4
-    box.ann.data.left = jmin/4
-    box.ann.data.bottom = imax/4
-    box.ann.data.right = jmax/4
-    ImageView.redraw(imgc_overview)
-
-    println(slice_range)
-    img_sections = [img[slice_range...] for img in imgs]
-    img_stack = cat(3, img_sections..., reverse(img_sections[2:end-1])...)
-    img_movie = Image(permutedims(img_stack, perm), timedim=3)
-    imgc, img2 = view(img_movie, pixelspacing=[1,1])
-    start_loop(imgc, img2, 6)
-
-    e = Condition()
-    c = canvas(imgc)
-    win = Tk.toplevel(c)
-
-    function exit_movie()
-      stop_loop(imgc)
-      destroy(win)
-      notify(e)
-    end
-    bind(win, "<Destroy>", path->notify(e))
-    bind(win, "<Escape>", path->exit_movie())
-
-    wait(e)
-  end
-end
-
-"""
-Display index k match pair meshes are two frames in movie to scroll between
-"""
-function write_alignment_thumbnails(meshset, k, step="post")
-  matches = meshset.matches[k]
-  src_index = matches.src_index
-  dst_index = matches.dst_index
-  println("write_alignment_thumbnails: ", (src_index, dst_index))
-  src_mesh = meshset.meshes[find_index(meshset, src_index)]
-  dst_mesh = meshset.meshes[find_index(meshset, dst_index)]
-
-  src_nodes, dst_nodes = get_matched_points_t(meshset, k)
-  src_index = (src_mesh.index[1], src_mesh.index[2], src_mesh.index[3]-1, src_mesh.index[4]-1)
-  dst_index = (dst_mesh.index[1], dst_mesh.index[2], dst_mesh.index[3]-1, dst_mesh.index[4]-1)
-  global_bb = get_global_bb(meshset)
-  src_offset = [global_bb.i, global_bb.j]
-  # dst_offset = [global_bb.i, global_bb.j]
-
-  scale = 0.0625
-  s = [scale 0 0; 0 scale 0; 0 0 1]
-  src_img, _ = imwarp(get_ufixed8_image(src_index), s)
-  dst_img, _ = imwarp(get_ufixed8_image(dst_index), s)
-  src_offset *= scale
-  dst_offset *= scale
-
-  O, O_bb = imfuse(src_img, src_offset, dst_img, dst_offset)
-
-  src_nodes = (hcat(src_nodes...)[1:2, :] .- src_offset)*scale
-  dst_nodes = (hcat(dst_nodes...)[1:2, :] .- dst_offset)*scale
-
-  imgc, img2 = view(O, pixelspacing=[1,1])
-  vectors = [src_nodes; dst_nodes]
-  an_pts, an_vectors = draw_vectors(imgc, img2, vectors, RGB(0,0,1), RGB(1,0,1))
-  draw_indices(imgc, img2, src_nodes)
-  # an_src_pts = draw_points(imgc, img2, src_nodes, RGB(1,1,1), 2.0, 'x')
-  # an_dst_pts = draw_points(imgc, img2, dst_nodes, RGB(0,0,0), 2.0, '+')
-
-  thumbnail_fn = string(join(dst_index[1:2], ","), "-", join(src_index[1:2], ","), "_aligned_thumbnail.png")
-  println("Writing ", thumbnail_fn)
-  Cairo.write_to_png(imgc.c.back, joinpath(ALIGNED_DIR, "review", thumbnail_fn))
-  destroy(toplevel(imgc))
-end
-
-"""
-Cycle through JLD files in prealignment directory and save all blockmatches
-"""
-function save_prealignment_blockmatches(section_range::Array{Int64})
-  filenames = sort_dir(PREALIGNED_DIR)[section_range]
-  for filename in filenames
-    println("Saving blockmatches from ", filename)
-    meshset = JLD.load(joinpath(PREALIGNED_DIR, filename))["MeshSet"]
-    save_blockmatch_imgs(meshset, 1, [], joinpath(PREALIGNED_DIR, "blockmatches"))
-  end
-end
-
-"""
-Cycle through prealignment blockmatch section_range
-"""
-function remove_prealignment_blockmatches(section_range::Array{Int64}, save_imgs=true)
-  filenames = sort_dir(PREALIGNED_DIR)[section_range]
-  for filename in filenames
-    println("Select blockmatches to view from ", filename)
-    meshset = JLD.load(joinpath(PREALIGNED_DIR, filename))["MeshSet"]
-    blockmatch_ids = enter_array()
-    if length(blockmatch_ids) > 0
-      if save_imgs
-        save_blockmatch_imgs(meshset, 1, blockmatch_ids, joinpath(PREALIGNED_DIR, "blockmatches"))
-      end
-      remove_matches_from_meshset!(blockmatch_ids, 1, meshset)
-      edited_filename = update_filename(filename)
-      println("Saving JLD here: ", edited_filename)
-      @time save(joinpath(PREALIGNED_DIR, edited_filename), meshset)
-
-      log_file = open(joinpath(PREALIGNED_DIR, string(edited_filename[1:end-4], ".txt")), "w")
-      write(log_file, "Meshset from ", joinpath(PREALIGNED_DIR, filename), "\n")
-      log_line = string("Removed following matches from index ", 1, ":\n")
-      log_line = string(log_line, join(blockmatch_ids, "\n"))
-      write(log_file, log_line, "\n")
-      close(log_file)
-    end
-  end
-end
-
-"""
 Provide prompt to user to enter int array elements one at a time
 """
 function enter_array()
@@ -834,82 +681,48 @@ function enter_array()
 end
 
 """
-Cycle through sections of the stack movie, with images staged for easier viewing
+Display outline with matches plotted
 """
-function deprecated_movie(imgs, bounding_box, divisions=12)
-  ispan = ceil(Int64, bounding_box.h/divisions)
-  jspan = ceil(Int64, bounding_box.w/divisions)
-  overlap = 200
+function plot_matches_outline(meshset, match_no, factor=50)
+  scale = 0.05
+  matches = meshset.matches[match_no]
+  src_index = matches.src_index
+  dst_index = matches.dst_index
+  src_mesh = meshset.meshes[find_index(meshset, src_index)]
+  dst_mesh = meshset.meshes[find_index(meshset, dst_index)]
+  src_pts, dst_pts = get_matched_points_t(meshset, match_no)
+  src_pts = src_mesh.nodes
+  dst_pts = src_mesh.nodes_t
+  src_pts = points_to_Nx3_matrix(src_pts*scale)
+  dst_pts = points_to_Nx3_matrix(dst_pts*scale)
 
-  overview = restrict(restrict(imgs[1]))
-  imgc_overview, img2_overview = view(overview, pixelspacing=[1,1])
-  box = annotate!(imgc_overview, img2_overview, AnnotationBox((0,0), (0,0),
-                                                          color=RGB(0,1,0),
-                                                          coord_order="yxyx"))
+  src_nodes = points_to_Nx3_matrix(src_mesh.nodes*scale)
+  dst_nodes = points_to_Nx3_matrix(dst_mesh.nodes*scale)
+  src_bb = find_mesh_bb(src_nodes)
+  dst_bb = find_mesh_bb(dst_nodes)
 
-  i = 0
-  j = 1
+  bb = src_bb+dst_bb
+  img, offset = create_image(bb)
+  set_canvas_size(img[1], bb.w/2, bb.h/2)
+  draw_box(img..., src_bb, RGB(0,1,0))
+  draw_box(img..., dst_bb, RGB(1,0,0))
 
-  function next()
-    i += 1
-    if i >= divisions
-      i = 1
-      j += 1
-      if j >= divisions
-        notify(e)
-      end
-    end
-    goto(i, j)
+  vectors = [src_pts[:,1:2]'; dst_pts[:,1:2]']
+  draw_vectors(img..., vectors, RGB(0,0,1), RGB(1,0,1), factor)
+  draw_indices(img..., vectors[1:2,:], 14.0, [-8,-20])
+  dir = PREALIGNED_DIR
+  if src_index[3] <= -3
+    dir = ALIGNED_DIR
   end
+  fn = string("outline_", indices2string(src_index, dst_index), ".png")
+  path = joinpath(dir, "review", fn)
+  return img[1], img[2], path
+end
 
-  function back()
-    i -= 1
-    if i <= 0
-      i = divisions
-      j -= 1
-      if j <= 0
-        notify(e)
-      end
-    end
-    goto(i, j)
+function write_meshset_match_outlines(meshset)
+  for k in 1:length(meshset.matches)
+    imgc, img2, path = plot_matches_outline(meshset, k)
+    write_canvas(imgc, path)
+    close_image(imgc)
   end
-
-  function goto(i, j)
-    imin = max((i-1)*ispan - overlap, 1)
-    jmin = max((j-1)*jspan - overlap, 1)
-    imax = min(i*ispan, floor(Int64, bounding_box.h))
-    jmax = min(j*jspan, floor(Int64, bounding_box.w))
-    slice_range = (imin:imax, jmin:jmax)
-
-    box.ann.data.top = imin/4
-    box.ann.data.left = jmin/4
-    box.ann.data.bottom = imax/4
-    box.ann.data.right = jmax/4
-    ImageView.redraw(imgc_overview)
-
-    println(slice_range)
-    img_sections = [img[slice_range...] for img in imgs]
-    img_movie = Image(cat(3, img_sections...), timedim=3)
-    imgc, img2 = view(img_movie, pixelspacing=[1,1])
-
-    c = canvas(imgc)
-    win = Tk.toplevel(c)
-
-    function exit_win()
-      destroy(win)
-      next()
-    end
-    bind(win, "<Destroy>", path->exit_win())
-    bind(win, "<Escape>", path->exit_win())
-  end
-
-  if i == 0
-    e = Condition()
-    c_overview = canvas(imgc_overview)
-    win_overview = Tk.toplevel(c_overview)
-
-    bind(win_overview, "<Destroy>", path->notify(e))
-    next()
-  end
-  wait(e)
 end

@@ -24,8 +24,12 @@ function get_h5_path(index::Index)
   return string(get_path(index)[1:end-4], ".h5")
 end
 
-function get_aligned_h5_slice(path::String, slice)
+function get_h5_slice(path::String, slice)
   return convert(Array{Ufixed8}, h5read(path, "img", slice))
+end
+
+function get_h5_image(path::String)
+  return convert(Array{Ufixed8}, h5read(path, "img"))
 end
 
 # extensions:
@@ -97,10 +101,8 @@ function load_section_images(session, section_num)
 end
 
 function load_overview(session, section_num)
-
-end
-
-function toJLD()
-  return
+  """
+  Load overview image
+  """
 end
 
