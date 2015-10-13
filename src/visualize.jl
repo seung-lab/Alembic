@@ -161,12 +161,6 @@ function create_image(bb)
     return view(z, pixelspacing=[1,1]), [bb.i, bb.j]
 end
 
-function bb2corners(bb)
-    upper_left = [bb.i, bb.j]
-    lower_right = [bb.i+bb.h+1, bb.j+bb.w+1]
-    return upper_left, lower_right
-end
-
 function draw_box(imgc, img2, bb, color=RGB(0,1,0), linewidth=1.0)
     upper_left, lower_right = bb2corners(bb) 
     an_box = annotate!(imgc, img2, AnnotationBox(tuple(upper_left...), 

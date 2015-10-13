@@ -117,3 +117,12 @@ Scale BoundingBox
 function scale_bb(bb, scale)
   return snap_bb(BoundingBox(bb.i*scale, bb.j*scale, bb.h*scale, bb.w*scale))
 end
+
+"""
+Create 2-element arrays defining the upper left and lower right corners of bb
+"""
+function bb2corners(bb)
+    upper_left = [bb.i, bb.j]
+    lower_right = [bb.i+bb.h+1, bb.j+bb.w+1]
+    return upper_left, lower_right
+end

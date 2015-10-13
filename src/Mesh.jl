@@ -57,7 +57,9 @@ function get_image(mesh::Mesh)
 	return get_image(mesh.name);
 end
 
-
+function get_h5_image(mesh::Mesh)
+	return get_h5_image(get_h5_path(mesh.index))
+end
 
 function Mesh(name, size_i, size_j, index, dy, dx, tile_fixed::Bool, mesh_length::Int64, mesh_coeff::Float64)
 	(Ai, Aj) = (size_i,size_j);

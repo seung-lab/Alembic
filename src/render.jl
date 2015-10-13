@@ -20,7 +20,7 @@ end
 Multiple dispatch for meshwarp on Mesh object
 """
 function meshwarp(mesh::Mesh)
-  @time img = get_ufixed8_image(mesh)
+  @time img = get_h5_image(mesh)
   src_nodes = hcat(mesh.nodes...)'
   dst_nodes = hcat(mesh.nodes_t...)'
   offset = mesh.disp
@@ -29,19 +29,18 @@ function meshwarp(mesh::Mesh)
   return @time meshwarp(img, src_nodes, dst_nodes, triangles, offset)
 end
 
-function get_global_bb(meshset)
-  bbs = []
-  println("Calculating global bounding box")
-  for mesh in meshset.meshes
-      nodes = hcat(mesh.nodes_t...)'
-      push!(bbs, snap_bb(find_mesh_bb(nodes)))
-  end
-  global_bb = sum(bbs)
-  global_bb.h += 1
-  global_bb.w += 1
-  println(global_bb)
-  return global_bb
-end    
+"""
+Load image from hdf5, then apply meshwarp
+"""
+function meshwarp_h5(mesh::Mesh)
+  @time img = get_h5_image(mesh)
+  src_nodes = hcat(mesh.nodes...)'
+  dst_nodes = hcat(mesh.nodes_t...)'
+  offset = mesh.disp
+  node_dict = incidence2dict(mesh.edges)
+  triangles = dict2triangles(node_dict)
+  return @time meshwarp(img, src_nodes, dst_nodes, triangles, offset)
+end  
 
 """
 Cycle through JLD files in montaged directory and render montage
@@ -239,12 +238,12 @@ function render_aligned(file_index, start=1, finish=0)
     if index in keys(images)
       img = images[index]
     else
-      path = get_path(index)
+      # path = get_path(index)
       # if isfile(path)
       #   img, _ = imwarp(get_ufixed8_image(index), s)
       # else
       println("Warping ", mesh.name)
-      @time img, offset = meshwarp(mesh)
+      @time img, offset = meshwarp_h5(mesh)
       @time img = rescopeimage(img, offset, GLOBAL_BB)
       println("Writing ", mesh.name)
       new_fn = string(join(mesh.index[1:2], ","), "_aligned.h5")
@@ -293,12 +292,3 @@ function render_aligned(file_index, start=1, finish=0)
     end
   end
 end
-
-function write_alignment_blockmatches(section_range::Array{Int64})
-  filenames = sort_dir(ALIGNED_DIR)[section_range]
-  for filename in filenames
-    println("Rendering meshes in ", filename)
-    meshset = JLD.load(joinpath(ALIGNED_DIR, filename))["MeshSet"]
-    save_blockmatch_imgs(meshset, k, [], joinpath(ALIGNED_DIR, "blockmatches"))
-  end
-end  

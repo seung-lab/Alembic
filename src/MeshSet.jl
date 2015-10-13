@@ -724,3 +724,20 @@ function stats(Ms::MeshSet)
    println("Residuals after solving: rms: $rms_t,  mean: $avg_t, sigma = $sig_t, max = $max_t\n")
  # decomp_affine(affine_solve(Ms))
 end
+
+"""
+Calculate the maximum bounding box of all the meshes in a meshset
+"""
+function get_global_bb(meshset)
+  bbs = []
+  println("Calculating global bounding box")
+  for mesh in meshset.meshes
+      nodes = hcat(mesh.nodes_t...)'
+      push!(bbs, snap_bb(find_mesh_bb(nodes)))
+  end
+  global_bb = sum(bbs)
+  global_bb.h += 1
+  global_bb.w += 1
+  println(global_bb)
+  return global_bb
+end  

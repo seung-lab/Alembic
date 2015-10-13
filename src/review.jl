@@ -647,7 +647,7 @@ function stack_movie(meshset, section_range=(1:2), slice=(1:200,1:200), perm=[1,
   imgs = []
   for mesh in meshset.meshes[section_range]
     index = (mesh.index[1:2]..., mesh.index[3]-1, mesh.index[4]-1)
-    img = get_aligned_h5_slice(get_h5_path(index), slice)
+    img = get_h5_slice(get_h5_path(index), slice)
     push!(imgs, img)
   end
 
