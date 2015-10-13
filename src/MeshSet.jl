@@ -271,7 +271,7 @@ function make_stack(first_index, last_index, fixed_interval = 0)
   for i in indices
     name = registry[i, 1]
     index = registry[i, 2]
-    if Ms.params["global_registry"] = true
+    if Ms.params["global_offsets"] == true
     	dy = registry[i, 3]
     	dx = registry[i, 4]
     elseif i == maximum(indices)
@@ -296,6 +296,8 @@ end
 function affine_load_section_pair(src_index, dst_index)
   i_src = find_in_registry(src_index); 
   i_dst = find_in_registry(dst_index); 
+
+  registry = get_registry(src_index);
 
   name_dst = registry[i_dst, 1];
   name_src = registry[i_src, 1];
