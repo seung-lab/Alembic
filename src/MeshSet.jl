@@ -297,6 +297,8 @@ function affine_load_section_pair(src_index, dst_index)
   i_src = find_in_registry(src_index); 
   i_dst = find_in_registry(dst_index); 
 
+  registry = get_registry(src_index);
+
   name_dst = registry[i_dst, 1];
   name_src = registry[i_src, 1];
 
