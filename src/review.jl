@@ -652,10 +652,19 @@ function stack_movie(meshset, section_range=(1:2), slice=(1:200,1:200), perm=[1,
   end
 
   println(slice)
-  img_stack = cat(3, imgs..., reverse(imgs[2:end-1])...)  # loop it
-  img_movie = Image(permutedims(img_stack, perm), timedim=3)
-  imgc, img2 = view(img_movie, pixelspacing=[1,1])
-  start_loop(imgc, img2, 10)
+  # img_stack = cat(3, imgs..., reverse(imgs[2:end-1])...)  # loop it
+  img_stack = cat(3, imgs...)
+  # img_stack = permutedims(cat(3, imgs...), perm)
+  # img_movie = Image(img_stack, timedim=3)
+  # if perm != [1,2,3]
+    imgc, img2 = view(Image(permutedims(img_stack, [3,2,1]), timedim=3))
+    start_loop(imgc, img2, 10)
+    imgc, img2 = view(Image(permutedims(img_stack, [1,3,2]), timedim=3))
+    start_loop(imgc, img2, 10)
+    imgc, img2 = view(Image(permutedims(img_stack, [1,2,3]), timedim=3), pixelspacing=[1,1])
+    start_loop(imgc, img2, 10)
+  # end
+  # start_loop(imgc, img2, 10)
 
   e = Condition()
   c = canvas(imgc)
