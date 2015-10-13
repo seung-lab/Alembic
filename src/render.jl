@@ -175,10 +175,13 @@ function render_prealigned(indexA, indexB)
   log_path = joinpath(dir, "prealigned_offsets.txt")
 
   function save_image(stage, dir, log_path)
-    fn = string(join(stage["index"][1:2], ","), "_prealigned.tif")
-    update_offset_log!(log_path, fn, stage["offset"], size(stage["img"]))
-    println("Writing ", fn)
-    @time imwrite(stage["img"], joinpath(dir, fn))
+    new_fn = string(join(stage["index"][1:2], ","), "_prealigned.tif")
+    update_offset_log!(log_path, new_fn, stage["offset"], size(stage["img"]))
+    println("Writing ", new_fn)
+    # @time imwrite(stage["img"], joinpath(dir, fn))
+    f = h5open(joinpath(dir, new_fn), "w")
+    @time f["img", "chunk", (1000,1000)] = ufixed8_to_uint8(stage["img"])
+    close(f)
   end
 
   index_pairs = create_sequential_index_pairs(indexA, indexB)
