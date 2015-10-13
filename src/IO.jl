@@ -106,39 +106,3 @@ function load_overview(session, section_num)
   """
 end
 
-"""
-Find first row of the offset file that matches index and return cumulative sum 
-of previous offset arrays
-"""
-function find_offset(offset_file, index)
-  if findfirst(offset_file[:,2], index) != 0
-    return collect(offset_file[findfirst(offset_file[:,2], index), 3:4])
-  else
-    return [0,0]
-  end
-end
-
-"""
-Find first row of the offset file that matches index and return cumulative sum 
-of previous offset arrays
-"""
-function find_cumulative_offset(offset_file, index)
-  if findfirst(offset_file[:,2], index) != 0
-    return collect(sum(offset_file[1:findfirst(offset_file[:,2], index), 3:4], 1))
-  else
-    return [0,0]
-  end
-end
-
-"""
-Find appropriate offset file and pull out the offset array for the index
-"""
-function load_offset(index)
-  if is_montaged(index)
-    return find_offset(MONTAGED_OFFSETS, index)
-  elseif is_aligned(index)
-    return find_offset(PREALIGNED_OFFSETS, index)
-  else
-    return [0,0]
-  end
-end

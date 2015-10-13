@@ -12,78 +12,38 @@ function montage_sections(wafer_num, k::UnitRange{Int64})
   for n in k
     @time montage_section(wafer_num, n);
   end
-
 end
 
-function align_stack(wafer_num, k::UnitRange{Int64})
-  @time Ms = make_stack(PREALIGNED_OFFSETS, wafer_num, k);
+function align_stack(first_wafer_num, first_sec_num, last_wafer_num, last_sec_num)
+  println("Elastically aligning $first_wafer_num, $first_sec_num -> ... -> $last_wafer_num, $last_sec_num:")
+  first_index = (first_wafer_num, first_sec_num, PREALIGNED_INDEX, PREALIGNED_INDEX);
+  last_index = (last_wafer_num, last_sec_num, PREALIGNED_INDEX, PREALIGNED_INDEX);
+  @time Ms = make_stack(first_index, last_index);
   for i in 1:Ms.N-1
-    @time a = Ms.meshes[i].index[2];
-    @time b = Ms.meshes[i+1].index[2];
+    @time a = Ms.meshes[i].index;
+    @time b = Ms.meshes[i+1].index;
     @time add_pair_matches_reflexive!(Ms, a, b);
   end
   save(Ms)
   solve_meshset!(Ms);
   save(Ms);
+  return Ms;
 end
 
-function align_stack(wafer_num, k::UnitRange{Int64}, fixed_interval)
-  @time Ms = make_stack(PREALIGNED_OFFSETS, wafer_num, k, fixed_interval);
-  for i in 1:Ms.N-1
-    @time a = Ms.meshes[i].index[2];
-    @time b = Ms.meshes[i+1].index[2];
-    @time add_pair_matches_reflexive!(Ms, a, b);
-  end
-  save(Ms)
-  solve_meshset!(Ms);
-  save(Ms);
-end
-
-function align_batch_to_fixed(wafer_num, aligned, batch::UnitRange{Int64})
-  @time Ms = make_stack(PREALIGNED_OFFSETS, wafer_num, aligned, batch);
-  for i in 1:Ms.N-1
-    @time a = Ms.meshes[i].index[2];
-    @time b = Ms.meshes[i+1].index[2];
-    @time add_pair_matches_reflexive!(Ms, a, b);
-  end
-  save(Ms)
-  solve_meshset!(Ms);
-  save(Ms);
-end
-
-function prealign(wafer_num, dst, src)
-  # @time images = affine_load_section_pair(MONTAGED_OFFSETS, wafer_num, src, dst);
-  @time Ms = affine_make_stack(MONTAGED_OFFSETS, wafer_num, dst, src)
-  @time add_pair_matches_with_thumbnails!(Ms, src, dst)
+function prealign_section(src_wafer_num, src_sec_num)
+  src_index = (src_wafer_num, src_sec_num, MONTAGED_INDEX, MONTAGED_INDEX);
+  dst_index = find_preceding(src_index);
+  println("Prealigning $src_index[1], $src_index[2] -> $dst_index[1], $dst_index[2]:")
+  @time images = affine_load_section_pair(src_index, dst_index)
+  @time Ms = make_stack(dst_index, src_index);
+  @time add_pair_matches_with_thumbnails!(Ms, src_index, dst_index);
   stats(Ms)
-  save(Ms)
-  return Ms
-end
-
-function prealign(wafer_num_a, sec_num_a, wafer_num_b, sec_num_b)# k::UnitRange{Int64})
-  if wafer_num_a != wafer_num_b println("No support for different wafers yet.")
-    return
-  end
-  optimize_all_cores(PARAMS_PREALIGNMENT);
-  for src in sec_num_a:sec_num_b
-    dst = src - 1;
-    @time Ms = affine_make_stack(MONTAGED_OFFSETS, wafer_num_a, dst, src, false);
-    @time add_pair_matches_with_thumbnails!(Ms, src, dst);
-    stats(Ms);
-    save(Ms);
-  end
-end
-
-function align_to_fixed(wafer_num, aligned, prealigned)
-  @time Ms = make_stack(PREALIGNED_OFFSETS, wafer_num, aligned, prealigned);
-  for i in 1:Ms.N-1
-    @time a = Ms.meshes[i].index[2];
-    @time b = Ms.meshes[i+1].index[2];
-    @time add_pair_matches_reflexive!(Ms, a, b);
-  end
-  save(Ms)
-  solve_meshset!(Ms);
   save(Ms);
+  return Ms;
+end
+
+function prealign_stack(first_wafer_num, first_sec_num, last_wafer_num, last_sec_num)
+  println("Prealigning $first_wafer_num, $first_sec_num -> ... -> $last_wafer_num, $last_sec_num:")
 end
 
 function premontage(wafer::Int, section_range::UnitRange{Int64})

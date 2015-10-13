@@ -1,5 +1,6 @@
-#import PyPlot
+"""
 
+"""
 type MeshSet
   params::Dict
 
@@ -32,6 +33,7 @@ end
 function find_section(Ms, section_num)
   return findfirst(this -> section_num == this.index[2], Ms.meshes)
 end
+
 function MeshSet(params::Dict)
   N = 0
   M = 0
@@ -51,7 +53,6 @@ function MeshSet(params::Dict)
 
   return MeshSet(params, N, M, indices, n, m, m_i, m_e, meshes, nodes_indices, matches, matches_pairs)
 end
-
 
 function add_mesh(Am, Ms)
   push!(Ms.indices, Am.index)
@@ -75,101 +76,6 @@ function add_matches(M, Ms)
   Ms.m += M.n
   Ms.m_e += M.n
   return
-end
-#=
-function consolidate(Ms::MeshSet)
-  nodes_t = Points(0)
-  
-  for i in 1:Ms.N
-    cur_mesh = Ms.meshes[i]
-    if i == 1 nodes_t = hcat(cur_mesh.nodes_t...)
-    else nodes_t = hcat(nodes_t, hcat(cur_mesh.nodes_t...)); end
-  end
-  
-  nodes = Points(0)
-  
-  for i in 1:Ms.N
-    cur_mesh = Ms.meshes[i]
-    if i == 1 nodes = hcat(cur_mesh.nodes...)
-    else nodes = hcat(nodes_t, hcat(cur_mesh.nodes...)); end
-  end
-end
-=#
-
-"""
-Calculate affine transform of the matches, and set nodes_t of the moving mesh
-"""
-function affine_solve_meshset!(Ms)
-	tform = affine_solve(Ms, 1);	
-	nodes = Ms.meshes[Ms.matches_pairs[1][1]].nodes
-	nodes_t = Points(size(nodes, 1))
-
-  for i in 1:size(nodes, 1)
-    h_pt = [nodes[i]; 1]
-    nodes_t[i] = (h_pt' * tform)[1:2]
-  end
-  Ms.meshes[Ms.matches_pairs[1][1]].nodes_t = nodes_t
-  stats(Ms)
-  return Ms
-end
-
-function solve_meshset!(Ms)
-  match_coeff = Ms.params["match_coeff"]
-  eta_gradient = Ms.params["eta_gradient"]
-  ftol_gradient = Ms.params["ftol_gradient"]
-  eta_newton = Ms.params["eta_newton"]
-  ftol_newton = Ms.params["ftol_newton"]
-
-  nodes = Points(0)
-  nodes_fixed = BinaryProperty(0)
-  edges = spzeros(Float64, Ms.n, 0)
-  edge_lengths = FloatProperty(0)
-  edge_coeffs = FloatProperty(0)
-
-  for i in 1:Ms.N
-    cur_mesh = Ms.meshes[i]
-    if i == 1 nodes = hcat(cur_mesh.nodes...)
-    else nodes = hcat(nodes, hcat(cur_mesh.nodes...)); end
-    append!(nodes_fixed, cur_mesh.nodes_fixed)
-    append!(edge_lengths, cur_mesh.edge_lengths)
-    append!(edge_coeffs, cur_mesh.edge_coeffs)
-    if (i == Ms.N)  
-      edges = hcat(edges, vcat(spzeros(Float64, Ms.nodes_indices[i], cur_mesh.m), 
-             cur_mesh.edges))
-    else
-      edges = hcat(edges, vcat(spzeros(Float64, Ms.nodes_indices[i], cur_mesh.m), 
-             cur_mesh.edges, 
-             spzeros(Float64, Ms.n - Ms.nodes_indices[i] - cur_mesh.n, cur_mesh.m)))
-    end
-  end
-
-  for i in 1:Ms.M
-    cur_matches = Ms.matches[i]
-    append!(edge_lengths, fill(0.0, cur_matches.n))
-    append!(edge_coeffs, fill(convert(Float64, match_coeff), cur_matches.n))
-    edges_padded = spzeros(Float64, Ms.n, cur_matches.n)
-
-    for j in 1:Ms.matches[i].n
-      edges_padded[find_node(Ms, Ms.matches_pairs[i][1], cur_matches.src_points_indices[j]), j] = -1
-      edges_padded[find_node(Ms, Ms.matches_pairs[i][2], cur_matches.dst_triangles[j][1]), j] = cur_matches.dst_weights[j][1]
-      edges_padded[find_node(Ms, Ms.matches_pairs[i][2], cur_matches.dst_triangles[j][2]), j] = cur_matches.dst_weights[j][2]
-      edges_padded[find_node(Ms, Ms.matches_pairs[i][2], cur_matches.dst_triangles[j][3]), j] = cur_matches.dst_weights[j][3]
-    end
-    edges = hcat(edges, edges_padded)
-  end
-
-  SolveMesh!(nodes, nodes_fixed, edges, edge_coeffs, edge_lengths, eta_gradient, ftol_gradient, eta_newton, ftol_newton)
-  nodes_t = Points(0)
-  for i in 1:size(nodes, 2)
-          push!(nodes_t, vec(nodes[:, i]))
-        end
-  for i in 1:Ms.N
-    cur_mesh = Ms.meshes[i]
-    cur_mesh.nodes_t = nodes_t[Ms.nodes_indices[i] + (1:cur_mesh.n)]
-  end
-
-    print(Ms.params)
-    stats(Ms)
 end
 
 function save(filename::String, Ms::MeshSet)
@@ -256,23 +162,27 @@ diagonal_pairs = Pairings(0)
   return pairs
 end
 
-function add_pair_matches_reflexive!(Ms, src, dst)
+function add_pair_matches_reflexive!(Ms, src, dst, images = Void)
+  if images == Void
   images = load_section_pair(Ms, src, dst)
-  matches_src_dst = Matches(images[1], Ms.meshes[find_section(Ms,src)], 
-                              images[2], Ms.meshes[find_section(Ms,dst)], 
+  end
+  matches_src_dst = Matches(images[1], Ms.meshes[find_index(Ms,src)], 
+                              images[2], Ms.meshes[find_index(Ms,dst)], 
                               Ms.params)
-  matches_dst_src = Matches(images[2], Ms.meshes[find_section(Ms,dst)], 
-                              images[1], Ms.meshes[find_section(Ms,src)], 
+  matches_dst_src = Matches(images[2], Ms.meshes[find_index(Ms,dst)], 
+                              images[1], Ms.meshes[find_index(Ms,src)], 
                               Ms.params)
   add_matches(matches_src_dst, Ms)
   add_matches(matches_dst_src, Ms)
   return Ms
 end
 
-function add_pair_matches!(Ms, src, dst)
+function add_pair_matches!(Ms, src, dst, images = Void)
+  if images == Void
   images = load_section_pair(Ms, src, dst)
-  matches = Matches(images[1], Ms.meshes[find_section(Ms,src)], 
-                              images[2], Ms.meshes[find_section(Ms,dst)], 
+  end
+  matches = Matches(images[1], Ms.meshes[find_index(Ms,src)], 
+                              images[2], Ms.meshes[find_index(Ms,dst)], 
                               Ms.params)
   add_matches(matches, Ms)
   return Ms
@@ -281,10 +191,12 @@ end
 """
 Include prealignment review image with prealignment process for faster review
 """
-function add_pair_matches_with_thumbnails!(meshset, src, dst)
+function add_pair_matches_with_thumbnails!(meshset, src, dst, images = Void)
+  if images == Void
   images = load_section_pair(meshset, src, dst)
-  src_mesh = meshset.meshes[find_section(meshset, src)]
-  dst_mesh = meshset.meshes[find_section(meshset, dst)]
+  end
+  src_mesh = meshset.meshes[find_index(meshset, src)]
+  dst_mesh = meshset.meshes[find_index(meshset, dst)]
   matches = calculate_matches(images..., src_mesh, dst_mesh, meshset.params)
   add_matches(matches, meshset)  
   write_prealignment_thumbnail(images..., meshset)
@@ -318,53 +230,7 @@ end
   return Ms
 end
 
-function get_matched_points(Ms::MeshSet, k)
-  src_mesh = Ms.meshes[find_index(Ms, Ms.matches[k].src_index)]
-  src_indices = Ms.matches[k].src_points_indices
-  src_pts = src_mesh.nodes[src_indices]
-  dst_pts = Ms.matches[k].dst_points
-  return src_pts, dst_pts
-end
 
-function get_matched_points(Ms::MeshSet)
-  src_points = Points(0); 
-  dst_points = Points(0); 
-  for k in 1:Ms.M
-    pts = get_matched_points(Ms, k)
-    src_points = vcat(src_points,pts[1])
-    dst_points = vcat(dst_points,pts[2])
-  end
-  return src_points, dst_points
-end
-
-function get_matched_points_t(Ms::MeshSet, k)
-  src_pts = Points(0)
-  dst_pts = Points(0)
-
-  for i in 1:Ms.matches[k].n
-      w = Ms.matches[k].dst_weights[i]
-      t = Ms.matches[k].dst_triangles[i]
-      p = Ms.matches[k].src_points_indices[i]
-      src = Ms.meshes[find_index(Ms, Ms.matches[k].src_index)]
-      dst = Ms.meshes[find_index(Ms, Ms.matches[k].dst_index)]
-      p1 = src.nodes_t[p]
-      p2 = dst.nodes_t[t[1]] * w[1] + dst.nodes_t[t[2]] * w[2] + dst.nodes_t[t[3]] * w[3]
-      push!(src_pts, p1)
-      push!(dst_pts, p2)
-  end
-  return src_pts, dst_pts
-end
-
-function get_matched_points_t(Ms::MeshSet)
-  src_points = Points(0); 
-  dst_points = Points(0); 
-  for k in 1:Ms.M
-    pts = get_matched_points_t(Ms, k)
-    src_points = vcat(src_points,pts[1])
-    dst_points = vcat(dst_points,pts[2])
-   end
-  return src_points, dst_points
-end
 
 function load_section(offsets, wafer_num, section_num)
   indices = find(i -> offsets[i,2][1:2] == (wafer_num, section_num), 1:size(offsets, 1))
@@ -391,234 +257,32 @@ function load_section(offsets, wafer_num, section_num)
   return Ms, images
 end
 
-"""
-`[method]_APPROXIMATE` - apply transform to the Mesh type
-`[method]_SOLVE` - apply transform to the Matches type
-"""
+function make_stack(first_index, last_index, fixed_interval = 0)
+	if first_index[3] != last_index[3] || first_index[4] != last_index[4]
+		println("The indices are from different pipeline stages. Aborting.");
+		return Void;
+	end
 
-"""
-Retrieve nodes and nodes_t of mesh, make homogenous, and transpose to Nx3
-"""
-function get_homogeneous_correspondences(M::Mesh)
-  pts = M.nodes
-  pts_t = M.nodes_t
-  num_pts = size(pts, 1)
-  hpts = Array{Float64, 2}(3, num_pts)
-  hpts_t = Array{Float64, 2}(3, num_pts)
-  for i in 1:num_pts
-    hpts[:, i] = [pts[i]; 1]
-    hpts_t[:, i] = [pts_t[i]; 1]
-  end
-  return hpts', hpts_t'
-end
+	registry = get_registry(first_index); params = get_params(first_index); indices = get_range_in_registry;
 
-"""
-Return right-hand matrix for the mesh
-`nodes*T ~= nodes_T`
-"""
-function rigid_approximate(M::Mesh)
-  pts_src, pts_dst = get_homogeneous_correspondences(M)
-  return find_rigid(pts_src, pts_dst)
-end
-
-"""
-Return the right-hand matrix for the mesh
-`nodes*T ~= nodes_T`
-"""
-function affine_approximate(M::Mesh)
-  pts_src, pts_dst = get_homogeneous_correspondences(M)
-  return find_affine(pts_src, pts_dst)
-end
-
-"""
-Apply some weighted combination of affine and rigid, gauged by lambda
-"""
-function regularized_approximate(M::Mesh, lambda=0.9)
-  affine = affine_approximate(M)
-  rigid = rigid_approximate(M)
-  return lambda*affine + (1-lambda)*rigid
-end
-
-"""
-Use in montage?
-"""
-function affine_approximate(Ms::MeshSet, row, col)
-	ind = findfirst(i -> Ms.meshes[i].index[3:4] == (row, col), 1:Ms.N)
- 	return affine_approximate(Ms.meshes[ind])
-end
-
-"""
-Retrieve nodes and nodes_t of mesh, make homogenous, and transpose to Nx3
-"""
-function get_homogeneous_correspondences(Ms, k)
-  pts_src, pts_dst = get_matched_points(Ms, k)
-  num_pts = size(pts_src, 1)
-
-  hpts_src = Array{Float64, 2}(3, num_pts)
-  hpts_dst = Array{Float64, 2}(3, num_pts)
-
-  for i in 1:num_pts
-    hpts_src[:, i] = [pts_src[i]; 1]
-    hpts_dst[:, i] = [pts_dst[i]; 1]
-  end
-  return hpts_src', hpts_dst'
-end
-
-"""
-Return right-hand matrix for the matches
-`pts_src*T ~= pts_dst`
-"""
-function affine_solve(Ms::MeshSet, k=1)
-  pts_src, pts_dst = get_homogeneous_correspondences(Ms, k)
-  return find_affine(pts_src, pts_dst)
-end
-
-"""
-Return right-hand matrix for the matches
-`pts_src*T ~= pts_dst`
-"""
-function rigid_solve(Ms::MeshSet, k=1)
-  pts_src, pts_dst = get_homogeneous_correspondences(Ms, k)
-  return find_rigid(pts_src, pts_dst)
-end
-
-"""
-Apply some weighted combination of affine and rigid, gauged by lambda
-"""
-function regularized_solve(Ms::MeshSet; k=1, lambda=0.9)
-  affine = affine_solve(Ms, k)
-  rigid = rigid_solve(Ms, k)
-  return lambda*affine + (1-lambda)*rigid
-end
-
-function decomp_affine(tform::Array{Float64, 2})
-  # http://math.stackexchange.com/questions/78137/decomposition-of-a-nonsquare-affine-matrix
-  a = tform[1, 1];
-  b = tform[2, 1];
-  c = tform[1, 2];
-  d = tform[2, 2];
-
-  p = norm([a, b])
-  r = det(tform[1:2, 1:2]) / p
-  q = (a * c + b * d) / det(tform)
-  theta = rad2deg(atan(b / a))
-
-  t_i = tform[3, 1]
-  t_j = tform[3, 2]
-
-  println("Affine decomposition: in right-to-left order with the transformation matrix being v*T,")
-  println("Translation: i-translation: $t_i, j-translation: $t_j")
-  println("Scaling:  i-scaling: $p, j-scaling: $r")
-  println("Shearing: j-shear: $q")
-  println("Rotation: $theta deg.")
-
-  return t_i, t_j, p, r, q, theta
-end
-
-function make_stack(offsets, wafer_num, batch::UnitRange{Int64})
-
-  indices = find(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] in batch, 1:size(offsets, 1))
-  Ms = MeshSet(PARAMS_ALIGNMENT)
-#=
-  index_aligned = (wafer_num, a, ALIGNED_INDEX, ALIGNED_INDEX)
-  name_aligned = get_name(index_aligned);  
-  dy_aligned = 0
-  dx_aligned = 0
-  size_i = 36000; 
-  size_j = 36000
-
-  add_mesh(Mesh(name_aligned, size_i, size_j, index_aligned, dy_aligned, dx_aligned, true, PARAMS_ALIGNMENT), Ms)
-=#
-  dy = 0
-  dx = 0
+	Ms = MeshSet(params);
+	dy = 0; dx = 0;
 
   for i in indices
-    name = offsets[i, 1]
-    index = offsets[i, 2]
-    dy += offsets[i, 3]
-    dx += offsets[i, 4]
-    size_i = offsets[i, 5]
-    size_j = offsets[i, 6]
-    add_mesh(Mesh(name, size_i, size_j, index, dy, dx, false, PARAMS_ALIGNMENT), Ms)
-  end
-  optimize_all_cores(Ms.params)
-  return Ms
-end
-
-function affine_make_stack(offsets, wafer_num, a::Int64, b::Int64, optimize = true)
-  i_dst = findfirst(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == a, 1:size(offsets, 1))
-  i_src = findfirst(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == b, 1:size(offsets, 1))
-  Ms = MeshSet(PARAMS_PREALIGNMENT)
-
-  name_dst = offsets[i_dst, 1];
-  index_dst = offsets[i_dst, 2];
-  dy_dst = 0;#offsets[i_dst, 3];
-  dx_dst = 0;#offsets[i_dst, 4];
-  size_i = offsets[i_dst, 5]; 
-  size_j = offsets[i_dst, 6]
-
-  add_mesh(Mesh(name_dst, size_i, size_j, index_dst, dy_dst, dx_dst, true, PARAMS_PREALIGNMENT), Ms)
-
-  name = offsets[i_src, 1];
-  index = offsets[i_src, 2];
-  dy = offsets[i_src, 3];
-  dx = offsets[i_src, 4]; 
-  size_i = offsets[i_src, 5];
-  size_j = offsets[i_src, 6];
-
-  add_mesh(Mesh(name, size_i, size_j, index, dy, dx, false, PARAMS_PREALIGNMENT), Ms)
-  if optimize == true
-  optimize_all_cores(Ms.params)
-  end
-
-  return Ms
-end
-function make_stack(offsets, wafer_num, a::Int64, b::Int64)
-  i = findfirst(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == b, 1:size(offsets, 1))
-  Ms = MeshSet(PARAMS_ALIGNMENT)
-
-  index_aligned = (wafer_num, a, ALIGNED_INDEX, ALIGNED_INDEX)
-  name_aligned = get_name(index_aligned);  
-  dy_aligned = 0
-  dx_aligned = 0
-  size_i = 36000; 
-  size_j = 36000
-
-  add_mesh(Mesh(name_aligned, size_i, size_j, index_aligned, dy_aligned, dx_aligned, true, PARAMS_ALIGNMENT), Ms)
-  name = offsets[i, 1]
-  index = offsets[i, 2]
-  dy = offsets[i, 3]
-  dx = offsets[i, 4]
-  size_i = offsets[i, 5]
-  size_j = offsets[i, 6]
-
-  add_mesh(Mesh(name, size_i, size_j, index, dy, dx, false, PARAMS_ALIGNMENT), Ms)
-  optimize_all_cores(Ms.params)
-
-  return Ms
-end
-
-function make_stack(offsets, wafer_num, section_range, fixed_interval)
-  indices = find(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] in section_range, 1:size(offsets, 1))
-  Ms = MeshSet(PARAMS_ALIGNMENT)
-
-  for i in indices
-    name = offsets[i, 1];
-    index = offsets[i, 2];
-    dy = offsets[i, 3];
-    dx = offsets[i, 4];
-    size_i = offsets[i, 5]
-    size_j = offsets[i, 6]
-    is_fixed = false
-    if findfirst(indices, i) in 1:fixed_interval:length(indices)
-      is_fixed = true; println("$index is fixed")
+    name = registry[i, 1]
+    index = registry[i, 2]
+    if Ms.params["global_registry"] = true
+    	dy = registry[i, 3]
+    	dx = registry[i, 4]
+    elseif i == maximum(indices)
+    	dy += registry[i, 3]
+    	dx += registry[i, 4]
     end
-    add_mesh(Mesh(name, size_i, size_j, index, dy, dx, is_fixed, PARAMS_ALIGNMENT), Ms)
+    size_i = registry[i, 5]
+    size_j = registry[i, 6]
+    add_mesh(Mesh(name, size_i, size_j, index, dy, dx, false, params), Ms)
   end
-
   optimize_all_cores(Ms.params)
-
-  return Ms
 end
 
 function crop_center(image, rad_ratio)
@@ -629,15 +293,15 @@ function crop_center(image, rad_ratio)
 	return image[range_i, range_j];
 end
 
-function affine_load_section_pair(offsets, wafer_num, src, dst)
-  i_dst = findfirst(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == dst, 1:size(offsets, 1))
-  i_src = findfirst(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] == src, 1:size(offsets, 1))
+function affine_load_section_pair(src_index, dst_index)
+  i_src = find_in_registry(src_index); 
+  i_dst = find_in_registry(dst_index); 
 
-  name_dst = offsets[i_dst, 1];
-  name_src = offsets[i_src, 1];
+  name_dst = registry[i_dst, 1];
+  name_src = registry[i_src, 1];
 
-  @time dst_image = get_image(get_path(name_dst))
-  @time src_image = get_image(get_path(name_src))
+  @time dst_image = get_ufixed8_image(get_path(name_dst))
+  @time src_image = get_ufixed8_image(get_path(name_src))
  
   dst_scaled = imwarp(dst_image, SCALING_FACTOR_TRANSLATE)[1]; 
   src_scaled = imwarp(src_image, SCALING_FACTOR_TRANSLATE)[1]; 
@@ -655,8 +319,8 @@ function affine_load_section_pair(offsets, wafer_num, src, dst)
 end
 
 function load_section_pair(Ms, a, b)
-  @time A_image = get_ufixed8_image(get_path(Ms.meshes[find_section(Ms,a)].name))
-  @time B_image = get_ufixed8_image(get_path(Ms.meshes[find_section(Ms,b)].name))
+  @time A_image = get_ufixed8_image(get_path(Ms.meshes[find_index(Ms,a)].name))
+  @time B_image = get_ufixed8_image(get_path(Ms.meshes[find_index(Ms,b)].name))
   return A_image, B_image; 
 end
 
