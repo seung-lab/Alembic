@@ -1,1 +1,1 @@
-/usr/people/dih/seungmount
+/mnt/bucket/labs/seung
