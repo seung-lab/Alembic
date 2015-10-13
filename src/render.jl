@@ -68,10 +68,10 @@ end
 """
 Write thumbnail image with vectors and match indices overlayed
 """
-function write_thumbnail(path, img, vectors, factor)
+function write_thumbnail(path, img, vectors, factor, fontsize=24.0, offset=[-20,-20])
   imgc, img2 = view(img, pixelspacing=[1,1])
   a, b = draw_vectors(imgc, img2, vectors, RGB(0,0,1), RGB(1,0,1), factor)
-  c = draw_indices(imgc, img2, vectors[1:2,:])
+  c = draw_indices(imgc, img2, vectors[1:2,:], fontsize, offset)
   println("Writing ", path)
   Cairo.write_to_png(imgc.c.back, path)
   destroy(toplevel(imgc))
@@ -175,10 +175,13 @@ function render_prealigned(indexA, indexB)
   log_path = joinpath(dir, "prealigned_offsets.txt")
 
   function save_image(stage, dir, log_path)
-    fn = string(join(stage["index"][1:2], ","), "_prealigned.tif")
-    update_offset_log!(log_path, fn, stage["offset"], size(stage["img"]))
-    println("Writing ", fn)
-    @time imwrite(stage["img"], joinpath(dir, fn))
+    new_fn = string(join(stage["index"][1:2], ","), "_prealigned.tif")
+    update_offset_log!(log_path, new_fn, stage["offset"], size(stage["img"]))
+    println("Writing ", new_fn)
+    # @time imwrite(stage["img"], joinpath(dir, fn))
+    f = h5open(joinpath(dir, new_fn), "w")
+    @time f["img", "chunk", (1000,1000)] = ufixed8_to_uint8(stage["img"])
+    close(f)
   end
 
   index_pairs = create_sequential_index_pairs(indexA, indexB)
@@ -211,7 +214,7 @@ end
 """
 Cycle through JLD files in aligned directory and render alignment
 """
-function render_aligned(file_index)
+function render_aligned(file_index, start=1, finish=0)
   dir = ALIGNED_DIR
   scale = 0.02
   s = [scale 0 0; 0 scale 0; 0 0 1]
@@ -222,6 +225,12 @@ function render_aligned(file_index)
   filename = sort_dir(dir)[file_index]
   println("Rendering meshes in ", filename)
   meshset = JLD.load(joinpath(dir, filename))["MeshSet"]
+  if start == 0
+    start = 1
+  end
+  if finish == 0
+    finish = length(meshset.meshes)
+  end
   images = Dict()
   
   # Check images dict for thumbnail, otherwise render, save, & resize it
@@ -231,23 +240,23 @@ function render_aligned(file_index)
       img = images[index]
     else
       path = get_path(index)
-      if isfile(path)
-        img, _ = imwarp(get_ufixed8_image(index), s)
-      else
-        println("Warping ", mesh.name)
-        @time img, offset = meshwarp(mesh)
-        @time img = rescopeimage(img, offset, GLOBAL_BB)
-        println("Writing ", mesh.name)
-        new_fn = string(join(mesh.index[1:2], ","), "_aligned.tif")
-        f = h5open(joinpath(dir, new_fn), "w")
-        @time f["img", "chunk", (1000,1000)] = img
-        close(f)
-        # @time imwrite(img, joinpath(dir, new_fn))
-        img, _ = imwarp(img, s)
+      # if isfile(path)
+      #   img, _ = imwarp(get_ufixed8_image(index), s)
+      # else
+      println("Warping ", mesh.name)
+      @time img, offset = meshwarp(mesh)
+      @time img = rescopeimage(img, offset, GLOBAL_BB)
+      println("Writing ", mesh.name)
+      new_fn = string(join(mesh.index[1:2], ","), "_aligned.h5")
+      f = h5open(joinpath(dir, new_fn), "w")
+      @time f["img", "chunk", (1000,1000)] = ufixed8_to_uint8(img)
+      close(f)
+      # @time imwrite(img, joinpath(dir, new_fn))
+      img, _ = imwarp(img, s)
 
-        # Log image offsets
-        update_offset_log!(log_path, new_fn, offset, size(img))
-      end
+      # Log image offsets
+      update_offset_log!(log_path, new_fn, offset, size(img))
+      # end
       images[index] = img
     end
     return img
@@ -257,31 +266,31 @@ function render_aligned(file_index)
   for (k, matches) in enumerate(meshset.matches)
     src_index = matches.src_index
     dst_index = matches.dst_index
-    src_mesh = meshset.meshes[find_index(meshset, src_index)]
-    dst_mesh = meshset.meshes[find_index(meshset, dst_index)]
+    if start <= src_index[2] <= finish && start <= dst_index[2] <= finish
+      src_mesh = meshset.meshes[find_index(meshset, src_index)]
+      dst_mesh = meshset.meshes[find_index(meshset, dst_index)]
 
-    src_nodes, dst_nodes = get_matched_points_t(meshset, k)
-    src_index = (src_index[1:2]..., src_index[3]-1, src_index[4]-1)
-    dst_index = (dst_index[1:2]..., dst_index[3]-1, dst_index[4]-1)
-    src_offset = [GLOBAL_BB.i, GLOBAL_BB.j]
-    dst_offset = [GLOBAL_BB.i, GLOBAL_BB.j]
+      src_nodes, dst_nodes = get_matched_points_t(meshset, k)
+      src_index = (src_index[1:2]..., src_index[3]-1, src_index[4]-1)
+      dst_index = (dst_index[1:2]..., dst_index[3]-1, dst_index[4]-1)
+      src_offset = [GLOBAL_BB.i, GLOBAL_BB.j]
+      dst_offset = [GLOBAL_BB.i, GLOBAL_BB.j]
 
-    src_img = retrieve_image(src_mesh)
-    dst_img = retrieve_image(dst_mesh)
+      src_img = retrieve_image(src_mesh)
+      dst_img = retrieve_image(dst_mesh)
 
-    src_offset *= scale
-    dst_offset *= scale
+      src_offset *= scale
+      dst_offset *= scale
 
-    O, O_bb = imfuse(src_img, src_offset, dst_img, dst_offset)
+      O, O_bb = imfuse(src_img, src_offset, dst_img, dst_offset)
 
-    src_nodes = hcat(src_nodes...)[1:2, :]*scale .- src_offset
-    dst_nodes = hcat(dst_nodes...)[1:2, :]*scale .- dst_offset
-
-    imgc, img2 = view(O, pixelspacing=[1,1])
-    vectors = [src_nodes; dst_nodes]
-    thumbnail_fn = string(join(dst_index[1:2], ","), "-", join(src_index[1:2], ","), "_aligned_thumbnail.png")
-    path = joinpath(dir, "review", thumbnail_fn)
-    write_thumbnail(path, O, vectors, 1.0)
+      src_nodes = hcat(src_nodes...)[1:2, :]*scale .- src_offset
+      dst_nodes = hcat(dst_nodes...)[1:2, :]*scale .- dst_offset
+      vectors = [src_nodes; dst_nodes]
+      thumbnail_fn = string(join(dst_index[1:2], ","), "-", join(src_index[1:2], ","), "_aligned_thumbnail.png")
+      path = joinpath(dir, "review", thumbnail_fn)
+      write_thumbnail(path, O, vectors, 0.5, 6.0, [-10,-10])
+    end
   end
 end
 

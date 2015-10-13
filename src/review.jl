@@ -643,6 +643,47 @@ end
 """
 Cycle through sections of the stack movie, with images staged for easier viewing
 """
+function stack_movie(meshset, section_range=(1:2), slice=(1:200,1:200), perm=[1,2,3])
+  imgs = []
+  for mesh in meshset.meshes[section_range]
+    index = (mesh.index[1:2]..., mesh.index[3]-1, mesh.index[4]-1)
+    img = get_aligned_h5_slice(get_h5_path(index), slice)
+    push!(imgs, img)
+  end
+
+  println(slice)
+  # img_stack = cat(3, imgs..., reverse(imgs[2:end-1])...)  # loop it
+  img_stack = cat(3, imgs...)
+  # img_stack = permutedims(cat(3, imgs...), perm)
+  # img_movie = Image(img_stack, timedim=3)
+  # if perm != [1,2,3]
+    imgc, img2 = view(Image(permutedims(img_stack, [3,2,1]), timedim=3))
+    start_loop(imgc, img2, 10)
+    imgc, img2 = view(Image(permutedims(img_stack, [1,3,2]), timedim=3))
+    start_loop(imgc, img2, 10)
+    imgc, img2 = view(Image(permutedims(img_stack, [1,2,3]), timedim=3), pixelspacing=[1,1])
+    start_loop(imgc, img2, 10)
+  # end
+  # start_loop(imgc, img2, 10)
+
+  e = Condition()
+  c = canvas(imgc)
+  win = Tk.toplevel(c)
+
+  function exit_movie()
+    stop_loop(imgc)
+    notify(e)
+  end
+  bind(win, "<Destroy>", path->notify(e))
+  bind(win, "<Escape>", path->exit_movie())
+
+  wait(e)
+  destroy(win)
+end
+
+"""
+Cycle through sections of the stack movie, with images staged for easier viewing
+"""
 function scan_stack_movie(imgs, bounding_box, divisions=12, perm=[1,2,3])
   ispan = ceil(Int64, bounding_box.h/divisions)
   jspan = ceil(Int64, bounding_box.w/divisions)
