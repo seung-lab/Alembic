@@ -52,20 +52,20 @@ function find_preceding(index::Index)
   return registry[loc_in_reg - 1, 2];
 end
 
-function get_range_in_registry(first_index, last_index)
-	if first_index[3] != last_index[3] || first_index[4] != last_index[4]
+function get_range_in_registry(indexA::Index, indexB::Index)
+	if indexA[3] != indexB[3] || indexA[4] != indexB[4]
 		println("The indices are from different pipeline stages. Aborting.");
 		return Void;
 	end
 	
-	return find_in_registry(first_index):find_in_registry(last_index);
+	return find_in_registry(indexA):find_in_registry(indexB);
 end
 
 """
 Find first row of the offset file that matches index and return
 of previous offset arrays
 """
-function find_offset(offset_file, index)
+function find_offset(offset_file, index::Index)
   if findfirst(offset_file[:,2], index) != 0
     return collect(offset_file[findfirst(offset_file[:,2], index), 3:4])
   else
@@ -77,7 +77,7 @@ end
 Find first row of the offset file that matches index and return cumulative sum 
 of previous offset arrays
 """
-function find_cumulative_offset(offset_file, index)
+function find_cumulative_offset(offset_file, index::Index)
   if findfirst(offset_file[:,2], index) != 0
     return collect(sum(offset_file[1:findfirst(offset_file[:,2], index), 3:4], 1))
   else
@@ -88,7 +88,7 @@ end
 """
 Find appropriate offset file and pull out the offset array for the index
 """
-function load_offset(index)
+function load_offset(index::Index)
   if is_montaged(index)
     return find_offset(MONTAGED_OFFSETS, index)
   elseif is_aligned(index)
@@ -98,29 +98,23 @@ function load_offset(index)
   end
 end
 """
-INCOMPLETE
-
-Lazy function to generate list of indices between indexA and indexB
-
-Fixes to include:
-* switch between wafers
-* check indexA[3:4] against indexB[3:4]
+Generate list of indices between indexA and indexB
 """
-function create_index_range(indexA, indexB)
-  return [(indexA[1], i, indexA[3:4]...) for i in indexA[2]:indexB[2]]
+function get_index_range(indexA::Index, indexB::Index)
+  return get_registry(indexA)[get_range_in_registry(indexA, indexB), 2]
 end
 
 """
 Return zip object of an index and the index that follows it
 """
-function create_sequential_index_pairs(indexA, indexB)
-  indices = create_index_range(indexA, indexB)
+function get_sequential_index_pairs(indexA::Index, indexB::Index)
+  indices = get_index_range(indexA, indexB)
   return zip(indices[1:end-1], indices[2:end])
 end
 
 """
-Test if an index is the first section in the stack
+Boolean if an index is the first section in the stack
 """
-function is_first_section(index)
-  return index[1] == 1 && index[2] == 1
+function is_first_section(index::Index)
+  return get_registry(index)[1,2] == index
 end
