@@ -92,7 +92,7 @@ global PARAMS_PREALIGNMENT = Dict("scaling_factor" => SCALING_FACTOR_PREALIGNMEN
 								"ftol_gradient" => FTOL_GRADIENT_PREALIGNMENT, 
 								"eta_newton" => ETA_NEWTON_PREALIGNMENT, 
 								"ftol_newton" => FTOL_NEWTON_PREALIGNMENT,
-								"write_blockmatches" => WRITE_BLOCKMATCHES_PREALIGNMENT
+								"write_blockmatches" => WRITE_BLOCKMATCHES_PREALIGNMENT,
 								"global_offsets" => GLOBAL_OFFSETS_PREALIGNMENT)
 
 global PARAMS_ALIGNMENT = Dict("scaling_factor" => SCALING_FACTOR_ALIGNMENT, 
@@ -111,7 +111,7 @@ global PARAMS_ALIGNMENT = Dict("scaling_factor" => SCALING_FACTOR_ALIGNMENT,
 								"ftol_gradient" => FTOL_GRADIENT_ALIGNMENT, 
 								"eta_newton" => ETA_NEWTON_ALIGNMENT, 
 								"ftol_newton" => FTOL_NEWTON_ALIGNMENT,
-								"write_blockmatches" => WRITE_BLOCKMATCHES_ALIGNMENT
+								"write_blockmatches" => WRITE_BLOCKMATCHES_ALIGNMENT,
 								"global_offsets" => GLOBAL_OFFSETS_ALIGNMENT)
 
 function optimize_all_cores(params)

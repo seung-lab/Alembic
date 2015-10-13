@@ -271,7 +271,7 @@ function make_stack(first_index, last_index, fixed_interval = 0)
   for i in indices
     name = registry[i, 1]
     index = registry[i, 2]
-    if Ms.params["global_registry"] = true
+    if Ms.params["global_registry"] == true
     	dy = registry[i, 3]
     	dx = registry[i, 4]
     elseif i == maximum(indices)
