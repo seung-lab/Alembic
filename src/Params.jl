@@ -122,6 +122,21 @@ function get_image(index::Index)
     return get_image(get_path(index))
 end
 
+function get_thumbnail_path(index::Index)
+  fn = string(join(index[1:2], ","), "_thumb.png")
+  println(fn)
+  return joinpath(MONTAGED_DIR, "review", fn) 
+end
+
+function get_thumbnail_path(indexA::Index, indexB::Index)
+  fn = string(join(indexA[1:2],","), "-", join(indexB[1:2],","), "_thumb.png")
+  println(fn)
+  if is_montaged(index)
+    return joinpath(PREALIGNED_DIR, "review", fn) 
+  else
+    return joinpath(ALIGNED_DIR, "review", fn) 
+  end
+end
 
 function waferpaths2dict(waferpath_filename)
     wdict = Dict()
