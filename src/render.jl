@@ -105,7 +105,7 @@ function write_prealignment_thumbnail(moving_img, fixed_img, meshset, scale=0.05
   moving["thumb_moving"], moving["thumb_offset_moving"] = imwarp(moving_img, tform*s, moving_offset)
   fixed["scale"] = scale
   moving["scale"] = scale
-  save_thumbnails(fixed, moving)
+  save_thumbnail(fixed, moving)
 end
 
 """
@@ -140,7 +140,7 @@ end
 """
 Fuse and save thumbnail images
 """
-function save_thumbnails(A, B)
+function save_thumbnail(A, B)
   path = get_thumbnail_path(B["index"], A["index"])
   O, O_bb = imfuse(A["thumb_fixed"], A["thumb_offset_fixed"], 
                             B["thumb_moving"], B["thumb_offset_moving"])
@@ -149,7 +149,7 @@ function save_thumbnails(A, B)
   moving_nodes .-= O_bb
   fixed_nodes .-= O_bb
   vectors = [moving_nodes; fixed_nodes]
-  write_thumbnail(path, view_matches(O, vectors, 1.0))
+  write_thumbnail(path, view_matches(O, vectors, 1.0)...)
 end
 
 """
@@ -191,7 +191,7 @@ function render_prealigned(indexA, indexB)
     moving_nodes, fixed_nodes = get_matched_points(meshset, 1)
     fixed["nodes"] = points_to_Nx3_matrix(fixed_nodes)
     moving["nodes"] = points_to_Nx3_matrix(moving_nodes)*tform
-    save_thumbnails(fixed, moving)
+    save_thumbnail(fixed, moving)
     fixed = 0
     fixed = moving
     moving = 0
