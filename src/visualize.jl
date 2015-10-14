@@ -239,3 +239,33 @@ function demo_mesh()
     println("Original images and shapes")
     draw_mesh(make_isotropic(img), nodes, node_dict)
 end
+
+# function invisible_view(img)
+#   props = Dict{Symbol,Any}()
+#   img2 = ImageView.ImageSlice2d(img, props)
+#   imgc = ImageView.ImageCanvas(ImageView.cairo_format(img), props)
+#   w = ImageView.width(img2)
+#   h = ImageView.height(img2)
+#   ww, wh = ImageView.rendersize(w, h, imgc.aspect_x_per_y)
+#   win = ImageView.Toplevel("ImageView_invisible", ww, wh, false)
+#   framec = OS_NAME == :Darwin ? ImageView.Frame(win, padding = 30) : ImageView.Frame(win)
+#   ImageView.grid(framec, 1, 1, sticky="nsew")
+#   ImageView.grid_rowconfigure(win, 1, weight=1) # scale this cell when the window resizes
+#   ImageView.grid_columnconfigure(win, 1, weight=1)
+#   c = ImageView.Canvas(framec, ww, wh)
+#   imgc.c = c
+#   ImageView.grid(c, 1, 1, sticky="nsew")        # fill the edges of its cell on all 4 sides
+#   ImageView.grid_rowconfigure(framec, 1, weight=1) # scale this cell when the window resizes
+#   ImageView.grid_columnconfigure(framec, 1, weight=1)
+#   lastrow = 1
+#   fnotify = ImageView.Frame(win)
+#   ImageView.grid(fnotify, lastrow+=1, 1, sticky="ew")
+#   xypos = ImageView.Label(fnotify)
+#   imgc.handles[:pointerlabel] = xypos
+#   ImageView.grid(xypos, 1, 1, sticky="ne")
+#   ImageView.set_visible(win, false)
+#   ImageView.allocate_surface!(imgc, w, h)
+#   ImageView.rerender(imgc, img2)
+#   ImageView.resize(imgc, img2)
+#   Tk.configure(imgc.c)
+# end
