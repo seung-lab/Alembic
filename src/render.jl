@@ -51,7 +51,7 @@ function render_montaged(waferA, secA, waferB, secB)
     img["spatialorder"] = ["y","x"]
     println("Writing ", new_fn)
     @time imwrite(img, joinpath(MONTAGED_DIR, new_fn))
-    update_offsets(meshset.meshes[1].index, [0,0], size(img))
+    update_offsets((index[1:2]...,-2,-2), [0,0], size(img))
 
     O = imfuse_section(meshset.meshes)
     path = get_thumbnail_path(meshset.meshes[1].index)
