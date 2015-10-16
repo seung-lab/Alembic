@@ -67,11 +67,7 @@ Bounding box of an image of size (m,n):
                               width
 
 """ 
-function imwarp{T}(img::Array{T}, tform, offset=[0.0,0.0])
-  # check for tform as a scaling vector
-  if length(tform) == 1
-  	tform = [tform 0 0; 0 tform 0; 0 0 1]
-  end
+function imwarp{T}(img::Array{T}, tform::Array{Float64,2}, offset=[0.0,0.0])
   # img bb rooted at offset, with height and width calculated from image
   bb = BoundingBox{Float64}(offset..., size(img, 1)-1.0, size(img, 2)-1.0)
   # transform original bb to generate new bb (may contain continuous values)
