@@ -283,6 +283,7 @@ function make_stack(first_index, last_index, fixed_interval = 0)
     add_mesh(Mesh(name, size_i, size_j, index, dy, dx, false, params), Ms)
   end
   optimize_all_cores(Ms.params)
+  return Ms;
 end
 
 function crop_center(image, rad_ratio)
@@ -307,8 +308,8 @@ function affine_load_section_pair(src_index, dst_index)
  
   dst_scaled = imwarp(dst_image, SCALING_FACTOR_TRANSLATE)[1]; 
   src_scaled = imwarp(src_image, SCALING_FACTOR_TRANSLATE)[1]; 
- 
-  src_cropped = crop_center(src_scaled, 0.5);
+  
+  src_cropped = crop_center(src_scaled, 0.75);
 
   offset_vect, xc = get_max_xc_vector(src_cropped, dst_scaled);
 
@@ -316,7 +317,7 @@ function affine_load_section_pair(src_index, dst_index)
 
   println("Offsets from scaled blockmatches: $offset_unscaled");
   println("r: $(offset_vect[3])");
-  update_offsets(name_src, offset_unscaled);
+  update_offsets(name_src, offset_unscaled); 
   return src_image, dst_image;
 end
 

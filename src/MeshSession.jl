@@ -33,11 +33,12 @@ end
 function prealign_section(src_wafer_num, src_sec_num)
   src_index = (src_wafer_num, src_sec_num, MONTAGED_INDEX, MONTAGED_INDEX);
   dst_index = find_preceding(src_index);
+  if dst_index == NO_INDEX return Void; end
   println("Prealigning $src_index -> $dst_index:")
   @time images = affine_load_section_pair(src_index, dst_index)
   @time Ms = make_stack(dst_index, src_index);
-  @time add_pair_matches_with_thumbnails!(Ms, src_index, dst_index);
-  stats(Ms)
+  @time add_pair_matches_with_thumbnails!(Ms, src_index, dst_index, images);
+  affine_solve_meshset!(Ms);
   save(Ms);
   return Ms;
 end
