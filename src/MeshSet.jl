@@ -306,10 +306,10 @@ function affine_load_section_pair(src_index, dst_index)
   @time dst_image = get_ufixed8_image(get_path(name_dst))
   @time src_image = get_ufixed8_image(get_path(name_src))
  
-  dst_scaled = imwarp(dst_image, SCALING_FACTOR_TRANSLATE)[1]; 
-  src_scaled = imwarp(src_image, SCALING_FACTOR_TRANSLATE)[1]; 
+  dst_scaled = scale(dst_image, SCALING_FACTOR_TRANSLATE)[1]; 
+  src_scaled = scale(src_image, SCALING_FACTOR_TRANSLATE)[1]; 
   
-  src_cropped = crop_center(src_scaled, 0.75);
+  src_cropped = crop_center(src_scaled, 0.66);
 
   offset_vect, xc = get_max_xc_vector(src_cropped, dst_scaled);
 
