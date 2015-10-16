@@ -38,34 +38,25 @@ end
 """
 Cycle through JLD files in montaged directory and render montage
 """
-function render_montaged(section_range::Array{Int64})
-  log_path = joinpath(MONTAGED_DIR, "montaged_offsets.txt")
-  filenames = sort_dir(MONTAGED_DIR)[section_range]
-  for filename in filenames
-    println("Rendering ", filename[1:end-4])
-    meshset = JLD.load(joinpath(MONTAGED_DIR, filename))["MeshSet"]
+function render_montaged(waferA, secA, waferB, secB)
+  indexA = (waferA, secA, 1, 1)
+  indexB = (waferB, secB, 1, 1)
+  for index in get_index_range(indexA, indexB)
+    meshset = load(index, index)
+    new_fn = string(index[1:2], ","), "_montaged.tif")
+    println("Rendering ", new_fn)
     warps = pmap(meshwarp, meshset.meshes)
     img, offset = merge_images([[x[i] for x in warps] for i=1:2]...)
     img = grayim(img)
     img["spatialorder"] = ["y","x"]
-    println("Writing ", filename[1:end-4])
-    new_filename = string(filename[1:end-4], ".tif")
-    @time imwrite(img, joinpath(MONTAGED_DIR, new_filename))
-    update_offset_log!(log_path, new_filename, [0,0], size(img))
+    println("Writing ", new_fn)
+    @time imwrite(img, joinpath(MONTAGED_DIR, new_fn))
+    update_offsets(meshset.meshes[1].index, [0,0], size(img))
 
     O = imfuse_section(meshset.meshes)
     path = get_thumbnail_path(meshset.meshes[1].index)
     imwrite(O, path)
   end
-end
-
-"""
-Write thumbnail image, with whatever drawings included
-"""
-function write_thumbnail(path, imgc, img2)
-  println("Writing ", path)
-  write_canvas(imgc, path)
-  close_image(imgc)
 end
 
 """
@@ -96,17 +87,42 @@ function write_prealignment_thumbnail(moving_img, fixed_img, meshset, scale=0.05
   s = [scale 0 0; 0 scale 0; 0 0 1]
   moving_offset = collect(meshset.meshes[2].disp)
   tform = regularized_solve(meshset, lambda=0.9)
-  moving_nodes, fixed_nodes = get_matched_points(meshset, 1)
-  fixed["index"] = meshset.meshes[1].index
-  moving["index"] = meshset.meshes[2].index
+  moving_nodes, fixed_nodes = get_matched_points_t(meshset, 1)
+  fixed["index"] = (meshset.meshes[1].index[1:2]..., -3, -3)
+  moving["index"] = (meshset.meshes[2].index[1:2]..., -3, -3)
   fixed["nodes"] = points_to_Nx3_matrix(fixed_nodes)
-  moving["nodes"] = points_to_Nx3_matrix(moving_nodes)*tform
+  moving["nodes"] = points_to_Nx3_matrix(moving_nodes) #*tform
   fixed["thumb_fixed"], fixed["thumb_offset_fixed"] = imwarp(fixed_img, s)
   moving["thumb_moving"], moving["thumb_offset_moving"] = imwarp(moving_img, tform*s, moving_offset)
   fixed["scale"] = scale
   moving["scale"] = scale
-  save_thumbnail(fixed, moving)
+  write_thumbnail(fixed, moving)
 end
+
+"""
+Fuse and save thumbnail images
+"""
+function write_thumbnail(A, B)
+  path = get_thumbnail_path(B["index"], A["index"])
+  O, O_bb = imfuse(A["thumb_fixed"], A["thumb_offset_fixed"], 
+                            B["thumb_moving"], B["thumb_offset_moving"])
+  moving_nodes = A["nodes"][:,1:2]'*A["scale"]
+  fixed_nodes = B["nodes"][:,1:2]'*B["scale"]
+  moving_nodes .-= O_bb
+  fixed_nodes .-= O_bb
+  vectors = [moving_nodes; fixed_nodes]
+  write_imageview(path, view_matches(O, vectors, 1.0)...)
+end
+
+"""
+Write thumbnail image, with whatever drawings included
+"""
+function write_imageview(path, imgc, img2)
+  println("Writing ", path)
+  write_canvas(imgc, path)
+  close_image(imgc)
+end
+
 
 """
 Return Dictionary of staged image to remove redundancy in loading
@@ -114,9 +130,9 @@ Return Dictionary of staged image to remove redundancy in loading
 function stage_image(mesh, global_tform, tform, scale=0.05)
   s = [scale 0 0; 0 scale 0; 0 0 1]
   stage = Dict()
-  stage["index"] = mesh.index
+  stage["index"] = (mesh.index[1:2]..., -3, -3)
   img = get_ufixed8_image(mesh)
-  offset = load_offset(mesh.index)
+  offset = load_offset(stage["index"])
   println("tform: ", tform)
   println("montaged_offset: ", offset)
   println("Warping ", mesh.name)
@@ -138,21 +154,6 @@ function copy_section_through(index)
 end
 
 """
-Fuse and save thumbnail images
-"""
-function save_thumbnail(A, B)
-  path = get_thumbnail_path(B["index"], A["index"])
-  O, O_bb = imfuse(A["thumb_fixed"], A["thumb_offset_fixed"], 
-                            B["thumb_moving"], B["thumb_offset_moving"])
-  moving_nodes = A["nodes"][:,1:2]'*A["scale"]
-  fixed_nodes = B["nodes"][:,1:2]'*B["scale"]
-  moving_nodes .-= O_bb
-  fixed_nodes .-= O_bb
-  vectors = [moving_nodes; fixed_nodes]
-  write_thumbnail(path, view_matches(O, vectors, 1.0)...)
-end
-
-"""
 Prealignment where offsets are global
 """
 function render_prealigned(indexA, indexB)
@@ -164,7 +165,7 @@ function render_prealigned(indexA, indexB)
 
   function save_image(stage, dir, log_path)
     new_fn = string(join(stage["index"][1:2], ","), "_prealigned.h5")
-    update_offset_log!(log_path, new_fn, stage["offset"], size(stage["img"]))
+    update_offsets(stage["index"], stage["offset"], size(stage["img"]))
     println("Writing ", new_fn)
     # @time imwrite(stage["img"], joinpath(dir, fn))
     f = h5open(joinpath(dir, new_fn), "w")
@@ -191,7 +192,7 @@ function render_prealigned(indexA, indexB)
     moving_nodes, fixed_nodes = get_matched_points(meshset, 1)
     fixed["nodes"] = points_to_Nx3_matrix(fixed_nodes)
     moving["nodes"] = points_to_Nx3_matrix(moving_nodes)*tform
-    save_thumbnail(fixed, moving)
+    write_thumbnail(fixed, moving)
     fixed = 0
     fixed = moving
     moving = 0
@@ -236,7 +237,7 @@ function render_aligned(indexA, indexB, start=1, finish=0)
       img, _ = imwarp(img, s)
 
       # Log image offsets
-      update_offset_log!(log_path, new_fn, offset, size(img))
+      update_offsets(index, offset, size(img))
       # end
       images[index] = img
     end
@@ -269,7 +270,7 @@ function render_aligned(indexA, indexB, start=1, finish=0)
       # dst_nodes = hcat(dst_nodes...)[1:2, :]*scale .- dst_offset
       # vectors = [src_nodes; dst_nodes]
       path = get_thumbnail_path(dst_index, src_index)
-      write_thumbnail(path, view_isotropic(O))
+      write_imageview(path, view_isotropic(O))
     end
   end
 end

@@ -13,7 +13,7 @@ Returns:
 
   remove_matches_from_meshset!(indices_to_remove, match_index, meshset)
 """
-function remove_matches_from_meshset!(indices_to_remove, match_index, meshset)
+function remove_matches_from_meshset!(meshset, indices_to_remove, match_index=1)
   println("Removing ", length(indices_to_remove), " points")
   if length(indices_to_remove) > 0
     no_pts_removed = length(indices_to_remove)
@@ -23,30 +23,14 @@ function remove_matches_from_meshset!(indices_to_remove, match_index, meshset)
     matches.src_points_indices = matches.src_points_indices[flag]
     matches.n -= no_pts_removed
     matches.dst_points = matches.dst_points[flag]
-    if is_aligned(meshset.meshes[1].index)
-      matches.dst_triangles = matches.dst_triangles[flag]
-      matches.dst_weights = matches.dst_weights[flag]
-      matches.disp_vectors = matches.disp_vectors[flag]
-      meshset.m -= no_pts_removed
-      meshset.m_e -= no_pts_removed
-    else
-      dst_mesh = meshset.meshes[2]
-      dst_mesh.nodes = dst_mesh.nodes[flag]
-      dst_mesh.n -= no_pts_removed
-    end
+    matches.dst_triangles = matches.dst_triangles[flag]
+    matches.dst_weights = matches.dst_weights[flag]
+    matches.disp_vectors = matches.disp_vectors[flag]
+    meshset.m -= no_pts_removed
+    meshset.m_e -= no_pts_removed
   end
-end
-
-function remove_matches_from_prealigned_meshset!(indices_to_remove, meshset)
-  println("Removing ", length(indices_to_remove), " points")
-  if length(indices_to_remove) > 0
-    no_pts_removed = length(indices_to_remove)
-    matches = meshset.matches[1]
-    flag = trues(matches.n)
-    flag[indices_to_remove] = false
-    matches.src_points_indices = matches.src_points_indices[flag]
-    matches.n -= no_pts_removed
-    matches.dst_points = matches.dst_points[flag]
+  if is_montaged(meshset.meshes[1].index)
+    affine_solve_meshset!(meshset)
   end
 end
 
@@ -683,7 +667,7 @@ end
 """
 Display outline with matches plotted
 """
-function plot_matches_outline(meshset, match_no, factor=50)
+function plot_matches_outline(meshset, match_no, factor=5)
   scale = 0.05
   matches = meshset.matches[match_no]
   src_index = matches.src_index
@@ -691,8 +675,8 @@ function plot_matches_outline(meshset, match_no, factor=50)
   src_mesh = meshset.meshes[find_index(meshset, src_index)]
   dst_mesh = meshset.meshes[find_index(meshset, dst_index)]
   src_pts, dst_pts = get_matched_points_t(meshset, match_no)
-  src_pts = src_mesh.nodes
-  dst_pts = src_mesh.nodes_t
+  # src_pts = src_mesh.nodes
+  # dst_pts = src_mesh.nodes_t
   src_pts = points_to_Nx3_matrix(src_pts*scale)
   dst_pts = points_to_Nx3_matrix(dst_pts*scale)
 
@@ -724,5 +708,15 @@ function write_meshset_match_outlines(meshset)
     imgc, img2, path = plot_matches_outline(meshset, k)
     write_canvas(imgc, path)
     close_image(imgc)
+  end
+end
+
+function write_dir_outlines(dir, start=1, finish=0)
+  if finish == 0
+    finish = length(sort_dir(dir, "jld"))
+  end
+  for fn in sort_dir(dir, "jld")[start:finish]
+    meshset = JLD.load(joinpath(dir, fn))["MeshSet"]
+    write_meshset_match_outlines(meshset)
   end
 end

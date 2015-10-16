@@ -89,10 +89,10 @@ end
 Find appropriate offset file and pull out the offset array for the index
 """
 function load_offset(index::Index)
-  if is_montaged(index)
-    return find_offset(MONTAGED_OFFSETS, index)
+  if is_prealigned(index)
+    return find_offset(MONTAGED_OFFSETS, (index[1:2]..., -2, -2))
   elseif is_aligned(index)
-    return find_offset(PREALIGNED_OFFSETS, index)
+    return find_offset(PREALIGNED_OFFSETS, (index[1:2]..., -3, -3))
   else
     return [0,0]
   end

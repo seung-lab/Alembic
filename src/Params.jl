@@ -134,7 +134,7 @@ end
 function get_thumbnail_path(indexA::Index, indexB::Index)
   fn = string(join(indexA[1:2],","), "-", join(indexB[1:2],","), "_thumb.png")
   println(fn)
-  if is_montaged(index)
+  if is_prealigned(indexA)
     return joinpath(PREALIGNED_DIR, "review", fn) 
   else
     return joinpath(ALIGNED_DIR, "review", fn) 
