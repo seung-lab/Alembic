@@ -126,10 +126,14 @@ function imwarp{T}(img::Array{T}, tform::Array{Float64,2}, offset=[0.0,0.0])
   warped_img, warped_offset
 end
 
-function scale(img, scale_factor)
+"""
+Create scaling transform and apply to image
+"""
+function imscale(img, scale_factor)
 	tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
 	return imwarp(img, tform);
 end
+
 function writepixel{T<:Integer}(img::Array{T},i,j,pixelvalue)
     img[i,j]=round(T,pixelvalue)
 end
