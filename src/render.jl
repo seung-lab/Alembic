@@ -19,7 +19,7 @@ function meshwarp(mesh::Mesh)
   offset = mesh.disp
   node_dict = incidence2dict(mesh.edges)
   triangles = dict2triangles(node_dict)
-  return @time meshwarp(img, src_nodes, dst_nodes, triangles, offset)
+  return @time meshwarp(img, src_nodes, dst_nodes, triangles, offset), mesh.index
 end
 
 """
@@ -46,16 +46,17 @@ function render_montaged(waferA, secA, waferB, secB)
     new_fn = string(index[1], ",", index[2], "_montaged.tif")
     println("Rendering ", new_fn)
     warps = pmap(meshwarp, meshset.meshes)
-    img, offset = merge_images([[x[i] for x in warps] for i=1:2]...)
+    imgs = [x[1][1] for x in warps]
+    offsets = [x[1][2] for x in warps]
+    indices = [x[2] for x in warps]
+    img, offset = merge_images(imgs, offsets)
     img = grayim(img)
     img["spatialorder"] = ["y","x"]
     println("Writing ", new_fn)
     @time imwrite(img, joinpath(MONTAGED_DIR, new_fn))
     update_offsets((index[1:2]...,-2,-2), [0,0], size(img))
-
-    O = imfuse_section(meshset.meshes)
-    path = get_thumbnail_path(meshset.meshes[1].index)
-    imwrite(O, path)
+    # review images
+    write_seams(imgs, offsets, indices)
   end
 end
 

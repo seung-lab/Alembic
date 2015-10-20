@@ -126,7 +126,7 @@ function get_image(index::Index)
 end
 
 function get_thumbnail_path(index::Index)
-  fn = string(join(index[1:2], ","), "_thumb.png")
+  fn = string(join(index[1:2], ","), "_thumb.jpg")
   println(fn)
   return joinpath(MONTAGED_DIR, "review", fn) 
 end

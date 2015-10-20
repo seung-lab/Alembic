@@ -173,7 +173,7 @@ function set_canvas_size(imgc, w, h)
 end
 
 function create_image(bb)
-    z = ones(bb.h, bb.w)
+    z = ones(bb.h+1, bb.w+1)
     return view_isotropic(z), [bb.i, bb.j]
 end
 
@@ -238,6 +238,18 @@ function demo_mesh()
 
     println("Original images and shapes")
     draw_mesh(make_isotropic(img), nodes, node_dict)
+end
+
+function draw_reference_vector(imgc, img2, ratio, bb)
+  reference = 1
+  margin = 0.02
+  vectors = [bb.h*(1-margin);
+              bb.w*(1-margin) - reference*ratio;
+              bb.h*(1-margin);
+              bb.w*(1-margin)]
+  draw_vectors(imgc, img2, vectors, RGB(1,1,0), RGB(0,1,1), 1)
+  draw_indices(imgc, img2, vectors[1:2,:], 18.0, [-reference*ratio/2, 20])
+  return imgc, img2
 end
 
 # function invisible_view(img)

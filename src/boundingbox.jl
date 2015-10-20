@@ -38,6 +38,15 @@ function -(bbA::BoundingBox, bbB::BoundingBox)
 end
 
 """
+Boolean if bounding boxes intersect
+"""
+function intersects(bbA::BoundingBox, bbB::BoundingBox)
+  bb = bbA - bbB
+  return !isequal(bb.i, NaN)
+end
+
+
+"""
 Test if BoundingBoxes have the same origin and dimensions
 """
 function ==(bbA::BoundingBox, bbB::BoundingBox)

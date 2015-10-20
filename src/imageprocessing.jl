@@ -75,7 +75,7 @@ function imfuse(A, offset_A, B, offset_B)
     O = Overlay((A,B), (RGB(1,0,0), RGB(0,1,0)))
     #O = Overlay((A,B), (RGB(1.,0.,0.), RGB(0.,0.6,0.)))
     BB_O = min(offset_A, offset_B)
-    return O, BB_O
+    return O[1:end, 1:end], BB_O
 end
 
 """

@@ -434,6 +434,88 @@ function display_blockmatches(images, edit_mode_on=false, start_index=1)
 end
 
 """
+Given list of bounding boxes, calculate pairs of indices with overlaps
+"""
+function find_overlaps(boundingboxes)
+  bbs = copy(boundingboxes)
+  overlap_tuples = []
+  i = length(bbs)
+  while length(bbs) != 0
+    bbi = pop!(bbs)
+    for (j, bbj)  in enumerate(bbs)
+      if intersects(bbi, bbj)
+        push!(overlap_tuples, (i,j))
+      end
+    end
+    i -= 1
+  end
+  return overlap_tuples
+end
+
+"""
+Crop image with offset to bounding box
+"""
+function imcrop(img, offset, bb)
+  o = zeros(ColorTypes.RGB{FixedPointNumbers.UfixedBase{UInt8,8}}, ceil(bb.h)+1, ceil(bb.w)+1)
+  ibb = BoundingBox(offset..., size(img)...)
+  d = bb - ibb
+  o_start = abs(bb.i-d.i)+1:abs(bb.i-d.i)+1 + d.h
+  o_end = abs(bb.j-d.j)+1:abs(bb.j-d.j)+1 + d.w
+  im_start = abs(ibb.i-d.i)+1:abs(ibb.i-d.i)+1 + d.h
+  im_end = abs(ibb.j-d.j)+1:abs(ibb.j-d.j)+1 + d.w
+  o[o_start, o_end] = img[im_start, im_end]
+  return o
+end
+
+function reshape_seam(img)
+  size_threshold = 4000
+  d = 10
+  if size(img, 1) >= size_threshold && size(img, 2) <= size_threshold
+    x = 4
+    j = size(img, 2)
+    n = ceil(Int64, size(img, 1)/x)
+    o = zeros(ColorTypes.RGB{FixedPointNumbers.UfixedBase{UInt8,8}}, n, x*(j+d))
+    o[1:n, 1:j] = img[1:n, 1:j]
+    o[1:n, j+d+1:2*j+d] = img[n+1:2*n, 1:j]
+    o[1:n, 2*(j+d)+1:2*j+d] = img[2*n+1:3*n, 1:j]
+    s = size(img[3*n+1:end, 1:j], 1)
+    o[1:s, 3*(j+d)+1:4*j+d] = img[3*n+1:end, 1:j]
+    img = o
+  elseif size(img, 2) >= size_threshold && size(img, 1) <= size_threshold
+    x = 3
+    i = size(img, 1)
+    m = ceil(Int64, size(img, 1)/x)
+    o = zeros(ColorTypes.RGB{FixedPointNumbers.UfixedBase{UInt8,8}}, x*(i+d), m)
+    o[1:i, 1:m] = img[1:i, 1:m]
+    o[i+d+1:2*i+d, 1:m] = img[1:i, m+1:2*m]
+    s = size(img[1:i, 2*m+1:end], 1)
+    o[2*(i+d)+1:3*i+d, 1:s] = img[1:i, 2*m+1:end]
+    img = o
+  end
+  return img
+end
+
+"""
+`WRITE_SEAMS` - Write out overlays of montaged seams
+
+""" 
+function write_seams(imgs, offsets, indices)
+    bbs = []
+    for (img, offset) in zip(imgs, offsets)
+        push!(bbs, BoundingBox(offset..., size(img)...))
+    end
+    overlap_tuples = find_overlaps(bbs)
+    for (k, (i,j)) in enumerate(overlap_tuples)
+      println("Writing seam ", k, " / ", length(overlap_tuples))
+      img, fuse_offset = imfuse(imgs[i], offsets[i], imgs[j], offsets[j])
+      bb = bbs[i] - bbs[j]
+      path = get_outline_filename(indices[i], indices[j], "seam")
+      img_cropped = imcrop(img, fuse_offset, bb)
+      imwrite(img_cropped, path)
+    end
+end
+
+"""
 `IMFUSE_SECTION` - Stitch section with seam overlays.
 """
 function imfuse_section(meshes, downsample=3)
@@ -445,8 +527,11 @@ function imfuse_section(meshes, downsample=3)
   # green_meshes = []
   for mesh in meshes
     img, bb = meshwarp(mesh)
-    img = restrict(img)
-    bb = BoundingBox(floor(Int,bb/2)..., size(img)[1], size(img)[2])
+    bb = BoundingBox(floor(Int,bb)..., size(img)[1], size(img)[2])
+    if downsample > 1
+      img = restrict(img)
+      bb = BoundingBox(floor(Int,bb/2)..., size(img)[1], size(img)[2])
+    end
     if (mesh.index[3] + mesh.index[4]) % 2 == 1
       # push!(red_meshes, mesh)
       push!(img_reds, img)
@@ -668,55 +753,99 @@ end
 Display outline with matches plotted
 """
 function plot_matches_outline(meshset, match_no, factor=5)
-  scale = 0.05
+  scale = 0.20
   matches = meshset.matches[match_no]
   src_index = matches.src_index
   dst_index = matches.dst_index
   src_mesh = meshset.meshes[find_index(meshset, src_index)]
   dst_mesh = meshset.meshes[find_index(meshset, dst_index)]
+
+  src_bb = find_mesh_bb(points_to_Nx3_matrix(src_mesh.nodes_t*scale))
+  dst_bb = find_mesh_bb(points_to_Nx3_matrix(dst_mesh.nodes_t*scale))
+  bb = src_bb+dst_bb
+  img, offset = create_image(bb)
+  offset = collect((offset..., 0))
+
   src_pts, dst_pts = get_matched_points_t(meshset, match_no)
   # src_pts = src_mesh.nodes
   # dst_pts = src_mesh.nodes_t
-  src_pts = points_to_Nx3_matrix(src_pts*scale)
-  dst_pts = points_to_Nx3_matrix(dst_pts*scale)
+  src_pts = points_to_Nx3_matrix(src_pts*scale) .- offset'
+  dst_pts = points_to_Nx3_matrix(dst_pts*scale) .- offset'
 
-  src_nodes = points_to_Nx3_matrix(src_mesh.nodes*scale)
-  dst_nodes = points_to_Nx3_matrix(dst_mesh.nodes*scale)
-  src_bb = find_mesh_bb(src_nodes)
-  dst_bb = find_mesh_bb(dst_nodes)
-
-  bb = src_bb+dst_bb
-  img, offset = create_image(bb)
   set_canvas_size(img[1], bb.w/2, bb.h/2)
+  src_bb = BoundingBox(src_bb.i-bb.i, src_bb.j-bb.j, src_bb.h, src_bb.w)
+  dst_bb = BoundingBox(dst_bb.i-bb.i, dst_bb.j-bb.j, dst_bb.h, dst_bb.w)
   draw_box(img..., src_bb, RGB(0,1,0))
   draw_box(img..., dst_bb, RGB(1,0,0))
 
   vectors = [src_pts[:,1:2]'; dst_pts[:,1:2]']
   draw_vectors(img..., vectors, RGB(0,0,1), RGB(1,0,1), factor)
   draw_indices(img..., vectors[1:2,:], 14.0, [-8,-20])
-  dir = PREALIGNED_DIR
-  if src_index[3] <= -3
-    dir = ALIGNED_DIR
-  end
-  fn = string("outline_", indices2string(src_index, dst_index), ".png")
-  path = joinpath(dir, "review", fn)
-  return img[1], img[2], path
+  draw_reference_vector(img..., factor*scale, bb)
+  return img
 end
 
-function write_meshset_match_outlines(meshset)
+function get_outline_filename(src_index, dst_index, prefix="")
+  dir = ALIGNED_DIR
+  fn = string(prefix, "_", indices2string(src_index, dst_index), ".png")
+  if is_premontaged(src_index)
+    dir = MONTAGED_DIR
+    ind = string(join(src_index, ","), "-", join(dst_index, ","))
+    fn = string(prefix, "_", ind, ".jpg")
+  elseif is_montaged(src_index)
+    dir = PREALIGNED_DIR
+    fn = string(prefix, "_", indices2string(src_index, dst_index), ".png")
+  end
+  return joinpath(dir, "review", fn)
+end
+
+function write_meshset_match_outlines(meshset, factor=5)
   for k in 1:length(meshset.matches)
-    imgc, img2, path = plot_matches_outline(meshset, k)
+    imgc, img2 = plot_matches_outline(meshset, k, factor)
+    matches = meshset.matches[k]
+    path = get_outline_filename(matches.src_index, matches.dst_index)
     write_canvas(imgc, path)
     close_image(imgc)
   end
 end
 
-function write_dir_outlines(dir, start=1, finish=0)
+function write_dir_outlines(dir, start=1, finish=0, factor=5)
   if finish == 0
     finish = length(sort_dir(dir, "jld"))
   end
   for fn in sort_dir(dir, "jld")[start:finish]
     meshset = JLD.load(joinpath(dir, fn))["MeshSet"]
-    write_meshset_match_outlines(meshset)
+    write_meshset_match_outlines(meshset, factor)
   end
+end
+
+"""
+Display outline for montaged meshsets with matches plotted
+"""
+function plot_matches_outline(meshset, factor=5)
+  scale = 0.05
+  bb_list = [find_mesh_bb(points_to_Nx3_matrix(m.nodes*scale)) for m in meshset.meshes]
+  bb = sum(bb_list)
+  offset = [bb.i, bb.j, 0]
+  src_pts = []
+  dst_pts = []
+  for (k, matches) in enumerate(meshset.matches)
+    src, dst = get_matched_points_t(meshset, k)
+    src = points_to_Nx3_matrix(src*scale) .- offset'
+    dst = points_to_Nx3_matrix(dst*scale) .- offset'
+    push!(src_pts, src)
+    push!(dst_pts, dst)
+  end
+  src_pts = vcat(src_pts...)
+  dst_pts = vcat(dst_pts...)
+
+  img, offset = create_image(bb)
+  set_canvas_size(img[1], bb.w/2, bb.h/2)
+  # draw_box(img..., src_bb, RGB(0,1,0))
+  # draw_box(img..., dst_bb, RGB(1,0,0))
+
+  vectors = [src_pts[:,1:2]'; dst_pts[:,1:2]']
+  draw_vectors(img..., vectors, RGB(0,0,1), RGB(1,0,1), factor)
+  # draw_indices(img..., vectors[1:2,:], 14.0, [-8,-20])
+  return img[1], img[2]
 end
