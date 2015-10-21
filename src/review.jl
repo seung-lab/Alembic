@@ -456,13 +456,13 @@ end
 Crop image with offset to bounding box
 """
 function imcrop(img, offset, bb)
-  o = zeros(ColorTypes.RGB{FixedPointNumbers.UfixedBase{UInt8,8}}, ceil(bb.h)+1, ceil(bb.w)+1)
+  o = zeros(eltype(img), ceil(bb.h)+1, ceil(bb.w)+1)
   ibb = BoundingBox(offset..., size(img)...)
   d = bb - ibb
-  o_start = abs(bb.i-d.i)+1:abs(bb.i-d.i)+1 + d.h
-  o_end = abs(bb.j-d.j)+1:abs(bb.j-d.j)+1 + d.w
-  im_start = abs(ibb.i-d.i)+1:abs(ibb.i-d.i)+1 + d.h
-  im_end = abs(ibb.j-d.j)+1:abs(ibb.j-d.j)+1 + d.w
+  o_start = abs(bb.i-d.i)+1:abs(bb.i-d.i) + d.h
+  o_end = abs(bb.j-d.j)+1:abs(bb.j-d.j) + d.w
+  im_start = abs(ibb.i-d.i)+1:abs(ibb.i-d.i) + d.h
+  im_end = abs(ibb.j-d.j)+1:abs(ibb.j-d.j) + d.w
   o[o_start, o_end] = img[im_start, im_end]
   return o
 end
@@ -471,25 +471,38 @@ function reshape_seam(img)
   size_threshold = 4000
   d = 10
   if size(img, 1) >= size_threshold && size(img, 2) <= size_threshold
-    x = 4
-    j = size(img, 2)
-    n = ceil(Int64, size(img, 1)/x)
-    o = zeros(ColorTypes.RGB{FixedPointNumbers.UfixedBase{UInt8,8}}, n, x*(j+d))
-    o[1:n, 1:j] = img[1:n, 1:j]
-    o[1:n, j+d+1:2*j+d] = img[n+1:2*n, 1:j]
-    o[1:n, 2*(j+d)+1:2*j+d] = img[2*n+1:3*n, 1:j]
-    s = size(img[3*n+1:end, 1:j], 1)
-    o[1:s, 3*(j+d)+1:4*j+d] = img[3*n+1:end, 1:j]
+    x = 5
+    i = size(img, 2)
+    m = ceil(Int64, size(img, 1)/x)
+    o = zeros(eltype(img), m, x*(i+d))
+    for k in 1:x
+      o_slice = 1:m, (k-1)*(i+d)+1:k*i+(k-1)*d
+      img_slice = (k-1)*m+1:k*m, 1:i
+      if k == x
+        img_slice = (k-1)*m+1:size(img,1), 1:i
+        s = size(img[img_slice...], 1)
+        o_slice = 1:s, (k-1)*(i+d)+1:k*i+(k-1)*d
+      end
+      o[o_slice...] = img[img_slice...]
+    end
     img = o
+
   elseif size(img, 2) >= size_threshold && size(img, 1) <= size_threshold
     x = 3
     i = size(img, 1)
-    m = ceil(Int64, size(img, 1)/x)
-    o = zeros(ColorTypes.RGB{FixedPointNumbers.UfixedBase{UInt8,8}}, x*(i+d), m)
-    o[1:i, 1:m] = img[1:i, 1:m]
-    o[i+d+1:2*i+d, 1:m] = img[1:i, m+1:2*m]
-    s = size(img[1:i, 2*m+1:end], 1)
-    o[2*(i+d)+1:3*i+d, 1:s] = img[1:i, 2*m+1:end]
+    m = ceil(Int64, size(img, 2)/x)
+    o = zeros(eltype(img), x*(i+d), m)
+
+    for k in 1:x
+      o_slice = (k-1)*(i+d)+1:k*i+(k-1)*d, 1:m
+      img_slice = 1:i, (k-1)*m+1:k*m
+      if k == x
+        img_slice = 1:i, (k-1)*m+1:size(img,2)
+        s = size(img[img_slice...], 2)
+        o_slice = (k-1)*(i+d)+1:k*i+(k-1)*d, 1:s
+      end
+      o[o_slice...] = img[img_slice...]
+    end
     img = o
   end
   return img
@@ -511,7 +524,10 @@ function write_seams(imgs, offsets, indices)
       bb = bbs[i] - bbs[j]
       path = get_outline_filename(indices[i], indices[j], "seam")
       img_cropped = imcrop(img, fuse_offset, bb)
-      imwrite(img_cropped, path)
+      imwrite(reshape_seam(img_cropped), path)
+      # f = h5open(path, "w")
+      # @time f["img", "chunk", (50,50)] = img_cropped
+      # close(f)
     end
 end
 
@@ -572,6 +588,9 @@ function imfuse_section(meshes, downsample=3)
   O, O_bb = imfuse(red_img, [0,0], green_img, [0,0])
   for i = 2:downsample
       O = restrict(O)
+  end
+  if downsample == 0
+    O = O[1:end, 1:end]
   end
   return O
 end 

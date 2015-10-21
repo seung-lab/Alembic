@@ -39,22 +39,23 @@ end
 Cycle through JLD files in montaged directory and render montage
 """
 function render_montaged(waferA, secA, waferB, secB)
-  indexA = (waferA, secA, 1, 1)
-  indexB = (waferB, secB, 1, 1)
+  indexA = (waferA, secA, -2, -2)
+  indexB = (waferB, secB, -2, -2)
   for index in get_index_range(indexA, indexB)
-    meshset = load(index, index)
-    new_fn = string(index[1], ",", index[2], "_montaged.tif")
+    idx = (index[1:2]..., 1, 1)
+    meshset = load(idx, idx)
+    new_fn = string(idx[1], ",", idx[2], "_montaged.tif")
     println("Rendering ", new_fn)
     warps = pmap(meshwarp, meshset.meshes)
     imgs = [x[1][1] for x in warps]
     offsets = [x[1][2] for x in warps]
     indices = [x[2] for x in warps]
-    img, offset = merge_images(imgs, offsets)
-    img = grayim(img)
-    img["spatialorder"] = ["y","x"]
-    println("Writing ", new_fn)
-    @time imwrite(img, joinpath(MONTAGED_DIR, new_fn))
-    update_offsets((index[1:2]...,-2,-2), [0,0], size(img))
+    # img, offset = merge_images(imgs, offsets)
+    # img = grayim(img)
+    # img["spatialorder"] = ["y","x"]
+    # println("Writing ", new_fn)
+    # @time imwrite(img, joinpath(MONTAGED_DIR, new_fn))
+    # update_offsets((index[1:2]...,-2,-2), [0,0], size(img))
     # review images
     write_seams(imgs, offsets, indices)
   end
