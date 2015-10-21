@@ -12,6 +12,33 @@ type Matches
   disp_vectors::Points                    # displacement vector src->dest
 end
 
+function review_match_log(Ms, k)
+       inds = Ms.matches_pairs[k];
+       src = Ms.meshes[inds[1]];
+       dst = Ms.meshes[inds[2]];
+       src_im, src_off = meshwarp(src);
+       dst_im, dst_off = meshwarp(dst);
+       off = dst_off - src_off;
+       if off[1] > 0
+	  o1_i = off[1]:size(src_im, 1);
+	  o2_i = 1:length(o1_i);
+	else
+	  o2_i = -off[1]:size(dst_im, 1);
+	  o1_i = 1:length(o2_i);
+	end
+       if off[2] > 0
+	  o1_j = off[2]:size(src_im, 2);
+	  o2_j = 1:length(o1_j);
+	else
+	  o2_j = -off[2]:size(dst_im, 2);
+	  o1_j = 1:length(o2_j);
+	end
+       
+       o1 = src_im[o1_i, o1_j] * 255;
+       o2 = dst_im[o2_i, o2_j] * 255;
+       view(imfilter_LoG(o1 - o2, 5), pixelspacing = [1, 1]);
+  end
+
 function get_range(A, B, pt, Am_disp, Bm_disp, block_size, search_r)
 	# convert to local coordinates in both Am and Bm
   	pt_A = pt - Am_disp;
