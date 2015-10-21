@@ -810,7 +810,7 @@ function get_outline_filename(src_index, dst_index, prefix="")
   if is_premontaged(src_index)
     dir = MONTAGED_DIR
     ind = string(join(src_index, ","), "-", join(dst_index, ","))
-    fn = string(prefix, "_", ind, ".jpg")
+    fn = string(prefix, "_", ind, ".tif")
   elseif is_montaged(src_index)
     dir = PREALIGNED_DIR
     fn = string(prefix, "_", indices2string(src_index, dst_index), ".png")
