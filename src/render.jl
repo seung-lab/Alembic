@@ -50,13 +50,13 @@ function render_montaged(waferA, secA, waferB, secB)
     imgs = [x[1][1] for x in warps]
     offsets = [x[1][2] for x in warps]
     indices = [x[2] for x in warps]
-    # img, offset = merge_images(imgs, offsets)
-    # img = grayim(img)
-    # img["spatialorder"] = ["y","x"]
-    # println("Writing ", new_fn)
-    # @time imwrite(img, joinpath(MONTAGED_DIR, new_fn))
-    # update_offsets((index[1:2]...,-2,-2), [0,0], size(img))
-    # review images
+     img, offset = merge_images(imgs, offsets)
+     img = grayim(img)
+     img["spatialorder"] = ["y","x"]
+     println("Writing ", new_fn)
+     @time imwrite(img, joinpath(MONTAGED_DIR, new_fn))
+     update_offsets((index[1:2]...,-2,-2), [0,0], size(img))
+     review images
     write_seams(imgs, offsets, indices)
   end
 end

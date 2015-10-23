@@ -78,6 +78,7 @@ function add_matches(M, Ms)
   return
 end
 
+# JLD SAVE
 function save(filename::String, Ms::MeshSet)
   println("Saving meshset to ", filename)
   jldopen(filename, "w") do file
@@ -98,12 +99,33 @@ function save(Ms::MeshSet)
     filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "_montaged.jld"))
   end
 
+  save(filename, Ms);
+end
+# JLS SAVE
+#=
+function save(filename::String, Ms::MeshSet)
   println("Saving meshset to ", filename)
-  jldopen(filename, "w") do file
-    write(file, "MeshSet", Ms)
+  open(filename, "w") do file
+    serialize(file, Ms)
   end
 end
 
+function save(Ms::MeshSet)
+  firstindex = Ms.meshes[1].index
+  lastindex = Ms.meshes[Ms.N].index
+
+
+  if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex))
+    filename = joinpath(PREALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned.jls"))
+  elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex))
+    filename = joinpath(ALIGNED_DIR, string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned.jls"))
+  else 
+    filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "_montaged.jls"))
+  end
+
+  save(filename, Ms);
+end
+=#
 """
 Load montaged meshset for given wafer and section
 
@@ -350,47 +372,7 @@ function load_stack(offsets, wafer_num, section_range)
   return Ms, images
 end
 
-function stats(Ms::MeshSet)
-  residuals = Points(0)
-  residuals_t = Points(0)
-  movement_src = Points(0)
-  movement_dst = Points(0)
-  for k in 1:Ms.M
-    for i in 1:Ms.matches[k].n
-      w = Ms.matches[k].dst_weights[i]
-      t = Ms.matches[k].dst_triangles[i]
-      p = Ms.matches[k].src_points_indices[i]
-      src = Ms.meshes[find_index(Ms, Ms.matches[k].src_index)]
-      dst = Ms.meshes[find_index(Ms, Ms.matches[k].dst_index)]
-      p1 = src.nodes[p]
-      p2 = dst.nodes[t[1]] * w[1] + dst.nodes[t[2]] * w[2] + dst.nodes[t[3]] * w[3]
-      p1_t = src.nodes_t[p]
-      p2_t = dst.nodes_t[t[1]] * w[1] + dst.nodes_t[t[2]] * w[2] + dst.nodes_t[t[3]] * w[3]
-      push!(residuals, p2-p1)
-      push!(residuals_t, p2_t-p1_t)
-      push!(movement_src, p1_t-p1)
-      push!(movement_dst, p2_t-p2)
-    end
-  end
 
-
-   res_norm = map(norm, residuals)
-   rms = sqrt(mean(res_norm.^2))
-   avg = mean(res_norm)
-   sig = std(res_norm)
-   max = maximum(res_norm)
-
-
-   res_norm_t = map(norm, residuals_t)
-   rms_t = sqrt(mean(res_norm_t.^2))
-   avg_t = mean(res_norm_t)
-   sig_t = std(res_norm_t)
-   max_t = maximum(res_norm_t)
-
-   println("Residuals before solving: rms: $rms,  mean: $avg, sigma = $sig, max = $max\n")
-   println("Residuals after solving: rms: $rms_t,  mean: $avg_t, sigma = $sig_t, max = $max_t\n")
- # decomp_affine(affine_solve(Ms))
-end
 
 """
 Calculate the maximum bounding box of all the meshes in a meshset
