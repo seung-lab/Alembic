@@ -38,7 +38,7 @@ end
 """
 Multiple dispatch so Dodam doesn't have to type sooo much
 """
-function render_montaged(wafer_no, section_no, render_full=false, review_matches=false
+function render_montaged(wafer_no, section_no, render_full=false, review_matches=false)
   render_montaged(wafer_no, section_no, wafer_no, section_no, render_full, review_matches)
 end
 
