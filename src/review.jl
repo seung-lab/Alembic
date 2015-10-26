@@ -510,7 +510,6 @@ end
 
 """
 `WRITE_SEAMS` - Write out overlays of montaged seams
-
 """ 
 function write_seams(imgs, offsets, indices)
     bbs = []
@@ -528,6 +527,67 @@ function write_seams(imgs, offsets, indices)
       # f = h5open(path, "w")
       # @time f["img", "chunk", (50,50)] = img_cropped
       # close(f)
+    end
+end
+
+function find_matches_index(meshset, indexA, indexB)
+  matches_index = 0
+  for (k, matches) in enumerate(meshset.matches)
+    if matches.src_index == indexA && matches.dst_index == indexB
+      return k
+    end
+  end
+  return matches_index
+end
+
+function get_match_vectors(meshset, indexA, indexB, offset=[0,0])
+  vectors = []
+  offset = collect((offset..., 0))
+  match_no = find_matches_index(meshset, indexA, indexB)
+  if match_no > 0
+    src_pts, dst_pts = get_matched_points_t(meshset, match_no)
+    src_pts = points_to_Nx3_matrix(src_pts) .- offset'
+    dst_pts = points_to_Nx3_matrix(dst_pts) .- offset'
+    vectors = [src_pts[:,1:2]'; dst_pts[:,1:2]']
+  end
+  return vectors
+end
+
+"""
+`WRITE_SEAMS_WITH_MATCHES` - Write out overlays of montaged seams
+""" 
+function write_seams_with_matches(meshset, imgs, offsets, indices)
+    bbs = []
+    for (img, offset) in zip(imgs, offsets)
+        push!(bbs, BoundingBox(offset..., size(img)...))
+    end
+    overlap_tuples = find_overlaps(bbs)
+    for (k, (i,j)) in enumerate(overlap_tuples)
+      println("Writing seam ", k, " / ", length(overlap_tuples))
+      img, fuse_offset = imfuse(imgs[i], offsets[i], imgs[j], offsets[j])
+      bb = bbs[i] - bbs[j]
+      path = get_outline_filename(indices[i], indices[j], "seam")
+      img_cropped = imcrop(img, fuse_offset, bb)
+      imwrite(reshape_seam(img_cropped), path)
+      imgview = view(img_cropped, pixelspacing=[1,1])
+      offset = [bb.i, bb.j]
+
+      vectorsA = get_match_vectors(meshset, indices[i], indices[j], offset)
+      vectorsB = get_match_vectors(meshset, indices[j], indices[i], offset)
+      # set_canvas_size(imgview[1], bb.w/2, bb.h/2)
+      factor = 200
+      if length(vectorsA) > 0
+        draw_vectors(imgview..., vectorsA, RGB(0,0,1), RGB(1,0,1), factor)
+        # draw_indices(imgview..., vectorsA[1:2,:], 14.0, [-8,-20])
+      end
+      if length(vectorsB) > 0
+        draw_vectors(imgview..., vectorsB, RGB(0,0,0.5), RGB(0.5,0,0.5), factor)
+        # draw_indices(imgview..., vectorsB[1:2,:], 14.0, [-8,-20])
+      end
+      draw_reference_vector(imgview..., factor, bb)
+      path = string(path[1:end-4], ".png")
+      write_canvas(imgview[1], path)
+      close_image(imgview[1])
     end
 end
 
@@ -822,7 +882,8 @@ function write_meshset_match_outlines(meshset, factor=5)
   for k in 1:length(meshset.matches)
     imgc, img2 = plot_matches_outline(meshset, k, factor)
     matches = meshset.matches[k]
-    path = get_outline_filename(matches.src_index, matches.dst_index)
+    path = get_outline_filename(matches.src_index, matches.dst_index, "outline")
+    path = string(path[1:end-4], ".png")
     write_canvas(imgc, path)
     close_image(imgc)
   end

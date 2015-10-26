@@ -36,6 +36,13 @@ function meshwarp_h5(mesh::Mesh)
 end  
 
 """
+Multiple dispatch so Dodam doesn't have to type sooo much
+"""
+function render_montaged(wafer_no, section_no)
+  render_montaged(wafer_no, section_no, wafer_no, section_no)
+end
+
+"""
 Cycle through JLD files in montaged directory and render montage
 """
 function render_montaged(waferA, secA, waferB, secB)
@@ -46,10 +53,10 @@ function render_montaged(waferA, secA, waferB, secB)
     meshset = load(idx, idx)
     new_fn = string(idx[1], ",", idx[2], "_montaged.tif")
     println("Rendering ", new_fn)
-    warps = pmap(meshwarp, meshset.meshes)
-    imgs = [x[1][1] for x in warps]
-    offsets = [x[1][2] for x in warps]
-    indices = [x[2] for x in warps]
+    warps = pmap(meshwarp, meshset.meshes);
+    imgs = [x[1][1] for x in warps];
+    offsets = [x[1][2] for x in warps];
+    indices = [x[2] for x in warps];
     # img, offset = merge_images(imgs, offsets)
     # img = grayim(img)
     # img["spatialorder"] = ["y","x"]
@@ -58,6 +65,7 @@ function render_montaged(waferA, secA, waferB, secB)
     # update_offsets((index[1:2]...,-2,-2), [0,0], size(img))
     # review images
     write_seams(imgs, offsets, indices)
+    # write_seams_with_matches(meshset, imgs, offsets, indices)
   end
 end
 
