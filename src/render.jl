@@ -38,14 +38,14 @@ end
 """
 Multiple dispatch so Dodam doesn't have to type sooo much
 """
-function render_montaged(wafer_no, section_no)
-  render_montaged(wafer_no, section_no, wafer_no, section_no)
+function render_montaged(wafer_no, section_no, render_full=false, review_matches=false
+  render_montaged(wafer_no, section_no, wafer_no, section_no, render_full, review_matches)
 end
 
 """
 Cycle through JLD files in montaged directory and render montage
 """
-function render_montaged(waferA, secA, waferB, secB)
+function render_montaged(waferA, secA, waferB, secB, render_full=false, review_matches=false)
   indexA = (waferA, secA, -2, -2)
   indexB = (waferB, secB, -2, -2)
   for index in get_index_range(indexA, indexB)
@@ -57,15 +57,20 @@ function render_montaged(waferA, secA, waferB, secB)
     imgs = [x[1][1] for x in warps];
     offsets = [x[1][2] for x in warps];
     indices = [x[2] for x in warps];
-    # img, offset = merge_images(imgs, offsets)
-    # img = grayim(img)
-    # img["spatialorder"] = ["y","x"]
-    # println("Writing ", new_fn)
-    # @time imwrite(img, joinpath(MONTAGED_DIR, new_fn))
-    # update_offsets((index[1:2]...,-2,-2), [0,0], size(img))
+    if render_full
+      img, offset = merge_images(imgs, offsets)
+      img = grayim(img)
+      img["spatialorder"] = ["y","x"]
+      println("Writing ", new_fn)
+      @time imwrite(img, joinpath(MONTAGED_DIR, new_fn))
+      update_offsets((index[1:2]...,-2,-2), [0,0], size(img))
+    end
     # review images
-    write_seams(imgs, offsets, indices)
-    # write_seams_with_matches(meshset, imgs, offsets, indices)
+    if review_matches
+      write_seams_with_matches(meshset, imgs, offsets, indices)
+    else
+      write_seams(imgs, offsets, indices)
+    end
   end
 end
 
