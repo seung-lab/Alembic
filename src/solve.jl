@@ -271,8 +271,11 @@ function stats(Ms::MeshSet)
    sig_t = std(res_norm_t)
    max_t = maximum(res_norm_t)
 
+   println("Statistics: ###")
+   println("Total number of matched points: $(Ms.m_e) across $(Ms.M) Matches between $(Ms.N) Meshes\n")
    println("Residuals before solving: rms: $rms,  mean: $avg, sigma = $sig, max = $max\n")
    println("Residuals after solving: rms: $rms_t,  mean: $avg_t, sigma = $sig_t, max = $max_t\n")
+   println("###")
 end
 
 function decomp_affine(tform::Array{Float64, 2})
