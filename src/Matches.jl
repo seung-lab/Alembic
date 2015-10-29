@@ -39,13 +39,13 @@ function review_match_log(Ms, k)
        view(imfilter_LoG(o1 - o2, 5), pixelspacing = [1, 1]);
   end
 
-function get_range(A, B, pt, Am_disp, Bm_disp, block_size, search_r)
+function get_range(A, B, pt, Am_offset, Bm_offset, block_size, search_r)
 	# convert to local coordinates in both Am and Bm
-  	pt_A = pt - Am_disp;
+  	pt_A = pt - Am_offset;
   	i_A = round(Int64, ceil(pt_A[1]))
   	j_A = round(Int64, ceil(pt_A[2]))
 
-  	pt_B = pt - Bm_disp;
+  	pt_B = pt - Bm_offset;
   	i_B = round(Int64, ceil(pt_B[1]))
   	j_B = round(Int64, ceil(pt_B[2]))
 
@@ -76,10 +76,10 @@ function get_range(A, B, pt, Am_disp, Bm_disp, block_size, search_r)
 		return range_A, range_B, [0, 0];
 	end
 
-	offset_i = median(i_int_B) + Bm_disp[1] - (median(i_int_A) + Am_disp[1]);
-	offset_j = median(j_int_B) + Bm_disp[2] - (median(j_int_A) + Am_disp[2]);
+	block_offset_i = median(i_int_B) + Bm_offset[1] - (median(i_int_A) + Am_offset[1]);
+	block_offset_j = median(j_int_B) + Bm_offset[2] - (median(j_int_A) + Am_offset[2]);
 
-	return range_A, range_B, [offset_i, offset_j];
+	return range_A, range_B, [block_offset_i, block_offset_j];
 end
 
 function get_max_xc_vector(A, B)
@@ -177,7 +177,7 @@ function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict)
   # preprocessing
   for idx in 1:n_upperbound
     pt = Am.nodes[idx]
-    src_ranges[idx], dst_ranges[idx], range_offsets[idx] = get_range(A, B, pt, Am.disp, Bm.disp, block_size, search_r)
+    src_ranges[idx], dst_ranges[idx], range_offsets[idx] = get_range(A, B, pt, Am.offset, Bm.offset, block_size, search_r)
   end
   
   A_im_array = Array{Array{Float64, 2}, 1}(0)
@@ -244,7 +244,7 @@ function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict)
           if params["write_blockmatches"]
             matched_range = get_range(B, 
                                   Am.nodes[idx]+(disp_vectors_raw[idx])[1:2]-range_offsets[idx], 
-                                  Bm.disp, 
+                                  Bm.offset, 
                                   block_size)
             matched_im = B[matched_range[1], matched_range[2]]
             xc_im_array[idx] = (max_vect_xc[2] .+ 1)./ 2

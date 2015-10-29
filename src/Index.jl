@@ -39,9 +39,22 @@ function get_params(index::Index)
   return params;
 end
 
-function find_in_registry(index::Index)
+function find_in_registry(index)
   registry = get_registry(index);
   return findfirst(registry[:,2], index);
+end
+
+function get_metadata(index)
+  registry = get_registry(index);
+  return registry[find_in_registry(index), :];
+end
+
+function get_offset(metadata)
+	return metadata[3:4];
+end
+
+function get_size(metadata)
+	return metadata[5:6];
 end
 
 function find_preceding(index::Index)

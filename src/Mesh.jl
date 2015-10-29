@@ -1,88 +1,70 @@
-#using Julimaps
-#using Images
-#importall IO
-
 type Mesh
-	name::String;						# name of the image file
+	index							# any sort of index associated with the mesh - by default a 4-tuple
 
-	index::Index						# wafer, section, tile index of the mesh				tileIndex = 0 if the tile is a whole section
-	disp::Point						# displacement of the tile within the section, y, x			(0, 0) if the tile starts at the top left corner
-
-	dims::Pairing				 		# mesh dimensions in terms of nodes in the i direction, j direction. 	(0, 0) if the mesh is not a regular mesh
-	offsets::Point				                # mesh offset in terms of the top left, from the image. 		[0; 0] if the mesh is not a regular mesh
-	dists::Point				                # mesh distance in each direction. 					[0; 0] if the mesh is not a regular mesh
-
-	n::Int64 						# number of nodes in the mesh
-	m::Int64	 					# number of edges in the mesh
-
-	nodes::Points						# 2-by-n dense matrix of nodes, each column stores [i-coordinate, j-coordinate] in global coordinates
-	nodes_t::Points			 			# 2-by-n dense matrix of nodes after transformation, in the same order as nodes - by default same as nodes
-	nodes_fixed::BinaryProperty				# 1-by-n dense vector of nodes that denote whether points are fixed
+	# all coordinates are taken with the image associated with the mesh having its left top corner at (0, 0) 
+	src_nodes::Points					# nodes as array of [i, j] coordinates, sorted in i, j order
+	dst_nodes::Points		 			# in the same order as src_nodes, after some transformation
 
 	edges::Edges				                # n-by-m sparse incidence matrix, each column is zero except at two elements with value -1 and 1
-	edge_lengths::FloatProperty	  			# 1-by-m dense vector of floats that stores the rest lengths.
-	edge_coeffs::FloatProperty	   			# 1-by-m dense vector of floats that stores the spring coefficients.
 end
-
-Mesh() = Mesh("", (0,0,0,0), [0,0], (0,0), [0,0], [0,0], 0, 0, [], [], [], spzeros(0,0), [], [])
-Mesh(index::Index) = Mesh(get_name(index), index, [0,0], (0,0), [0,0], [0,0], 0, 0, [], [], [], spzeros(0,0), [], [])
-Mesh(name::String) = Mesh(name, parse_name(name), [0,0], (0,0), [0,0], [0,0], 0, 0, [], [], [], spzeros(0,0), [], [])
-
+	     
 ### IO EXTENSIONS
-function get_path(mesh::Mesh)
-	return get_path(mesh.name);
+function get_path(mesh::Mesh)			return get_path(mesh.index);		end
+
+function get_image(mesh::Mesh, dtype = UInt8)	return get_image(mesh.index, dtype);	end
+
+function get_num_nodes(mesh::Mesh)		return size(mesh.src_nodes[1]);		end
+
+function get_num_edges(mesh::Mesh)		return size(mesh.edges[2]);		end
+
+function get_topleft_offset(mesh::Mesh)		return mesh.src_nodes[1];		end
+
+function get_dims_and_dists(mesh::Mesh)
+	n = get_num_nodes(mesh);
+
+	i_dist = 0;
+	j_dist = mesh.src_nodes[2][2] - mesh.src_nodes[1][2];
+	j_dim = 0;
+
+	# calculate j-dim by iterating until i changes
+	for ind in 2:get_num_nodes(mesh)
+		i_dif = mesh.src_nodes[ind][1] - mesh.src_nodes[ind-1][1]
+		if i_dif == 0 j_dim = ind;
+		else i_dist = i_dif; break;
+		end
+	end
+
+	i_dim = convert(Int64, 1 + (src_nodes[get_num_nodes(mesh)][1] - src_nodes[1][1]) / i_dist);
+	return (i_dim, j_dim), [i_dist, j_dist];
 end
 
-function get_float_image(mesh::Mesh)
-	return get_float_image(get_path(mesh.index));
-end
+function Mesh(index)
+	params = get_params(index);
+	meta = get_metadata(index);
+	
+	# mesh lengths in each dimension
+	dists = [params["mesh_length"] * sin(pi / 3); params["mesh_length"]];
 
-function get_float_image(index::Index)
-	return get_float_image(get_path(index));
-end
+	# dimensions of the mesh as a rectangular grid, maximal in each dimension
+	# e.g. a mesh with 5-4-5-4-5-4-5-4 nodes in each row will have dims = (8, 5)
+	# 1 is added because of 1-indexing (in length)
+	# 2 is added to pad the mesh to extend it beyond by one meshpoint in each direction
+	dims = div(get_offsets(meta), dists) + 1 + 2;
 
-function get_ufixed8_image(index::Index)
-	return get_ufixed8_image(get_path(index))
-end
-
-function get_ufixed8_image(mesh::Mesh)
-	return get_ufixed8_image(get_path(mesh.index))
-end
-
-function get_uint8_image(mesh::Mesh)
-	return get_uint8_image(get_path(mesh.index))
-end
-
-function get_image(mesh::Mesh)
-	return get_image(mesh.name);
-end
-
-function get_h5_image(mesh::Mesh)
-	return get_h5_image(get_h5_path(mesh.index))
-end
-
-function Mesh(name, size_i, size_j, index, dy, dx, tile_fixed::Bool, mesh_length::Int64, mesh_coeff::Float64)
-	(Ai, Aj) = (size_i,size_j);
-
-	dists = [mesh_length * sin(pi / 3); mesh_length];
-#	dims = (convert(Int64, div(Ai, dists[1]) + 1), convert(Int64, div(Aj, dists[2]) + 1));
-	dims = (convert(Int64, div(Ai, dists[1]) + 1 + 2), convert(Int64, div(Aj, dists[2]) + 1 + 2));
- 	offsets = [rem(Ai, dists[1])/2 - dists[1]; rem(Aj, dists[2])/2 - dists[2]];
-	disp = [dy; dx];
+	# location of the first node (top left)
+	# TODO: Julia does not support rem() for two arrays, so divrem() cannot be used
+	topleft_offset = (get_offsets(meta) .% dists) / 2 - dists;
 
 	n = maximum([get_mesh_index(dims, dims[1], dims[2]); get_mesh_index(dims, dims[1], dims[2]-1)]);
 	m = 0;
 	m_upperbound = 3 * n;
 
-	nodes = Points(n);
-	nodes_fixed = BinaryProperty(n); nodes_fixed[:] = tile_fixed;
+	src_nodes = Points(n);
 	edges = spzeros(Float64, n, m_upperbound);
-	edge_lengths = FloatProperty(m_upperbound); edge_lengths[:] = convert(Float64, mesh_length);
-	edge_coeffs = FloatProperty(m_upperbound); edge_coeffs[:] = convert(Float64, mesh_coeff);
 
 	for i in 1:dims[1], j in 1:dims[2]
 		k = get_mesh_index(dims, i, j); if k == 0 continue; end
-		nodes[k] = get_mesh_coord(dims, disp+offsets, dists, i, j);
+		src_nodes[k] = get_mesh_coord(dims, topleft_offset, dists, i, j);
 		if (j != 1)
 			m += 1;	edges[k, m] = -1; edges[get_mesh_index(dims, i, j-1), m] = 1;
 		end
@@ -99,41 +81,14 @@ function Mesh(name, size_i, size_j, index, dy, dx, tile_fixed::Bool, mesh_length
 			end
 			if isodd(i) && ((j == 1) || (j == dims[2]))
 				m += 1; edges[k, m] = -1; edges[get_mesh_index(dims, i-2, j), m] = 1;
-				edge_lengths[m] = 2 * dists[1];
 			end
 		end
 	end
 
 	edges = edges[:, 1:m];
-	edge_lengths = edge_lengths[1:m];
-	edge_coeffs = edge_coeffs[1:m];
+	dst_nodes = copy(src_nodes);
 
-	return Mesh(name, index, disp, dims, offsets, dists, n, m, nodes, nodes, nodes_fixed, edges, edge_lengths, edge_coeffs);
-end
-
-
-# Mesh
-function Mesh(name, image::Array{UInt8, 2}, index::Index, dy, dx, tile_fixed, mesh_length, mesh_coeff::Float64)
-	(size_i, size_j) = size(image);
-	return Mesh(name, size_i, size_j, index, dy, dx, tile_fixed::Float64, mesh_length, mesh_coeff::Float64);
-end
-
-function Mesh(name, index::Index, dy, dx, tile_fixed, mesh_length::Float64, mesh_coeff::Float64)
-	image = get_image(get_path(name));
-	return Mesh(name, image, index, dy, dx, tile_fixed, mesh_length, mesh_coeff)
-end
-
-function Mesh(name, size_i, size_j, index, dy, dx, tile_fixed, params::Dict)
-	return Mesh(name, size_i, size_j, index, dy, dx, tile_fixed, params["mesh_length"], params["mesh_coeff"])
-end
-
-function Mesh(name, size, index::Index, dy, dx, tile_fixed, params::Dict)
-	return Mesh(name, size, size, index, dy, dx, tile_fixed, params["mesh_length"], params["mesh_coeff"])
-end
-
-function Mesh(name, image::Array{UInt8, 2}, index::Index, dy, dx, tile_fixed, params::Dict)
-	(size_i, size_j) = size(image);
-	Mesh(name, size_i::Int64, size_j::Int64, index, dy, dx, tile_fixed, params["mesh_length"], params["mesh_coeff"])
+	return Mesh(index, src_nodes, dst_nodes, edges);
 end
 
 
@@ -165,11 +120,11 @@ end
 
 
 # find the triangular mesh indices for a given point in A
-function find_mesh_triangle(Am, i, j)
+function find_mesh_triangle(Am, i, j, offsets = Void, dists = Void)
 
 	# convert to A's local coordinates, and displace by the mesh offset
-	Ai = i - Am.disp[1] - Am.offsets[1];
-	Aj = j - Am.disp[2] - Am.offsets[2];
+	Ai = i - Am.offset[1] - Am.offsets[1];
+	Aj = j - Am.offset[2] - Am.offsets[2];
 
 	# find which rows the point belongs to
 	i0 = round(Int64, Ai / Am.dists[1] + 1);
@@ -260,3 +215,4 @@ function get_triangle_weights(Am, triangle, pi, pj)
 
 	return (V[1], V[2], V[3]);
 end
+
