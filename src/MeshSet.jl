@@ -330,13 +330,16 @@ function affine_load_section_pair(src_index, dst_index)
  
   dst_scaled = imscale(dst_image, SCALING_FACTOR_TRANSLATE)[1]; 
   src_scaled = imscale(src_image, SCALING_FACTOR_TRANSLATE)[1]; 
-  
-  src_cropped = crop_center(src_scaled, 0.66);
 
-  offset_vect, xc = get_max_xc_vector(src_cropped, dst_scaled);
+  src_cropped = crop_center(src_scaled, 0.33);
+  dst_cropped = crop_center(dst_scaled, 0.66);
+  offset_vect, xc = get_max_xc_vector(src_cropped, dst_cropped);
 
   offset_unscaled = round(Int64, offset_vect[1:2] / SCALING_FACTOR_TRANSLATE);
 
+  view(xc * 40);
+
+  println(offset_vect[1:2]);
   println("Offsets from scaled blockmatches: $offset_unscaled");
   println("r: $(offset_vect[3])");
   update_offsets(name_src, offset_unscaled); 
