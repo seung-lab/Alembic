@@ -9,12 +9,13 @@
 
 """ 
 function merge_images(imgs, offsets)
+    T = typeof(imgs[1][1])
     bbs = []
     for (img, offset) in zip(imgs, offsets)
         push!(bbs, BoundingBox(offset..., size(img)...))
     end
     global_ref = sum(bbs)
-    merged_img = zeros(global_ref.h, global_ref.w)
+    merged_img = zeros(T, global_ref.h, global_ref.w)
     for (idx, (img, bb)) in enumerate(zip(imgs, bbs))
         println("Merging tile ", idx)
         i = bb.i - global_ref.i+1
@@ -25,6 +26,13 @@ function merge_images(imgs, offsets)
         imgs[idx] = 0
     end
     return merged_img, [global_ref.i, global_ref.j]
+end
+
+"""
+`UINT32OVERLAY` - Fuse two UInt8 images together forming UInt32 image for color
+"""
+function uint32overlay(A::Array{UInt8,2}, B::Array{UInt8,2})
+    return convert(Array{UInt32,2},A) .<< 16 + convert(Array{UInt32,2},B) .<< 8
 end
 
 """
@@ -72,12 +80,41 @@ function imfuse(A, offset_A, B, offset_B)
     elseif szC[2] < 0
         B = padimage(B, 0, 0, -szC[2], 0)
     end
-    O = Overlay((A,B), (RGB(1,0,0), RGB(0,1,0)))
-    #O = Overlay((A,B), (RGB(1.,0.,0.), RGB(0.,0.6,0.)))
+    O = uint32overlay(A, B)
+    # O = Overlay((A,B), (RGB(1,0,0), RGB(0,1,0)))
     BB_O = min(offset_A, offset_B)
     # return O[1:end, 1:end], BB_O
     return O, BB_O
 end
+
+# """
+# `IMFUSE` - Overlay two images on top of each other using their offsets. Colors 
+# one image red, the other green, and the overlap yellow.
+# Uses rounded interpolation.
+
+# Args:
+
+# * A: image A (2D array)
+# * offset_A: 2-element array for global position of image A
+# * B: image B (2D array)
+# * offset_B: 2-element array for global position of image A
+
+# Returns:
+
+# * O: Image object combining both image A & B
+
+#     `imfuse(A, offset_A, B, offset_B)`
+# """
+# function imfuse(A::Array{UInt8,2}, offset_A, B::Array{UInt8,2}, offset_B)
+#     # pad to common origin
+#     bbA = BoundingBox(offset_A..., size(A)...)
+#     bbB = BoundingBox(offset_B..., size(B)...)
+#     bbO = bbA + bbB
+#     A = rescopeimage(A, offset_A, bbO)
+#     B = rescopeimage(B, offset_B, bbO)
+#     O = uint32overlay(A, B)
+#     return O, [bbO.i, bbO.j]
+# end
 
 """
 `PADIMAGE` - Specify image padding in each of four directions

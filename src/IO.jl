@@ -9,7 +9,7 @@ end
 
 function get_uint8_image(path::String)
   img = imread(path)
-  return reinterpret(UInt8, data(img)[:,:,1])
+  return reinterpret(UInt8, data(img)[:,:,1])'
 end
 
 function get_image(index::Index)
@@ -29,7 +29,7 @@ function get_h5_slice(path::String, slice)
 end
 
 function get_h5_image(path::String)
-  return convert(Array{Ufixed8}, h5read(path, "img"))
+  return h5read(path, "img")
 end
 
 # extensions:
