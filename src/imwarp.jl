@@ -146,9 +146,9 @@ function writepixel{T<:Ufixed8}(img::Array{T},i,j,pixelvalue)
     img[i,j]=pixelvalue
 end
 
-function writepixel{T<:UInt8}(img::Array{T},i,j,pixelvalue)
-    img[i,j]=pixelvalue
-end
+# function writepixel{T<:UInt8}(img::Array{T},i,j,pixelvalue)
+#     img[i,j]=pixelvalue
+# end
 
 # Not used - slow.
 function bilinear(img, x, y)

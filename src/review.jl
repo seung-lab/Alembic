@@ -29,9 +29,14 @@ function remove_matches_from_meshset!(meshset, indices_to_remove, match_index=1)
     meshset.m -= no_pts_removed
     meshset.m_e -= no_pts_removed
   end
-  if is_montaged(meshset.meshes[1].index)
-    affine_solve_meshset!(meshset)
+end
+
+function remove_match_dict_from_meshset!(meshset, match_dict)
+  for (key, val) in match_dict
+    remove_matches_from_meshset!(meshset, val, key)
   end
+  @time solve_meshset!(meshset)
+  save(meshset)
 end
 
 """
@@ -540,17 +545,56 @@ function find_matches_index(meshset, indexA, indexB)
   return matches_index
 end
 
-function get_match_vectors(meshset, indexA, indexB, offset=[0,0])
-  vectors = []
-  offset = collect((offset..., 0))
+function adjust_points_list_by_offset(points, offset)
+  for k in 1:length(points)
+    points[k] -= offset
+  end
+  return points
+end
+
+
+function transform_point(pt, tform)
+  return ([pt..., 1]'*tform)[1:2]
+end
+
+function scale_matches(pts, scale)
+  return [x*scale for x in pts]
+end
+
+function transform_matches(pts, tform)
+  return [transform_point(x, tform) for x in pts]
+end
+
+function offset_matches(src_pts, dst_pts, offset)
+  src_pts = [x - offset for x in src_pts]
+  dst_pts = [x - offset for x in dst_pts]
+  return src_pts, dst_pts
+end
+
+function get_matches(meshset, indexA, indexB)
   match_no = find_matches_index(meshset, indexA, indexB)
   if match_no > 0
     src_pts, dst_pts = get_matched_points_t(meshset, match_no)
-    src_pts = points_to_Nx3_matrix(src_pts) .- offset'
-    dst_pts = points_to_Nx3_matrix(dst_pts) .- offset'
-    vectors = [src_pts[:,1:2]'; dst_pts[:,1:2]']
   end
-  return vectors
+  return src_pts, dst_pts
+end
+
+
+function write_thumbnail(img, path, vectors, colors, match_nums, factor=1.0)
+  tf = 1.0
+  vf = 1.0
+  pf = 1.0
+  surface = create_drawing(img')
+  ctx = create_contex(surface)
+  for (k, (vector, color, idx))  in enumerate(zip(vectors, colors, match_nums))
+    draw_vectors(ctx, zip(vector...), color*vf, factor)
+    draw_points(ctx, vector[1], color*pf)
+    draw_indices(ctx, vector[1], [0,10], 22.0, color*tf)
+    draw_text(ctx, "#$idx", [50+(k-1)*30,10], [0,0], 28.0, color)
+  end
+  draw_reference(ctx, size(img)..., factor)
+  drawing = get_drawing(surface)
+  imwrite(reshape_seam(drawing), path)
 end
 
 """
@@ -568,92 +612,21 @@ function write_seams_with_matches(meshset, imgs, offsets, indices)
       bb = bbs[i] - bbs[j]
       path = get_outline_filename(indices[i], indices[j], "seam")
       img_cropped = imcrop(img, fuse_offset, bb)
-      imwrite(reshape_seam(img_cropped), path)
-      imgview = view(img_cropped, pixelspacing=[1,1])
+      # imwrite(reshape_seam(img_cropped), path)
       offset = [bb.i, bb.j]
-
-      vectorsA = get_match_vectors(meshset, indices[i], indices[j], offset)
-      vectorsB = get_match_vectors(meshset, indices[j], indices[i], offset)
-      # set_canvas_size(imgview[1], bb.w/2, bb.h/2)
-      factor = 200
-      if length(vectorsA) > 0
-        draw_vectors(imgview..., vectorsA, RGB(0,0,1), RGB(1,0,1), factor)
-        # draw_indices(imgview..., vectorsA[1:2,:], 14.0, [-8,-20])
-      end
-      if length(vectorsB) > 0
-        draw_vectors(imgview..., vectorsB, RGB(0,0,0.5), RGB(0.5,0,0.5), factor)
-        # draw_indices(imgview..., vectorsB[1:2,:], 14.0, [-8,-20])
-      end
-      draw_reference_vector(imgview..., factor, bb)
-      path = string(path[1:end-4], ".png")
-      write_canvas(imgview[1], path)
-      close_image(imgview[1])
+      vectorsA = get_matches(meshset, indices[i], indices[j])
+      vectorsB = get_matches(meshset, indices[j], indices[i])
+      vectorsA = offset_matches(vectorsA..., offset)
+      vectorsB = offset_matches(vectorsB..., offset)
+      matchij = find_matches_index(meshset, indices[i], indices[j])
+      matchji = find_matches_index(meshset, indices[j], indices[i])
+      vectors = (vectorsA, vectorsB)
+      match_nums = (matchij, matchji)
+      colors = ([0,0,0], [1,1,1])
+      factor = 100
+      write_thumbnail(img_cropped, path, vectors, colors, match_nums, factor)
     end
 end
-
-"""
-`IMFUSE_SECTION` - Stitch section with seam overlays.
-"""
-function imfuse_section(meshes, downsample=3)
-  img_reds = []
-  img_greens = []
-  bbs_reds = []
-  bbs_greens = []
-  # red_meshes = []
-  # green_meshes = []
-  for mesh in meshes
-    img, bb = meshwarp(mesh)
-    bb = BoundingBox(floor(Int,bb)..., size(img)[1], size(img)[2])
-    if downsample > 1
-      img = restrict(img)
-      bb = BoundingBox(floor(Int,bb/2)..., size(img)[1], size(img)[2])
-    end
-    if (mesh.index[3] + mesh.index[4]) % 2 == 1
-      # push!(red_meshes, mesh)
-      push!(img_reds, img)
-      push!(bbs_reds, bb)
-    else
-      # push!(green_meshes, mesh)
-      push!(img_greens, img)
-      push!(bbs_greens, bb)
-    end
-  end
-  # red_warps = pmap(meshwarp, red_meshes)
-  # red_imgs, offsets = ([[x[i] for x in warps] for i=1:2]...)
-  
-  # green_warps = pmap(meshwarp, green_meshes)
-  global_ref = snap_bb(sum(bbs_reds) + sum(bbs_greens))
-  red_img = zeros(Int(global_ref.h), Int(global_ref.w))
-  for (idx, (img, bb)) in enumerate(zip(img_reds, bbs_reds))
-      println(idx)
-      i = bb.i - global_ref.i+1
-      j = bb.j - global_ref.j+1
-      w = bb.w-1
-      h = bb.h-1
-      red_img[i:i+h, j:j+w] = max(red_img[i:i+h, j:j+w], img)
-      img_reds[idx] = 0
-      # gc()
-  end
-  green_img = zeros(Int(global_ref.h), Int(global_ref.w))
-  for (idx, (img, bb)) in enumerate(zip(img_greens, bbs_greens))
-      println(idx)
-      i = bb.i - global_ref.i+1
-      j = bb.j - global_ref.j+1
-      w = bb.w-1
-      h = bb.h-1
-      green_img[i:i+h, j:j+w] = max(green_img[i:i+h, j:j+w], img)
-      img_greens[idx] = 0
-      # gc()
-  end
-  O, O_bb = imfuse(red_img, [0,0], green_img, [0,0])
-  for i = 2:downsample
-      O = restrict(O)
-  end
-  if downsample == 0
-    O = O[1:end, 1:end]
-  end
-  return O
-end 
 
 """
 Load aligned meshset mesh nodes
@@ -866,14 +839,17 @@ end
 
 function get_outline_filename(src_index, dst_index, prefix="")
   dir = ALIGNED_DIR
-  fn = string(prefix, "_", indices2string(src_index, dst_index), ".png")
+  fn = string(prefix, "_", indices2string(src_index, dst_index), ".jpg")
   if is_premontaged(src_index)
     dir = MONTAGED_DIR
     ind = string(join(src_index, ","), "-", join(dst_index, ","))
-    fn = string(prefix, "_", ind, ".tif")
+    fn = string(prefix, "_", ind, ".jpg")
   elseif is_montaged(src_index)
     dir = PREALIGNED_DIR
-    fn = string(prefix, "_", indices2string(src_index, dst_index), ".png")
+    fn = string(prefix, "_", indices2string(src_index, dst_index), ".jpg")
+  elseif is_prealigned(src_index)
+    dir = PREALIGNED_DIR
+    fn = string(prefix, "_", indices2string(src_index, dst_index), ".jpg")
   end
   return joinpath(dir, "review", fn)
 end

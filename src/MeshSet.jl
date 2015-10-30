@@ -344,8 +344,8 @@ function affine_load_section_pair(src_index, dst_index)
 end
 
 function load_section_pair(Ms, a, b)
-  @time A_image = get_ufixed8_image(get_path(Ms.meshes[find_index(Ms,a)].name))
-  @time B_image = get_ufixed8_image(get_path(Ms.meshes[find_index(Ms,b)].name))
+  @time A_image = get_uint8_image(get_path(Ms.meshes[find_index(Ms,a)].name))
+  @time B_image = get_uint8_image(get_path(Ms.meshes[find_index(Ms,b)].name))
   return A_image, B_image; 
 end
 
@@ -371,8 +371,6 @@ function load_stack(offsets, wafer_num, section_range)
 
   return Ms, images
 end
-
-
 
 """
 Calculate the maximum bounding box of all the meshes in a meshset

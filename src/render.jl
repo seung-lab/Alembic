@@ -4,7 +4,7 @@ Multiple dispatch for imwarp on Mesh object
 function imwarp(meshset::MeshSet)
   # tform = recompute_affine(meshset)
   tform = affine_approximate(meshset)
-  img = get_ufixed8_image(meshset.meshes[2])
+  img = get_uint8_image(meshset.meshes[2])
   @time img, offset = imwarp(img, tform)
   return img, offset
 end
@@ -13,7 +13,7 @@ end
 Multiple dispatch for meshwarp on Mesh object
 """
 function meshwarp(mesh::Mesh)
-  @time img = get_ufixed8_image(mesh)
+  @time img = get_uint8_image(mesh)
   src_nodes = hcat(mesh.nodes...)'
   dst_nodes = hcat(mesh.nodes_t...)'
   offset = mesh.disp
@@ -38,14 +38,14 @@ end
 """
 Multiple dispatch so Dodam doesn't have to type sooo much
 """
-function render_montaged(wafer_no, section_no, render_full=false, review_matches=false)
-  render_montaged(wafer_no, section_no, wafer_no, section_no, render_full, review_matches)
+function render_montaged(wafer_no, section_no, render_full=false)
+  render_montaged(wafer_no, section_no, wafer_no, section_no, render_full)
 end
 
 """
 Cycle through JLD files in montaged directory and render montage
 """
-function render_montaged(waferA, secA, waferB, secB, render_full=false, review_matches=false)
+function render_montaged(waferA, secA, waferB, secB, render_full=false)
   indexA = (waferA, secA, -2, -2)
   indexB = (waferB, secB, -2, -2)
   for index in get_index_range(indexA, indexB)
@@ -57,19 +57,16 @@ function render_montaged(waferA, secA, waferB, secB, render_full=false, review_m
     imgs = [x[1][1] for x in warps];
     offsets = [x[1][2] for x in warps];
     indices = [x[2] for x in warps];
-    if render_full
-      img, offset = merge_images(imgs, offsets)
-      img = grayim(img)
-      img["spatialorder"] = ["y","x"]
-      println("Writing ", new_fn)
-      @time imwrite(img, joinpath(MONTAGED_DIR, new_fn))
-      update_offsets((index[1:2]...,-2,-2), [0,0], size(img))
-    end
     # review images
-    if review_matches
-      write_seams_with_matches(meshset, imgs, offsets, indices)
-    else
-      write_seams(imgs, offsets, indices)
+    # write_seams_with_matches(meshset, imgs, offsets, indices)
+    if render_full
+      println(typeof(imgs))
+      img, offset = merge_images(imgs, offsets)
+      println("Writing ", new_fn)
+      f = h5open(joinpath(MONTAGED_DIR, new_fn), "w")
+      @time f["img", "chunk", (1000,1000)] = img
+      close(f)
+      update_offsets((index[1:2]...,-2,-2), [0,0], size(img))
     end
   end
 end
@@ -86,8 +83,8 @@ function calculate_global_tform(index, dir=PREALIGNED_DIR)
       # tform = affine_approximate(meshset)
       offset = load_offset(indexB)
       translation = [1 0 0; 0 1 0; offset[1] offset[2] 1]
-      tform = translation*regularized_solve(meshset, lambda=0.9)
-      global_tform = global_tform*tform
+      tform = regularized_solve(meshset, lambda=0.9)
+      global_tform = global_tform*translation*tform
     end
   end
   return global_tform
@@ -102,31 +99,30 @@ function write_prealignment_thumbnail(moving_img, fixed_img, meshset, scale=0.05
   s = [scale 0 0; 0 scale 0; 0 0 1]
   moving_offset = collect(meshset.meshes[2].disp)
   tform = regularized_solve(meshset, lambda=0.9)
-  moving_nodes, fixed_nodes = get_matched_points_t(meshset, 1)
+  fixed["nodes"], moving["nodes"] = get_matched_points_t(meshset, 1)
   fixed["index"] = (meshset.meshes[1].index[1:2]..., -3, -3)
   moving["index"] = (meshset.meshes[2].index[1:2]..., -3, -3)
-  fixed["nodes"] = points_to_Nx3_matrix(fixed_nodes)
-  moving["nodes"] = points_to_Nx3_matrix(moving_nodes) #*tform
   fixed["thumb_fixed"], fixed["thumb_offset_fixed"] = imwarp(fixed_img, s)
   moving["thumb_moving"], moving["thumb_offset_moving"] = imwarp(moving_img, tform*s, moving_offset)
   fixed["scale"] = scale
   moving["scale"] = scale
-  write_thumbnail(fixed, moving)
+  write_thumbnail_from_dict(fixed, moving)
 end
 
 """
 Fuse and save thumbnail images
 """
-function write_thumbnail(A, B)
-  path = get_thumbnail_path(B["index"], A["index"])
+function write_thumbnail_from_dict(A, B)
+  path = get_outline_filename(B["index"], A["index"], "thumb")
   O, O_bb = imfuse(A["thumb_fixed"], A["thumb_offset_fixed"], 
                             B["thumb_moving"], B["thumb_offset_moving"])
-  moving_nodes = A["nodes"][:,1:2]'*A["scale"]
-  fixed_nodes = B["nodes"][:,1:2]'*B["scale"]
-  moving_nodes .-= O_bb
-  fixed_nodes .-= O_bb
-  vectors = [moving_nodes; fixed_nodes]
-  write_imageview(path, view_matches(O, vectors, 1.0)...)
+  vectorsA = scale_matches(A["nodes"], A["scale"])
+  vectorsB = scale_matches(B["nodes"], B["scale"])
+  vectors = (offset_matches(vectorsA, vectorsB, O_bb),)
+  match_nums = (1,)
+  colors = ([1,1,1],)
+  factor = 20
+  write_thumbnail(O, path, vectors, colors, match_nums, factor)
 end
 
 """
@@ -146,7 +142,7 @@ function stage_image(mesh, global_tform, tform, scale=0.05)
   s = [scale 0 0; 0 scale 0; 0 0 1]
   stage = Dict()
   stage["index"] = (mesh.index[1:2]..., -3, -3)
-  img = get_ufixed8_image(mesh)
+  img = get_uint8_image(mesh)
   offset = load_offset(stage["index"])
   println("tform: ", tform)
   println("montaged_offset: ", offset)
@@ -184,7 +180,7 @@ function render_prealigned(indexA, indexB)
     println("Writing ", new_fn)
     # @time imwrite(stage["img"], joinpath(dir, fn))
     f = h5open(joinpath(dir, new_fn), "w")
-    @time f["img", "chunk", (1000,1000)] = ufixed8_to_uint8(stage["img"])
+    @time f["img", "chunk", (1000,1000)] = ustage["img"]
     close(f)
   end
 
@@ -195,7 +191,7 @@ function render_prealigned(indexA, indexB)
     if k==1
       fixed = stage_image(meshset.meshes[1], global_tform, eye(3))
       if is_first_section(indexA)
-        save_image(fixed, dir, log_path)
+        # save_image(fixed, dir, log_path)
       end
     end
     offset = load_offset(indexB)
@@ -203,14 +199,11 @@ function render_prealigned(indexA, indexB)
     tform = regularized_solve(meshset, lambda=0.9)
     # tform = affine_approximate(meshset)
     moving = stage_image(meshset.meshes[2], global_tform, tform)
-    save_image(moving, dir, log_path)
-    moving_nodes, fixed_nodes = get_matched_points(meshset, 1)
-    fixed["nodes"] = points_to_Nx3_matrix(fixed_nodes)
-    moving["nodes"] = points_to_Nx3_matrix(moving_nodes)*tform
-    write_thumbnail(fixed, moving)
-    fixed = 0
+    # save_image(moving, dir, log_path)
+    moving["nodes"], fixed["nodes"] = get_matched_points(meshset, 1)
+    moving["nodes"] = transform_matches(moving["nodes"], tform)
+    write_thumbnail_from_dict(fixed, moving)
     fixed = moving
-    moving = 0
     global_tform = global_tform*translation*tform
   end
 end
@@ -246,7 +239,7 @@ function render_aligned(indexA, indexB, start=1, finish=0)
       println("Writing ", mesh.name)
       new_fn = string(join(mesh.index[1:2], ","), "_aligned.h5")
       f = h5open(joinpath(dir, new_fn), "w")
-      @time f["img", "chunk", (1000,1000)] = ufixed8_to_uint8(img)
+      @time f["img", "chunk", (1000,1000)] = img
       close(f)
       # @time imwrite(img, joinpath(dir, new_fn))
       img, _ = imwarp(img, s)
