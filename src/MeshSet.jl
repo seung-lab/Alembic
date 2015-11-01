@@ -77,7 +77,7 @@ function add_matches(M, Ms)
   Ms.m_e += M.n
   return
 end
-# JLD SAVE
+#= JLD SAVE
 function save(filename::String, Ms::MeshSet)
   println("Saving meshset to ", filename)
   jldopen(filename, "w") do file
@@ -100,7 +100,8 @@ function save(Ms::MeshSet)
 
   save(filename, Ms);
 end
-#=
+=#
+
 # JLS SAVE
 function save(filename::String, Ms::MeshSet)
   println("Saving meshset to ", filename)
@@ -125,7 +126,6 @@ function save(Ms::MeshSet)
   save(filename, Ms);
 end
 
-=#
 """
 Load montaged meshset for given wafer and section
 
@@ -156,13 +156,18 @@ function load(firstindex::Index, lastindex::Index)
   if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex))
     filename = joinpath(PREALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned.jld"))
   elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex))
-    filename = joinpath(ALIGNED_DIR, string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned.jld"))
+    filename = joinpath(ALIGNED_DIR, string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned.jls"))
+
   else 
     filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "_montaged.jld"))
   end
 
   println("Loading meshset from", filename)
-  return load(filename)
+  #return load(filename)
+  open(filename, "r") do file
+    Ms = deserialize(file);
+	return Ms;
+  end
   end
 
 function load(filename::String)
@@ -347,8 +352,8 @@ function affine_load_section_pair(src_index, dst_index)
 end
 
 function load_section_pair(Ms, a, b)
-  @time A_image = get_uint8_image(get_path(Ms.meshes[find_index(Ms,a)].name))
-  @time B_image = get_uint8_image(get_path(Ms.meshes[find_index(Ms,b)].name))
+  @time A_image = get_h5_image(get_h5_path(Ms.meshes[find_index(Ms,a)].index))
+  @time B_image = get_h5_image(get_h5_path(Ms.meshes[find_index(Ms,b)].index))
   return A_image, B_image; 
 end
 

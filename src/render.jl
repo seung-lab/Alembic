@@ -180,7 +180,7 @@ function render_prealigned(indexA, indexB)
     println("Writing ", new_fn)
     # @time imwrite(stage["img"], joinpath(dir, fn))
     f = h5open(joinpath(dir, new_fn), "w")
-    @time f["img", "chunk", (1000,1000)] = ustage["img"]
+    @time f["img", "chunk", (1000,1000)] = stage["img"]
     close(f)
   end
 
@@ -199,10 +199,10 @@ function render_prealigned(indexA, indexB)
     tform = regularized_solve(meshset, lambda=0.9)
     # tform = affine_approximate(meshset)
     moving = stage_image(meshset.meshes[2], global_tform, tform)
-    # save_image(moving, dir, log_path)
+    save_image(moving, dir, log_path)
     moving["nodes"], fixed["nodes"] = get_matched_points(meshset, 1)
     moving["nodes"] = transform_matches(moving["nodes"], tform)
-    write_thumbnail_from_dict(fixed, moving)
+   # write_thumbnail_from_dict(fixed, moving)
     fixed = moving
     global_tform = global_tform*translation*tform
   end
