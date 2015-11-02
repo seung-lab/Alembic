@@ -56,6 +56,7 @@ using ImageRegistration
 include("Params.jl")
 include("IO.jl")
 include("Params_session.jl")
+include("convolve.jl")
 include("Mesh.jl")
 include("Index.jl")
 include("Matches.jl")
