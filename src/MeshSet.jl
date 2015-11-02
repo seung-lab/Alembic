@@ -100,8 +100,8 @@ function save(Ms::MeshSet)
 
   save(filename, Ms);
 end
-#=
-# JLS SAVE
+#= JLS SAVE
+>>>>>>> Stashed changes
 function save(filename::String, Ms::MeshSet)
   println("Saving meshset to ", filename)
   open(filename, "w") do file
@@ -124,7 +124,6 @@ function save(Ms::MeshSet)
 
   save(filename, Ms);
 end
-
 =#
 """
 Load montaged meshset for given wafer and section
@@ -221,7 +220,7 @@ function add_pair_matches_with_thumbnails!(meshset, src, dst, images = Void)
   dst_mesh = meshset.meshes[find_index(meshset, dst)]
   matches = calculate_matches(images..., src_mesh, dst_mesh, meshset.params)
   add_matches(matches, meshset)  
-  write_prealignment_thumbnail(images..., meshset)
+  #write_prealignment_thumbnail(images..., meshset)
 end
 
 function calculate_matches(src_img, dst_img, src_mesh, dst_mesh, params)
