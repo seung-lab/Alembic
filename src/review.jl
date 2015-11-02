@@ -573,7 +573,7 @@ function write_thumbnail(img, path, vectors, colors, match_nums, factor=1.0)
   end
   draw_reference(ctx, size(img)..., factor)
   drawing = get_drawing(surface)
-  imwrite(reshape_seam(drawing), path)
+  Images.save(path, reshape_seam(drawing))
 end
 
 """

@@ -88,7 +88,8 @@ function write_prealignment_thumbnail(moving_img, fixed_img, meshset, scale=0.05
   s = [scale 0 0; 0 scale 0; 0 0 1]
   moving_offset = collect(meshset.meshes[2].disp)
   tform = regularized_solve(meshset, lambda=0.9)
-  fixed["nodes"], moving["nodes"] = get_matched_points_t(meshset, 1)
+  moving["nodes"], fixed["nodes"] = get_matched_points(meshset, 1)
+  moving["nodes"] = transform_matches(moving["nodes"], tform)
   fixed["index"] = (meshset.meshes[1].index[1:2]..., -3, -3)
   moving["index"] = (meshset.meshes[2].index[1:2]..., -3, -3)
   fixed["thumb_fixed"], fixed["thumb_offset_fixed"] = imwarp(fixed_img, s)
@@ -112,7 +113,6 @@ function write_thumbnail_from_dict(A, B)
   match_nums = (1,)
   colors = ([1,1,1],)
   factor = 20
-  println("Write thumbanil ", path)
   write_thumbnail(O, path, vectors, colors, match_nums, factor)
 end
 
