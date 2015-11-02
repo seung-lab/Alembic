@@ -101,7 +101,6 @@ function save(Ms::MeshSet)
   save(filename, Ms);
 end
 #= JLS SAVE
->>>>>>> Stashed changes
 function save(filename::String, Ms::MeshSet)
   println("Saving meshset to ", filename)
   open(filename, "w") do file
