@@ -181,7 +181,7 @@ function render_prealigned(waferA, secA, waferB, secB)
     println("Writing ", new_fn)
     # @time imwrite(stage["img"], joinpath(dir, fn))
     f = h5open(joinpath(dir, new_fn), "w")
-    @time f["img", "chunk", (1000,1000)] = ustage["img"]
+    @time f["img", "chunk", (1000,1000)] = stage["img"]
     close(f)
   end
 
@@ -204,7 +204,7 @@ function render_prealigned(waferA, secA, waferB, secB)
     # save_image(moving, dir, log_path)
     moving["nodes"], fixed["nodes"] = get_matched_points(meshset, 1)
     moving["nodes"] = transform_matches(moving["nodes"], tform)
-    write_thumbnail_from_dict(fixed, moving)
+   # write_thumbnail_from_dict(fixed, moving)
     fixed = moving
     cumulative_tform = cumulative_tform*tform
   end
