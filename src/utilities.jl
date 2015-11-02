@@ -55,7 +55,7 @@ function update_offsets(index::Index, offset, sz=[0, 0])
 
   image_fn = string(get_name(index));
 
-  println("Updating offsets for ", image_fn, " in ", offsets_fp)
+  println("Updating offsets for ", image_fn, " in:\n", offsets_fp)
 
   if !isfile(offsets_fp)
     f = open(offsets_fp, "w")

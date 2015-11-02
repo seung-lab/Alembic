@@ -161,8 +161,8 @@ function load(firstindex::Index, lastindex::Index)
     filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "_montaged.jld"))
   end
   println("Loading meshset from ", filename)
-  return load(filename)
-  # return open(deserialize, filename)
+  # return load(filename)
+  return open(deserialize, filename)
 end
 
 function load(filename::String)

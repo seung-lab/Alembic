@@ -216,7 +216,7 @@ global PREALIGNED_OFFSETS = parse_offsets(prealigned_offsets_path)
 aligned_offsets_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, aligned_dir_path, aligned_offsets_filename)
 global ALIGNED_OFFSETS = parse_offsets(aligned_offsets_path)
 
-global GLOBAL_BB = BoundingBox(0,0,36000,36000)
+# global GLOBAL_BB = BoundingBox(-4000,-4000,36000,36000)
 
 show_plot = false
 num_procs = nprocs()

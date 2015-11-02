@@ -1,14 +1,3 @@
-# """
-# imwarp on Mesh object
-# """
-# function imwarp_mesh(meshset::MeshSet)
-#   # tform = recompute_affine(meshset)
-#   tform = affine_approximate(meshset)
-#   img = get_uint8_image(meshset.meshes[2])
-#   @time img, offset = imwarp(img, tform)
-#   return img, offset
-# end
-
 """
 Multiple dispatch for meshwarp on Mesh object
 """
@@ -17,8 +6,8 @@ function meshwarp_mesh(mesh::Mesh)
   src_nodes = hcat(mesh.nodes...)'
   dst_nodes = hcat(mesh.nodes_t...)'
   offset = mesh.disp
-  node_dict = incidence2dict(mesh.edges)
-  triangles = dict2triangles(node_dict)
+  node_dict = incidence_to_dict(mesh.edges)
+  triangles = dict_to_triangles(node_dict)
   return @time meshwarp(img, src_nodes, dst_nodes, triangles, offset), mesh.index
 end
 
@@ -30,8 +19,8 @@ function meshwarp_h5(mesh::Mesh)
   src_nodes = hcat(mesh.nodes...)'
   dst_nodes = hcat(mesh.nodes_t...)'
   offset = mesh.disp
-  node_dict = incidence2dict(mesh.edges)
-  triangles = dict2triangles(node_dict)
+  node_dict = incidence_to_dict(mesh.edges)
+  triangles = dict_to_triangles(node_dict)
   return @time meshwarp(img, src_nodes, dst_nodes, triangles, offset)
 end  
 
@@ -58,7 +47,7 @@ function render_montaged(waferA, secA, waferB, secB, render_full=false)
     offsets = [x[1][2] for x in warps];
     indices = [x[2] for x in warps];
     # review images
-    # write_seams_with_matches(meshset, imgs, offsets, indices)
+    write_seams(meshset, imgs, offsets, indices)
     if render_full
       println(typeof(imgs))
       img, offset = merge_images(imgs, offsets)
@@ -128,16 +117,6 @@ function write_thumbnail_from_dict(A, B)
 end
 
 """
-Write thumbnail image, with whatever drawings included
-"""
-function write_imageview(path, imgc, img2)
-  println("Writing ", path)
-  write_canvas(imgc, path)
-  close_image(imgc)
-end
-
-
-"""
 Return Dictionary of staged image to remove redundancy in loading
 """
 function stage_image(mesh, cumulative_tform, tform, scale=0.05)
@@ -178,7 +157,7 @@ function render_prealigned(waferA, secA, waferB, secB)
   function save_image(stage, dir, log_path)
     new_fn = string(join(stage["index"][1:2], ","), "_prealigned.h5")
     update_offsets(stage["index"], stage["offset"], size(stage["img"]))
-    println("Writing ", new_fn)
+    println("Writing image:\n", new_fn)
     # @time imwrite(stage["img"], joinpath(dir, fn))
     f = h5open(joinpath(dir, new_fn), "w")
     @time f["img", "chunk", (1000,1000)] = stage["img"]
@@ -204,7 +183,7 @@ function render_prealigned(waferA, secA, waferB, secB)
     # save_image(moving, dir, log_path)
     moving["nodes"], fixed["nodes"] = get_matched_points(meshset, 1)
     moving["nodes"] = transform_matches(moving["nodes"], tform)
-   # write_thumbnail_from_dict(fixed, moving)
+    # write_thumbnail_from_dict(fixed, moving)
     fixed = moving
     cumulative_tform = cumulative_tform*tform
   end
@@ -217,7 +196,7 @@ function render_aligned(waferA, secA, waferB, secB, start=1, finish=0)
   indexA = (waferA, secA, -3, -3)
   indexB = (waferB, secB, -3, -3)
   dir = ALIGNED_DIR
-  scale = 0.02
+  scale = 0.05
   s = [scale 0 0; 0 scale 0; 0 0 1]
 
   # Log file for image offsets
@@ -247,7 +226,6 @@ function render_aligned(waferA, secA, waferB, secB, start=1, finish=0)
       close(f)
       # @time imwrite(img, joinpath(dir, new_fn))
       img, _ = imwarp(img, s)
-
       # Log image offsets
       update_offsets(index, offset, size(img))
       # end
@@ -265,24 +243,23 @@ function render_aligned(waferA, secA, waferB, secB, start=1, finish=0)
       dst_mesh = meshset.meshes[find_index(meshset, dst_index)]
 
       src_nodes, dst_nodes = get_matched_points_t(meshset, k)
-      src_index = (src_index[1:2]..., src_index[3]-1, src_index[4]-1)
-      dst_index = (dst_index[1:2]..., dst_index[3]-1, dst_index[4]-1)
-      src_offset = [GLOBAL_BB.i, GLOBAL_BB.j]
-      dst_offset = [GLOBAL_BB.i, GLOBAL_BB.j]
+      vectorsA = scale_matches(src_nodes, scale)
+      vectorsB = scale_matches(dst_nodes, scale)
 
       src_img = retrieve_image(src_mesh)
       dst_img = retrieve_image(dst_mesh)
+      offset = [GLOBAL_BB.i, GLOBAL_BB.j] * scale
+      O, O_bb = imfuse(src_img, offset, dst_img, offset)
 
-      src_offset *= scale
-      dst_offset *= scale
-
-      O, O_bb = imfuse(src_img, src_offset, dst_img, dst_offset)
-
-      # src_nodes = hcat(src_nodes...)[1:2, :]*scale .- src_offset
-      # dst_nodes = hcat(dst_nodes...)[1:2, :]*scale .- dst_offset
-      # vectors = [src_nodes; dst_nodes]
-      path = get_thumbnail_path(dst_index, src_index)
-      write_imageview(path, view_isotropic(O))
+      indexA = (src_index[1:2]..., -4, -4)
+      indexB = (dst_index[1:2]..., -4, -4)
+      path = get_outline_filename(indexB, indexA, "thumb")
+      vectors = (offset_matches(vectorsA, vectorsB, O_bb),)
+      match_nums = (find_matches_index(meshset, src_index, dst_index),)
+      colors = ([1,1,1],)
+      factor = 20
+  
+      write_thumbnail(O, path, vectors, colors, match_nums, factor)
     end
   end
 end

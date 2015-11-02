@@ -87,35 +87,6 @@ function imfuse(A, offset_A, B, offset_B)
     return O, BB_O
 end
 
-# """
-# `IMFUSE` - Overlay two images on top of each other using their offsets. Colors 
-# one image red, the other green, and the overlap yellow.
-# Uses rounded interpolation.
-
-# Args:
-
-# * A: image A (2D array)
-# * offset_A: 2-element array for global position of image A
-# * B: image B (2D array)
-# * offset_B: 2-element array for global position of image A
-
-# Returns:
-
-# * O: Image object combining both image A & B
-
-#     `imfuse(A, offset_A, B, offset_B)`
-# """
-# function imfuse(A::Array{UInt8,2}, offset_A, B::Array{UInt8,2}, offset_B)
-#     # pad to common origin
-#     bbA = BoundingBox(offset_A..., size(A)...)
-#     bbB = BoundingBox(offset_B..., size(B)...)
-#     bbO = bbA + bbB
-#     A = rescopeimage(A, offset_A, bbO)
-#     B = rescopeimage(B, offset_B, bbO)
-#     O = uint32overlay(A, B)
-#     return O, [bbO.i, bbO.j]
-# end
-
 """
 `PADIMAGE` - Specify image padding in each of four directions
     

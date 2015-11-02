@@ -513,28 +513,6 @@ function reshape_seam(img)
   return img
 end
 
-"""
-`WRITE_SEAMS` - Write out overlays of montaged seams
-""" 
-function write_seams(imgs, offsets, indices)
-    bbs = []
-    for (img, offset) in zip(imgs, offsets)
-        push!(bbs, BoundingBox(offset..., size(img)...))
-    end
-    overlap_tuples = find_overlaps(bbs)
-    for (k, (i,j)) in enumerate(overlap_tuples)
-      println("Writing seam ", k, " / ", length(overlap_tuples))
-      img, fuse_offset = imfuse(imgs[i], offsets[i], imgs[j], offsets[j])
-      bb = bbs[i] - bbs[j]
-      path = get_outline_filename(indices[i], indices[j], "seam")
-      img_cropped = imcrop(img, fuse_offset, bb)
-      imwrite(reshape_seam(img_cropped), path)
-      # f = h5open(path, "w")
-      # @time f["img", "chunk", (50,50)] = img_cropped
-      # close(f)
-    end
-end
-
 function find_matches_index(meshset, indexA, indexB)
   matches_index = 0
   for (k, matches) in enumerate(meshset.matches)
@@ -581,6 +559,7 @@ end
 
 
 function write_thumbnail(img, path, vectors, colors, match_nums, factor=1.0)
+  println("Write thumbnail\n", path)
   tf = 1.0
   vf = 1.0
   pf = 1.0
@@ -598,9 +577,9 @@ function write_thumbnail(img, path, vectors, colors, match_nums, factor=1.0)
 end
 
 """
-`WRITE_SEAMS_WITH_MATCHES` - Write out overlays of montaged seams
+`WRITE_SEAMS` - Write out overlays of montaged seams
 """ 
-function write_seams_with_matches(meshset, imgs, offsets, indices)
+function write_seams(meshset, imgs, offsets, indices)
     bbs = []
     for (img, offset) in zip(imgs, offsets)
         push!(bbs, BoundingBox(offset..., size(img)...))
