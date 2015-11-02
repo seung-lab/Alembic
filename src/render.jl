@@ -1,18 +1,18 @@
-"""
-Multiple dispatch for imwarp on Mesh object
-"""
-function imwarp(meshset::MeshSet)
-  # tform = recompute_affine(meshset)
-  tform = affine_approximate(meshset)
-  img = get_uint8_image(meshset.meshes[2])
-  @time img, offset = imwarp(img, tform)
-  return img, offset
-end
+# """
+# imwarp on Mesh object
+# """
+# function imwarp_mesh(meshset::MeshSet)
+#   # tform = recompute_affine(meshset)
+#   tform = affine_approximate(meshset)
+#   img = get_uint8_image(meshset.meshes[2])
+#   @time img, offset = imwarp(img, tform)
+#   return img, offset
+# end
 
 """
 Multiple dispatch for meshwarp on Mesh object
 """
-function meshwarp(mesh::Mesh)
+function meshwarp_mesh(mesh::Mesh)
   @time img = get_uint8_image(mesh)
   src_nodes = hcat(mesh.nodes...)'
   dst_nodes = hcat(mesh.nodes_t...)'
@@ -53,7 +53,7 @@ function render_montaged(waferA, secA, waferB, secB, render_full=false)
     meshset = load(idx, idx)
     new_fn = string(idx[1], ",", idx[2], "_montaged.tif")
     println("Rendering ", new_fn)
-    warps = pmap(meshwarp, meshset.meshes);
+    warps = pmap(meshwarp_mesh, meshset.meshes);
     imgs = [x[1][1] for x in warps];
     offsets = [x[1][2] for x in warps];
     indices = [x[2] for x in warps];
@@ -74,8 +74,8 @@ end
 """
 Calculate prealignment transforms from first section through section_num
 """
-function calculate_global_tform(index, dir=PREALIGNED_DIR)
-  global_tform = eye(3)
+function calculate_cumulative_tform(index, dir=PREALIGNED_DIR)
+  cumulative_tform = eye(3)
   if index != (1,1,-2,-2)
     index_pairs = get_sequential_index_pairs((1,1,-2,-2), index)
     for (indexA, indexB) in index_pairs
@@ -84,10 +84,10 @@ function calculate_global_tform(index, dir=PREALIGNED_DIR)
       offset = load_offset(indexB)
       translation = [1 0 0; 0 1 0; offset[1] offset[2] 1]
       tform = regularized_solve(meshset, lambda=0.9)
-      global_tform = global_tform*translation*tform
+      cumulative_tform = cumulative_tform*translation*tform
     end
   end
-  return global_tform
+  return cumulative_tform
 end
 
 """
@@ -114,6 +114,7 @@ Fuse and save thumbnail images
 """
 function write_thumbnail_from_dict(A, B)
   path = get_outline_filename(B["index"], A["index"], "thumb")
+  # path = string(path[1:end-4], ".png")
   O, O_bb = imfuse(A["thumb_fixed"], A["thumb_offset_fixed"], 
                             B["thumb_moving"], B["thumb_offset_moving"])
   vectorsA = scale_matches(A["nodes"], A["scale"])
@@ -122,6 +123,7 @@ function write_thumbnail_from_dict(A, B)
   match_nums = (1,)
   colors = ([1,1,1],)
   factor = 20
+  println("Write thumbanil ", path)
   write_thumbnail(O, path, vectors, colors, match_nums, factor)
 end
 
@@ -138,20 +140,17 @@ end
 """
 Return Dictionary of staged image to remove redundancy in loading
 """
-function stage_image(mesh, global_tform, tform, scale=0.05)
+function stage_image(mesh, cumulative_tform, tform, scale=0.05)
   s = [scale 0 0; 0 scale 0; 0 0 1]
   stage = Dict()
   stage["index"] = (mesh.index[1:2]..., -3, -3)
   img = get_uint8_image(mesh)
-  offset = load_offset(stage["index"])
   println("tform: ", tform)
-  println("montaged_offset: ", offset)
   println("Warping ", mesh.name)
-  translation = [1 0 0; 0 1 0; offset[1] offset[2] 1]
-  @time stage["img"], stage["offset"] = imwarp(img, global_tform*translation*tform, [0,0])
+  @time stage["img"], stage["offset"] = imwarp(img, cumulative_tform*tform, [0,0])
   println("Warping thumbnail for ", mesh.name)
   stage["thumb_fixed"], stage["thumb_offset_fixed"] = imwarp(img, s, [0,0])
-  stage["thumb_moving"], stage["thumb_offset_moving"] = imwarp(img, translation*tform*s, [0,0])
+  stage["thumb_moving"], stage["thumb_offset_moving"] = imwarp(img, tform*s, [0,0])
   stage["scale"] = scale
   return stage
 end
@@ -167,11 +166,13 @@ end
 """
 Prealignment where offsets are global
 """
-function render_prealigned(indexA, indexB)
+function render_prealigned(waferA, secA, waferB, secB)
+  indexA = (waferA, secA, -2, -2)
+  indexB = (waferB, secB, -2, -2)
   dir = PREALIGNED_DIR
   fixed = Dict()
 
-  global_tform = calculate_global_tform(indexA)
+  cumulative_tform = calculate_cumulative_tform(indexA)
   log_path = joinpath(dir, "prealigned_offsets.txt")
 
   function save_image(stage, dir, log_path)
@@ -184,34 +185,37 @@ function render_prealigned(indexA, indexB)
     close(f)
   end
 
+  println("Cumulative tform: ", cumulative_tform)
   index_pairs = get_sequential_index_pairs(indexA, indexB)
   for (k, (indexA, indexB)) in enumerate(index_pairs)
     println("\nPrealigning ", indexA, " & ", indexB)
     meshset = load(indexA, indexB)
     if k==1
-      fixed = stage_image(meshset.meshes[1], global_tform, eye(3))
+      fixed = stage_image(meshset.meshes[1], cumulative_tform, eye(3))
       if is_first_section(indexA)
         # save_image(fixed, dir, log_path)
       end
     end
     offset = load_offset(indexB)
     translation = [1 0 0; 0 1 0; offset[1] offset[2] 1]
-    tform = regularized_solve(meshset, lambda=0.9)
+    tform = translation*regularized_solve(meshset, lambda=0.9)
     # tform = affine_approximate(meshset)
-    moving = stage_image(meshset.meshes[2], global_tform, tform)
+    moving = stage_image(meshset.meshes[2], cumulative_tform, tform)
     # save_image(moving, dir, log_path)
     moving["nodes"], fixed["nodes"] = get_matched_points(meshset, 1)
     moving["nodes"] = transform_matches(moving["nodes"], tform)
     write_thumbnail_from_dict(fixed, moving)
     fixed = moving
-    global_tform = global_tform*translation*tform
+    cumulative_tform = cumulative_tform*tform
   end
 end
 
 """
 Cycle through JLD files in aligned directory and render alignment
 """
-function render_aligned(indexA, indexB, start=1, finish=0)
+function render_aligned(waferA, secA, waferB, secB, start=1, finish=0)
+  indexA = (waferA, secA, -3, -3)
+  indexB = (waferB, secB, -3, -3)
   dir = ALIGNED_DIR
   scale = 0.02
   s = [scale 0 0; 0 scale 0; 0 0 1]

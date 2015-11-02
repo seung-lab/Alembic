@@ -95,6 +95,10 @@ function sort_dir(dir, file_extension="jld")
     return sort(files_in_dir, by=x->parse_name(x))
 end
 
-
-
-
+"""
+Create scaling transform and apply to image
+"""
+function imscale(img, scale_factor)
+  tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
+  return imwarp(img, tform);
+end

@@ -51,6 +51,7 @@ using Colors
 using FixedPointNumbers
 using Base.Test
 using Cairo
+using ImageRegistration
 
 if !isdefined(:BoundingBox) # haaaaack
 	include("boundingbox.jl")
@@ -70,8 +71,6 @@ include("TileToOverview.jl")
 include("prealign.jl")
 include("incidence2triangles.jl")
 include("imageprocessing.jl")
-include("imwarp.jl")
-include("meshwarp.jl")
 include("render.jl")
 include("review.jl")
 include("solve.jl")
