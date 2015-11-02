@@ -53,14 +53,9 @@ using Base.Test
 using Cairo
 using ImageRegistration
 
-if !isdefined(:BoundingBox) # haaaaack
-	include("boundingbox.jl")
-end
-
 include("Params.jl")
 include("IO.jl")
 include("Params_session.jl")
-include("convolve.jl")
 include("Mesh.jl")
 include("Index.jl")
 include("Matches.jl")
@@ -69,7 +64,6 @@ include("MeshSolve.jl")
 include("MeshSession.jl")
 include("TileToOverview.jl")
 include("prealign.jl")
-include("incidence2triangles.jl")
 include("imageprocessing.jl")
 include("render.jl")
 include("review.jl")

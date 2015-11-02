@@ -160,18 +160,13 @@ function load(firstindex::Index, lastindex::Index)
   else 
     filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "_montaged.jld"))
   end
-
-  println("Loading meshset from", filename)
-  #return load(filename)
-  open(filename, "r") do file
-    Ms = deserialize(file);
-	return Ms;
-  end
-  end
+  println("Loading meshset from ", filename)
+  return load(filename)
+  # return open(deserialize, filename)
+end
 
 function load(filename::String)
-  Ms = JLD.load(filename, "MeshSet"); 
-  return Ms
+  return JLD.load(filename, "MeshSet"); 
 end
 
 function get_all_overlaps(Ms)
