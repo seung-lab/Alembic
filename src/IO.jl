@@ -1,14 +1,14 @@
 # extensions:
 # Mesh.jl get_image(mesh::Mesh)
 function get_image(path::String)
-  img = imread(path)
+  img = Images.load(path)
   img = img[:, :, 1]
   img.properties["timedim"] = 0
   return convert(Array{UInt8, 2}, round(convert(Array, img)*255))
 end
 
 function get_uint8_image(path::String)
-  img = imread(path)
+  img = Images.load(path)
   return reinterpret(UInt8, data(img)[:,:,1])'
 end
 
@@ -35,13 +35,13 @@ end
 # extensions:
 # Mesh.jl get_float_image(mesh::Mesh)
 function get_float_image(path::String)
-  img = imread(path)
+  img = Images.load(path)
   img.properties["timedim"] = 0
   return convert(Array{Float64, 2}, convert(Array, img[:,:,1]))
 end
 
 function get_ufixed8_image(path::String)
-  return convert(Array{Ufixed8}, data(imread(path))[:,:,1])'
+  return convert(Array{Ufixed8}, data(Images.load(path))[:,:,1])'
 end
 
 function load_affine(path::String)

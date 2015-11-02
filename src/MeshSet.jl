@@ -324,8 +324,8 @@ function affine_load_section_pair(src_index, dst_index)
   name_dst = registry[i_dst, 1];
   name_src = registry[i_src, 1];
 
-  @time dst_image = get_ufixed8_image(get_path(name_dst))
-  @time src_image = get_ufixed8_image(get_path(name_src))
+  @time dst_image = get_uint8_image(get_path(name_dst))
+  @time src_image = get_uint8_image(get_path(name_src))
  
   dst_scaled = imscale(dst_image, SCALING_FACTOR_TRANSLATE)[1]; 
   src_scaled = imscale(src_image, SCALING_FACTOR_TRANSLATE)[1]; 

@@ -115,7 +115,7 @@ end
 # extensions:
 # Mesh.jl get_image(mesh::Mesh)
 function get_image(path::String)
-    img = imread(path)
+    img = Images.load(path)
     img = img[:, :, 1]
     img.properties["timedim"] = 0
     return convert(Array{UInt8, 2}, round(convert(Array, img)*255))

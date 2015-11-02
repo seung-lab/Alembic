@@ -1,5 +1,5 @@
 function test()
-  getimage(path) = convert(Array{Float64, 2}, convert(Array, imread(path)))
+  getimage(path) = convert(Array{Float64, 2}, convert(Array, Images.load(path)))
   moving_section = getimage("../sections/S2-W001_fixed_section4_0.175.tif")
   #fixed_section = getimage("./sections/S2-W001_fixed_section4_0.175.tif")
   fixed_section = getimage("../sections/S2-W001_fixed_section5_0.175.tif")
@@ -27,7 +27,7 @@ end
 
 
 function test2()
-  getimage(path) = convert(Array{Ufixed8, 2}, convert(Array, imread(path)))
+  getimage(path) = convert(Array{Ufixed8, 2}, convert(Array, Images.load(path)))
   getimage = get_ufixed8_image
   #moving_section = getimage("../output_images/(1,1)_montage.tif")
   #fixed_section = getimage("../output_images/(1,2)_montage.tif")
