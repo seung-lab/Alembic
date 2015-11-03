@@ -103,7 +103,7 @@ end
 Fuse and save thumbnail images
 """
 function write_thumbnail_from_dict(A, B)
-  path = get_outline_filename(B["index"], A["index"], "thumb")
+  path = get_outline_filename("thumb", B["index"], A["index"])
   # path = string(path[1:end-4], ".png")
   O, O_bb = imfuse(A["thumb_fixed"], A["thumb_offset_fixed"], 
                             B["thumb_moving"], B["thumb_offset_moving"])
@@ -124,7 +124,7 @@ function stage_image(mesh, cumulative_tform, tform, scale=0.05)
   stage = Dict()
   stage["index"] = (mesh.index[1:2]..., -3, -3)
   img = get_uint8_image(mesh)
-  println("tform: ", tform)
+  println("tform:\n", tform)
   println("Warping ", mesh.name)
   @time stage["img"], stage["offset"] = imwarp(img, cumulative_tform*tform, [0,0])
   println("Warping thumbnail for ", mesh.name)
@@ -164,7 +164,7 @@ function render_prealigned(waferA, secA, waferB, secB)
     close(f)
   end
 
-  println("Cumulative tform: ", cumulative_tform)
+  println("Cumulative tform:\n", cumulative_tform)
   index_pairs = get_sequential_index_pairs(indexA, indexB)
   for (k, (indexA, indexB)) in enumerate(index_pairs)
     println("\nPrealigning ", indexA, " & ", indexB)
@@ -177,15 +177,14 @@ function render_prealigned(waferA, secA, waferB, secB)
     end
     offset = load_offset(indexB)
     translation = [1 0 0; 0 1 0; offset[1] offset[2] 1]
-    tform = translation*regularized_solve(meshset, lambda=0.9)
-    # tform = affine_approximate(meshset)
-    moving = stage_image(meshset.meshes[2], cumulative_tform, tform)
-    # save_image(moving, dir, log_path)
+    tform = regularized_solve(meshset, lambda=0.9)
+    moving = stage_image(meshset.meshes[2], cumulative_tform, translation*tform)
+    save_image(moving, dir, log_path)
     moving["nodes"], fixed["nodes"] = get_matched_points(meshset, 1)
     moving["nodes"] = transform_matches(moving["nodes"], tform)
-    # write_thumbnail_from_dict(fixed, moving)
+    write_thumbnail_from_dict(fixed, moving)
     fixed = moving
-    cumulative_tform = cumulative_tform*tform
+    cumulative_tform = cumulative_tform*translation*tform
   end
 end
 
@@ -196,7 +195,7 @@ function render_aligned(waferA, secA, waferB, secB, start=1, finish=0)
   indexA = (waferA, secA, -3, -3)
   indexB = (waferB, secB, -3, -3)
   dir = ALIGNED_DIR
-  scale = 0.05
+  scale = 0.10
   s = [scale 0 0; 0 scale 0; 0 0 1]
 
   # Log file for image offsets
@@ -226,6 +225,7 @@ function render_aligned(waferA, secA, waferB, secB, start=1, finish=0)
       close(f)
       # @time imwrite(img, joinpath(dir, new_fn))
       img, _ = imwarp(img, s)
+      path = 
       # Log image offsets
       update_offsets(index, offset, size(img))
       # end
@@ -253,7 +253,7 @@ function render_aligned(waferA, secA, waferB, secB, start=1, finish=0)
 
       indexA = (src_index[1:2]..., -4, -4)
       indexB = (dst_index[1:2]..., -4, -4)
-      path = get_outline_filename(indexB, indexA, "thumb")
+      path = get_outline_filename("thumb_pts", indexB, indexA)
       vectors = (offset_matches(vectorsA, vectorsB, O_bb),)
       match_nums = (find_matches_index(meshset, src_index, dst_index),)
       colors = ([1,1,1],)

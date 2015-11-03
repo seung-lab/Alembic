@@ -557,9 +557,8 @@ function get_matches(meshset, indexA, indexB)
   return src_pts, dst_pts
 end
 
-
 function write_thumbnail(img, path, vectors, colors, match_nums, factor=1.0)
-  println("Write thumbnail\n", path)
+  println("Writing thumbnail\n", path)
   tf = 1.0
   vf = 1.0
   pf = 1.0
@@ -589,7 +588,7 @@ function write_seams(meshset, imgs, offsets, indices)
       println("Writing seam ", k, " / ", length(overlap_tuples))
       img, fuse_offset = imfuse(imgs[i], offsets[i], imgs[j], offsets[j])
       bb = bbs[i] - bbs[j]
-      path = get_outline_filename(indices[i], indices[j], "seam")
+      path = get_outline_filename("seam", indices[i], indices[j])
       img_cropped = imcrop(img, fuse_offset, bb)
       # imwrite(reshape_seam(img_cropped), path)
       offset = [bb.i, bb.j]
@@ -816,7 +815,7 @@ function plot_matches_outline(meshset, match_no, factor=5)
   return img
 end
 
-function get_outline_filename(src_index, dst_index, prefix="")
+function get_outline_filename(prefix, src_index, dst_index)
   dir = ALIGNED_DIR
   fn = string(prefix, "_", indices2string(src_index, dst_index), ".jpg")
   if is_premontaged(src_index)
@@ -825,10 +824,10 @@ function get_outline_filename(src_index, dst_index, prefix="")
     fn = string(prefix, "_", ind, ".jpg")
   elseif is_montaged(src_index)
     dir = PREALIGNED_DIR
-    fn = string(prefix, "_", indices2string(src_index, dst_index), ".jpg")
+    fn = string(prefix, "_", indices2string(src_index, dst_index), ".tif")
   elseif is_prealigned(src_index)
     dir = PREALIGNED_DIR
-    fn = string(prefix, "_", indices2string(src_index, dst_index), ".jpg")
+    fn = string(prefix, "_", indices2string(src_index, dst_index), ".tif")
   end
   return joinpath(dir, "review", fn)
 end
@@ -837,7 +836,7 @@ function write_meshset_match_outlines(meshset, factor=5)
   for k in 1:length(meshset.matches)
     imgc, img2 = plot_matches_outline(meshset, k, factor)
     matches = meshset.matches[k]
-    path = get_outline_filename(matches.src_index, matches.dst_index, "outline")
+    path = get_outline_filename("outline", matches.src_index, matches.dst_index)
     path = string(path[1:end-4], ".png")
     write_canvas(imgc, path)
     close_image(imgc)
