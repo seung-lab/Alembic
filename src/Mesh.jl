@@ -119,82 +119,82 @@ end
 
 
 
-# find the triangular mesh indices for a given point in A
-function find_mesh_triangle(Am, i, j, offsets = Void, dists = Void)
+# find the triangular mesh indices for a given point in mesh image coordinates
+function find_mesh_triangle(mesh::Mesh, point::Point)
+	
+	dims, dists = get_dims_and_dists(mesh); 
+	point_padded = point - get_topleft_offset(mesh);
 
-	# convert to A's local coordinates, and displace by the mesh offset
-	Ai = i - Am.offset[1] - Am.offsets[1];
-	Aj = j - Am.offset[2] - Am.offsets[2];
+	indices_raw = point_padded ./ dists
 
 	# find which rows the point belongs to
-	i0 = round(Int64, Ai / Am.dists[1] + 1);
-
+	i0 = round(Int64, indices_raw[1] + 1);
+	
 	if isodd(i0)
-		j0 = round(Int64, Aj / Am.dists[2] + 1);
+		j0 = round(Int64, indices_raw[2] + 1);
 	else
-		j0 = round(Int64, Aj / Am.dists[2] + 0.5);
+		j0 = round(Int64, indices_raw[2] + 0.5);
 	end
 
-	ind0 = get_mesh_index(Am.dims, i0, j0);
+	ind0 = get_mesh_index(dims, i0, j0);
 	
 	if ind0 == 0
 		return NO_TRIANGLE;
 	end
 
-	node0 = Am.nodes[ind0];
+	node0 = mesh.nodes[ind0];
 
-	di = i - node0[1];
-	dj = j - node0[2];
+	res = point - node0;
 
-	theta = abs(atan(di / dj));
+	theta = abs(atan(res[1] / res[2]));
 	if (theta < pi / 3)
 		if (dj >= 0)
-			ind1 = get_mesh_index(Am.dims, i0, j0 + 1);
+			ind1 = get_mesh_index(dims, i0, j0 + 1);
 			if (di >= 0)
 				if isodd(i0)
-					ind2 = get_mesh_index(Am.dims, i0+1, j0);
+					ind2 = get_mesh_index(dims, i0+1, j0);
 				else
-					ind2 = get_mesh_index(Am.dims, i0+1, j0+1);
+					ind2 = get_mesh_index(dims, i0+1, j0+1);
 				end
 			else
 				if isodd(i0)
-					ind2 = get_mesh_index(Am.dims, i0-1, j0);
+					ind2 = get_mesh_index(dims, i0-1, j0);
 				else
-					ind2 = get_mesh_index(Am.dims, i0-1, j0+1);
+					ind2 = get_mesh_index(dims, i0-1, j0+1);
 				end
 			end
 		else
-			ind1 = get_mesh_index(Am.dims, i0, j0 - 1);
+			ind1 = get_mesh_index(dims, i0, j0 - 1);
 			if (di >= 0)
 				if isodd(i0)
-					ind2 = get_mesh_index(Am.dims, i0+1, j0-1);
+					ind2 = get_mesh_index(dims, i0+1, j0-1);
 				else
-					ind2 = get_mesh_index(Am.dims, i0+1, j0);
+					ind2 = get_mesh_index(dims, i0+1, j0);
 				end
 			else
 				if isodd(i0)
-					ind2 = get_mesh_index(Am.dims, i0-1, j0-1);
+					ind2 = get_mesh_index(dims, i0-1, j0-1);
 				else
-					ind2 = get_mesh_index(Am.dims, i0-1, j0);
+					ind2 = get_mesh_index(dims, i0-1, j0);
 				end
 			end
 		end
 	else
 		if (di >= 0)
 			if isodd(i0)
-				ind1 = get_mesh_index(Am.dims, i0+1, j0-1);
-				ind2 = get_mesh_index(Am.dims, i0+1, j0);
+				ind1 = get_mesh_index(dims, i0+1, j0-1);
+				ind2 = get_mesh_index(dims, i0+1, j0);
 			else
-				ind1 = get_mesh_index(Am.dims, i0+1, j0);
-				ind2 = get_mesh_index(Am.dims, i0+1, j0+1);
+				ind1 = get_mesh_index(dims, i0+1, j0);
+				ind2 = get_mesh_index(dims, i0+1, j0+1);
 			end
 		else
 			if isodd(i0)
-				ind1 = get_mesh_index(Am.dims, i0-1, j0-1);
-				ind2 = get_mesh_index(Am.dims, i0-1, j0);
+				ind1 = get_mesh_index(dims, i0-1, j0-1);
+				ind2 = get_mesh_index(dims, i0-1, j0);
 			else
-				ind1 = get_mesh_index(Am.dims, i0-1, j0);
-				ind2 = get_mesh_index(Am.dims, i0-1, j0+1);
+				ind1 = get_mesh_index(dims, i0-1, j0);
+				ind2 = get_mesh_index(dims, i0-1, j0+1);
 			end
 		end
 	end
@@ -206,10 +206,10 @@ function find_mesh_triangle(Am, i, j, offsets = Void, dists = Void)
 end
 
 # Convert Cartesian coordinate to triple of barycentric coefficients
-function get_triangle_weights(Am, triangle, pi, pj)
-	R = vcat(Am.nodes[triangle[1]]', Am.nodes[triangle[2]]', Am.nodes[triangle[3]]')
+function get_triangle_weights(m::Mesh, point::Point, triangle::Triangle)
+	R = vcat(mesh.nodes[triangle[1]]', mesh.nodes[triangle[2]]', mesh.nodes[triangle[3]]')
 	R = hcat(R, ones(Float64, 3, 1));
-	r = hcat(pi, pj, 1.0);
+	r = vcat(point, 1.0);
 
 	V = r * R^-1;
 
