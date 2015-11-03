@@ -1,1 +1,1 @@
-/usr/people/tmacrina/seungmount
+/mnt/bucket/labs/seung/
