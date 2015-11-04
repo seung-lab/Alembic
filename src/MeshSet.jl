@@ -103,19 +103,12 @@ end
 =#
 
 # JLS SAVE
-# function save(filename::String, Ms::MeshSet)
-#   println("Saving meshset to ", filename)
-#   open(filename, "w") do file
-#     serialize(file, Ms)
-#   end
-# end
-
-function save(filename::String, Ms::MeshSet)
-  println("Saving meshset to ", filename)
-  jldopen(filename, "w") do file
-    write(file, "MeshSet", Ms)
-  end
-end
+ function save(filename::String, Ms::MeshSet)
+   println("Saving meshset to ", filename)
+   open(filename, "w") do file
+     serialize(file, Ms)
+   end
+ end
 
 function save(Ms::MeshSet)
   firstindex = Ms.meshes[1].index
@@ -164,8 +157,8 @@ end
 function load(firstindex::Index, lastindex::Index)
   filename = get_name(firstindex, lastindex)
   println("Loading meshset from ", filename)
-  return load(filename)
-  # return open(deserialize, filename)
+ # return load(filename)
+  return open(deserialize, filename)
 end
 
 function load_aligned(firstindex::Index, lastindex::Index)
