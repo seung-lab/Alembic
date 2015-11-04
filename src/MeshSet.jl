@@ -103,19 +103,13 @@ end
 =#
 
 # JLS SAVE
-# function save(filename::String, Ms::MeshSet)
-#   println("Saving meshset to ", filename)
-#   open(filename, "w") do file
-#     serialize(file, Ms)
-#   end
-# end
+ function save(filename::String, Ms::MeshSet)
+   println("Saving meshset to ", filename)
+   open(filename, "w") do file
+     serialize(file, Ms)
+   end
+ end
 
-function save(filename::String, Ms::MeshSet)
-  println("Saving meshset to ", filename)
-  jldopen(filename, "w") do file
-    write(file, "MeshSet", Ms)
-  end
-end
 
 function save(Ms::MeshSet)
   firstindex = Ms.meshes[1].index
@@ -125,7 +119,7 @@ function save(Ms::MeshSet)
   if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex))
     filename = joinpath(PREALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned.jld"))
   elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex))
-    filename = joinpath(ALIGNED_DIR, string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned.jld"))
+    filename = joinpath(ALIGNED_DIR, string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned.jls"))
   else 
     filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "_montaged.jld"))
   end
@@ -168,8 +162,8 @@ function load(firstindex::Index, lastindex::Index)
     filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "_montaged.jld"))
   end
   println("Loading meshset from ", filename)
-  return load(filename)
-  # return open(deserialize, filename)
+ # return load(filename)
+  return open(deserialize, filename)
 end
 
 function load(filename::String)

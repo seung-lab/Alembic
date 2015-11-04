@@ -138,7 +138,8 @@ function SolveMesh!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, eta_gr
     	Springs=Vertices*Incidence
     	g=Gradient(Springs, Incidence, Stiffnesses, RestLengths)
     	H=Hessian2(Springs, Incidence, Stiffnesses, RestLengths)
-        Vertices[:,Moving]=Vertices[:,Moving]-eta_newton*reshape(H[Moving2,Moving2]\g[:,Moving][:],2,length(find(Moving)))
+        #Vertices[:,Moving]=Vertices[:,Moving]-eta_newton*reshape(H[Moving2,Moving2]\g[:,Moving][:],2,length(find(Moving)))
+        Vertices[:,Moving]=Vertices[:,Moving]-eta_newton*reshape(cg(H[Moving2,Moving2],g[:,Moving][:])[1],2,length(find(Moving)))
     	push!(U, Energy(Springs,Stiffnesses,RestLengths))
         println(iter," ", U[iter])
         if abs((U[iter-1] - U[iter]) / U[iter-1]) < ftol_newton

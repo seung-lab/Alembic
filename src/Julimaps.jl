@@ -51,6 +51,7 @@ using Colors
 using FixedPointNumbers
 using Base.Test
 using Cairo
+using IterativeSolvers
 using ImageRegistration
 
 include("Params.jl")
