@@ -19,7 +19,7 @@ function meshwarp_h5(mesh::Mesh)
   src_nodes = hcat(mesh.nodes...)'
   dst_nodes = hcat(mesh.nodes_t...)'
   offset = mesh.disp
-  node_dict = incidence_to_dict(mesh.edges)
+  node_dict = incidence_to_dict(mesh.edges')
   triangles = dict_to_triangles(node_dict)
   return @time meshwarp(img, src_nodes, dst_nodes, triangles, offset)
 end  
@@ -157,7 +157,7 @@ function render_prealigned(waferA, secA, waferB, secB)
   function save_image(stage, dir, log_path)
     new_fn = string(join(stage["index"][1:2], ","), "_prealigned.h5")
     update_offsets(stage["index"], stage["offset"], size(stage["img"]))
-    println("Writing image:\n", new_fn)
+    println("Writing image:\n\t", new_fn)
     # @time imwrite(stage["img"], joinpath(dir, fn))
     f = h5open(joinpath(dir, new_fn), "w")
     @time f["img", "chunk", (1000,1000)] = stage["img"]
@@ -188,6 +188,15 @@ function render_prealigned(waferA, secA, waferB, secB)
   end
 end
 
+function update_ext(fn, ext)
+  i = searchindex(fn, ".")
+  s = fn
+  if i > 0
+    s = string(fn[1:i], ext)
+  end
+  return s
+end
+
 """
 Cycle through JLD files in aligned directory and render alignment
 """
@@ -200,7 +209,7 @@ function render_aligned(waferA, secA, waferB, secB, start=1, finish=0)
 
   # Log file for image offsets
   log_path = joinpath(dir, "aligned_offsets.txt")
-  meshset = load(indexA, indexB)
+  meshset = load_aligned(indexA, indexB)
   if start == 0
     start = 1
   end
@@ -212,26 +221,32 @@ function render_aligned(waferA, secA, waferB, secB, start=1, finish=0)
   # Check images dict for thumbnail, otherwise render, save, & resize it
   function retrieve_image(mesh)
     index = (mesh.index[1:2]..., -4, -4)
-    if index in keys(images)
-      img = images[index]
-    else
+    if !(index in keys(images))
       println("Warping ", mesh.name)
       @time img, offset = meshwarp_h5(mesh)
       @time img = rescopeimage(img, offset, GLOBAL_BB)
-      println("Writing ", mesh.name)
-      new_fn = string(join(mesh.index[1:2], ","), "_aligned.h5")
-      f = h5open(joinpath(dir, new_fn), "w")
-      @time f["img", "chunk", (1000,1000)] = img
-      close(f)
+      # new_fn = string(join(mesh.index[1:2], ","), "_aligned.h5")
+      # println("Writing ", new_fn)
+      # f = h5open(joinpath(dir, new_fn), "w")
+      # @time f["img", "chunk", (1000,1000)] = img
+      # close(f)
       # @time imwrite(img, joinpath(dir, new_fn))
       img, _ = imwarp(img, s)
-      path = 
+      path = get_outline_filename("thumb", index)
+      println("Writing thumbnail:\n\t", path)
+      f = h5open(path, "w")
+      @time f["img", "chunk", (1000,1000)] = img
+      f["offset"] = [GLOBAL_BB.i, GLOBAL_BB.j] * scale
+      f["scale"] = scale
+      close(f)
+      # path = update_ext(path, "tif")
+      # @time Images.save(path, img)
       # Log image offsets
       update_offsets(index, offset, size(img))
       # end
       images[index] = img
     end
-    return img
+    return images[index]
   end
 
   # map(warp_pad_write, meshset.meshes)
@@ -253,13 +268,27 @@ function render_aligned(waferA, secA, waferB, secB, start=1, finish=0)
 
       indexA = (src_index[1:2]..., -4, -4)
       indexB = (dst_index[1:2]..., -4, -4)
-      path = get_outline_filename("thumb_pts", indexB, indexA)
+
+      path = get_outline_filename("thumb_imfuse", indexB, indexA)
+      println("Writing thumbnail:\n\t", path)
+      f = h5open(path, "w")
+      @time f["img", "chunk", (1000,1000)] = O
+      f["offset"] = O_bb # same as offset
+      f["scale"] = scale
+      close(f)
+
+      path = update_ext(get_outline_filename("thumb_pts", indexB, indexA), "tif")
       vectors = (offset_matches(vectorsA, vectorsB, O_bb),)
       match_nums = (find_matches_index(meshset, src_index, dst_index),)
       colors = ([1,1,1],)
-      factor = 20
-  
+      factor = 1
       write_thumbnail(O, path, vectors, colors, match_nums, factor)
+      # println("Writing thumbnail:\n", path)
+      # f = h5open(path, "w")
+      # @time f["img", "chunk", (1000,1000)] = drawing
+      # f["offset"] = [GLOBAL_BB.i, GLOBAL_BB.j] * scale
+      # f["scale"] = scale
+      # close(f)
     end
   end
 end

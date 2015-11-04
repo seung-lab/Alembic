@@ -120,16 +120,7 @@ end
 function save(Ms::MeshSet)
   firstindex = Ms.meshes[1].index
   lastindex = Ms.meshes[Ms.N].index
-
-
-  if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex))
-    filename = joinpath(PREALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned.jld"))
-  elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex))
-    filename = joinpath(ALIGNED_DIR, string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned.jld"))
-  else 
-    filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "_montaged.jld"))
-  end
-
+  filename = get_name(firstindex, lastindex)
   save(filename, Ms);
 end
 
@@ -159,17 +150,29 @@ function load_prealigned(wafer_num, sec_num)
 	return load(firstindex, lastindex)
 end
 
-function load(firstindex::Index, lastindex::Index)
+function get_name(firstindex::Index, lastindex::Index, ext="jld")
   if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex))
-    filename = joinpath(PREALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned.jld"))
-  elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex))
-    filename = joinpath(ALIGNED_DIR, string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned.jls"))
+    filename = joinpath(PREALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned.", ext))
+  elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_aligned(lastindex))
+    filename = joinpath(ALIGNED_DIR, string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned.", ext))
   else 
-    filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "_montaged.jld"))
+    filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "_montaged.", ext))
   end
+  return filename
+end
+
+function load(firstindex::Index, lastindex::Index)
+  filename = get_name(firstindex, lastindex)
   println("Loading meshset from ", filename)
   return load(filename)
   # return open(deserialize, filename)
+end
+
+function load_aligned(firstindex::Index, lastindex::Index)
+  filename = get_name(firstindex, lastindex, "jls")
+  println("Loading meshset from ", filename)
+  # return load(filename)
+  return open(deserialize, filename)
 end
 
 function load(filename::String)

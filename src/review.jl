@@ -111,7 +111,7 @@ function edit_matches(imgc, img2, annotation)
     end
 
     function end_edit()
-        println("End edit")
+        println("End edit\n")
         notify(e)
         bind(c, "<Button-3>", path->path)
         bind(win, "<Destroy>", path->path)
@@ -122,6 +122,85 @@ function edit_matches(imgc, img2, annotation)
 
     return pts_to_remove
 end
+
+"""
+Display index k match pair meshes are two frames in movie to scroll between
+"""
+function review_matches(meshset, k)
+  matches = meshset.matches[k]
+  indexA = (matches.src_index[1:2]..., -4, -4)
+  indexB = (matches.dst_index[1:2]..., -4, -4)
+
+  path = get_outline_filename("thumb_imfuse", indexB, indexA)
+  img = h5read(path, "img")
+  offset = h5read(path, "offset")
+  scale = h5read(path, "scale")
+
+  src_nodes, dst_nodes = get_matched_points_t(meshset, k)
+  vectorsA = scale_matches(src_nodes, scale)
+  vectorsB = scale_matches(dst_nodes, scale)
+  vectors = offset_matches(vectorsA, vectorsB, offset)
+  vecs = [hcat(vectors[1]...); hcat(vectors[2]...)];
+
+  imview = view(img, pixelspacing=[1,1])
+  an_pts, an_vectors = show_vectors(imview..., vecs, RGB(0,0,1), RGB(1,0,1), 10)
+  pts_to_remove = edit_matches(imview..., an_pts)
+  return pts_to_remove
+end
+
+"""
+Write points to remove in a text file
+"""
+function store_points(path, k, pts_to_remove)
+  if !isfile(path)
+    f = open(path, "w")
+    close(f)
+    pts = [k, join(pts_to_remove, ",")]'
+  else  
+    pts = readdlm(path)
+    idx = findfirst(pts[:,1], k)
+    if idx != 0
+      pts[idx, 2] = join(pts_to_remove, ",")
+    else
+      pts_line = [k, join(pts_to_remove, ",")]'
+      pts = vcat(pts, pts_line)
+    end
+  end
+  pts = pts[sortperm(pts[:, 1],), :]
+  println("Saving pts_to_remove:\n\t", path)
+  writedlm(path, pts)
+end
+
+function review_meshset_matches(meshset, ts="", start=1, finish=0)
+  if ts == ""
+    ts = Dates.format(now(), "yyyymmddHHMMSS")
+  end
+  firstindex = meshset.meshes[1].index
+  lastindex = meshset.meshes[end].index
+  storage_path = update_filename(get_name(firstindex, lastindex, "txt"), ts)
+  meshset_path = update_filename(get_name(firstindex, lastindex, "jld"), ts)
+
+  if finish == 0
+    finish = length(meshset.matches)
+  end
+
+  for k in start:finish
+    pts_to_remove = review_matches(meshset, k)
+    store_points(storage_path, k, pts_to_remove)
+  end
+
+end
+
+"""
+Append 'EDITED' with a timestamp to update filename
+"""
+function update_filename(fn, ts="")
+  if ts == ""
+    ts = Dates.format(now(), "yyyymmddHHMMSS")
+  end
+  return string(fn[1:end-4], "_EDITED_", ts, fn[end-3:end])
+end
+
 
 """
 Display index k match pair meshes are two frames in movie to scroll between
@@ -176,135 +255,128 @@ function review_matches_movie(meshset, k, step="post", downsample=2)
   # return pts_to_remove
 end
 
-"""
-Determine appropriate meshset solution method for meshset
-"""
-function resolve!(meshset::MeshSet)
-  index = meshset.meshes[1].index
-  if is_montaged(index)
-  elseif is_prealigned(index)
-    solve_meshset!(meshset)
-  end
-end
+# """
+# Determine appropriate meshset solution method for meshset
+# """
+# function resolve!(meshset::MeshSet)
+#   index = meshset.meshes[1].index
+#   if is_montaged(index)
+#   elseif is_prealigned(index)
+#     solve_meshset!(meshset)
+#   end
+# end
+#
+# """
+# Review all matches in the meshsets in given directory via method specified
+# """
+# function review_matches(dir, method="movie")
+#   filenames = sort_dir(dir)
+#   for fn in filenames[1:1]
+#     println(joinpath(dir, fn))
+#     is_file_changed = false
+#     meshset = load(joinpath(dir, fn))["MeshSet"]
+#     # src_index = meshset.meshes[1].index
+#     # dst_index = meshset.meshes[2].index
+#     # meshset.meshes[1].index = (src_index[1:2]..., PREALIGNED_INDEX, PREALIGNED_INDEX)
+#     # meshset.meshes[2].index = (dst_index[1:2]..., PREALIGNED_INDEX, PREALIGNED_INDEX)
+#     new_path = update_filename(fn)
+#     log_file = open(joinpath(dir, string(new_path[1:end-4], ".txt")), "w")
+#     write(log_file, "Meshset from ", joinpath(dir, fn), "\n")
+#     for (k, matches) in enumerate(meshset.matches)
+#       println("Inspecting matches at index ", k,)
+#       if method=="images"
+#         @time src_bm_imgs, _ = get_blockmatch_images(meshset, k, "src", meshset.params["block_size"]-400)
+#         @time dst_bm_imgs, _ = get_blockmatch_images(meshset, k, "dst", meshset.params["block_size"]-400)
+#         @time filtered_imgs = create_filtered_images(src_bm_imgs, dst_bm_imgs)
+#         pts_to_remove = collect(edit_blockmatches(filtered_imgs))
+#       else
+#         pts_to_remove = review_matches_movie(meshset, k, "pre")
+#       end
+#       if length(pts_to_remove) > 0
+#         is_file_changed = true
+#         # save_blockmatch_imgs(meshset, k, pts_to_remove, joinpath(dir, "blockmatches"))
+#       end
+#       remove_matches_from_meshset!(pts_to_remove, k, meshset)
+#       log_line = string("Removed following matches from index ", k, ":\n")
+#       log_line = string(log_line, join(pts_to_remove, "\n"))
+#       write(log_file, log_line, "\n")
+#     end
+#     if is_file_changed
+#       resolve!(meshset)
+#       println("Saving JLD here: ", new_path)
+#       @time save(joinpath(dir, new_path), meshset)
+#     end
+#     close(log_file)
+#   end
+# end
 
-"""
-Append 'EDITED' with a timestamp to update JLD filename
-"""
-function update_filename(fn)
-  return string(fn[1:end-4], "_EDITED_", Dates.format(now(), "yyyymmddHHMMSS"), ".jld")
-end
+# """
+# Convert matches object for section into filename string
+# """
+# function matches2filename(meshset, k)
+#   src_index = meshset.matches[k].src_index
+#   dst_index = meshset.matches[k].dst_index
+#   return string(join(dst_index[1:2], ","), "-", join(src_index[1:2], ","))
+# end
 
-"""
-Review all matches in the meshsets in given directory via method specified
-"""
-function review_matches(dir, method="movie")
-  filenames = sort_dir(dir)
-  for fn in filenames[1:1]
-    println(joinpath(dir, fn))
-    is_file_changed = false
-    meshset = load(joinpath(dir, fn))["MeshSet"]
-    # src_index = meshset.meshes[1].index
-    # dst_index = meshset.meshes[2].index
-    # meshset.meshes[1].index = (src_index[1:2]..., PREALIGNED_INDEX, PREALIGNED_INDEX)
-    # meshset.meshes[2].index = (dst_index[1:2]..., PREALIGNED_INDEX, PREALIGNED_INDEX)
-    new_path = update_filename(fn)
-    log_file = open(joinpath(dir, string(new_path[1:end-4], ".txt")), "w")
-    write(log_file, "Meshset from ", joinpath(dir, fn), "\n")
-    for (k, matches) in enumerate(meshset.matches)
-      println("Inspecting matches at index ", k,)
-      if method=="images"
-        @time src_bm_imgs, _ = get_blockmatch_images(meshset, k, "src", meshset.params["block_size"]-400)
-        @time dst_bm_imgs, _ = get_blockmatch_images(meshset, k, "dst", meshset.params["block_size"]-400)
-        @time filtered_imgs = create_filtered_images(src_bm_imgs, dst_bm_imgs)
-        pts_to_remove = collect(edit_blockmatches(filtered_imgs))
-      else
-        pts_to_remove = review_matches_movie(meshset, k, "pre")
-      end
-      if length(pts_to_remove) > 0
-        is_file_changed = true
-        # save_blockmatch_imgs(meshset, k, pts_to_remove, joinpath(dir, "blockmatches"))
-      end
-      remove_matches_from_meshset!(pts_to_remove, k, meshset)
-      log_line = string("Removed following matches from index ", k, ":\n")
-      log_line = string(log_line, join(pts_to_remove, "\n"))
-      write(log_file, log_line, "\n")
-    end
-    if is_file_changed
-      resolve!(meshset)
-      println("Saving JLD here: ", new_path)
-      @time save(joinpath(dir, new_path), meshset)
-    end
-    close(log_file)
-  end
-end
+# """
+# Convert cross correlogram to Image for saving
+# """
+# function xcorr2Image(xc)
+#   return grayim((xc .+ 1)./2)
+# end
 
-"""
-Convert matches object for section into filename string
-"""
-function matches2filename(meshset, k)
-  src_index = meshset.matches[k].src_index
-  dst_index = meshset.matches[k].dst_index
-  return string(join(dst_index[1:2], ","), "-", join(src_index[1:2], ","))
-end
-
-"""
-Convert cross correlogram to Image for saving
-"""
-function xcorr2Image(xc)
-  return grayim((xc .+ 1)./2)
-end
-
-"""
-Save match pair images w/ search & block radii at k index in meshset
-"""
-function save_blockmatch_imgs(meshset, k, blockmatch_ids=[], path=joinpath(ALIGNED_DIR, "blockmatches"))
-  dir_path = joinpath(path, matches2filename(meshset, k))
-  if !isdir(dir_path)
-    mkdir(dir_path)
-  end
-  block_radius = meshset.params["block_size"]
-  search_radius = meshset.params["search_r"]
-  scale = meshset.params["scaling_factor"]
-  combined_radius = search_radius+block_radius
-  src_imgs, src_bounds = get_blockmatch_images(meshset, k, "src", combined_radius)
-  dst_imgs, dst_bounds = get_blockmatch_images(meshset, k, "dst", block_radius)
-  src_points, dst_points = get_matched_points(meshset, k)
-  # dst_imgs_adjusted = get_blockmatch_images(meshset, k, "dst", block_radius)
-  println("save_blockmatch_imgs")
-  if blockmatch_ids == []
-    blockmatch_ids = 1:length(src_imgs)
-  end
-  for (idx, (src_img, dst_img, src_point, src_bound)) in enumerate(zip(src_imgs, 
-                                                                dst_imgs, 
-                                                                src_points,
-                                                                src_bounds))
-    if idx in blockmatch_ids
-      println(idx, "/", length(src_imgs))
-      # xc = normxcorr2(src_img, dst_img)
-      xc_peak, xc = get_max_xc_vector(dst_img, src_img)
-      println(size(src_img))
-      println(size(dst_img))
-      println(size(xc))
-      n = @sprintf("%03d", idx)
-      img_mark = "good"
-      dst_path = joinpath(dir_path, string(n , "_1_dst_", k, "_", img_mark, ".png"))
-      imwrite(dst_img, dst_path)
-      src_offset = src_point - collect(src_bound)
-      src_path = joinpath(dir_path, string(n , "_2_src_", k, "_", img_mark, ".png"))
-      imwrite_box(src_img, src_offset, block_radius, src_path)
-      # imwrite(dst_img, joinpath(dir_path, string(n , "_dst_", k, "_", img_mark, ".jpg")))
-      if !isnan(sum(xc))
-        r_max = maximum(xc);
-        rad = round(Int64, (size(xc, 1) - 1)/ 2)  
-        ind = findfirst(r_max .== xc)
-        xc_peak = [rem(ind, size(xc, 1)), cld(ind, size(xc, 1))]
-        xc_path = joinpath(dir_path, string(n , "_3_xc_", k, "_", img_mark, ".png"))
-        imwrite_box(xcorr2Image(xc'), xc_peak, 20, xc_path)
-        # imwrite(xcorr2Image(xc'), joinpath(dir_path, string(n , "_xc_", k, "_", img_mark, ".jpg")))
-      end
-    end
-  end
-end
+# """
+# Save match pair images w/ search & block radii at k index in meshset
+# """
+# function save_blockmatch_imgs(meshset, k, blockmatch_ids=[], path=joinpath(ALIGNED_DIR, "blockmatches"))
+#   dir_path = joinpath(path, matches2filename(meshset, k))
+#   if !isdir(dir_path)
+#     mkdir(dir_path)
+#   end
+#   block_radius = meshset.params["block_size"]
+#   search_radius = meshset.params["search_r"]
+#   scale = meshset.params["scaling_factor"]
+#   combined_radius = search_radius+block_radius
+#   src_imgs, src_bounds = get_blockmatch_images(meshset, k, "src", combined_radius)
+#   dst_imgs, dst_bounds = get_blockmatch_images(meshset, k, "dst", block_radius)
+#   src_points, dst_points = get_matched_points(meshset, k)
+#   # dst_imgs_adjusted = get_blockmatch_images(meshset, k, "dst", block_radius)
+#   println("save_blockmatch_imgs")
+#   if blockmatch_ids == []
+#     blockmatch_ids = 1:length(src_imgs)
+#   end
+#   for (idx, (src_img, dst_img, src_point, src_bound)) in enumerate(zip(src_imgs, 
+#                                                                 dst_imgs, 
+#                                                                 src_points,
+#                                                                 src_bounds))
+#     if idx in blockmatch_ids
+#       println(idx, "/", length(src_imgs))
+#       # xc = normxcorr2(src_img, dst_img)
+#       xc_peak, xc = get_max_xc_vector(dst_img, src_img)
+#       println(size(src_img))
+#       println(size(dst_img))
+#       println(size(xc))
+#       n = @sprintf("%03d", idx)
+#       img_mark = "good"
+#       dst_path = joinpath(dir_path, string(n , "_1_dst_", k, "_", img_mark, ".png"))
+#       imwrite(dst_img, dst_path)
+#       src_offset = src_point - collect(src_bound)
+#       src_path = joinpath(dir_path, string(n , "_2_src_", k, "_", img_mark, ".png"))
+#       imwrite_box(src_img, src_offset, block_radius, src_path)
+#       # imwrite(dst_img, joinpath(dir_path, string(n , "_dst_", k, "_", img_mark, ".jpg")))
+#       if !isnan(sum(xc))
+#         r_max = maximum(xc);
+#         rad = round(Int64, (size(xc, 1) - 1)/ 2)  
+#         ind = findfirst(r_max .== xc)
+#         xc_peak = [rem(ind, size(xc, 1)), cld(ind, size(xc, 1))]
+#         xc_path = joinpath(dir_path, string(n , "_3_xc_", k, "_", img_mark, ".png"))
+#         imwrite_box(xcorr2Image(xc'), xc_peak, 20, xc_path)
+#         # imwrite(xcorr2Image(xc'), joinpath(dir_path, string(n , "_xc_", k, "_", img_mark, ".jpg")))
+#       end
+#     end
+#   end
+# end
 
 """
 Excerpt image in radius around given point
@@ -557,8 +629,7 @@ function get_matches(meshset, indexA, indexB)
   return src_pts, dst_pts
 end
 
-function write_thumbnail(img, path, vectors, colors, match_nums, factor=1.0)
-  println("Writing thumbnail\n", path)
+function make_thumbnail(img, vectors, colors, match_nums, factor=1.0)
   tf = 1.0
   vf = 1.0
   pf = 1.0
@@ -571,8 +642,14 @@ function write_thumbnail(img, path, vectors, colors, match_nums, factor=1.0)
     draw_text(ctx, "#$idx", [50+(k-1)*30,10], [0,0], 28.0, color)
   end
   draw_reference(ctx, size(img)..., factor)
-  drawing = get_drawing(surface)
-  Images.save(path, reshape_seam(drawing))
+  return get_drawing(surface)
+end
+
+function write_thumbnail(img, path, vectors, colors, match_nums, factor=1.0)
+  drawing = make_thumbnail(img, vectors, colors, match_nums, factor)
+  img = convert_drawing(drawing)
+  println("Writing thumbnail\n\t", path)
+  Images.save(path, reshape_seam(img))
 end
 
 """
@@ -815,19 +892,27 @@ function plot_matches_outline(meshset, match_no, factor=5)
   return img
 end
 
-function get_outline_filename(prefix, src_index, dst_index)
+function indices2string(indexA, indexB)
+  return string(join(indexA[1:2], ","), "-", join(indexB[1:2], ","))
+end
+
+function get_outline_filename(prefix, src_index, dst_index=(0,0,0,0))
   dir = ALIGNED_DIR
-  fn = string(prefix, "_", indices2string(src_index, dst_index), ".jpg")
+  indstring = indices2string(src_index, dst_index)
+  if dst_index[1] == 0
+    indstring = join(src_index[1:2], ",")
+  end
+  fn = string(prefix, "_", indstring, ".h5")
   if is_premontaged(src_index)
     dir = MONTAGED_DIR
     ind = string(join(src_index, ","), "-", join(dst_index, ","))
     fn = string(prefix, "_", ind, ".jpg")
   elseif is_montaged(src_index)
     dir = PREALIGNED_DIR
-    fn = string(prefix, "_", indices2string(src_index, dst_index), ".tif")
+    fn = string(prefix, "_", indstring, ".tif")
   elseif is_prealigned(src_index)
     dir = PREALIGNED_DIR
-    fn = string(prefix, "_", indices2string(src_index, dst_index), ".tif")
+    fn = string(prefix, "_", indstring, ".tif")
   end
   return joinpath(dir, "review", fn)
 end

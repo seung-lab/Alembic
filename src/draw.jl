@@ -102,7 +102,11 @@ function draw_indices(ctx::Cairo.CairoContext, points, offset, fontsize, color)
 end
 
 function get_drawing(surface::Cairo.CairoSurface)
-  return convert(Array{RGB24}, surface.data)
+  return surface.data
+end
+
+function convert_drawing(drawing)
+  return convert(Array{RGB24}, drawing)
 end
 
 function draw_reference(ctx, h, w, factor)
