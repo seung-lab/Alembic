@@ -14,7 +14,8 @@ Returns:
   remove_matches_from_meshset!(indices_to_remove, match_index, meshset)
 """
 function remove_matches_from_meshset!(meshset, indices_to_remove, match_index=1)
-  println("Removing ", length(indices_to_remove), " points")
+  println("Removing ", length(indices_to_remove), " points from ", match_index)
+  println("before: ", length(meshset.matches[match_index].dst_points))
   if length(indices_to_remove) > 0
     no_pts_removed = length(indices_to_remove)
     matches = meshset.matches[match_index]
@@ -28,6 +29,44 @@ function remove_matches_from_meshset!(meshset, indices_to_remove, match_index=1)
     matches.disp_vectors = matches.disp_vectors[flag]
     meshset.m -= no_pts_removed
     meshset.m_e -= no_pts_removed
+  end
+  println("after: ", length(meshset.matches[match_index].dst_points))
+end
+
+function update_meshset_with_stored_edits!(meshset, path)
+  pts = readdlm(path)
+  for i in 1:size(pts,1)
+    match_index = pts[i,1]
+    indices_to_remove = readdlm(IOBuffer(pts[i,3]), ',', Int)
+    remove_matches_from_meshset!(meshset, indices_to_remove, match_index)
+  end
+end
+
+function crop_meshset!(meshset, a, b)
+  meshset.indices = meshset.indices[a:b]
+  meshset.meshes = meshset.meshes[a:b]
+  meshset.N = length(meshset.meshes)
+  meshset.nodes_indices = meshset.nodes_indices[a:b]
+  meshset.nodes_indices -= meshset.nodes_indices[1]
+  matches_mask = map(x -> x>=(a,a) && x<=(b,b), meshset.matches_pairs)
+  matches_pairs = meshset.matches_pairs[matches_mask]
+  meshset.matches_pairs = map(x->(x[1]-a+1, x[2]-a+1), matches_pairs)
+  meshset.matches = meshset.matches[matches_mask]
+  meshset.M = length(meshset.matches)
+
+  meshset.n = 0
+  meshset.m = 0
+  meshset.m_i = 0
+  meshset.m_e = 0
+  for mesh in meshset.meshes
+    meshset.n += mesh.n
+    meshset.m += mesh.m
+    meshset.m_i += mesh.m
+
+  end
+  for matches in meshset.matches
+    meshset.m += matches.n
+    meshset.m_e += matches.n
   end
 end
 
@@ -65,6 +104,17 @@ function find_idx_of_nearest_pt(pts, pt, limit)
     end
 end
 
+function find_pt_idx(vectors, pt)
+  i = 1
+  while i <= size(vectors, 2)
+    if vectors[1:2,i] == pt
+      return i
+    end
+    i += 1
+  end
+  return 0
+end
+
 """
 Provide bindings for GUI to right-click and remove matches from a mesh. End 
 manual removal by exiting the image window, or by pressing enter while focused
@@ -82,11 +132,18 @@ Returns:
 
   pts_to_remove = edit_matches(imgc, img2, annotation)
 """
-function edit_matches(imgc, img2, annotation)
+function edit_matches(imgc, img2, vectors)
     e = Condition()
 
-    pts_to_remove = Array{Integer,1}()
-    pts = copy(annotation.ann.data.pts)
+    indices_to_remove = Array{Integer,1}()
+    annotation = Void
+    for an in values(imgc.annotations)
+      if :lines in fieldnames(an.data)
+        annotation = an
+      end
+    end
+    mask = ones(Bool, size(vectors,2))
+    # lines = copy(annotation.ann.data.lines)
 
     c = canvas(imgc)
     win = Tk.toplevel(c)
@@ -98,15 +155,15 @@ function edit_matches(imgc, img2, annotation)
         xi, yi = floor(Integer, 1+xu), floor(Integer, 1+yu)
         # println(xi, ", ", yi)
         limit = (img2.zoombb.xmax - img2.zoombb.xmin) * 0.0125 # 100/8000
-        annpts = annotation.ann.data.pts
-        annidx = find_idx_of_nearest_pt(annpts, [xi, yi], limit)
+        lines = annotation.data.lines
+        annidx = find_idx_of_nearest_pt(lines[1:2,:], [xi, yi], limit)
         if annidx > 0
-            idx = find_idx_of_nearest_pt(pts, [xi, yi], limit)
-            println(idx, ": ", [xi, yi])
-            annotation.ann.data.pts = hcat(annpts[:,1:annidx-1], 
-                                                        annpts[:,annidx+1:end])
-            ImageView.redraw(imgc)
-            push!(pts_to_remove, idx)
+            pt = lines[1:2,annidx]
+            idx = find_pt_idx(vectors[1:2,:], pt)
+            println(idx, ": ", vectors[1:2,idx])
+            mask[idx] = false
+            update_annotations(imgc, img2, vectors, mask)
+            push!(indices_to_remove, idx)
         end
     end
 
@@ -120,7 +177,23 @@ function edit_matches(imgc, img2, annotation)
     println("Right click to remove correspondences, then exit window.")
     wait(e)
 
-    return pts_to_remove
+    return indices_to_remove
+end
+
+"""
+Convention: mask is FALSE if point is to be REMOVED
+"""
+function update_annotations(imgc, img2, vectors, mask)
+  for an in values(imgc.annotations)
+    if :pts in fieldnames(an.data)
+      an.data.pts = vectors[1:2, mask]
+    elseif :lines in fieldnames(an.data)
+      an.data.lines = vectors[:, mask]
+    end
+  end
+  println("Removing ", sum(!mask), " matches from GUI")
+  ImageView.redraw(imgc)
+  return mask
 end
 
 """
@@ -144,31 +217,46 @@ function review_matches(meshset, k)
 
   imview = view(img, pixelspacing=[1,1])
   an_pts, an_vectors = show_vectors(imview..., vecs, RGB(0,0,1), RGB(1,0,1), 10)
-  pts_to_remove = edit_matches(imview..., an_pts)
-  return pts_to_remove
+  return imview, copy(an_vectors.ann.data.lines)
+  # pts_to_remove = edit_matches(imview..., an_pts)
+  # return pts_to_remove
+end
+
+function mask_to_indices(mask)
+  return eachindex(mask)[!mask]
+end
+
+function store_mask(path, k, mask, comment)
+  indices_to_remove = mask_to_indices(mask)
+  store_points(path, k, indices_to_remove, comment)
 end
 
 """
 Write points to remove in a text file
 """
-function store_points(path, k, pts_to_remove)
+function store_points(path, k, indices_to_remove, comment)
+  ts = Dates.format(now(), "yymmddHHMMSS")
+  pts_line = [k, ts, join(indices_to_remove, ","), comment]'
   if !isfile(path)
     f = open(path, "w")
     close(f)
-    pts = [k, join(pts_to_remove, ",")]'
+    pts = pts_line
   else  
     pts = readdlm(path)
-    idx = findfirst(pts[:,1], k)
-    if idx != 0
-      pts[idx, 2] = join(pts_to_remove, ",")
-    else
-      pts_line = [k, join(pts_to_remove, ",")]'
-      pts = vcat(pts, pts_line)
-    end
+    pts = vcat(pts, pts_line)
   end
-  pts = pts[sortperm(pts[:, 1],), :]
+  pts = pts[sortperm(pts[:, 1]), :]
   println("Saving pts_to_remove:\n\t", path)
   writedlm(path, pts)
+end
+
+function get_storage_path(meshset, ts="")
+  if ts == ""
+    ts = Dates.format(now(), "yyyymmddHHMMSS")
+  end
+  firstindex = meshset.meshes[1].index
+  lastindex = meshset.meshes[end].index
+  return update_filename(get_name(firstindex, lastindex, "txt"), ts)
 end
 
 function review_meshset_matches(meshset, ts="", start=1, finish=0)
@@ -188,7 +276,21 @@ function review_meshset_matches(meshset, ts="", start=1, finish=0)
     pts_to_remove = review_matches(meshset, k)
     store_points(storage_path, k, pts_to_remove)
   end
+end
 
+"""
+# Pipeline
+imview, vectors, disp, k = prepare_review_matches(meshset, 18);
+mask = update_annotations(imview..., vectors, disp .< 70);
+store_mask(path, k, mask, "disp.<80");
+indices_to_remove = edit_matches(imview..., vectors[:,mask]);
+store_points(path, k, indices_to_remove, "manual_after_disp");
+"""
+function prepare_review_matches(meshset, k)
+  # r_values = calculate_r_values(meshset, k)
+  disp = calculate_displacements(meshset, k)
+  imview, vectors = review_matches(meshset, k)
+  return imview, vectors, disp, k
 end
 
 """
@@ -201,6 +303,64 @@ function update_filename(fn, ts="")
   return string(fn[1:end-4], "_EDITED_", ts, fn[end-3:end])
 end
 
+function calculate_r_values(meshset, k)
+  r_values = []
+  matches = meshset.matches[k]
+  src_index = matches.src_index
+  dst_index = matches.dst_index
+  src_mesh = meshset.meshes[find_index(meshset, src_index)]
+  dst_mesh = meshset.meshes[find_index(meshset, dst_index)]
+  src_offset = src_mesh.disp
+  dst_offset = dst_mesh.disp
+
+  block_r = meshset.params["block_size"]
+  src_img = get_h5_image(get_h5_path(src_index))
+  dst_img = get_h5_image(get_h5_path(dst_index))
+  src_nodes, dst_nodes = get_matched_points(meshset, k)
+  src_pts = [x - src_offset for x in src_nodes]
+  dst_pts = [x - dst_offset for x in dst_nodes]
+  for (src_pt, dst_pt) in zip(src_pts, dst_pts)
+    src_bnds = sliceimg(src_img, src_pt, block_r)
+    dst_bnds = sliceimg(dst_img, dst_pt, block_r)
+    src = src_img[colon(src_bnds[1:2]...), colon(src_bnds[3:4]...)]
+    dst = dst_img[colon(dst_bnds[1:2]...), colon(dst_bnds[3:4]...)]
+    # println(size(src), " ", size(dst))
+    push!(r_values, normxcorr2(src, dst)[1])
+  end
+  return r_values
+end
+
+function calculate_displacements(meshset, k)
+  src_nodes, dst_nodes = get_matched_points_t(meshset, k)
+  return map(norm, src_nodes-dst_nodes)
+end
+
+"""
+Evaluating filters
+"""
+function removed_to_truth(n, removed)
+  truth = ones(Bool, n)
+  for i in removed
+    truth[i] = !truth[i]
+  end
+  return truth
+end
+
+function tally_venn(a, b)
+  tp = sum(a .* b)
+  fp = sum(!a .* b)
+  fn = sum(a .* !b)
+  tn = sum(!a .* !b)
+  return [tp, fp, fn, tn]
+end
+
+function assess_filter(criteria, truth, steps)
+  counts = []
+  for i in steps
+    push!(counts, tally_venn(truth, criteria .<= i))
+  end
+  return hcat(counts...)
+end
 
 """
 Display index k match pair meshes are two frames in movie to scroll between
@@ -387,7 +547,7 @@ function sliceimg(img, point, radius::Int64)
   jmin = max(point[2]-radius, 1)
   imax = min(point[1]+radius, size(img,1))
   jmax = min(point[2]+radius, size(img,2))
-  return imin, jmin, imax, jmax
+  return imin, imax, jmin, jmax
   # i_range = imin:imax
   # j_range = jmin:jmax
   # return img[i_range, j_range]
@@ -413,9 +573,9 @@ function get_blockmatch_images(meshset, k, mesh_type, radius)
   bm_bounds = []
   # for pt in (mesh_type == "src" ? src_points : dst_points)
   for pt in dst_points
-    imin, jmin, imax, jmax = sliceimg(img, pt-offset, radius)
-    push!(bm_imgs, img[imin:imax, jmin:jmax])
-    push!(bm_bounds, (imin+offset[1], jmin+offset[2]))
+    bounds = sliceimg(img, pt-offset, radius)
+    push!(bm_imgs, img[range(bounds[1:2]...), range(bounds[3:4]...)])
+    push!(bm_bounds, (bounds[1]+offset[1], bounds[3]+offset[2]))
     # push!(bm_imgs, sliceimg(img, pt-offset, radius))
   end
   return bm_imgs, bm_bounds
@@ -797,6 +957,30 @@ function set_fps!(state, fps)
   state.fps = fps
 end
 
+function go_up_slice(meshset, section_range, slice)
+  new_slice = (slice[1][1]-length(slice[1]):slice[1][1], slice[2])
+  view_stack(meshset, section_range, new_slice)
+  return new_slice
+end
+
+function go_down_slice(meshset, section_range, slice)
+  new_slice = (slice[1][end]:slice[1][end]+length(slice[1])-1, slice[2])
+  view_stack(meshset, section_range, new_slice)
+  return new_slice
+end
+
+function go_left_slice(meshset, section_range, slice)
+  new_slice = (slice[1], slice[2][1]-length(slice[2])-1:slice[2][1])
+  view_stack(meshset, section_range, new_slice)
+  return new_slice
+end
+
+function go_right_slice(meshset, section_range, slice)
+  new_slice = (slice[1], slice[2][end]:slice[2][end]+length(slice[2])-1)
+  view_stack(meshset, section_range, new_slice)
+  return new_slice
+end
+
 """
 Cycle through sections of the stack movie, with images staged for easier viewing
 """
@@ -809,17 +993,17 @@ function view_stack(meshset, section_range=(1:2), slice=(1:200,1:200), perm=[1,2
   end
 
   println(slice)
-  # img_stack = cat(3, imgs..., reverse(imgs[2:end-1])...)  # loop it
-  img_stack = cat(3, imgs...)
+  img_stack = cat(3, imgs..., reverse(imgs[2:end-1])...)  # loop it
+  # img_stack = cat(3, imgs...)
   # img_stack = permutedims(cat(3, imgs...), perm)
   # img_movie = Image(img_stack, timedim=3)
   # if perm != [1,2,3]
-    imgc, img2 = view(Image(permutedims(img_stack, [3,2,1]), timedim=3))
-    start_loop(imgc, img2, 10)
-    imgc, img2 = view(Image(permutedims(img_stack, [1,3,2]), timedim=3))
-    start_loop(imgc, img2, 10)
-    imgc, img2 = view(Image(permutedims(img_stack, [1,2,3]), timedim=3), pixelspacing=[1,1])
-    start_loop(imgc, img2, 10)
+    # imgc, img2 = view(Image(permutedims(img_stack, [3,2,1]), timedim=3))
+    # start_loop(imgc, img2, 10)
+    # imgc, img2 = view(Image(permutedims(img_stack, [1,3,2]), timedim=3))
+    # start_loop(imgc, img2, 10)
+  imgc, img2 = view(Image(permutedims(img_stack, perm), timedim=3), pixelspacing=[1,1])
+  start_loop(imgc, img2, 6)
   # end
   # start_loop(imgc, img2, 10)
 
@@ -836,6 +1020,7 @@ function view_stack(meshset, section_range=(1:2), slice=(1:200,1:200), perm=[1,2
 
   wait(e)
   destroy(win)
+  return slice
 end
 
 """
@@ -914,7 +1099,8 @@ function get_outline_filename(prefix, src_index, dst_index=(0,0,0,0))
     dir = PREALIGNED_DIR
     fn = string(prefix, "_", indstring, ".tif")
   end
-  return joinpath(dir, "review", fn)
+  return joinpath(dir, "review/151106_1,2-1,16_cleaned", fn)
+  # return joinpath(dir, "review", fn)
 end
 
 function write_meshset_match_outlines(meshset, factor=5)

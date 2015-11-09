@@ -113,7 +113,7 @@ end
 function save(Ms::MeshSet)
   firstindex = Ms.meshes[1].index
   lastindex = Ms.meshes[Ms.N].index
-  filename = get_name(firstindex, lastindex)
+  filename = get_name(firstindex, lastindex, "jls")
   save(filename, Ms);
 end
 
