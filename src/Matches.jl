@@ -1,11 +1,11 @@
 type Matches
-  src_index::Index          # source mesh index
-  dst_index::Index          # destination mesh index
+  src_index          # source mesh index
+  dst_index          # destination mesh index
 
   src_points::Points	    # destination point coordinate in image
   dst_points::Points        # destination point coordinate in image
 end
-
+#=
 function review_match_log(Ms, k)
        inds = Ms.matches_pairs[k];
        src = Ms.meshes[inds[1]];
@@ -32,20 +32,47 @@ function review_match_log(Ms, k)
        o2 = dst_im[o2_i, o2_j] * 255;
        view(imfilter_LoG(o1 - o2, 5), pixelspacing = [1, 1]);
   end
+=#
+
+# retrieve the ranges, only works with UInt8
+function get_patch(img, range)
+	range_in_img = intersect(range[1], 1:size(img)[1]), intersect(range[2], 1:size(img)[2]);
+
+	# if the image is fully contained, then return the intersection - otherwise find location and pad by mean
+	if length(range_in_img[1]) == length(range[1]) && length(range_in_img[2]) == length(range[2])
+		return img[range_in_img...];
+	else
+		indices_within_range = findin(range[1], range_in_img[1])
+		intersect_img = img[range_in_img...];
+	end
+end
+
+function get_range(pt, src_mesh, dst_mesh, params)
+	get_range(pt, src_mesh, dst_mesh, params["block_size"], params["search_r"]);
+end
+
+function get_range(pt, src_mesh, dst_mesh, block_size, search_r)
+	# convert to local coordinates in both src / dst images, and then round up to an integer
+	src_pt = pt - get_offsets(src_mesh);
+	src_pt = ceil(Int64, src_pt);
+	dst_pt = pt - get_offsets(dst_mesh);
+	dst_pt = ceil(Int64, dst_pt);
+
+	block_range = -block_size:block_size;
+	search_range = -(block_size+search_r):(block_size+search_r);
+
+	src_range = src_pt[1] + block_range, src_pt[2] + block_range;
+	dst_range = dst_pt[1] + search_range, dst_pt[2] + search_range;
+
+	# find the intersection
+	src_range = intersect(src_range[1], 1:get_image_sizes(src_mesh)[1]), intersect(src_range[2], 1:get_image_sizes(src_mesh)[2]);
+	dst_range = intersect(dst_range[1], 1:get_image_sizes(dst_mesh)[1]), intersect(dst_range[2], 1:get_image_sizes(dst_mesh)[2]);
+	
+	return src_range, dst_range
+end
 
 function get_range(A, B, pt, Am_offset, Bm_offset, block_size, search_r)
 	# convert to local coordinates in both Am and Bm
-  	pt_A = pt - Am_offset;
-  	i_A = round(Int64, ceil(pt_A[1]))
-  	j_A = round(Int64, ceil(pt_A[2]))
-
-  	pt_B = pt - Bm_offset;
-  	i_B = round(Int64, ceil(pt_B[1]))
-  	j_B = round(Int64, ceil(pt_B[2]))
-
-	# calculate the ranges of the square centered at the local coordinates in the respective images
-	i_range_A = i_A + (-block_size:block_size);
-	j_range_A = j_A + (-block_size:block_size);
 
 	i_range_B = i_B + (-(block_size+search_r):block_size+search_r);
 	j_range_B = j_B + (-(block_size+search_r):block_size+search_r);
@@ -117,6 +144,25 @@ function write_blockmatches(A, B, xc, idx, partial_fn)
     imwrite(grayim(xc[idx]'), string(partial_fn, "_xc.tif"))
   end
 end
+
+function Matches(src_mesh::Mesh, dst_mesh::Mesh, params::Params=get_params(src_mesh))
+	if src_mesh == dst_mesh
+		return nothing
+	end
+	println("Matching $(src_mesh.index) -> $(dst_mesh.index):#########\n");
+
+	src_image = get_image(src_mesh);
+	dst_image = get_image(dst_mesh);
+
+  	src_index = src_mesh.index;
+	dst_index = dst_mesh.index;
+
+	src_points = src_mesh.src_nodes ;
+	dst_points = similar(src_points);
+
+end
+
+
 
 function Matches(A_orig, Am::Mesh, B_orig, Bm::Mesh, params::Dict)
   if (Am==Bm)

@@ -7,8 +7,15 @@ type Mesh
 
 	edges::Edges				                # n-by-m sparse incidence matrix, each column is zero except at two elements with value -1 and 1
 end
+
+### PARAMS.jl EXTENSIONS
+function get_params(mesh::Mesh)			return get_params(mesh.index);	end
 	     
-### IO EXTENSIONS
+### META.jl EXTENSIONS
+function get_offsets(mesh::Mesh)		return get_offsets(mesh.index);	end
+function get_image_sizes(mesh::Mesh)		return get_image_sizes(get_metadata(mesh.index));	end
+
+### IO.jl EXTENSIONS
 function get_path(mesh::Mesh)			return get_path(mesh.index);		end
 
 function get_image(mesh::Mesh, dtype = UInt8)	return get_image(mesh.index, dtype);	end
@@ -40,7 +47,6 @@ end
 
 function Mesh(index)
 	params = get_params(index);
-	meta = get_metadata(index);
 	
 	# mesh lengths in each dimension
 	dists = [params["mesh_length"] * sin(pi / 3); params["mesh_length"]];
@@ -49,11 +55,11 @@ function Mesh(index)
 	# e.g. a mesh with 5-4-5-4-5-4-5-4 nodes in each row will have dims = (8, 5)
 	# 1 is added because of 1-indexing (in length)
 	# 2 is added to pad the mesh to extend it beyond by one meshpoint in each direction
-	dims = div(get_offsets(meta), dists) + 1 + 2;
+	dims = div(get_image_sizes(index), dists) + 1 + 2;
 
 	# location of the first node (top left)
 	# TODO: Julia does not support rem() for two arrays, so divrem() cannot be used
-	topleft_offset = (get_offsets(meta) .% dists) / 2 - dists;
+	topleft_offset = (get_image_sizes(index) .% dists) / 2 - dists;
 
 	n = maximum([get_mesh_index(dims, dims[1], dims[2]); get_mesh_index(dims, dims[1], dims[2]-1)]);
 	m = 0;
