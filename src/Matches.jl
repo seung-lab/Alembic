@@ -44,6 +44,7 @@ function get_patch(img, range)
 	else
 		indices_within_range = findin(range[1], range_in_img[1])
 		intersect_img = img[range_in_img...];
+		avg = 
 	end
 end
 
