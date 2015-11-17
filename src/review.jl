@@ -115,55 +115,222 @@ function find_pt_idx(vectors, pt)
   return 0
 end
 
-"""
-Provide bindings for GUI to right-click and remove matches from a mesh. End 
-manual removal by exiting the image window, or by pressing enter while focused
-on the image window.
+function create_hot_colormap()
+  return vcat(linspace(RGB(0,0,0), RGB(1,0,0), 100), 
+              linspace(RGB(1,0,0), RGB(1,1,0), 100), 
+              linspace(RGB(1,1,0), RGB(1,1,1), 55))
+end
 
-Args:
+function apply_colormap{T}(img::Array{UInt8}, colormap::Array{T})
+  new_img = zeros(T, size(img)...)
+  for i in eachindex(img, new_img)
+    @inbounds new_img[i] = colormap[img[i]]
+  end
+  return new_img
+end
 
-* imgc: ImageCanvas object (from image with annotations)
-* img2: ImageZoom object (from image with annotations)
-* annotation: the annotation object from the image
+function updatexylabel(xypos, imgc, img, x, y)
+    w = width(imgc.c)
+    xu,yu = ImageView.device_to_user(Tk.getgc(imgc.c), x, y)
+    # Image-coordinates
+    xi,yi = floor(Integer, 1+xu), floor(Integer, 1+yu)
+    if ImageView.isinside(imgc.canvasbb, x, y)
+      if 1 <= xi <= size(img,2) && 1 <= yi <= size(img,1)
+        val = img[yi,xi]
+        str = "$yi, $xi: $val"
+        if length(str)*10>w
+            ImageView.set_value(xypos, "$yi, $xi")
+        else
+            ImageView.set_value(xypos, str)
+        end
+      end
+    else
+        ImageView.set_value(xypos, "$yi, $xi")
+    end
+end
 
-Returns:
+function xcorr2Image(xc)
+  b = xc' / maximum(xc)
+  println("max r-value: ", maximum(xc))
+  b[b .> 1] = 1
+  b[b .< 0] = 0
+  # b = b.*b / maximum(b.*b) * 254 + 1
+  b = b * 254 + 1
+  # b = (b + 1) ./ 2 * 254 + 1
+  b[isnan(b)] = 0
+  return round(UInt8, b)
+  # return round(UInt8, (b + 1) ./ 2 * 254 + 1)
+end
 
-* pts_to_remove: array of indices for points to remove from mesh
+function draw_box(img::Array{UInt32}, bounds)
+  srf = create_drawing(img)
+  ctx = create_contex(srf)
+  draw_rect(ctx, bounds, (1,1,1), 3)
+  return get_drawing(srf)
+end
 
-  pts_to_remove = edit_matches(imgc, img2, annotation)
-"""
-function edit_matches(imgc, img2, vectors)
+function display_blockmatch(params, src_point, dst_point)
+  # e = Condition()
+  
+  keep_point = true
+
+  src_index = params["src_index"]
+  dst_index = params["dst_index"]
+  block_r = params["block_size"]
+  search_r = params["search_r"]
+  
+  src_pt = src_point - params["src_offset"]
+  dst_pt = dst_point - params["dst_offset"]
+  dst_pt_orig = src_point - params["dst_offset"]
+
+  src_size = params["src_size"]
+  dst_size = params["dst_size"]  
+
+  src_bnds = sliceimg(src_pt, block_r, src_size)
+  dst_bnds = sliceimg(dst_pt, block_r+search_r, dst_size)
+  src_bnds_full = sliceimg(src_pt, block_r+search_r, src_size)
+  dst_bnds_orig = sliceimg(dst_pt_orig, block_r+search_r, dst_size)
+
+  src_slice = colon(src_bnds[1:2]...), colon(src_bnds[3:4]...)
+  dst_slice = colon(dst_bnds[1:2]...), colon(dst_bnds[3:4]...)
+  src_slice_full = colon(src_bnds_full[1:2]...), colon(src_bnds_full[3:4]...)
+  dst_slice_orig = colon(dst_bnds_orig[1:2]...), colon(dst_bnds_orig[3:4]...)
+  
+  src_img = get_h5_slice(get_h5_path(src_index), src_slice)
+  dst_img_new = get_h5_slice(get_h5_path(dst_index), dst_slice)
+  src_img_full = get_h5_slice(get_h5_path(src_index), src_slice_full)  
+  dst_img_orig = get_h5_slice(get_h5_path(dst_index), dst_slice_orig)  
+
+  xc = normxcorr2(src_img, dst_img_orig)
+  N=size(xc, 1)
+  M=size(xc, 2)
+  surf([i for i=1:N, j=1:M], [j for i=1:N, j=1:M], xc, cmap=get_cmap("hot"), 
+                          rstride=10, cstride=10, linewidth=0, antialiased=false)
+  xc_image = xcorr2Image(xc)
+  xc_image = padimage(xc_image, block_r, block_r, block_r, block_r, 1)
+  hot = create_hot_colormap()
+  xc_color = apply_colormap(xc_image, hot)
+  xc = padimage(xc', block_r, block_r, block_r, block_r, 1)
+
+  offset = round(Int64, (dst_point-block_r) - (src_point-block_r-search_r))
+  println(offset)
+  # reverse_offset = collect(size(dst_img_orig)) - (collect(size(src_img)) + offset)
+  # src_padded = padimage(src_img, reverse(offset)..., reverse(reverse_offset)...)
+  fused_img, _ = imfuse(dst_img_orig, [0,0], src_img, offset)
+  # view(reinterpret(UFixed8, src_img'), pixelspacing=[1,1])
+
+  bounds = (search_r, search_r, size(src_img)...)
+  src = draw_box(convert(Array{UInt32,2}, src_img_full).<< 8, bounds)
+  bounds = (offset..., size(src_img)...)
+  dst = draw_box(convert(Array{UInt32,2}, dst_img_orig).<< 16, bounds)
+
+  cgrid = canvasgrid(2,2; pad=10)
+  opts = Dict(:pixelspacing => [1,1])
+
+  imgc, img2 = view(cgrid[1,1], src'; opts...)
+  imgc, img2 = view(cgrid[2,1], dst'; opts...)
+  imgc, img2 = view(cgrid[2,2], fused_img; opts...)
+  imgc, img2 = view(cgrid[1,2], xc_color'; opts...)
+  c = canvas(imgc)
+  win = Tk.toplevel(c)
+  fnotify = ImageView.Frame(win)
+  lastrow = 1
+  ImageView.grid(fnotify, lastrow+=1, 1, sticky="ew")
+  xypos = ImageView.Label(fnotify)
+  imgc.handles[:pointerlabel] = xypos
+  ImageView.grid(xypos, 1, 1, sticky="ne")
+  ImageView.set_visible(win, true)
+  c.mouse.motion = (path,x,y)-> updatexylabel(xypos, imgc, xc, x, y)
+
+  # mov = cat(3, reinterpret(UFixed8, src_img_full), reinterpret(UFixed8, dst_img_new))
+  # mimgc, mimg2 = view(Image(mov, timedim=3), pixelspacing=[1,1])
+  # start_loop(mimgc, mimg2, 4)
+
+  # bind(c, "<Delete>", path->remove_point())
+  # bind(win, "<Destroy>", path->end_edit())
+
+  # function remove_point()
+  #   println("Remove point")
+  #   keep_point = false
+  #   end_edit()
+  # end
+
+  # function end_edit()
+  #   notify(e)
+  #   bind(c, "<Delete>", path->path)
+  #   bind(win, "<Destroy>", path->path)
+  # end
+
+  # println("Right click to remove correspondences, then exit window.")
+  # wait(e)
+
+  return keep_point
+  # display_image(c, 1, 1, src)
+  # display_image(c, 2, 1, dst)
+  # display_image(c, 1, 2, xc)
+  # display_image(c, 2, 2, fused_img')
+end
+
+function edit_matches2(imgc, img2, vectors, vectors_t, params)
     e = Condition()
 
     indices_to_remove = Array{Integer,1}()
-    annotation = Void
-    for an in values(imgc.annotations)
-      if :lines in fieldnames(an.data)
-        annotation = an
+    lines = Void
+    original_lines = Void
+    for annotation in values(imgc.annotations)
+      if :lines in fieldnames(annotation.data)
+        lines = annotation.data.lines
+        original_lines = copy(lines)
       end
     end
-    mask = ones(Bool, size(vectors,2))
-    # lines = copy(annotation.ann.data.lines)
+    mask = ones(Bool, size(original_lines,2))
+
+    offset = params["thumb_offset"]
+    scale = params["scale"]
 
     c = canvas(imgc)
     win = Tk.toplevel(c)
-    bind(c, "<Button-3>", (c, x, y)->right_click(parse(Int, x), parse(Int, y)))
+    bind(c, "<Button-3>", (c, x, y)->inspect_match(parse(Int, x), parse(Int, y)))
+    bind(c, "<Control-Button-3>", (c, x, y)->remove_match(parse(Int, x), parse(Int, y)))
     bind(win, "<Destroy>", path->end_edit())
 
-    function right_click(x, y)
+    function remove_match(x, y)
         xu,yu = Graphics.device_to_user(Graphics.getgc(imgc.c), x, y)
         xi, yi = floor(Integer, 1+xu), floor(Integer, 1+yu)
         # println(xi, ", ", yi)
         limit = (img2.zoombb.xmax - img2.zoombb.xmin) * 0.0125 # 100/8000
-        lines = annotation.data.lines
         annidx = find_idx_of_nearest_pt(lines[1:2,:], [xi, yi], limit)
         if annidx > 0
             pt = lines[1:2,annidx]
-            idx = find_pt_idx(vectors[1:2,:], pt)
-            println(idx, ": ", vectors[1:2,idx])
+            idx = find_pt_idx(original_lines[1:2,:], pt)
+            println(idx, ": ", original_lines[1:2, idx])
             mask[idx] = false
-            update_annotations(imgc, img2, vectors, mask)
+            update_annotations(imgc, img2, original_lines, mask)
             push!(indices_to_remove, idx)
+        end
+    end
+
+    function inspect_match(x, y)
+        xu,yu = Graphics.device_to_user(Graphics.getgc(imgc.c), x, y)
+        xi, yi = floor(Integer, 1+xu), floor(Integer, 1+yu)
+        # println(xi, ", ", yi)
+        limit = (img2.zoombb.xmax - img2.zoombb.xmin) * 0.0125 # 100/8000
+        annidx = find_idx_of_nearest_pt(lines[1:2,:], [xi, yi], limit)
+        if annidx > 0
+          annpt = ([lines[2,annidx], lines[1,annidx]] + offset) / scale 
+          println(annpt)
+          idx = find_idx_of_nearest_pt(vectors_t[1:2,:], annpt, 10)
+          if idx > 0
+            ptA = vectors[1:2,idx] # - params["src_offset"]
+            ptB = vectors[3:4,idx] # - params["dst_offset"]
+            println(ptA, ", ", ptB)
+            keep_point = display_blockmatch(params, ptA, ptB)
+            if !keep_point
+              mask[idx] = false
+              update_annotations(imgc, img2, original_lines, mask)
+              push!(indices_to_remove, idx)
+            end
+          end
         end
     end
 
@@ -171,6 +338,7 @@ function edit_matches(imgc, img2, vectors)
         println("End edit\n")
         notify(e)
         bind(c, "<Button-3>", path->path)
+        bind(c, "<Control-Button-3>", path->path)
         bind(win, "<Destroy>", path->path)
     end
 
@@ -181,14 +349,25 @@ function edit_matches(imgc, img2, vectors)
 end
 
 """
+Maintain vector start point, but adjust end point for more prominent visual
+"""
+function change_vector_lengths(vectors, k)
+  v = [vectors[2,:]; 
+        vectors[1,:]; 
+        (vectors[4,:]-vectors[2,:])*k + vectors[2,:]; 
+        (vectors[3,:]-vectors[1,:])*k + vectors[1,:]]
+  return v
+end
+
+"""
 Convention: mask is FALSE if point is to be REMOVED
 """
-function update_annotations(imgc, img2, vectors, mask)
+function update_annotations(imgc, img2, lines, mask)
   for an in values(imgc.annotations)
     if :pts in fieldnames(an.data)
-      an.data.pts = vectors[1:2, mask]
+      an.data.pts = lines[1:2, mask]
     elseif :lines in fieldnames(an.data)
-      an.data.lines = vectors[:, mask]
+      an.data.lines = lines[:, mask]
     end
   end
   println("Removing ", sum(!mask), " matches from GUI")
@@ -209,23 +388,40 @@ function review_matches(meshset, k)
   offset = h5read(path, "offset")
   scale = h5read(path, "scale")
 
+  params = meshset.params
+  params["scale"] = scale
+  params["thumb_offset"] = offset
+  params["src_index"] = matches.src_index
+  params["dst_index"] = matches.dst_index
+  params["src_offset"] = meshset.meshes[find_index(meshset, matches.src_index)].disp
+  params["dst_offset"] = meshset.meshes[find_index(meshset, matches.dst_index)].disp
+  params["src_size"] = get_image_size(matches.src_index)
+  params["dst_size"] = get_image_size(matches.dst_index)
+
+  src_nodes, dst_nodes = get_matched_points(meshset, k)
+  vectors = [hcat(src_nodes...); hcat(dst_nodes...)]
   src_nodes, dst_nodes = get_matched_points_t(meshset, k)
+  vectors_t = [hcat(src_nodes...); hcat(dst_nodes...)]
   vectorsA = scale_matches(src_nodes, scale)
   vectorsB = scale_matches(dst_nodes, scale)
-  vectors = offset_matches(vectorsA, vectorsB, offset)
-  vecs = [hcat(vectors[1]...); hcat(vectors[2]...)];
+  vecs = offset_matches(vectorsA, vectorsB, offset)
 
   imview = view(img, pixelspacing=[1,1])
-  an_pts, an_vectors = show_vectors(imview..., vecs, RGB(0,0,1), RGB(1,0,1), 10)
-  return imview, copy(an_vectors.ann.data.lines)
-  # pts_to_remove = edit_matches(imview..., an_pts)
-  # return pts_to_remove
+  big_vecs = change_vector_lengths([hcat(vecs[1]...); hcat(vecs[2]...)], 10)
+  an_pts, an_vectors = show_vectors(imview..., big_vecs, RGB(0,0,1), RGB(1,0,1))
+  return imview, vectors, vectors_t, copy(an_vectors.ann.data.lines), params
 end
 
+"""
+Get indices of the false entries in a binary array
+"""
 function mask_to_indices(mask)
   return eachindex(mask)[!mask]
 end
 
+"""
+Store indices of the false entries from a binary mask as matches to remove
+"""
 function store_mask(path, k, mask, comment)
   indices_to_remove = mask_to_indices(mask)
   store_points(path, k, indices_to_remove, comment)
@@ -282,15 +478,15 @@ end
 # Pipeline
 imview, vectors, disp, k = prepare_review_matches(meshset, 18);
 mask = update_annotations(imview..., vectors, disp .< 70);
-store_mask(path, k, mask, "disp.<80");
-indices_to_remove = edit_matches(imview..., vectors[:,mask]);
+store_mask(path, k, mask, "disp.<70");
+indices_to_remove = edit_matches2(imview..., vectors[:,mask]);
 store_points(path, k, indices_to_remove, "manual_after_disp");
 """
 function prepare_review_matches(meshset, k)
   # r_values = calculate_r_values(meshset, k)
   disp = calculate_displacements(meshset, k)
-  imview, vectors = review_matches(meshset, k)
-  return imview, vectors, disp, k
+  imview, vectors, vectors_t, lines, params = review_matches(meshset, k)
+  return imview, vectors, vectors_t, lines, disp, k, params
 end
 
 """
@@ -320,8 +516,8 @@ function calculate_r_values(meshset, k)
   src_pts = [x - src_offset for x in src_nodes]
   dst_pts = [x - dst_offset for x in dst_nodes]
   for (src_pt, dst_pt) in zip(src_pts, dst_pts)
-    src_bnds = sliceimg(src_img, src_pt, block_r)
-    dst_bnds = sliceimg(dst_img, dst_pt, block_r)
+    src_bnds = sliceimg(src_pt, block_r, size(src_img))
+    dst_bnds = sliceimg(dst_pt, block_r, size(dst_img))
     src = src_img[colon(src_bnds[1:2]...), colon(src_bnds[3:4]...)]
     dst = dst_img[colon(dst_bnds[1:2]...), colon(dst_bnds[3:4]...)]
     # println(size(src), " ", size(dst))
@@ -415,142 +611,31 @@ function review_matches_movie(meshset, k, step="post", downsample=2)
   # return pts_to_remove
 end
 
-# """
-# Determine appropriate meshset solution method for meshset
-# """
-# function resolve!(meshset::MeshSet)
-#   index = meshset.meshes[1].index
-#   if is_montaged(index)
-#   elseif is_prealigned(index)
-#     solve_meshset!(meshset)
-#   end
-# end
-#
-# """
-# Review all matches in the meshsets in given directory via method specified
-# """
-# function review_matches(dir, method="movie")
-#   filenames = sort_dir(dir)
-#   for fn in filenames[1:1]
-#     println(joinpath(dir, fn))
-#     is_file_changed = false
-#     meshset = load(joinpath(dir, fn))["MeshSet"]
-#     # src_index = meshset.meshes[1].index
-#     # dst_index = meshset.meshes[2].index
-#     # meshset.meshes[1].index = (src_index[1:2]..., PREALIGNED_INDEX, PREALIGNED_INDEX)
-#     # meshset.meshes[2].index = (dst_index[1:2]..., PREALIGNED_INDEX, PREALIGNED_INDEX)
-#     new_path = update_filename(fn)
-#     log_file = open(joinpath(dir, string(new_path[1:end-4], ".txt")), "w")
-#     write(log_file, "Meshset from ", joinpath(dir, fn), "\n")
-#     for (k, matches) in enumerate(meshset.matches)
-#       println("Inspecting matches at index ", k,)
-#       if method=="images"
-#         @time src_bm_imgs, _ = get_blockmatch_images(meshset, k, "src", meshset.params["block_size"]-400)
-#         @time dst_bm_imgs, _ = get_blockmatch_images(meshset, k, "dst", meshset.params["block_size"]-400)
-#         @time filtered_imgs = create_filtered_images(src_bm_imgs, dst_bm_imgs)
-#         pts_to_remove = collect(edit_blockmatches(filtered_imgs))
-#       else
-#         pts_to_remove = review_matches_movie(meshset, k, "pre")
-#       end
-#       if length(pts_to_remove) > 0
-#         is_file_changed = true
-#         # save_blockmatch_imgs(meshset, k, pts_to_remove, joinpath(dir, "blockmatches"))
-#       end
-#       remove_matches_from_meshset!(pts_to_remove, k, meshset)
-#       log_line = string("Removed following matches from index ", k, ":\n")
-#       log_line = string(log_line, join(pts_to_remove, "\n"))
-#       write(log_file, log_line, "\n")
-#     end
-#     if is_file_changed
-#       resolve!(meshset)
-#       println("Saving JLD here: ", new_path)
-#       @time save(joinpath(dir, new_path), meshset)
-#     end
-#     close(log_file)
-#   end
-# end
-
-# """
-# Convert matches object for section into filename string
-# """
-# function matches2filename(meshset, k)
-#   src_index = meshset.matches[k].src_index
-#   dst_index = meshset.matches[k].dst_index
-#   return string(join(dst_index[1:2], ","), "-", join(src_index[1:2], ","))
-# end
-
-# """
-# Convert cross correlogram to Image for saving
-# """
-# function xcorr2Image(xc)
-#   return grayim((xc .+ 1)./2)
-# end
-
-# """
-# Save match pair images w/ search & block radii at k index in meshset
-# """
-# function save_blockmatch_imgs(meshset, k, blockmatch_ids=[], path=joinpath(ALIGNED_DIR, "blockmatches"))
-#   dir_path = joinpath(path, matches2filename(meshset, k))
-#   if !isdir(dir_path)
-#     mkdir(dir_path)
-#   end
-#   block_radius = meshset.params["block_size"]
-#   search_radius = meshset.params["search_r"]
-#   scale = meshset.params["scaling_factor"]
-#   combined_radius = search_radius+block_radius
-#   src_imgs, src_bounds = get_blockmatch_images(meshset, k, "src", combined_radius)
-#   dst_imgs, dst_bounds = get_blockmatch_images(meshset, k, "dst", block_radius)
-#   src_points, dst_points = get_matched_points(meshset, k)
-#   # dst_imgs_adjusted = get_blockmatch_images(meshset, k, "dst", block_radius)
-#   println("save_blockmatch_imgs")
-#   if blockmatch_ids == []
-#     blockmatch_ids = 1:length(src_imgs)
-#   end
-#   for (idx, (src_img, dst_img, src_point, src_bound)) in enumerate(zip(src_imgs, 
-#                                                                 dst_imgs, 
-#                                                                 src_points,
-#                                                                 src_bounds))
-#     if idx in blockmatch_ids
-#       println(idx, "/", length(src_imgs))
-#       # xc = normxcorr2(src_img, dst_img)
-#       xc_peak, xc = get_max_xc_vector(dst_img, src_img)
-#       println(size(src_img))
-#       println(size(dst_img))
-#       println(size(xc))
-#       n = @sprintf("%03d", idx)
-#       img_mark = "good"
-#       dst_path = joinpath(dir_path, string(n , "_1_dst_", k, "_", img_mark, ".png"))
-#       imwrite(dst_img, dst_path)
-#       src_offset = src_point - collect(src_bound)
-#       src_path = joinpath(dir_path, string(n , "_2_src_", k, "_", img_mark, ".png"))
-#       imwrite_box(src_img, src_offset, block_radius, src_path)
-#       # imwrite(dst_img, joinpath(dir_path, string(n , "_dst_", k, "_", img_mark, ".jpg")))
-#       if !isnan(sum(xc))
-#         r_max = maximum(xc);
-#         rad = round(Int64, (size(xc, 1) - 1)/ 2)  
-#         ind = findfirst(r_max .== xc)
-#         xc_peak = [rem(ind, size(xc, 1)), cld(ind, size(xc, 1))]
-#         xc_path = joinpath(dir_path, string(n , "_3_xc_", k, "_", img_mark, ".png"))
-#         imwrite_box(xcorr2Image(xc'), xc_peak, 20, xc_path)
-#         # imwrite(xcorr2Image(xc'), joinpath(dir_path, string(n , "_xc_", k, "_", img_mark, ".jpg")))
-#       end
-#     end
-#   end
-# end
-
 """
 Excerpt image in radius around given point
 """
-function sliceimg(img, point, radius::Int64)
+function sliceimg(point, radius::Int64, img_size)
   point = ceil(Int64, point)
   imin = max(point[1]-radius, 1)
   jmin = max(point[2]-radius, 1)
-  imax = min(point[1]+radius, size(img,1))
-  jmax = min(point[2]+radius, size(img,2))
+  imax = min(point[1]+radius, img_size[1])
+  jmax = min(point[2]+radius, img_size[2])
   return imin, imax, jmin, jmax
   # i_range = imin:imax
   # j_range = jmin:jmax
   # return img[i_range, j_range]
+end
+
+"""
+Excerpt image in radius around given point
+"""
+function pt_radius_to_bounds(point, radius::Int64)
+  point = ceil(Int64, point)
+  imin = point[1]-radius
+  jmin = point[2]-radius
+  imax = point[1]+radius
+  jmax = point[2]+radius
+  return imin, imax, jmin, jmax
 end
 
 """
@@ -573,7 +658,7 @@ function get_blockmatch_images(meshset, k, mesh_type, radius)
   bm_bounds = []
   # for pt in (mesh_type == "src" ? src_points : dst_points)
   for pt in dst_points
-    bounds = sliceimg(img, pt-offset, radius)
+    bounds = sliceimg(pt-offset, radius, size(img))
     push!(bm_imgs, img[range(bounds[1:2]...), range(bounds[3:4]...)])
     push!(bm_bounds, (bounds[1]+offset[1], bounds[3]+offset[2]))
     # push!(bm_imgs, sliceimg(img, pt-offset, radius))
@@ -988,7 +1073,7 @@ function view_stack(meshset, section_range=(1:2), slice=(1:200,1:200), perm=[1,2
   imgs = []
   for mesh in meshset.meshes[section_range]
     index = (mesh.index[1:2]..., mesh.index[3]-1, mesh.index[4]-1)
-    img = get_h5_slice(get_h5_path(index), slice)
+    img = reinterpret(UFixed8, get_h5_slice(get_h5_path(index), slice))
     push!(imgs, img)
   end
 
@@ -1153,4 +1238,69 @@ function plot_matches_outline(meshset, factor=5)
   draw_vectors(img..., vectors, RGB(0,0,1), RGB(1,0,1), factor)
   # draw_indices(img..., vectors[1:2,:], 14.0, [-8,-20])
   return img[1], img[2]
+end
+
+"""
+Provide bindings for GUI to right-click and remove matches from a mesh. End 
+manual removal by exiting the image window, or by pressing enter while focused
+on the image window.
+
+Args:
+
+* imgc: ImageCanvas object from image with annotations
+* img2: ImageZoom object from image with annotations
+* vectors: lines to be displayed by the annotation object from the image
+
+Returns:
+
+* pts_to_remove: array of indices for points to remove from mesh
+
+  pts_to_remove = edit_matches(imgc, img2, annotation)
+"""
+function edit_matches(imgc, img2, vectors)
+    e = Condition()
+
+    indices_to_remove = Array{Integer,1}()
+    annotation = Void
+    for an in values(imgc.annotations)
+      if :lines in fieldnames(an.data)
+        annotation = an
+      end
+    end
+    mask = ones(Bool, size(vectors,2))
+    # lines = copy(annotation.ann.data.lines)
+
+    c = canvas(imgc)
+    win = Tk.toplevel(c)
+    bind(c, "<Button-3>", (c, x, y)->right_click(parse(Int, x), parse(Int, y)))
+    bind(win, "<Destroy>", path->end_edit())
+
+    function right_click(x, y)
+        xu,yu = Graphics.device_to_user(Graphics.getgc(imgc.c), x, y)
+        xi, yi = floor(Integer, 1+xu), floor(Integer, 1+yu)
+        # println(xi, ", ", yi)
+        limit = (img2.zoombb.xmax - img2.zoombb.xmin) * 0.0125 # 100/8000
+        lines = annotation.data.lines
+        annidx = find_idx_of_nearest_pt(lines[1:2,:], [xi, yi], limit)
+        if annidx > 0
+            pt = lines[1:2,annidx]
+            idx = find_pt_idx(vectors[1:2,:], pt)
+            println(idx, ": ", vectors[1:2,idx])
+            mask[idx] = false
+            update_annotations(imgc, img2, vectors, mask)
+            push!(indices_to_remove, idx)
+        end
+    end
+
+    function end_edit()
+        println("End edit\n")
+        notify(e)
+        bind(c, "<Button-3>", path->path)
+        bind(win, "<Destroy>", path->path)
+    end
+
+    println("Right click to remove correspondences, then exit window.")
+    wait(e)
+
+    return indices_to_remove
 end

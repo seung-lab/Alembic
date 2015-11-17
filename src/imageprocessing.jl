@@ -116,10 +116,10 @@ Returns:
 
 * new_img: original img, extended with rows and columns of zeros
 """
-function padimage{T}(img::Array{T}, xlow::Int64, ylow::Int64, xhigh::Int64, yhigh::Int64)
+function padimage{T}(img::Array{T}, xlow::Int64, ylow::Int64, xhigh::Int64, yhigh::Int64, val=0)
     h = ylow + size(img, 1) + yhigh
     w = xlow + size(img, 2) + xhigh
-    z = zeros(T, h, w)
+    z = ones(T, h, w)*val
     z[ylow+1:ylow+size(img,1), xlow+1:xlow+size(img,2)] = img
     return z
 end

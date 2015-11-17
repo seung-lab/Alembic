@@ -53,6 +53,7 @@ using Base.Test
 using Cairo
 using IterativeSolvers
 using ImageRegistration
+using PyPlot
 
 include("Params.jl")
 include("IO.jl")

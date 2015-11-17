@@ -74,11 +74,7 @@ Returns:
   an_vectors: annotation object for the vectors
 """
 function show_vectors(imgc, img2, vectors, pt_color=RGB(0,0,1), 
-                                                vec_color=RGB(1,0,1), k=100)
-    vectors = [vectors[2,:]; 
-                vectors[1,:]; 
-                (vectors[4,:]-vectors[2,:])*k + vectors[2,:]; 
-                (vectors[3,:]-vectors[1,:])*k + vectors[1,:]]
+                                                vec_color=RGB(1,0,1))
     an_vectors = annotate!(imgc, img2, AnnotationLines(vectors, color=vec_color, 
                                             coord_order="xxyy", linewidth=3))
     an_points = annotate!(imgc, img2, AnnotationPoints(vectors[1:2,:], 
@@ -141,8 +137,7 @@ function create_image(bb)
     return view_isotropic(z), [bb.i, bb.j]
 end
 
-function show_box(imgc, img2, bb, color=RGB(0,1,0), linewidth=1.0)
-    upper_left, lower_right = bb2corners(bb) 
+function show_box(imgc, img2, upper_left, lower_right, color=RGB(0,1,0), linewidth=1.0)
     an_box = annotate!(imgc, img2, AnnotationBox(tuple(upper_left...), 
                                                     tuple(lower_right...),
                                                     color=color, 

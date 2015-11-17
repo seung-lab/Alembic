@@ -25,7 +25,8 @@ function get_h5_path(index::Index)
 end
 
 function get_h5_slice(path::String, slice)
-  return reinterpret(Ufixed8, h5read(path, "img", slice))
+  # return reinterpret(Ufixed8, h5read(path, "img", slice))
+  return h5read(path, "img", slice)
 end
 
 function get_h5_image(path::String)

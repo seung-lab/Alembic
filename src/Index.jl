@@ -30,6 +30,12 @@ function get_registry(index::Index)
   return registry; 
 end
 
+function get_image_size(index::Index)
+  registry = get_registry(index)
+  i = findfirst(registry[:,2], index)
+  return registry[i, 5:6]
+end
+
 function get_params(index::Index)
   if is_premontaged(index) params = PARAMS_MONTAGE;
   elseif is_montaged(index) params = PARAMS_PREALIGNMENT;

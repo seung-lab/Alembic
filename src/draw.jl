@@ -19,6 +19,17 @@ function draw_vectors(ctx::Cairo.CairoContext, vectors, color, factor=1)
   return ctx
 end
 
+function draw_rect(ctx::Cairo.CairoContext, bounds, color=(0,0,0), thickness=2.0)
+  Cairo.save(ctx)
+  Cairo.set_source_rgb(ctx, color...)
+  # Cairo.rotate(ctx, -pi/2)
+  Cairo.rectangle(ctx, bounds[2], bounds[1], bounds[4], bounds[3])
+  Cairo.set_line_width(ctx, thickness)
+  # Cairo.rotate(ctx, pi/2)
+  Cairo.stroke(ctx)
+  return ctx
+end
+
 function draw_line(ctx::Cairo.CairoContext, line, color=(0,0,0), thickness=2.0)
   Cairo.save(ctx)
   Cairo.set_source_rgb(ctx, color...)
