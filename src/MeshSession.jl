@@ -14,6 +14,23 @@ function montage_sections(wafer_num, k::UnitRange{Int64})
   end
 end
 
+function align_stack_skip(first_wafer_num, first_sec_num, last_wafer_num, last_sec_num)
+  println("Elastically aligning $first_wafer_num, $first_sec_num -> ... -> $last_wafer_num, $last_sec_num:")
+  first_index = (first_wafer_num, first_sec_num, PREALIGNED_INDEX, PREALIGNED_INDEX);
+  last_index = (last_wafer_num, last_sec_num, PREALIGNED_INDEX, PREALIGNED_INDEX);
+  @time Ms = make_stack(first_index, last_index);
+  for i in 1:Ms.N-2
+    @time a = Ms.meshes[i].index;
+    @time b = Ms.meshes[i+2].index;
+    @time add_pair_matches_reflexive!(Ms, a, b);
+  end
+  save(Ms)
+  solve_meshset!(Ms);
+  save(Ms);
+  return Ms;
+end
+
+
 function align_stack(first_wafer_num, first_sec_num, last_wafer_num, last_sec_num)
   println("Elastically aligning $first_wafer_num, $first_sec_num -> ... -> $last_wafer_num, $last_sec_num:")
   first_index = (first_wafer_num, first_sec_num, PREALIGNED_INDEX, PREALIGNED_INDEX);
