@@ -36,8 +36,8 @@ end
 function update_meshset_with_stored_edits!(meshset, path)
   pts = readdlm(path)
   for i in 1:size(pts,1)
-    match_index = pts[i,1]
-    indices_to_remove = readdlm(IOBuffer(pts[i,3]), ',', Int)
+    match_index = pts[i,5]
+    indices_to_remove = readdlm(IOBuffer(pts[i,6]), ',', Int)
     remove_matches_from_meshset!(meshset, indices_to_remove, match_index)
   end
 end
@@ -241,37 +241,10 @@ function display_blockmatch(params, src_point, dst_point)
   ImageView.grid(xypos, 1, 1, sticky="ne")
   ImageView.set_visible(win, true)
   c.mouse.motion = (path,x,y)-> updatexylabel(xypos, imgc, xc, x, y)
-
-  # mov = cat(3, reinterpret(UFixed8, src_img_full), reinterpret(UFixed8, dst_img_new))
-  # mimgc, mimg2 = view(Image(mov, timedim=3), pixelspacing=[1,1])
-  # start_loop(mimgc, mimg2, 4)
-
-  # bind(c, "<Delete>", path->remove_point())
-  # bind(win, "<Destroy>", path->end_edit())
-
-  # function remove_point()
-  #   println("Remove point")
-  #   keep_point = false
-  #   end_edit()
-  # end
-
-  # function end_edit()
-  #   notify(e)
-  #   bind(c, "<Delete>", path->path)
-  #   bind(win, "<Destroy>", path->path)
-  # end
-
-  # println("Right click to remove correspondences, then exit window.")
-  # wait(e)
-
   return keep_point
-  # display_image(c, 1, 1, src)
-  # display_image(c, 2, 1, dst)
-  # display_image(c, 1, 2, xc)
-  # display_image(c, 2, 2, fused_img')
 end
 
-function edit_matches2(imgc, img2, vectors, vectors_t, params)
+function edit_matches(imgc, img2, vectors, vectors_t, params)
     e = Condition()
 
     indices_to_remove = Array{Integer,1}()
@@ -342,7 +315,9 @@ function edit_matches2(imgc, img2, vectors, vectors_t, params)
         bind(win, "<Destroy>", path->path)
     end
 
-    println("Right click to remove correspondences, then exit window.")
+    println("1) Right click to inspect correspondences\n",
+            "2) Ctrl + right click to remove correspondences\n",
+            "3) Exit window")
     wait(e)
 
     return indices_to_remove
@@ -357,6 +332,11 @@ function change_vector_lengths(vectors, k)
         (vectors[4,:]-vectors[2,:])*k + vectors[2,:]; 
         (vectors[3,:]-vectors[1,:])*k + vectors[1,:]]
   return v
+end
+
+function filter_distance(imgc, img2, lines, disp, dist)
+  mask = update_annotations(imgc, img2, lines, disp .< dist)
+  return mask, "disp.<$dist"
 end
 
 """
@@ -422,17 +402,77 @@ end
 """
 Store indices of the false entries from a binary mask as matches to remove
 """
-function store_mask(path, k, mask, comment)
+function store_mask(path, meshset, k, mask, username, comment)
   indices_to_remove = mask_to_indices(mask)
-  store_points(path, k, indices_to_remove, comment)
+  store_points(path, meshset, k, indices_to_remove, username, comment)
+end
+
+function get_inspection_groundtruth_path()
+  fn = "1,2-1,16_aligned_EDITED_tmacrina_20151113162553.txt"
+  return joinpath(ALIGNED_DIR, fn)
+end
+
+function dict_of_inspections(path)
+  d = Dict()
+  pts = readdlm(path)
+  for i in 1:size(pts,1)
+    match_index = pts[i,5]
+    indices_to_remove = Set(readdlm(IOBuffer(pts[i,6]), ',', Int))
+    if match_index in keys(d)
+      d[match_index] = union(d[match_index], indices_to_remove)
+    else
+      d[match_index] = indices_to_remove
+    end
+  end
+  return d
+end
+
+function compare_inspections(pathA, pathB=get_inspection_groundtruth_path())
+  dC = Dict()
+  dA = dict_of_inspections(pathA)
+  dB = dict_of_inspections(pathB)
+  sections = intersect(Set(keys(dB)), Set(keys(dA)))
+  for k in sections
+    A = dA[k]
+    B = dB[k]
+    # [TN in A, FN in A, FP in A] # TN: match properly removed
+    dC[k] = [intersect(A, B), setdiff(A, B), setdiff(B, A)]
+  end
+  return dC
+end
+
+function print_inspection_report(pathA, meshset)
+  dC = compare_inspections(pathA)
+  report = ["k" "TP" "FN" "FP" "TN"]
+  for k in keys(dC)
+    tn, fn, fp = map(length, dC[k])
+    N = length(meshset.matches[k].dst_points)
+    tp = N - (tn + fn + fp)
+    report = vcat(report, [k tp fn fp tn])
+  end
+  report = vcat(report, sum(report[2:end,:],1))
+  path = string(pathA[1:end-4], "_report.txt")
+  println("Saving report:\n", path)
+  writedlm(path, report)
+  return report
+end
+
+function display_discrepant_match(params, vectors, idx)
+  ptA = vectors[1:2,idx] # - params["src_offset"]
+  ptB = vectors[3:4,idx] # - params["dst_offset"]
+  pt_display = ptA*params["scale"]-params["thumb_offset"]
+  println(idx, ": ", reverse(pt_display))
+  display_blockmatch(params, ptA, ptB)
 end
 
 """
 Write points to remove in a text file
 """
-function store_points(path, k, indices_to_remove, comment)
+function store_points(path, meshset, k, indices_to_remove, username, comment)
   ts = Dates.format(now(), "yymmddHHMMSS")
-  pts_line = [k, ts, join(indices_to_remove, ","), comment]'
+  src_index = meshset.matches[k].src_index
+  dst_index = meshset.matches[k].dst_index
+  pts_line = [ts, username, src_index, dst_index, k, join(indices_to_remove, ","), comment]'
   if !isfile(path)
     f = open(path, "w")
     close(f)
@@ -441,7 +481,7 @@ function store_points(path, k, indices_to_remove, comment)
     pts = readdlm(path)
     pts = vcat(pts, pts_line)
   end
-  pts = pts[sortperm(pts[:, 1]), :]
+  pts = pts[sortperm(pts[:, 5]), :]
   println("Saving pts_to_remove:\n\t", path)
   writedlm(path, pts)
 end
@@ -1184,8 +1224,8 @@ function get_outline_filename(prefix, src_index, dst_index=(0,0,0,0))
     dir = PREALIGNED_DIR
     fn = string(prefix, "_", indstring, ".tif")
   end
-  return joinpath(dir, "review/151106_1,2-1,16_cleaned", fn)
-  # return joinpath(dir, "review", fn)
+  # return joinpath(dir, "review/151106_1,2-1,16_cleaned", fn)
+  return joinpath(dir, "review", fn)
 end
 
 function write_meshset_match_outlines(meshset, factor=5)
@@ -1238,69 +1278,4 @@ function plot_matches_outline(meshset, factor=5)
   draw_vectors(img..., vectors, RGB(0,0,1), RGB(1,0,1), factor)
   # draw_indices(img..., vectors[1:2,:], 14.0, [-8,-20])
   return img[1], img[2]
-end
-
-"""
-Provide bindings for GUI to right-click and remove matches from a mesh. End 
-manual removal by exiting the image window, or by pressing enter while focused
-on the image window.
-
-Args:
-
-* imgc: ImageCanvas object from image with annotations
-* img2: ImageZoom object from image with annotations
-* vectors: lines to be displayed by the annotation object from the image
-
-Returns:
-
-* pts_to_remove: array of indices for points to remove from mesh
-
-  pts_to_remove = edit_matches(imgc, img2, annotation)
-"""
-function edit_matches(imgc, img2, vectors)
-    e = Condition()
-
-    indices_to_remove = Array{Integer,1}()
-    annotation = Void
-    for an in values(imgc.annotations)
-      if :lines in fieldnames(an.data)
-        annotation = an
-      end
-    end
-    mask = ones(Bool, size(vectors,2))
-    # lines = copy(annotation.ann.data.lines)
-
-    c = canvas(imgc)
-    win = Tk.toplevel(c)
-    bind(c, "<Button-3>", (c, x, y)->right_click(parse(Int, x), parse(Int, y)))
-    bind(win, "<Destroy>", path->end_edit())
-
-    function right_click(x, y)
-        xu,yu = Graphics.device_to_user(Graphics.getgc(imgc.c), x, y)
-        xi, yi = floor(Integer, 1+xu), floor(Integer, 1+yu)
-        # println(xi, ", ", yi)
-        limit = (img2.zoombb.xmax - img2.zoombb.xmin) * 0.0125 # 100/8000
-        lines = annotation.data.lines
-        annidx = find_idx_of_nearest_pt(lines[1:2,:], [xi, yi], limit)
-        if annidx > 0
-            pt = lines[1:2,annidx]
-            idx = find_pt_idx(vectors[1:2,:], pt)
-            println(idx, ": ", vectors[1:2,idx])
-            mask[idx] = false
-            update_annotations(imgc, img2, vectors, mask)
-            push!(indices_to_remove, idx)
-        end
-    end
-
-    function end_edit()
-        println("End edit\n")
-        notify(e)
-        bind(c, "<Button-3>", path->path)
-        bind(win, "<Destroy>", path->path)
-    end
-
-    println("Right click to remove correspondences, then exit window.")
-    wait(e)
-
-    return indices_to_remove
 end
