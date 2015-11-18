@@ -482,7 +482,7 @@ function store_points(path, meshset, k, indices_to_remove, username, comment)
     pts = vcat(pts, pts_line)
   end
   pts = pts[sortperm(pts[:, 5]), :]
-  println("Saving pts_to_remove:\n\t", path)
+  println("Saving pts_to_remove:\n", path)
   writedlm(path, pts)
 end
 
@@ -492,7 +492,10 @@ function get_storage_path(meshset, ts="")
   end
   firstindex = meshset.meshes[1].index
   lastindex = meshset.meshes[end].index
-  return update_filename(get_name(firstindex, lastindex, "txt"), ts)
+  fn = string(join(firstindex[1:2]..., ","), "-", join(lastindex[1:2]..., ","),
+                "_aligned.txt")
+  fn = update_filename(fn, ts)
+  return joinpath(INSPECTION_DIR, fn)
 end
 
 function review_meshset_matches(meshset, ts="", start=1, finish=0)

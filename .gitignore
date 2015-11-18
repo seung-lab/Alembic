@@ -8,3 +8,5 @@ EM_images/
 *.jld
 bucket_dir_path.txt
 bucket_dir_path.txt~
+inspection_storage_path.txt
+inspection_storage_path.txt~

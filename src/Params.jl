@@ -191,7 +191,14 @@ montaged_offsets_filename = "montaged_offsets.txt"
 prealigned_offsets_filename = "prealigned_offsets.txt"
 aligned_offsets_filename = "aligned_offsets.txt"
 
-export BUCKET, DATASET_DIR, AFFINE_DIR, WAFER_DIR_DICT, PREMONTAGED_OFFSETS, PREMONTAGE_DIR, ALIGNMENT_DIR
+inspection_storage_path = ""
+if isfile("inspection_storage_path.txt")
+    inspection_storage_path = rstrip(readall("inspection_storage_path.txt"), '\n')
+elseif isfile("../inspection_storage_path.txt")
+    inspection_storage_path = rstrip(readall("../inspection_storage_path.txt"), '\n')
+end
+
+export BUCKET, DATASET_DIR, AFFINE_DIR, WAFER_DIR_DICT, PREMONTAGED_OFFSETS, PREMONTAGE_DIR, ALIGNMENT_DIR, INSPECTION_DIR
 
 global BUCKET = bucket_dir_path
 global AFFINE_DIR = affine_dir_path
@@ -200,6 +207,7 @@ global PREMONTAGED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_datase
 global MONTAGED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, montaged_dir_path)
 global PREALIGNED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, prealigned_dir_path)
 global ALIGNED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, aligned_dir_path)
+global INSPECTION_DIR = inspection_storage_path
 
 waferpath_filename = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, wafer_filename)
 global WAFER_DIR_DICT = waferpaths2dict(waferpath_filename)
