@@ -174,6 +174,8 @@ if isfile("bucket_dir_path.txt")
     bucket_dir_path = rstrip(readall("bucket_dir_path.txt"), '\n')
 elseif isfile("../bucket_dir_path.txt")
     bucket_dir_path = rstrip(readall("../bucket_dir_path.txt"), '\n')
+else
+    bucket_dir_path = joinpath(homedir(), "seungmount/Omni/tommy/datasets")
 end
 datasets_dir_path = "research/Julimaps/datasets"
 cur_dataset = "piriform"
@@ -196,6 +198,8 @@ if isfile("inspection_storage_path.txt")
     inspection_storage_path = rstrip(readall("inspection_storage_path.txt"), '\n')
 elseif isfile("../inspection_storage_path.txt")
     inspection_storage_path = rstrip(readall("../inspection_storage_path.txt"), '\n')
+else
+    inspection_storage_path = joinpath(homedir(), "seungmount/Omni/tommy/datasets")
 end
 
 export BUCKET, DATASET_DIR, AFFINE_DIR, WAFER_DIR_DICT, PREMONTAGED_OFFSETS, PREMONTAGE_DIR, ALIGNMENT_DIR, INSPECTION_DIR
