@@ -412,6 +412,36 @@ function get_inspection_groundtruth_path()
   return joinpath(ALIGNED_DIR, fn)
 end
 
+function dict_of_inspections(path, meshset)
+  d = Dict()
+  pts = readdlm(path)
+
+  # remove_matches_from_meshset!(meshset, val, key)
+  for i in 1:size(pts,1)
+    match_index = pts[i,5]
+    if !(match_index in keys(d))
+      # d[match_index] = Array{Array{Int64, 1}, 1}()
+      accepted = collect(eachindex(meshset.matches[match_index].dst_points))
+      rejected = Array{Int64, 1}()
+      # push!(d[match_index], accepted)
+      # push!(d[match_index], rejected)
+      d[match_index] = accepted, rejected
+    end
+  end
+
+  for i in 1:size(pts,1)
+    match_index = pts[i,5]
+    indices_to_remove = readdlm(IOBuffer(pts[i,6]), ',', Int)
+    flag = trues(length(d[match_index][1]))
+    flag[indices_to_remove] = false
+    accepted, rejected = d[match_index]
+    rejected = vcat(rejected, d[match_index][1][!flag])
+    accepted = d[match_index][1][flag]
+    d[match_index] = accepted, rejected
+  end
+  return d
+end
+
 function dict_of_inspections(path)
   d = Dict()
   pts = readdlm(path)
@@ -427,31 +457,32 @@ function dict_of_inspections(path)
   return d
 end
 
-function compare_inspections(pathA, pathB=get_inspection_groundtruth_path())
+function compare_inspections(meshset, pathA, pathB=get_inspection_groundtruth_path())
   dC = Dict()
-  dA = dict_of_inspections(pathA)
-  dB = dict_of_inspections(pathB)
+  dA = dict_of_inspections(pathA, meshset)
+  dB = dict_of_inspections(pathB, meshset)
   sections = intersect(Set(keys(dB)), Set(keys(dA)))
   for k in sections
-    A = dA[k]
-    B = dB[k]
-    # [TN in A, FN in A, FP in A] # TN: match properly removed
-    dC[k] = [intersect(A, B), setdiff(A, B), setdiff(B, A)]
+    acceptedA, rejectedA = Set(dA[k][1]), Set(dA[k][2])
+    acceptedB, rejectedB = Set(dB[k][1]), Set(dB[k][2])
+    # [TP in A, TN in A, FN in A, FP in A] # TN: match properly removed
+    dC[k] = [intersect(acceptedA, acceptedB), 
+              intersect(rejectedA, rejectedB), 
+              intersect(acceptedA, rejectedB), 
+              intersect(rejectedA, acceptedB)]
   end
   return dC
 end
 
-function print_inspection_report(pathA, meshset)
-  dC = compare_inspections(pathA)
-  report = ["k" "TP" "FN" "FP" "TN"]
-  for k in keys(dC)
-    tn, fn, fp = map(length, dC[k])
-    N = length(meshset.matches[k].dst_points)
-    tp = N - (tn + fn + fp)
-    report = vcat(report, [k tp fn fp tn])
+function print_inspection_report(path, meshset)
+  dC = compare_inspections(meshset, path)
+  report = ["k" "TP" "TN" "FN" "FP"]
+  for k in sort(collect(keys(dC)))
+    tp, tn, fn, fp = map(length, dC[k])
+    report = vcat(report, [k tp tn fn fp])
   end
   report = vcat(report, sum(report[2:end,:],1))
-  path = string(pathA[1:end-4], "_report.txt")
+  path = string(path[1:end-4], "_report.txt")
   println("Saving report:\n", path)
   writedlm(path, report)
   return report
@@ -492,7 +523,7 @@ function get_storage_path(meshset, ts="")
   end
   firstindex = meshset.meshes[1].index
   lastindex = meshset.meshes[end].index
-  fn = string(join(firstindex[1:2]..., ","), "-", join(lastindex[1:2]..., ","),
+  fn = string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","),
                 "_aligned.txt")
   fn = update_filename(fn, ts)
   return joinpath(INSPECTION_DIR, fn)

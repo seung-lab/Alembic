@@ -1,1 +1,1 @@
-/usr/people/tmacrina/seungmount/research/tommy/alignment_training
+/usr/people/tmacrina/seungmount/Omni/tommy/alignment_training
