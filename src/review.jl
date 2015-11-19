@@ -170,10 +170,6 @@ function draw_box(img::Array{UInt32}, bounds)
 end
 
 function display_blockmatch(params, src_point, dst_point)
-  # e = Condition()
-  
-  keep_point = true
-
   src_index = params["src_index"]
   dst_index = params["dst_index"]
   block_r = params["block_size"]
@@ -241,7 +237,8 @@ function display_blockmatch(params, src_point, dst_point)
   ImageView.grid(xypos, 1, 1, sticky="ne")
   ImageView.set_visible(win, true)
   c.mouse.motion = (path,x,y)-> updatexylabel(xypos, imgc, xc, x, y)
-  return keep_point
+
+  return win
 end
 
 function edit_matches(imgc, img2, vectors, vectors_t, params)
@@ -265,7 +262,12 @@ function edit_matches(imgc, img2, vectors, vectors_t, params)
     win = Tk.toplevel(c)
     bind(c, "<Button-3>", (c, x, y)->inspect_match(parse(Int, x), parse(Int, y)))
     bind(c, "<Control-Button-3>", (c, x, y)->remove_match(parse(Int, x), parse(Int, y)))
+    bind(win, "<Delete>", path->remove_inspected_match())
     bind(win, "<Destroy>", path->end_edit())
+
+    inspect_window = Void
+    inspected_index = Void
+    inspected_index_removed = true
 
     function remove_match(x, y)
         xu,yu = Graphics.device_to_user(Graphics.getgc(imgc.c), x, y)
@@ -297,14 +299,32 @@ function edit_matches(imgc, img2, vectors, vectors_t, params)
             ptA = vectors[1:2,idx] # - params["src_offset"]
             ptB = vectors[3:4,idx] # - params["dst_offset"]
             println(ptA, ", ", ptB)
-            keep_point = display_blockmatch(params, ptA, ptB)
-            if !keep_point
-              mask[idx] = false
-              update_annotations(imgc, img2, original_lines, mask)
-              push!(indices_to_remove, idx)
-            end
+            # keep_point = display_blockmatch(params, ptA, ptB)
+            # if !keep_point
+            #   mask[idx] = false
+            #   update_annotations(imgc, img2, original_lines, mask)
+            #   push!(indices_to_remove, idx)
+            # end
+            inspect_window = display_blockmatch(params, ptA, ptB)
+            inspected_index_removed = false
+            inspected_index = idx
           end
         end
+    end
+
+    function remove_inspected_match()
+      println("Delete!")
+      if !inspected_index_removed
+        if inspected_index > 0
+          println(inspected_index, ": ", original_lines[1:2, inspected_index])
+          mask[inspected_index] = false
+          update_annotations(imgc, img2, original_lines, mask)
+          push!(indices_to_remove, inspected_index)
+          inspected_index_removed = true
+          destroy(inspect_window)
+          PyPlot.close()
+        end
+      end
     end
 
     function end_edit()
@@ -312,6 +332,7 @@ function edit_matches(imgc, img2, vectors, vectors_t, params)
         notify(e)
         bind(c, "<Button-3>", path->path)
         bind(c, "<Control-Button-3>", path->path)
+        bind(win, "<Delete>", path->path)
         bind(win, "<Destroy>", path->path)
     end
 
