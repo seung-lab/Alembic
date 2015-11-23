@@ -429,6 +429,7 @@ end
 
 function get_inspection_groundtruth_path()
   # return "/usr/people/tmacrina/seungmount/Omni/alignment/training/1,2-1,16_aligned_EDITED_tmacrina_20151113162553.txt"
+  fn = "1,2-1,16_aligned_EDITED_tmacrina_20151113162553.txt"
   return joinpath(inspection_storage_path, fn)
 end
 
@@ -485,7 +486,7 @@ function compare_inspections(meshset, pathA, pathB=get_inspection_groundtruth_pa
   for k in sections
     acceptedA, rejectedA = Set(dA[k][1]), Set(dA[k][2])
     acceptedB, rejectedB = Set(dB[k][1]), Set(dB[k][2])
-    # [TP in A, TN in A, FN in A, FP in A] # TN: match properly removed
+    # [TP in A, TN in A, FP in A, FN in A] # TN: match properly removed
     dC[k] = [intersect(acceptedA, acceptedB), 
               intersect(rejectedA, rejectedB), 
               intersect(acceptedA, rejectedB), 
@@ -496,7 +497,7 @@ end
 
 function print_inspection_report(path, meshset)
   dC = compare_inspections(meshset, path)
-  report = ["k" "TP" "TN" "FN" "FP"]
+  report = ["k" "TP" "TN" "FP" "FN"]
   for k in sort(collect(keys(dC)))
     tp, tn, fn, fp = map(length, dC[k])
     report = vcat(report, [k tp tn fn fp])
