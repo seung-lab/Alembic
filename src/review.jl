@@ -428,8 +428,8 @@ function store_mask(path, meshset, k, mask, username, comment)
 end
 
 function get_inspection_groundtruth_path()
-  return "/usr/people/tmacrina/seungmount/Omni/alignment/training/1,2-1,16_aligned_EDITED_tmacrina_20151113162553.txt"
-  # return joinpath(ALIGNED_DIR, fn)
+  # return "/usr/people/tmacrina/seungmount/Omni/alignment/training/1,2-1,16_aligned_EDITED_tmacrina_20151113162553.txt"
+  return joinpath(inspection_storage_path, fn)
 end
 
 function dict_of_inspections(path, meshset)
