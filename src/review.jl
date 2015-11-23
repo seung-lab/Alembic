@@ -313,7 +313,6 @@ function edit_matches(imgc, img2, vectors, vectors_t, params)
     end
 
     function remove_inspected_match()
-      println("Delete!")
       if !inspected_index_removed
         if inspected_index > 0
           println(inspected_index, ": ", original_lines[1:2, inspected_index])
@@ -429,8 +428,8 @@ function store_mask(path, meshset, k, mask, username, comment)
 end
 
 function get_inspection_groundtruth_path()
-  fn = "1,2-1,16_aligned_EDITED_tmacrina_20151113162553.txt"
-  return joinpath(ALIGNED_DIR, fn)
+  return "/usr/people/tmacrina/seungmount/Omni/alignment/training/1,2-1,16_aligned_EDITED_tmacrina_20151113162553.txt"
+  # return joinpath(ALIGNED_DIR, fn)
 end
 
 function dict_of_inspections(path, meshset)

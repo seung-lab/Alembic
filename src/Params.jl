@@ -176,7 +176,14 @@ elseif isfile("../bucket_dir_path.txt")
     bucket_dir_path = rstrip(readall("../bucket_dir_path.txt"), '\n')
 else
     bucket_dir_path = joinpath(homedir(), "seungmount/Omni/alignment/datasets")
+    if isdefined(:training)
+        if training
+            println("TRAINING PATHS LOADED")
+            bucket_dir_path = joinpath(homedir(), "seungmount/Omni/alignment/training")
+        end
+    end
 end
+
 datasets_dir_path = "research/Julimaps/datasets"
 cur_dataset = "piriform"
 #cur_dataset = "zebrafish"
@@ -200,6 +207,12 @@ elseif isfile("../inspection_storage_path.txt")
     inspection_storage_path = rstrip(readall("../inspection_storage_path.txt"), '\n')
 else
     inspection_storage_path = joinpath(homedir(), "seungmount/Omni/alignment/datasets")
+    if isdefined(:training)
+        if training
+            println("TRAINING PATHS LOADED")
+            inspection_storage_path = joinpath(homedir(), "seungmount/Omni/alignment/training")
+        end
+    end
 end
 
 export BUCKET, DATASET_DIR, AFFINE_DIR, WAFER_DIR_DICT, PREMONTAGED_OFFSETS, PREMONTAGE_DIR, ALIGNMENT_DIR, INSPECTION_DIR
@@ -232,4 +245,3 @@ global GLOBAL_BB = BoundingBox(-4000,-4000,36000,36000)
 
 show_plot = false
 num_procs = nprocs()
-
