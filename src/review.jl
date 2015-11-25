@@ -37,8 +37,13 @@ function update_meshset_with_stored_edits!(meshset, path)
   pts = readdlm(path)
   for i in 1:size(pts,1)
     match_index = pts[i,5]
-    indices_to_remove = readdlm(IOBuffer(pts[i,6]), ',', Int)
-    remove_matches_from_meshset!(meshset, indices_to_remove, match_index)
+    indices_to_remove = [pts[i,6]]
+    if typeof(indices_to_remove[1]) != Int64
+      indices_to_remove = readdlm(IOBuffer(pts[i,6]), ',', Int)
+    end
+    if indices_to_remove[1] != 0
+      remove_matches_from_meshset!(meshset, indices_to_remove, match_index)
+    end
   end
 end
 
@@ -388,6 +393,8 @@ function review_matches(meshset, k)
   offset = h5read(path, "offset")
   scale = h5read(path, "scale")
 
+  img = vcat(img, ones(UInt32, 400, size(img, 2)))
+
   params = meshset.params
   params["scale"] = scale
   params["thumb_offset"] = offset
@@ -524,6 +531,9 @@ function store_points(path, meshset, k, indices_to_remove, username, comment)
   ts = Dates.format(now(), "yymmddHHMMSS")
   src_index = meshset.matches[k].src_index
   dst_index = meshset.matches[k].dst_index
+  if length(indices_to_remove) == 0
+    indices_to_remove = [0]
+  end
   pts_line = [ts, username, src_index, dst_index, k, join(indices_to_remove, ","), comment]'
   if !isfile(path)
     f = open(path, "w")
