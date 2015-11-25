@@ -76,5 +76,6 @@ include("utilities.jl")
 include("transforms.jl")
 include("draw.jl")
 include("visualize.jl")
+include("player.jl")
 
 #end

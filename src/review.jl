@@ -429,6 +429,7 @@ end
 
 function get_inspection_groundtruth_path()
   # return "/usr/people/tmacrina/seungmount/Omni/alignment/training/1,2-1,16_aligned_EDITED_tmacrina_20151113162553.txt"
+  fn = "1,2-1,16_aligned_EDITED_tmacrina_20151113162553.txt"
   return joinpath(inspection_storage_path, fn)
 end
 
@@ -485,7 +486,7 @@ function compare_inspections(meshset, pathA, pathB=get_inspection_groundtruth_pa
   for k in sections
     acceptedA, rejectedA = Set(dA[k][1]), Set(dA[k][2])
     acceptedB, rejectedB = Set(dB[k][1]), Set(dB[k][2])
-    # [TP in A, TN in A, FN in A, FP in A] # TN: match properly removed
+    # [TP in A, TN in A, FP in A, FN in A] # TN: match properly removed
     dC[k] = [intersect(acceptedA, acceptedB), 
               intersect(rejectedA, rejectedB), 
               intersect(acceptedA, rejectedB), 
@@ -496,7 +497,7 @@ end
 
 function print_inspection_report(path, meshset)
   dC = compare_inspections(meshset, path)
-  report = ["k" "TP" "TN" "FN" "FP"]
+  report = ["k" "TP" "TN" "FP" "FN"]
   for k in sort(collect(keys(dC)))
     tp, tn, fn, fp = map(length, dC[k])
     report = vcat(report, [k tp tn fn fp])
@@ -1036,170 +1037,6 @@ function load_nodes(meshset, section_range=1:10, downsample=1)
     push!(global_nodes, [nodes])
   end
   return global_nodes
-end
-
-"""
-Ripped from ImageView > navigation.jl
-"""
-function stop_playing!(state::ImageView.NavigationState)
-    if state.timer != nothing
-        close(state.timer)
-        state.timer = nothing
-    end
-end
-
-"""
-Ripped from ImageView > navigation.jl
-"""
-function updatet(ctrls, state)
-  Tk.set_value(ctrls.editt, string(state.t))
-  Tk.set_value(ctrls.scalet, state.t)
-  enableback = state.t > 1
-  Tk.set_enabled(ctrls.stepback, enableback)
-  Tk.set_enabled(ctrls.playback, enableback)
-  enablefwd = state.t < state.tmax
-  Tk.set_enabled(ctrls.stepfwd, enablefwd)
-  Tk.set_enabled(ctrls.playfwd, enablefwd)
-end
-
-"""
-Ripped from ImageView > navigation.jl
-"""
-function incrementt(inc, ctrls, state, showframe)
-    state.t += inc
-    updatet(ctrls, state)
-    showframe(state)
-end
-
-"""
-Ripped from ImageView > navigation.jl
-"""
-function playt(inc, ctrls, state, showframe)
-    if !(state.fps > 0)
-        error("Frame rate is not positive")
-    end
-    stop_playing!(state)
-    dt = 1/state.fps
-    state.timer = Timer(timer -> stept(inc, ctrls, state, showframe), dt, dt)
-end
-
-"""
-Ripped from ImageView > navigation.jl
-"""
-function stept(inc, ctrls, state, showframe)
-    if 1 <= state.t+inc <= state.tmax
-        incrementt(inc, ctrls, state, showframe)
-    else
-        stop_playing!(state)
-    end
-end
-
-"""
-Create loop of the image
-"""
-function start_loop(imgc, img2, fps=6)
-  state = imgc.navigationstate
-  ctrls = imgc.navigationctrls
-  showframe = state -> ImageView.reslice(imgc, img2, state)
-  set_fps!(state, fps)
-
-  if !(state.fps > 0)
-      error("Frame rate is not positive")
-  end
-  stop_playing!(state)
-  dt = 1/state.fps
-  state.timer = Timer(timer -> loopt(ctrls, state, showframe), dt, dt)
-end
-
-"""
-Higher level call for ImageView outputs
-"""
-function stop_loop(imgc)
-  stop_playing!(imgc.navigationstate)
-end
-
-"""
-Endlessly repeat forward loop (continuous stept)
-"""
-function loopt(ctrls, state, showframe)
-  inc = 1
-  if state.t+inc < 1 || state.tmax < state.t+inc
-      state.t = 0
-  end
-  incrementt(inc, ctrls, state, showframe)
-end
-
-"""
-Building on ImageView > navigation.jl
-"""
-function set_fps!(state, fps)
-  state.fps = fps
-end
-
-function go_up_slice(meshset, section_range, slice)
-  new_slice = (slice[1][1]-length(slice[1]):slice[1][1], slice[2])
-  view_stack(meshset, section_range, new_slice)
-  return new_slice
-end
-
-function go_down_slice(meshset, section_range, slice)
-  new_slice = (slice[1][end]:slice[1][end]+length(slice[1])-1, slice[2])
-  view_stack(meshset, section_range, new_slice)
-  return new_slice
-end
-
-function go_left_slice(meshset, section_range, slice)
-  new_slice = (slice[1], slice[2][1]-length(slice[2])-1:slice[2][1])
-  view_stack(meshset, section_range, new_slice)
-  return new_slice
-end
-
-function go_right_slice(meshset, section_range, slice)
-  new_slice = (slice[1], slice[2][end]:slice[2][end]+length(slice[2])-1)
-  view_stack(meshset, section_range, new_slice)
-  return new_slice
-end
-
-"""
-Cycle through sections of the stack movie, with images staged for easier viewing
-"""
-function view_stack(meshset, section_range=(1:2), slice=(1:200,1:200), perm=[1,2,3])
-  imgs = []
-  for mesh in meshset.meshes[section_range]
-    index = (mesh.index[1:2]..., mesh.index[3]-1, mesh.index[4]-1)
-    img = reinterpret(UFixed8, get_h5_slice(get_h5_path(index), slice))
-    push!(imgs, img)
-  end
-
-  println(slice)
-  img_stack = cat(3, imgs..., reverse(imgs[2:end-1])...)  # loop it
-  # img_stack = cat(3, imgs...)
-  # img_stack = permutedims(cat(3, imgs...), perm)
-  # img_movie = Image(img_stack, timedim=3)
-  # if perm != [1,2,3]
-    # imgc, img2 = view(Image(permutedims(img_stack, [3,2,1]), timedim=3))
-    # start_loop(imgc, img2, 10)
-    # imgc, img2 = view(Image(permutedims(img_stack, [1,3,2]), timedim=3))
-    # start_loop(imgc, img2, 10)
-  imgc, img2 = view(Image(permutedims(img_stack, perm), timedim=3), pixelspacing=[1,1])
-  start_loop(imgc, img2, 6)
-  # end
-  # start_loop(imgc, img2, 10)
-
-  e = Condition()
-  c = canvas(imgc)
-  win = Tk.toplevel(c)
-
-  function exit_movie()
-    stop_loop(imgc)
-    notify(e)
-  end
-  bind(win, "<Destroy>", path->notify(e))
-  bind(win, "<Escape>", path->exit_movie())
-
-  wait(e)
-  destroy(win)
-  return slice
 end
 
 """
