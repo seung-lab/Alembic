@@ -7,7 +7,7 @@ type Match
   properties::Array{Dict{Any, Any}} # in the same array order, contains parameters
 end
 
-function count_correspondences(match::Match) return size(src_points, 1);	end
+function count_correspondences(match::Match) return size(match.src_points, 1);	end
 
 function get_ranges(pt, src_mesh, dst_mesh, params)
 	get_ranges(pt, src_mesh, dst_mesh, params["block_size"], params["search_r"]);
@@ -90,11 +90,10 @@ function write_blockmatches(A, B, xc, idx, partial_fn)
 end
 =#
 function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh))
+	println("Matching $(src_mesh.index) -> $(dst_mesh.index):#########\n");
 	if src_mesh == dst_mesh
 		return nothing
 	end
-
-	println("Matching $(src_mesh.index) -> $(dst_mesh.index):#########\n");
 
 	src_image_local = get_image(src_mesh);
 	dst_image_local = get_image(dst_mesh);

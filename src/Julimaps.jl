@@ -56,11 +56,11 @@ if !isdefined(:BoundingBox) # haaaaack
 	include("boundingbox.jl")
 end
 
+include("Index.jl")
 include("filesystem.jl")
 include("IO.jl")
 include("Params_session.jl")
 include("convolve.jl")
-include("Index.jl")
 include("Mesh.jl")
 include("Match.jl")
 include("MeshSet.jl")

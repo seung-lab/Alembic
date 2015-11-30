@@ -5,20 +5,20 @@ type MeshSet
 end
 
 ### IO.jl
-function get_path(meshset::MeshSet)			return get_path(meshset.meshes...);		end
+function get_path(meshset::MeshSet)			return get_path(meshset.meshes);		end
 
-function get_images(meshset::MeshSet, dtype = UInt8)	return map(get_image, meshset.meshes..., repeat(dtype));	end
+function get_images(meshset::MeshSet, dtype = UInt8)	return map(get_image, meshset.meshes, repeated(dtype));	end
 
 ### counting
 function count_meshes(meshset::MeshSet)			return length(meshset.meshes);		end
 
 function count_matches(meshset::MeshSet)		return length(meshset.matches);		end
 
-function count_nodes(meshset::MeshSet)			return sum(map(count_nodes, meshset.meshes...));		end
+function count_nodes(meshset::MeshSet)			return sum(map(count_nodes, meshset.meshes));		end
 
-function count_edges(meshset::MeshSet)			return sum(map(count_edges, meshset.meshes...));		end
+function count_edges(meshset::MeshSet)			return sum(map(count_edges, meshset.meshes));		end
 
-function count_correspondences(meshset::MeshSet)	return sum(map(count_correspondences, meshset.matches...));		end
+function count_correspondences(meshset::MeshSet)	return sum(map(count_correspondences, meshset.matches));		end
 
 ### finding
 function find_mesh_index(meshset::MeshSet, index)

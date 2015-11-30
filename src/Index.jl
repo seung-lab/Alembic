@@ -18,21 +18,22 @@ function is_aligned(index)
     if index[3:4] == (ALIGNED_INDEX, ALIGNED_INDEX) return true else return false end
 end
 
-function is_adjacent(Am::Mesh, Bm::Mesh)
-  if abs(Am.index[3] - Bm.index[3]) + abs(Am.index[4] - Bm.index[4])  == 1 return true; end
+function is_adjacent(A_index, B_index)
+  if abs(A_index[3] - B_index[3]) + abs(A_index[4] - B_index[4])  == 1 return true; end
   return false;
 end
 
-function is_diagonal(Am::Mesh, Bm::Mesh)
-  if abs(Am.index[3] - Bm.index[3]) + abs(Am.index[4] - Bm.index[4]) == 2 && Am.index[3] != Bm.index[3] && Am.index[4] != Bm.index[4] return true; end
+function is_diagonal(A_index, B_index)
+  if abs(A_index[3] - B_index[3]) + abs(A_index[4] - B_index[4]) == 2 && A_index[3] != B_index[3] && A_index[4] != B_index[4] return true; end
   return false;
 end
 
-function is_preceding(Am::Mesh, Bm::Mesh)
-	if Am.index == get_preceding(Bm.index) && Am.index[3:4] == Bm.index[3:4] return true;
-	else return false;
-	end
+function is_preceding(A_index, B_index)
+	if A_index == get_preceding(B_index) && A_index[3:4] == B_index[3:4] return true; end
+	return false;
 end
+
+
 
 function get_overview_index(index)
   return (index[1:2]..., OVERVIEW_INDEX, OVERVIEW_INDEX)

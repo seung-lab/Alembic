@@ -8,6 +8,19 @@ type Mesh
 	edges::Edges				                # n-by-m sparse incidence matrix, each column is zero except at two elements with value -1 and 1
 end
 
+### INDEX.jl EXTENSIONS
+function is_adjacent(Am::Mesh, Bm::Mesh)
+	return is_adjacent(Am.index, Bm.index)
+end
+
+function is_diagonal(Am::Mesh, Bm::Mesh)
+	return is_diagonal(Am.index, Bm.index)
+end
+
+function is_preceding(Am::Mesh, Bm::Mesh)
+	return is_preceding(Am.index, Bm.index)
+end
+
 ### PARAMS.jl EXTENSIONS
 function get_params(mesh::Mesh)			return get_params(mesh.index);		end
 	     
