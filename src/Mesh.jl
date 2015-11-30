@@ -9,39 +9,40 @@ type Mesh
 end
 
 ### PARAMS.jl EXTENSIONS
-function get_params(mesh::Mesh)			return get_params(mesh.index);	end
+function get_params(mesh::Mesh)			return get_params(mesh.index);		end
 	     
 ### META.jl EXTENSIONS
-function get_offsets(mesh::Mesh)		return get_offsets(mesh.index);	end
+function get_offsets(mesh::Mesh)		return get_offsets(mesh.index);		end
 function get_image_sizes(mesh::Mesh)		return get_image_sizes(get_metadata(mesh.index));	end
+function get_metadata(mesh::Mesh)		return get_metadata(mesh.index);	end
 
 ### IO.jl EXTENSIONS
 function get_path(mesh::Mesh)			return get_path(mesh.index);		end
 
 function get_image(mesh::Mesh, dtype = UInt8)	return get_image(mesh.index, dtype);	end
 
-function get_num_nodes(mesh::Mesh)		return size(mesh.src_nodes[1]);		end
+function count_nodes(mesh::Mesh)		return size(mesh.src_nodes, 1);		end
 
-function get_num_edges(mesh::Mesh)		return size(mesh.edges[2]);		end
+function count_edges(mesh::Mesh)		return size(mesh.edges, 2);		end
 
 function get_topleft_offset(mesh::Mesh)		return mesh.src_nodes[1];		end
 
 function get_dims_and_dists(mesh::Mesh)
-	n = get_num_nodes(mesh);
+	n = count_nodes(mesh);
 
 	i_dist = 0;
 	j_dist = mesh.src_nodes[2][2] - mesh.src_nodes[1][2];
 	j_dim = 0;
 
 	# calculate j-dim by iterating until i changes
-	for ind in 2:get_num_nodes(mesh)
+	for ind in 2:count_nodes(mesh)
 		i_dif = mesh.src_nodes[ind][1] - mesh.src_nodes[ind-1][1]
 		if i_dif == 0 j_dim = ind;
 		else i_dist = i_dif; break;
 		end
 	end
 
-	i_dim = convert(Int64, 1 + (src_nodes[get_num_nodes(mesh)][1] - src_nodes[1][1]) / i_dist);
+	i_dim = convert(Int64, 1 + (mesh.src_nodes[count_nodes(mesh)][1] - mesh.src_nodes[1][1]) / i_dist);
 	return (i_dim, j_dim), [i_dist, j_dist];
 end
 
@@ -55,7 +56,7 @@ function Mesh(index)
 	# e.g. a mesh with 5-4-5-4-5-4-5-4 nodes in each row will have dims = (8, 5)
 	# 1 is added because of 1-indexing (in length)
 	# 2 is added to pad the mesh to extend it beyond by one meshpoint in each direction
-	dims = div(get_image_sizes(index), dists) + 1 + 2;
+	dims = round(Int64, div(get_image_sizes(index), dists)) + 1 + 2;
 
 	# location of the first node (top left)
 	# TODO: Julia does not support rem() for two arrays, so divrem() cannot be used
@@ -148,15 +149,15 @@ function find_mesh_triangle(mesh::Mesh, point::Point)
 		return NO_TRIANGLE;
 	end
 
-	node0 = mesh.nodes[ind0];
+	node0 = mesh.src_nodes[ind0];
 
 	res = point - node0;
 
 	theta = abs(atan(res[1] / res[2]));
 	if (theta < pi / 3)
-		if (dj >= 0)
+		if (res[2] >= 0)
 			ind1 = get_mesh_index(dims, i0, j0 + 1);
-			if (di >= 0)
+			if (res[1] >= 0)
 				if isodd(i0)
 					ind2 = get_mesh_index(dims, i0+1, j0);
 				else
@@ -171,7 +172,7 @@ function find_mesh_triangle(mesh::Mesh, point::Point)
 			end
 		else
 			ind1 = get_mesh_index(dims, i0, j0 - 1);
-			if (di >= 0)
+			if (res[1] >= 0)
 				if isodd(i0)
 					ind2 = get_mesh_index(dims, i0+1, j0-1);
 				else
@@ -186,7 +187,7 @@ function find_mesh_triangle(mesh::Mesh, point::Point)
 			end
 		end
 	else
-		if (di >= 0)
+		if (res[1] >= 0)
 			if isodd(i0)
 				ind1 = get_mesh_index(dims, i0+1, j0-1);
 				ind2 = get_mesh_index(dims, i0+1, j0);

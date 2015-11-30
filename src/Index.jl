@@ -1,14 +1,25 @@
-function is_adjacent(A::Index, B::Index, cross_wafer_guess = false)
-	if sum(abs([A...] - [B...])) == 1
-		return true;
-	elseif cross_wafer_guess && (A[1]-B[1]==1 && A[2]==1) || (A[1]-B[1] == -1 && B[2]==1)
-		return true;
-	end
-	return false;
+function is_overview(index)
+    if index[3:4] == (OVERVIEW_INDEX, OVERVIEW_INDEX)   return true else return false end
+end
+
+function is_premontaged(index)
+    if index[3] > 0 && index[4] > 0 return true else return false end
+end
+
+function is_montaged(index)
+    if index[3:4] == (MONTAGED_INDEX, MONTAGED_INDEX)   return true else return false end
+end
+
+function is_prealigned(index)
+    if index[3:4] == (PREALIGNED_INDEX, PREALIGNED_INDEX)   return true else return false end
+end
+
+function is_aligned(index)
+    if index[3:4] == (ALIGNED_INDEX, ALIGNED_INDEX) return true else return false end
 end
 
 function is_adjacent(Am::Mesh, Bm::Mesh)
-  if abs(Am.index[3] - Bm.index[3]) + abs(Am.index[4] - Bm.index[4]) + abs(Am.index[2] - Bm.index[2]) == 1 return true; end
+  if abs(Am.index[3] - Bm.index[3]) + abs(Am.index[4] - Bm.index[4])  == 1 return true; end
   return false;
 end
 
@@ -17,20 +28,26 @@ function is_diagonal(Am::Mesh, Bm::Mesh)
   return false;
 end
 
-function get_overview_index(index::Index)
+function is_preceding(Am::Mesh, Bm::Mesh)
+	if Am.index == get_preceding(Bm.index) && Am.index[3:4] == Bm.index[3:4] return true;
+	else return false;
+	end
+end
+
+function get_overview_index(index)
   return (index[1:2]..., OVERVIEW_INDEX, OVERVIEW_INDEX)
 end
 
-function get_registry(index::Index)
-  if is_premontaged(index) registry = PREMONTAGED_OFFSETS;
-  elseif is_montaged(index) registry = MONTAGED_OFFSETS;
-  elseif is_prealigned(index) registry = PREALIGNED_OFFSETS;
-  elseif is_aligned(index) registry = ALIGNED_OFFSETS;
+function get_registry(index)
+  if is_premontaged(index) registry = REGISTRY_PREMONTAGED;
+  elseif is_montaged(index) registry = REGISTRY_MONTAGED;
+  elseif is_prealigned(index) registry = REGISTRY_PREALIGNED;
+  elseif is_aligned(index) registry = REGISTRY_ALIGNED;
   else registry = Void; println("Index $index does not correspond to a pipeline stage."); end
   return registry; 
 end
 
-function get_params(index::Index)
+function get_params(index)
   if is_premontaged(index) params = PARAMS_MONTAGE;
   elseif is_montaged(index) params = PARAMS_PREALIGNMENT;
   elseif is_prealigned(index) params = PARAMS_ALIGNMENT;
@@ -49,23 +66,29 @@ function get_metadata(index)
   return registry[find_in_registry(index), :];
 end
 
-function get_offset(metadata)
+function get_offsets(index)
+	metadata = get_metadata(index);
 	return metadata[3:4];
 end
 
-function get_size(metadata)
+function get_image_sizes(index)
+	metadata = get_metadata(index);
 	return metadata[5:6];
 end
 
-function find_preceding(index::Index)
+function get_preceding(index)
   registry = get_registry(index);
   loc_in_reg = find_in_registry(index);
-  if loc_in_reg == 0 println("Index $index not found in the registry."); return NO_INDEX; end
-  if loc_in_reg == 1 return ("Index $index is the first entry in the registry."); NO_INDEX; end
+  if loc_in_reg == 0 return NO_INDEX; end
+  if loc_in_reg == 1 return NO_INDEX; end
   return registry[loc_in_reg - 1, 2];
 end
 
-function get_range_in_registry(indexA::Index, indexB::Index)
+function get_index_range(first_index, last_index)
+	return get_registry(first_index)[find_in_registry(first_index):find_in_registry(last_index), 2];
+end
+
+function get_range_in_registry(indexA, indexB)
 	if indexA[3] != indexB[3] || indexA[4] != indexB[4]
 		println("The indices are from different pipeline stages. Aborting.");
 		return Void;
@@ -78,7 +101,7 @@ end
 Find first row of the offset file that matches index and return
 of previous offset arrays
 """
-function find_offset(offset_file, index::Index)
+function find_offset(offset_file, index)
   if findfirst(offset_file[:,2], index) != 0
     return collect(offset_file[findfirst(offset_file[:,2], index), 3:4])
   else
@@ -90,7 +113,7 @@ end
 Find first row of the offset file that matches index and return cumulative sum 
 of previous offset arrays
 """
-function find_cumulative_offset(offset_file, index::Index)
+function find_cumulative_offset(offset_file, index)
   if findfirst(offset_file[:,2], index) != 0
     return collect(sum(offset_file[1:findfirst(offset_file[:,2], index), 3:4], 1))
   else
@@ -101,7 +124,7 @@ end
 """
 Find appropriate offset file and pull out the offset array for the index
 """
-function load_offset(index::Index)
+function load_offset(index)
   if is_prealigned(index)
     return find_offset(MONTAGED_OFFSETS, (index[1:2]..., -2, -2))
   elseif is_aligned(index)
@@ -113,14 +136,14 @@ end
 """
 Generate list of indices between indexA and indexB
 """
-function get_index_range(indexA::Index, indexB::Index)
+function get_index_range(indexA, indexB)
   return get_registry(indexA)[get_range_in_registry(indexA, indexB), 2]
 end
 
 """
 Return zip object of an index and the index that follows it
 """
-function get_sequential_index_pairs(indexA::Index, indexB::Index)
+function get_sequential_index_pairs(indexA, indexB)
   indices = get_index_range(indexA, indexB)
   return zip(indices[1:end-1], indices[2:end])
 end
@@ -128,6 +151,6 @@ end
 """
 Boolean if an index is the first section in the stack
 """
-function is_first_section(index::Index)
+function is_first_section(index)
   return get_registry(index)[1,2] == index
 end

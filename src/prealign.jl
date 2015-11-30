@@ -195,7 +195,7 @@ function affine_align_sections(moving_img_filename::String,
   # Update matches object in meshset
   meshset.meshes[2].nodes = moving_points
   src_points_indices = 1:length(moving_points)
-  matches = Matches(meshset.meshes[2].index, meshset.meshes[1].index, 
+  matches = Match(meshset.meshes[2].index, meshset.meshes[1].index, 
     length(moving_points), src_points_indices, fixed_points, [], [], [])
   meshset.matches = [matches]
   println("Saving JLD for ", moving_img_filename, 

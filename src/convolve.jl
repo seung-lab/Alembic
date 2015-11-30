@@ -63,6 +63,7 @@ end
 function optimize_normxcorr2(img)
     p=plan_rfft(img,flags=FFTW.MEASURE)
     q=plan_irfft(rfft(img),flags=FFTW.MEASURE,size(img,1))
+    normxcorr2(img, img);
     return Void;
 end
 

@@ -5,13 +5,13 @@
 #using JLD
 #include("convolve.jl")
 #include("Mesh.jl")
-#include("Matches.jl")
+#include("Match.jl")
 #include("MeshSet.jl")
 #include("MeshSolve.jl")
 
 function montageSection(n)
 	@time Ms, imageArray = loadSection(SESSION, n);
-	@time addAllMatches!(Ms, imageArray);
+	@time addAllMatch!(Ms, imageArray);
 	@time solveMeshSet!(Ms, match_coeff, eta_grad, eta_newton, ftol_grad, ftol_newton);
 	printResidualStats(Ms);
 	save(Ms);
@@ -22,7 +22,7 @@ end
 
 function align_stack(wafer_num, k::UnitRange{Int64})
 	@time Ms, imageArray = load_stack(wafer_num, k);
-	@time addAllMatches!(Ms, imageArray);
+	@time addAllMatch!(Ms, imageArray);
 	@time solveMeshSet!(Ms, match_coeff, eta_grad, eta_newton, ftol_grad, ftol_newton);
 	printResidualStats(Ms);
 	save(Ms);

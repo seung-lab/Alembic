@@ -1,6 +1,6 @@
 #=
 # "approximate" functions operate on a Mesh, and will try to come up with the best fit for the given nodes / nodes_t
-# "solve" functions operate on a Matches (within a MeshSet), and will try to come up with the best fit for the given matches
+# "solve" functions operate on a Match (within a MeshSet), and will try to come up with the best fit for the given matches
 =#
 
 """
@@ -172,6 +172,10 @@ function affine_solve_meshset!(Ms)
 end
 
 
+function solve_meshset(meshset)
+
+end
+
 """
 Elastic solve
 """
@@ -272,7 +276,7 @@ function stats(Ms::MeshSet)
    max_t = maximum(res_norm_t)
 
    println("Statistics: ###")
-   println("Total number of matched points: $(Ms.m_e) across $(Ms.M) Matches between $(Ms.N) Meshes\n")
+   println("Total number of matched points: $(Ms.m_e) across $(Ms.M) Match between $(Ms.N) Meshes\n")
    println("Residuals before solving: rms: $rms,  mean: $avg, sigma = $sig, max = $max\n")
    println("Residuals after solving: rms: $rms_t,  mean: $avg_t, sigma = $sig_t, max = $max_t\n")
    println("###")

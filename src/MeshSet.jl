@@ -1,117 +1,107 @@
-"""
-
-"""
 type MeshSet
-  params::Dict
-
-  N::Int64            # number of meshes in the set
-  M::Int64            # number of matches in the set - (a -> b) and (b -> a) are distinct
-
-  indices::Array{Index, 1}        # wafer, section, row, column as a tuple - if tileIndex is 0 then denotes entire section
-
-  n::Int64            # number of nodes in the set across the whole set
-  m::Int64            # number of edges in the set across the whole set
-  m_i::Int64            # number of internal edges in the set across the whole set
-  m_e::Int64            # number of edges between meshes
-  
-  meshes::Array{Mesh, 1}          # vector of meshes in the set
-  nodes_indices::Array{Int64, 1}        # vector of number of nodes before the n-th mesh. To get index at i-th node of n-th mesh, nodes_indices[n] + i.
-
-  matches::Array{Matches, 1}        # vector of matches in the set
-  matches_pairs::Pairings       # vector of index (in meshes) - (a, b) means the match is between (meshes[a] -> meshes[b])
+ 	meshes::Array{Mesh, 1}			# vector of meshes in the set
+ 	matches::Array{Match, 1}		# vector of matches in the set
+  	history::Array{Dict{Any, Any}}		# in the same array order, contains parameters
 end
 
+### IO.jl
+function get_path(meshset::MeshSet)			return get_path(meshset.meshes...);		end
+
+function get_images(meshset::MeshSet, dtype = UInt8)	return map(get_image, meshset.meshes..., repeat(dtype));	end
+
+### counting
+function count_meshes(meshset::MeshSet)			return length(meshset.meshes);		end
+
+function count_matches(meshset::MeshSet)		return length(meshset.matches);		end
+
+function count_nodes(meshset::MeshSet)			return sum(map(count_nodes, meshset.meshes...));		end
+
+function count_edges(meshset::MeshSet)			return sum(map(count_edges, meshset.meshes...));		end
+
+function count_correspondences(meshset::MeshSet)	return sum(map(count_correspondences, meshset.matches...));		end
+
+### finding
+function find_mesh_index(meshset::MeshSet, index)
+  return findfirst(this -> index == this.index, meshset.meshes)
+  end
+
+function find_match_index(meshset::MeshSet, src_index, dst_index)
+  return findfirst(this -> (src_index == this.src_index) && (dst_index == this.dst_index), meshset.matches)
+  end
 
 function find_node(Ms, mesh_ind, node_ind)
   return Ms.nodes_indices[mesh_ind] + node_ind
 end
 
-function find_index(Ms, mesh_index_tuple::Index)
-  return findfirst(this -> mesh_index_tuple == this.index, Ms.meshes)
+### adding
+function add_mesh!(meshset::MeshSet, mesh::Mesh)
+  push!(meshset.meshes, mesh);
 end
 
-function find_section(Ms, section_num)
-  return findfirst(this -> section_num == this.index[2], Ms.meshes)
+function add_match!(meshset::MeshSet, match::Match)
+  push!(meshset.matches, match);
 end
 
-function MeshSet(params::Dict)
-  N = 0
-  M = 0
+### initialise
+function MeshSet()
+ 	meshes = Array{Mesh, 1}(0)
+ 	matches = Array{Match, 1}(0)		
+  	history = Array{Dict{Any, Any}}(0)
 
-  indices = Array{Index, 1}(0)
-  
-  n = 0
-  m = 0
-  m_i = 0
-  m_e = 0
-
-  meshes = Array{Mesh, 1}(0)
-  nodes_indices = Array{Int64, 1}(0)
-
-  matches = Array{Matches, 1}(0)
-  matches_pairs = Array{Pair, 1}(0)
-
-  return MeshSet(params, N, M, indices, n, m, m_i, m_e, meshes, nodes_indices, matches, matches_pairs)
+	return MeshSet(meshes, matches, history)
 end
 
-function add_mesh(Am, Ms)
-  push!(Ms.indices, Am.index)
-  push!(Ms.meshes, Am)
-  if length(Ms.nodes_indices) == 0 push!(Ms.nodes_indices, 0)
-  else push!(Ms.nodes_indices, Ms.n)
-  end
-  Ms.N += 1
-  Ms.m_i += Am.m
-  Ms.m += Am.m
-  Ms.n += Am.n
-  return
+function MeshSet(first_index, last_index)
+	ind_range = get_index_range(first_index, last_index);
+	meshes = map(Mesh, ind_range)
+ 	matches = Array{Match, 1}(0)		
+  	history = Array{Dict{Any, Any}}(0)
+
+	meshset = MeshSet(meshes, matches, history);
+	match!(meshset);
+	return meshset;
 end
 
-function add_matches(M, Ms)
-  if (typeof(M) == Void || M == Void) return; end
-  push!(Ms.matches, M)
-  push!(Ms.matches_pairs, (find_index(Ms, M.src_index), find_index(Ms, M.dst_index)))
-  Ms.M += 1
-  Ms.n
-  Ms.m += M.n
-  Ms.m_e += M.n
-  return
-end
-#= JLD SAVE
-function save(filename::String, Ms::MeshSet)
-  println("Saving meshset to ", filename)
-  jldopen(filename, "w") do file
-    write(file, "MeshSet", Ms)
-  end
-end
+### match
+function get_all_overlaps(meshset::MeshSet)	return get_all_overlaps(meshset.meshes);	end;
+function get_all_overlaps(meshes::Array{Mesh, 1})
+adjacent_pairs = Pairings(0)
+diagonal_pairs = Pairings(0)
+preceding_pairs = Pairings(0)
+succeeding_pairs = Pairings(0)
 
-function save(Ms::MeshSet)
-  firstindex = Ms.meshes[1].index
-  lastindex = Ms.meshes[Ms.N].index
-
-
-  if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex))
-    filename = joinpath(PREALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned.jld"))
-  elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex))
-    filename = joinpath(ALIGNED_DIR, string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned.jld"))
-  else 
-    filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "_montaged.jld"))
+  for i in 1:length(meshes), j in 1:length(meshes)
+    if is_adjacent(meshes[i], meshes[j]) push!(adjacent_pairs, (i, j)); end
+    if is_diagonal(meshes[i], meshes[j]) push!(diagonal_pairs, (i, j)); end
+    if is_preceding(meshes[i], meshes[j]) 
+    	push!(preceding_pairs, (i, j)); 
+    	push!(succeeding_pairs, (j, i)); 
+    end
   end
 
-  save(filename, Ms);
+  pairs = vcat(adjacent_pairs, diagonal_pairs, preceding_pairs, succeeding_pairs)
+
+  return pairs
 end
-=#
+
+function match!(meshset::MeshSet)
+	pairs = get_all_overlaps(meshset);
+	for i in 1:length(pairs)
+		add_match!(meshset, Match(meshset.meshes[pairs[i][1]], meshset.meshes[pairs[i][2]]));
+	end
+end
+
 # JLS SAVE
-function save(filename::String, Ms::MeshSet)
+function save(filename::String, meshset::MeshSet)
   println("Saving meshset to ", filename)
   open(filename, "w") do file
-    serialize(file, Ms)
+    serialize(file, meshset)
   end
 end
 
-function save(Ms::MeshSet)
+function save(meshset::MeshSet)
   firstindex = Ms.meshes[1].index
-  lastindex = Ms.meshes[Ms.N].index
+  lastindex = Ms.meshes[count_meshes(meshset)].index
 
 
   if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex))
@@ -122,7 +112,7 @@ function save(Ms::MeshSet)
     filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "_montaged.jls"))
   end
 
-  save(filename, Ms);
+  save(filename, meshset);
 end
 
 """
@@ -153,65 +143,22 @@ end
 
 function load(firstindex::Index, lastindex::Index)
   if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex))
-    filename = joinpath(PREALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned.jld"))
+    filename = joinpath(PREALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned.jls"))
   elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex))
-    filename = joinpath(ALIGNED_DIR, string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned.jld"))
+    filename = joinpath(ALIGNED_DIR, string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned.jls"))
   else 
-    filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "_montaged.jld"))
+    filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "_montaged.jls"))
   end
 
-  println("Loading meshset from", filename)
+  println("Loading meshset from ", filename)
   return load(filename)
   end
 
 function load(filename::String)
-  Ms = JLD.load(filename, "MeshSet"); 
+  Ms = deserialize(filename);
   return Ms
 end
 
-function get_all_overlaps(Ms)
-adjacent_pairs = Pairings(0)
-diagonal_pairs = Pairings(0)
-
-  for i in 1:Ms.N, j in 1:Ms.N
-    if is_adjacent(Ms.meshes[i], Ms.meshes[j]) push!(adjacent_pairs, (i, j)); end
-    if is_diagonal(Ms.meshes[i], Ms.meshes[j]) push!(diagonal_pairs, (i, j)); end
-  end
-
-  pairs = vcat(adjacent_pairs, diagonal_pairs)
-
-  return pairs
-end
-
-function add_pair_matches_reflexive!(Ms, src, dst, images = Void)
-  if images == Void
-  images = load_section_pair(Ms, src, dst)
-  end
-  matches_src_dst = Matches(images[1], Ms.meshes[find_index(Ms,src)], 
-                              images[2], Ms.meshes[find_index(Ms,dst)], 
-                              Ms.params)
-  matches_dst_src = Matches(images[2], Ms.meshes[find_index(Ms,dst)], 
-                              images[1], Ms.meshes[find_index(Ms,src)], 
-                              Ms.params)
-  add_matches(matches_src_dst, Ms)
-  add_matches(matches_dst_src, Ms)
-  return Ms
-end
-
-function add_pair_matches!(Ms, src, dst, images = Void)
-  if images == Void
-  images = load_section_pair(Ms, src, dst)
-  end
-  matches = Matches(images[1], Ms.meshes[find_index(Ms,src)], 
-                              images[2], Ms.meshes[find_index(Ms,dst)], 
-                              Ms.params)
-  add_matches(matches, Ms)
-  return Ms
-end
-
-"""
-Include prealignment review image with prealignment process for faster review
-"""
 function add_pair_matches_with_thumbnails!(meshset, src, dst, images = Void)
   if images == Void
   images = load_section_pair(meshset, src, dst)
@@ -221,10 +168,6 @@ function add_pair_matches_with_thumbnails!(meshset, src, dst, images = Void)
   matches = calculate_matches(images..., src_mesh, dst_mesh, meshset.params)
   add_matches(matches, meshset)  
   #write_prealignment_thumbnail(images..., meshset)
-end
-
-function calculate_matches(src_img, dst_img, src_mesh, dst_mesh, params)
-  return Matches(src_img, src_mesh, dst_img, dst_mesh, params)
 end
 
 function add_all_matches!(Ms, images)
@@ -241,7 +184,7 @@ matches_array = cell(n)
               break
             end
           (a, b) = pairs[idx]
-          matches_array[idx] = Matches(images[a], Ms.meshes[a], images[b], Ms.meshes[b], Ms.params)
+          matches_array[idx] = Match(images[a], Ms.meshes[a], images[b], Ms.meshes[b], Ms.params)
         end
 for k in 1:n
     M = matches_array[k]
