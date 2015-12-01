@@ -249,8 +249,12 @@ function render_aligned(waferA, secA, waferB, secB, start=1, finish=0)
     return images[index]
   end
 
+  indices = 1:length(meshset.matches)
+  z = zip(reverse(indices), reverse(meshset.matches))
+
   # map(warp_pad_write, meshset.meshes)
-  for (k, matches) in enumerate(meshset.matches)
+  for (k, matches) in zip(reverse(indices), reverse(meshset.matches))
+  # for (k, matches) in enumerate(meshset.matches)
     src_index = matches.src_index
     dst_index = matches.dst_index
     if start <= src_index[2] <= finish && start <= dst_index[2] <= finish
@@ -277,12 +281,12 @@ function render_aligned(waferA, secA, waferB, secB, start=1, finish=0)
       f["scale"] = scale
       close(f)
 
-      path = update_ext(get_outline_filename("thumb_pts", indexB, indexA), "tif")
-      vectors = (offset_matches(vectorsA, vectorsB, O_bb),)
-      match_nums = (find_matches_index(meshset, src_index, dst_index),)
-      colors = ([1,1,1],)
-      factor = 1
-      write_thumbnail(O, path, vectors, colors, match_nums, factor)
+      # path = update_ext(get_outline_filename("thumb_pts", indexB, indexA), "tif")
+      # vectors = (offset_matches(vectorsA, vectorsB, O_bb),)
+      # match_nums = (find_matches_index(meshset, src_index, dst_index),)
+      # colors = ([1,1,1],)
+      # factor = 1
+      # write_thumbnail(O, path, vectors, colors, match_nums, factor)
       # println("Writing thumbnail:\n", path)
       # f = h5open(path, "w")
       # @time f["img", "chunk", (1000,1000)] = drawing

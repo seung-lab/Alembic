@@ -182,6 +182,12 @@ else
             bucket_dir_path = joinpath(homedir(), "seungmount/Omni/alignment/training")
         end
     end
+    if isdefined(:seunglabs)
+        if seunglabs
+            println("SEUNGLABS PATHS LOADED")
+            bucket_dir_path = "/mnt/bucket/labs/seung/Omni/alignment/datasets"
+        end
+    end
 end
 
 datasets_dir_path = "research/Julimaps/datasets"

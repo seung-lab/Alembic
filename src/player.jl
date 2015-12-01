@@ -120,11 +120,17 @@ function go_right_slice(meshset, section_range, slice)
   return new_slice
 end
 
+
+"""
+meshset, area, slice, username, path = load_stack_params("hmcgowan")
+review_stack(username, meshset, area, slice, 1, true)
+"""
 function load_stack_params(username)
-  meshset = load_aligned((1,2,-3,-3), (1,16,-3,-3))
-  area = BoundingBox(3500,3500,32000,32000)
+  meshset = load_aligned((1,2,-3,-3), (1,167,-3,-3))
+  area = BoundingBox(5000,5000,28000,28000)
   slice = [400, 400]
-  return meshset, area, slice, username
+  path = get_stack_errors_path(meshset, username)
+  return meshset, area, slice, username, path
 end
 
 function get_stack_errors_path(meshset, username)
@@ -136,25 +142,27 @@ function get_stack_errors_path(meshset, username)
   return joinpath(INSPECTION_DIR, fn)
 end
 
-function review_stack(username, meshset, area, slice, k, auto=false)
-  mov, slice_range = go_to(meshset, area, slice, k)
-  errors, escape = mark_stack(mov)
+function review_stack(username, meshset, area, slice, k; auto=false, fps=12)
+  mov, slice_range = go_to(meshset, area, slice, k; include_reverse=true)
+  println("Reviewing stack @ column ", k)
+  errors, escape, fps = mark_stack(mov; fps=fps, include_reverse=true)
   path = get_stack_errors_path(meshset, username)
-  store_stack_errors(path, username, slice_range, errors)
+  store_stack_errors(path, username, slice_range, k, errors)
+  println("Last reviewed stack @ column ", k)
   if auto & !escape
-    return review_stack(username, meshset, area, slice, k+1, true)
+    return review_stack(username, meshset, area, slice, k+1; auto=true, fps=fps)
   end
 end
 
 """
 Stores all slice reviews in chronological order - no overwriting
 """
-function store_stack_errors(path, username, slice_range, errors)
+function store_stack_errors(path, username, slice_range, k, errors)
   ts = Dates.format(now(), "yymmddHHMMSS")
   i, j = slice_range[1][1], slice_range[2][1]
   n, m = slice_range[1][end]-slice_range[1][1], 
                     slice_range[2][end]-slice_range[2][1]
-  error_line = [ts, username, i, j, n, m, join(Set(errors), ",")]'
+  error_line = [ts, username, i, j, n, m, k, join(errors, ",")]'
   if !isfile(path)
     f = open(path, "w")
     close(f)
@@ -178,13 +186,13 @@ function get_stack_errors(path, area)
     stack_errors = readdlm(path)
     z = zeros(Int64, round(Int64, area.h*s), round(Int64, area.w*s))
     for k in 1:size(stack_errors, 1)
-      i = round(Int64, (stack_errors[k, 3] - area.i)*s)
-      j = round(Int64, (stack_errors[k, 4] - area.j)*s)
+      i = round(Int64, (stack_errors[k, 3] - area.i)*s)+1
+      j = round(Int64, (stack_errors[k, 4] - area.j)*s)+1
       iz = round(Int64, stack_errors[k, 5]*s)
       jz = round(Int64, stack_errors[k, 6]*s)
-      errors = stack_errors[k, 7]
+      errors = stack_errors[k, 8]
       if typeof(errors) != Int64
-        errors = readdlm(IOBuffer(stack_errors[k, 7]), ',', Int)
+        errors = readdlm(IOBuffer(stack_errors[k, 8]), ',', Int)
       end
       l = length(errors)
       z[i:i+iz, j:j+jz] = ones(Int64, iz+1, jz+1)*l
@@ -196,14 +204,13 @@ end
 function normalize_to_uint8(a)
   assert(minimum(a) == 0)
   mx = maximum(a)
-  a /= m
+  a /= mx
   return convert(Array{UInt8}, round(a*255))
 end
 
 function create_stack_colormap()
-  return vcat(linspace(RGB(0,0,0), RGB(1,0,0), 100), 
-              linspace(RGB(1,0,0), RGB(1,1,0), 100), 
-              linspace(RGB(1,1,0), RGB(1,1,1), 55))
+  return vcat(linspace(RGB(0.0,0.0,0.0), RGB(0.2,0.2,0.2), 127), 
+              linspace(RGB(0.2,0.2,0.2), RGB(1.0,0.0,0.0), 128))
 end
 
 function view_errors(path, area)
@@ -211,10 +218,20 @@ function view_errors(path, area)
   a = normalize_to_uint8(z)
   cm = create_stack_colormap()
   b = apply_colormap(a, cm)
-  view(b, pixelspacing=[1,1])
+  imgc, img2 = view(b, pixelspacing=[1,1])
+  c = canvas(imgc)
+  win = Tk.toplevel(c)
+  fnotify = ImageView.Frame(win)
+  lastrow = 1
+  ImageView.grid(fnotify, lastrow+=1, 1, sticky="ew")
+  xypos = ImageView.Label(fnotify)
+  imgc.handles[:pointerlabel] = xypos
+  ImageView.grid(xypos, 1, 1, sticky="ne")
+  ImageView.set_visible(win, true)
+  c.mouse.motion = (path,x,y)-> updatexylabel(xypos, imgc, z-1, x, y)
 end
 
-function go_to(meshset, area, slice, k)
+function go_to(meshset, area, slice, k; include_reverse=false)
   assert(k != 0)
   n, m = round(Int64, area.h/slice[1]), round(Int64, area.w/slice[2])
   i = (k-1)%n + 1
@@ -222,59 +239,119 @@ function go_to(meshset, area, slice, k)
   section_range = 1:length(meshset.meshes)
   islice = ((i-1)*slice[1]:i*slice[1]) + area.i
   jslice = ((j-1)*slice[1]:j*slice[1]) + area.j
-  return make_stack(meshset, section_range, (islice, jslice)), (islice, jslice)
+  stack = make_stack(meshset, section_range, (islice, jslice); 
+                                            include_reverse=include_reverse)
+  return stack, (islice, jslice)
 end
 
-function make_stack(meshset, section_range=(1:2), slice=(1:200,1:200), perm=[1,2,3])
+function make_stack(meshset, section_range=(1:2), slice=(1:200,1:200); 
+                                            include_reverse=false, perm=[1,2,3])
   imgs = []
   for mesh in meshset.meshes[section_range]
     index = (mesh.index[1:2]..., mesh.index[3]-1, mesh.index[4]-1)
     img = reinterpret(UFixed8, get_h5_slice(get_h5_path(index), slice))
     push!(imgs, img)
   end
-  img_stack = cat(3, imgs...)
+  if include_reverse
+    img_stack = cat(3, imgs..., reverse(imgs[2:end-1])...)
+  else
+    img_stack = cat(3, imgs...)
+  end
   return Image(permutedims(img_stack, perm), timedim=3)
 end
 
 """
 """
-function mark_stack(mov, fps=10)
+function mark_stack(mov; fps=10, include_reverse=true)
   e = Condition()
 
-  error_frames = [0]
+  N = size(mov, 3)
+  if include_reverse
+    N = round(Int64, (N + 2) / 2)
+  end
+  frame_errors = zeros(Int64, N)
   escape = false
+  paused = false
 
   imgc, img2 = view(mov, pixelspacing=[1,1])
-  start_loop(imgc, img2, fps)
   state = imgc.navigationstate
   set_fps!(state, fps)
+  start_loop(imgc, img2, fps)
 
   c = canvas(imgc)
   win = Tk.toplevel(c)
-  bind(win, "<KP_Enter>", path->count())
+  bind(win, "<KP_1>", path->mark_frame(1))
+  bind(win, "<KP_2>", path->mark_frame(2))
+  bind(win, "<KP_3>", path->mark_frame(3))
+  bind(win, "<KP_Enter>", path->destroy())
+  bind(win, "<Up>", path->adjust_fps(1))
+  bind(win, "<Down>", path->adjust_fps(-1))
   bind(win, "<Escape>", path->end_auto())
+  bind(win, "<space>", path->toggle_loop())
+  # bind(win, "<Delete>", path->destroy())
   bind(win, "<Destroy>", path->end_count())
 
-  function count()
+  function mark_frame(n)
+    f = get_frame()
+    frame_errors[f] = n
+  end
+
+  function get_frame()
     t = state.t
+    if t > N
+      t = 2*N - t
+    end
     println(t)
-    push!(error_frames, t)
+    return t
+  end
+
+  function adjust_fps(d)
+    fps += d
+    fps = min(fps, 50)
+    fps = max(fps, 1)
+    println("Adjust FPS: ", fps)
+    stop_loop(imgc)
+    set_fps!(state, fps)
+    start_loop(imgc, img2, fps)
+  end
+
+  function toggle_loop()
+    if paused
+      start_loop(imgc, img2, fps)
+    else
+      stop_loop(imgc)
+    end
+    paused = !paused
+  end
+
+  function destroy()
+    stop_loop(imgc)
+    end_count()
+    Tk.destroy(win)
   end
 
   function end_auto()
     escape = !escape
     println("End auto mode: ", escape)
+    destroy()
   end
 
   function end_count()
     notify(e)
+    bind(win, "<KP_1>", path->path)
+    bind(win, "<KP_2>", path->path)
+    bind(win, "<KP_3>", path->path)
     bind(win, "<KP_Enter>", path->path)
+    bind(win, "<Up>", path->path)
+    bind(win, "<Down>", path->path)
     bind(win, "<Escape>", path->path)
+    bind(win, "<space>", path->path)
+    # bind(win, "<Delete>", path->path)
     bind(win, "<Destroy>", path->path)
   end
   
   wait(e)
-  return error_frames, escape
+  return frame_errors, escape, fps
 end
 
 function loop_stack(mov, fps=12)
