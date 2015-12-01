@@ -16,8 +16,8 @@ function get_image(path::String, dtype = UInt8)
 end
 
 function get_uint8_image(path::String)
-  img = imread(path)
-  return reinterpret(UInt8, data(img)[:,:,1])
+  img = Images.load(path)
+  return reinterpret(UInt8, data(img)[:,:,1])'
 end
 
 function get_image(index, dtype = UInt8)
@@ -33,23 +33,24 @@ function get_h5_path(index::Index)
 end
 
 function get_h5_slice(path::String, slice)
-  return convert(Array{Ufixed8}, h5read(path, "img", slice))
+  # return reinterpret(Ufixed8, h5read(path, "img", slice))
+  return h5read(path, "img", slice)
 end
 
 function get_h5_image(path::String)
-  return convert(Array{Ufixed8}, h5read(path, "img"))
+  return h5read(path, "img")
 end
 
 # extensions:
 # Mesh.jl get_float_image(mesh::Mesh)
 function get_float_image(path::String)
-  img = imread(path)
+  img = Images.load(path)
   img.properties["timedim"] = 0
   return convert(Array{Float64, 2}, convert(Array, img[:,:,1]))
 end
 
 function get_ufixed8_image(path::String)
-  return convert(Array{Ufixed8}, data(imread(path))[:,:,1])'
+  return convert(Array{Ufixed8}, data(Images.load(path))[:,:,1])'
 end
 
 function load_affine(path::String)

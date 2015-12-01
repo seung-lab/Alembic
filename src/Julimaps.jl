@@ -51,10 +51,9 @@ using Colors
 using FixedPointNumbers
 using Base.Test
 using Cairo
-
-if !isdefined(:BoundingBox) # haaaaack
-	include("boundingbox.jl")
-end
+using IterativeSolvers
+using ImageRegistration
+# using PyPlot
 
 include("Index.jl")
 include("filesystem.jl")
@@ -68,15 +67,15 @@ include("MeshSolve.jl")
 include("MeshSession.jl")
 include("TileToOverview.jl")
 include("prealign.jl")
-include("incidence2triangles.jl")
 include("imageprocessing.jl")
-include("imwarp.jl")
-include("meshwarp.jl")
 include("render.jl")
 include("review.jl")
 include("solve.jl")
 include("visualize.jl")
 include("utilities.jl")
 include("transforms.jl")
+include("draw.jl")
+include("visualize.jl")
+include("player.jl")
 
 #end

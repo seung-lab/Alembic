@@ -9,12 +9,13 @@
 
 """ 
 function merge_images(imgs, offsets)
+    T = typeof(imgs[1][1])
     bbs = []
     for (img, offset) in zip(imgs, offsets)
         push!(bbs, BoundingBox(offset..., size(img)...))
     end
     global_ref = sum(bbs)
-    merged_img = zeros(global_ref.h, global_ref.w)
+    merged_img = zeros(T, global_ref.h, global_ref.w)
     for (idx, (img, bb)) in enumerate(zip(imgs, bbs))
         println("Merging tile ", idx)
         i = bb.i - global_ref.i+1
@@ -25,6 +26,13 @@ function merge_images(imgs, offsets)
         imgs[idx] = 0
     end
     return merged_img, [global_ref.i, global_ref.j]
+end
+
+"""
+`UINT32OVERLAY` - Fuse two UInt8 images together forming UInt32 image for color
+"""
+function uint32overlay(A::Array{UInt8,2}, B::Array{UInt8,2})
+    return convert(Array{UInt32,2},A) .<< 16 + convert(Array{UInt32,2},B) .<< 8
 end
 
 """
@@ -72,8 +80,8 @@ function imfuse(A, offset_A, B, offset_B)
     elseif szC[2] < 0
         B = padimage(B, 0, 0, -szC[2], 0)
     end
-    O = Overlay((A,B), (RGB(1,0,0), RGB(0,1,0)))
-    #O = Overlay((A,B), (RGB(1.,0.,0.), RGB(0.,0.6,0.)))
+    O = uint32overlay(A, B)
+    # O = Overlay((A,B), (RGB(1,0,0), RGB(0,1,0)))
     BB_O = min(offset_A, offset_B)
     # return O[1:end, 1:end], BB_O
     return O, BB_O
@@ -108,10 +116,10 @@ Returns:
 
 * new_img: original img, extended with rows and columns of zeros
 """
-function padimage{T}(img::Array{T}, xlow::Int64, ylow::Int64, xhigh::Int64, yhigh::Int64)
+function padimage{T}(img::Array{T}, xlow::Int64, ylow::Int64, xhigh::Int64, yhigh::Int64, val=0)
     h = ylow + size(img, 1) + yhigh
     w = xlow + size(img, 2) + xhigh
-    z = zeros(T, h, w)
+    z = ones(T, h, w)*val
     z[ylow+1:ylow+size(img,1), xlow+1:xlow+size(img,2)] = img
     return z
 end

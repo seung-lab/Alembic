@@ -25,8 +25,8 @@ function align_stack(first_wafer_num, first_sec_num, last_wafer_num, last_sec_nu
     @time add_pair_matches_reflexive!(Ms, a, b);
   end
   save(Ms)
-  solve_meshset!(Ms);
-  save(Ms);
+  # solve_meshset!(Ms);
+  # save(Ms);
   return Ms;
 end
 

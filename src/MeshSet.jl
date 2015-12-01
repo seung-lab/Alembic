@@ -99,6 +99,15 @@ function save(filename::String, meshset::MeshSet)
   end
 end
 
+# JLS SAVE
+ function save(filename::String, Ms::MeshSet)
+   println("Saving meshset to ", filename)
+   open(filename, "w") do file
+     serialize(file, Ms)
+   end
+ end
+>>>>>>> origin/inspection
+
 function save(meshset::MeshSet)
   firstindex = Ms.meshes[1].index
   lastindex = Ms.meshes[count_meshes(meshset)].index
@@ -141,7 +150,7 @@ function load_prealigned(wafer_num, sec_num)
 	return load(firstindex, lastindex)
 end
 
-function load(firstindex::Index, lastindex::Index)
+function get_name(firstindex::Index, lastindex::Index, ext="jld")
   if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex))
     filename = joinpath(PREALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned.jls"))
   elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex))
@@ -149,6 +158,8 @@ function load(firstindex::Index, lastindex::Index)
   else 
     filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "_montaged.jls"))
   end
+  return filename
+end
 
   println("Loading meshset from ", filename)
   return load(filename)
@@ -267,18 +278,21 @@ function affine_load_section_pair(src_index, dst_index)
   name_dst = registry[i_dst, 1];
   name_src = registry[i_src, 1];
 
-  @time dst_image = get_ufixed8_image(get_path(name_dst))
-  @time src_image = get_ufixed8_image(get_path(name_src))
+  @time dst_image = get_uint8_image(get_path(name_dst))
+  @time src_image = get_uint8_image(get_path(name_src))
  
   dst_scaled = imscale(dst_image, SCALING_FACTOR_TRANSLATE)[1]; 
   src_scaled = imscale(src_image, SCALING_FACTOR_TRANSLATE)[1]; 
-  
-  src_cropped = crop_center(src_scaled, 0.66);
 
-  offset_vect, xc = get_max_xc_vector(src_cropped, dst_scaled);
+  src_cropped = crop_center(src_scaled, 0.33);
+  dst_cropped = crop_center(dst_scaled, 0.66);
+  offset_vect, xc = get_max_xc_vector(src_cropped, dst_cropped);
 
   offset_unscaled = round(Int64, offset_vect[1:2] / SCALING_FACTOR_TRANSLATE);
 
+  view(xc * 40);
+
+  println(offset_vect[1:2]);
   println("Offsets from scaled blockmatches: $offset_unscaled");
   println("r: $(offset_vect[3])");
   update_offsets(name_src, offset_unscaled); 
@@ -286,8 +300,8 @@ function affine_load_section_pair(src_index, dst_index)
 end
 
 function load_section_pair(Ms, a, b)
-  @time A_image = get_ufixed8_image(get_path(Ms.meshes[find_index(Ms,a)].name))
-  @time B_image = get_ufixed8_image(get_path(Ms.meshes[find_index(Ms,b)].name))
+  @time A_image = get_h5_image(get_h5_path(Ms.meshes[find_index(Ms,a)].index))
+  @time B_image = get_h5_image(get_h5_path(Ms.meshes[find_index(Ms,b)].index))
   return A_image, B_image; 
 end
 
@@ -313,8 +327,6 @@ function load_stack(offsets, wafer_num, section_range)
 
   return Ms, images
 end
-
-
 
 """
 Calculate the maximum bounding box of all the meshes in a meshset

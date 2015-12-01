@@ -53,7 +53,7 @@ function update_offsets(index::Index, offset, sz=[0, 0])
 
   image_fn = string(get_name(index));
 
-  println("Updating offsets for ", image_fn, " in ", offsets_fp)
+  println("Updating offsets for ", image_fn, " in:\n", offsets_fp)
 
   if !isfile(offsets_fp)
     f = open(offsets_fp, "w")
@@ -93,6 +93,10 @@ function sort_dir(dir, file_extension="jld")
     return sort(files_in_dir, by=x->parse_name(x))
 end
 
-
-
-
+"""
+Create scaling transform and apply to image
+"""
+function imscale(img, scale_factor)
+  tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
+  return imwarp(img, tform);
+end
