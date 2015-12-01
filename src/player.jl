@@ -211,11 +211,11 @@ function print_stack_errors_report(meshset, path)
   report = ["k" "1_agree" "1_disagree" "2_agree" "2_disagree" "3_agree" "3_disagree"]
   for k in sort(collect(keys(dC)))
     agree1 = join(push!(dC[k][1],0), ",")
-    disagree1 = join(push!(dC[k][2],0), ",")
-    agree2 = join(push!(dC[k][3],0), ",")
-    disagree2 = join(push!(dC[k][4],0), ",")
-    agree3 = join(push!(dC[k][5],0), ",")
-    disagree3 = join(push!(dC[k][6],0), ",")
+    disagree1 = join(push!(dC[k][2], dC[k][3]..., 0), ",")
+    agree2 = join(push!(dC[k][4],0), ",")
+    disagree2 = join(push!(dC[k][5], dC[k][6]..., 0), ",")
+    agree3 = join(push!(dC[k][7],0), ",")
+    disagree3 = join(push!(dC[k][8], dC[k][9]..., 0), ",")
     report = vcat(report, [k agree1 disagree1 agree2 disagree2 agree3 disagree3])
   end
   path = string(path[1:end-4], "_report.txt")
@@ -232,14 +232,17 @@ function compare_stack_errors(meshset, pathA, pathB=get_stack_errors_groundtruth
   for k in sections
     assert(dA[k][4] == dB[k][4])
     A1, A2, A3 = Set(dA[k][1]), Set(dA[k][2]), Set(dA[k][3])
-    B1, B2, B3 = Set(dA[k][1]), Set(dA[k][2]), Set(dA[k][3])
+    B1, B2, B3 = Set(dB[k][1]), Set(dB[k][2]), Set(dB[k][3])
     # [TP in A, TN in A, FP in A, FN in A] # TN: match properly removed
     dC[k] = [intersect(A1, B1),
               setdiff(A1, B1),
+              setdiff(B1, A1),
               intersect(A2, B2),
               setdiff(A2, B2),
+              setdiff(B2, A2),
               intersect(A3, B3),
-              setdiff(A3, B3)]
+              setdiff(A3, B3),
+              setdiff(B3, A3)]
   end
   return dC
 end
@@ -252,9 +255,9 @@ function dict_of_stack_errors(meshset, path)
     match_index = pts[i,7]
     frames = readdlm(IOBuffer(pts[i,8]), ',', Int)
     d[match_index] = []
-    push!(d[match_index], indices'[frames .== 1])
-    push!(d[match_index], indices'[frames .== 2])
-    push!(d[match_index], indices'[frames .== 3])
+    push!(d[match_index], push!(indices'[frames .== 1], 0))
+    push!(d[match_index], push!(indices'[frames .== 2], 0))
+    push!(d[match_index], push!(indices'[frames .== 3], 0))
     push!(d[match_index], pts[i,4:7])
   end
   return d
