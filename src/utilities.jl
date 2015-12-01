@@ -31,12 +31,10 @@ end
 """
 Make N array of 1x2 points into Nx3 homogenous points
 """
-function points_to_Nx3_matrix(points)
-  points = hcat(points...)
-  if size(points,1)==2
-    points = [points; ones(eltype(points), 1, size(points,2))]'
-  end
-  return points
+function homogenize_points(pts)
+  pts_new = hcat(pts...)
+  pts_new = [pts_new; ones(eltype(pts_new), 1, size(pts_new,2))]'
+  return pts_new;
 end
 
 """

@@ -9,17 +9,9 @@ type Mesh
 end
 
 ### INDEX.jl EXTENSIONS
-function is_adjacent(Am::Mesh, Bm::Mesh)
-	return is_adjacent(Am.index, Bm.index)
-end
-
-function is_diagonal(Am::Mesh, Bm::Mesh)
-	return is_diagonal(Am.index, Bm.index)
-end
-
-function is_preceding(Am::Mesh, Bm::Mesh)
-	return is_preceding(Am.index, Bm.index)
-end
+function is_adjacent(Am::Mesh, Bm::Mesh)	return is_adjacent(Am.index, Bm.index);		end
+function is_diagonal(Am::Mesh, Bm::Mesh)	return is_diagonal(Am.index, Bm.index);		end
+function is_preceding(Am::Mesh, Bm::Mesh)	return is_preceding(Am.index, Bm.index);	end
 
 ### PARAMS.jl EXTENSIONS
 function get_params(mesh::Mesh)			return get_params(mesh.index);		end
@@ -31,15 +23,14 @@ function get_metadata(mesh::Mesh)		return get_metadata(mesh.index);	end
 
 ### IO.jl EXTENSIONS
 function get_path(mesh::Mesh)			return get_path(mesh.index);		end
-
 function get_image(mesh::Mesh, dtype = UInt8)	return get_image(mesh.index, dtype);	end
 
+### counting
 function count_nodes(mesh::Mesh)		return size(mesh.src_nodes, 1);		end
-
 function count_edges(mesh::Mesh)		return size(mesh.edges, 2);		end
 
+### internal
 function get_topleft_offset(mesh::Mesh)		return mesh.src_nodes[1];		end
-
 function get_dims_and_dists(mesh::Mesh)
 	n = count_nodes(mesh);
 
@@ -59,8 +50,8 @@ function get_dims_and_dists(mesh::Mesh)
 	return (i_dim, j_dim), [i_dist, j_dist];
 end
 
-function Mesh(index)
-	params = get_params(index);
+### INIT
+function Mesh(index, params = get_params(index))
 	
 	# mesh lengths in each dimension
 	dists = [params["mesh_length"] * sin(pi / 3); params["mesh_length"]];

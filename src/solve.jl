@@ -6,94 +6,28 @@
 """
 Retrieve nodes and nodes_t of mesh, make homogenous, and transpose to Nx3
 """
-function get_homogeneous_correspondences(M::Mesh)
-  pts = M.nodes
-  pts_t = M.nodes_t
-  num_pts = size(pts, 1)
-  hpts = Array{Float64, 2}(3, num_pts)
-  hpts_t = Array{Float64, 2}(3, num_pts)
-  for i in 1:num_pts
-    hpts[:, i] = [pts[i]; 1]
-    hpts_t[:, i] = [pts_t[i]; 1]
-  end
-  return hpts', hpts_t'
+function get_homogeneous_nodes(mesh::Mesh)
+  return homogenize_points(mesh.src_nodes), homogenize_points(mesh.dst_nodes);
 end
 
-
-"""
-Retrieve nodes and nodes_t of mesh, make homogenous, and transpose to Nx3
-"""
-function get_homogeneous_correspondences(Ms, k)
-  pts_src, pts_dst = get_matched_points(Ms, k)
-  num_pts = size(pts_src, 1)
-
-  hpts_src = Array{Float64, 2}(3, num_pts)
-  hpts_dst = Array{Float64, 2}(3, num_pts)
-
-  for i in 1:num_pts
-    hpts_src[:, i] = [pts_src[i]; 1]
-    hpts_dst[:, i] = [pts_dst[i]; 1]
-  end
-  return hpts_src', hpts_dst'
+function get_homogeneous_nodes(meshset::MeshSet, k)
+  return get_homogeneous_nodes(meshset.meshes[k]);
 end
 
-function get_matched_points(Ms::MeshSet, k)
-  src_mesh = Ms.meshes[find_index(Ms, Ms.matches[k].src_index)]
-  src_indices = Ms.matches[k].src_points_indices
-  src_pts = src_mesh.nodes[src_indices]
-  dst_pts = Ms.matches[k].dst_points
-  return src_pts, dst_pts
+function get_homogeneous_correspondences(match::Match)
+  return homogenize_points(match.src_points), homogenize_points(match.dst_points);
 end
 
-function get_matched_points(Ms::MeshSet)
-  src_points = Points(0); 
-  dst_points = Points(0); 
-  for k in 1:Ms.M
-    pts = get_matched_points(Ms, k)
-    src_points = vcat(src_points,pts[1])
-    dst_points = vcat(dst_points,pts[2])
-  end
-  return src_points, dst_points
+function get_homogeneous_correspondences(meshset::MeshSet, k)
+  return get_homogeneous_correspondences(meshset.matches[k])
 end
-
-function get_matched_points_t(Ms::MeshSet, k)
-  src_pts = Points(0)
-  dst_pts = Points(0)
-
-  for i in 1:Ms.matches[k].n
-      w = Ms.matches[k].dst_weights[i]
-      t = Ms.matches[k].dst_triangles[i]
-      p = Ms.matches[k].src_points_indices[i]
-      src = Ms.meshes[find_index(Ms, Ms.matches[k].src_index)]
-      dst = Ms.meshes[find_index(Ms, Ms.matches[k].dst_index)]
-      p1 = src.nodes_t[p]
-      p2 = dst.nodes_t[t[1]] * w[1] + dst.nodes_t[t[2]] * w[2] + dst.nodes_t[t[3]] * w[3]
-      push!(src_pts, p1)
-      push!(dst_pts, p2)
-  end
-  return src_pts, dst_pts
-end
-
-function get_matched_points_t(Ms::MeshSet)
-  src_points = Points(0); 
-  dst_points = Points(0); 
-  for k in 1:Ms.M
-    pts = get_matched_points_t(Ms, k)
-    src_points = vcat(src_points,pts[1])
-    dst_points = vcat(dst_points,pts[2])
-   end
-  return src_points, dst_points
-end
-
-
-
 
 """
 Return right-hand matrix for the mesh
 `nodes*T ~= nodes_T`
 """
 function rigid_approximate(M::Mesh)
-  pts_src, pts_dst = get_homogeneous_correspondences(M)
+  pts_src, pts_dst = get_homogeneous_nodes(M)
   return find_rigid(pts_src, pts_dst)
 end
 
@@ -102,7 +36,7 @@ Return the right-hand matrix for the mesh
 `nodes*T ~= nodes_T`
 """
 function affine_approximate(M::Mesh)
-  pts_src, pts_dst = get_homogeneous_correspondences(M)
+  pts_src, pts_dst = get_homogeneous_nodes(M)
   return find_affine(pts_src, pts_dst)
 end
 
@@ -122,9 +56,6 @@ function affine_approximate(Ms::MeshSet, row, col)
 	ind = findfirst(i -> Ms.meshes[i].index[3:4] == (row, col), 1:Ms.N)
  	return affine_approximate(Ms.meshes[ind])
 end
-
-
-
 
 
 """
