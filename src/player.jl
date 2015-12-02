@@ -337,6 +337,9 @@ function mark_stack(mov; fps=10, include_reverse=true)
 
   imgc, img2 = view(mov, pixelspacing=[1,1])
   state = imgc.navigationstate
+  ctrls = imgc.navigationctrls
+  showframe = state -> ImageView.reslice(imgc, img2, state)
+
   set_fps!(state, fps)
   start_loop(imgc, img2, fps)
 
@@ -346,8 +349,11 @@ function mark_stack(mov; fps=10, include_reverse=true)
   bind(win, "<KP_2>", path->mark_frame(2))
   bind(win, "<KP_3>", path->mark_frame(3))
   bind(win, "<KP_Enter>", path->destroy())
+  bind(win, "<Return>", path->destroy())
   bind(win, "<Up>", path->adjust_fps(1))
   bind(win, "<Down>", path->adjust_fps(-1))
+  bind(win, "<Right>", path->stept(1,ctrls,state,showframe))
+  bind(win, "<Left>", path->stept(-1,ctrls,state,showframe))
   bind(win, "<Escape>", path->end_auto())
   bind(win, "<space>", path->toggle_loop())
   # bind(win, "<Delete>", path->destroy())
@@ -404,8 +410,11 @@ function mark_stack(mov; fps=10, include_reverse=true)
     bind(win, "<KP_2>", path->path)
     bind(win, "<KP_3>", path->path)
     bind(win, "<KP_Enter>", path->path)
+    bind(win, "<Return>", path->path)
     bind(win, "<Up>", path->path)
     bind(win, "<Down>", path->path)
+    bind(win, "<Right>", path->path)
+    bind(win, "<Left>", path->path)
     bind(win, "<Escape>", path->path)
     bind(win, "<space>", path->path)
     # bind(win, "<Delete>", path->path)
@@ -450,7 +459,7 @@ function view_stack(meshset, section_range=(1:2), slice=(1:200,1:200), perm=[1,2
   end
 
   println(slice)
-  img_stack = cat(3, imgs..., reverse(imgs[2:end-1])...)  # loop it
+  img_stack = cat(3, imgs...) #, reverse(imgs[2:end-1])...)  # loop it
   # img_stack = cat(3, imgs...)
   # img_stack = permutedims(cat(3, imgs...), perm)
   # img_stack = Image(img_stack, timedim=3)
@@ -459,7 +468,7 @@ function view_stack(meshset, section_range=(1:2), slice=(1:200,1:200), perm=[1,2
     # start_loop(imgc, img2, 10)
     # imgc, img2 = view(Image(permutedims(img_stack, [1,3,2]), timedim=3))
     # start_loop(imgc, img2, 10)
-  imgc, img2 = view(Image(permutedims(img_stack, perm), timedim=3), pixelspacing=[1,1])
+  imgc, img2 = view(Image(permutedims(img_stack, perm), timedim=3)) #, pixelspacing=[1,1])
   start_loop(imgc, img2, 6)
   # end
   # start_loop(imgc, img2, 10)
