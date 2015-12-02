@@ -142,15 +142,15 @@ function get_stack_errors_path(meshset, username)
   return joinpath(INSPECTION_DIR, fn)
 end
 
-function review_stack(username, meshset, area, slice, k; auto=false, fps=12)
+function review_stack(username, meshset, area, slice, k; auto=false, fps=12, ben=false)
   mov, slice_range = go_to(meshset, area, slice, k; include_reverse=true)
   println("Reviewing stack @ column ", k)
-  errors, escape, fps = mark_stack(mov; fps=fps, include_reverse=true)
+  errors, escape, fps = mark_stack(mov; fps=fps, include_reverse=true, ben=ben)
   path = get_stack_errors_path(meshset, username)
   store_stack_errors(path, username, slice_range, k, errors)
   println("Last reviewed stack @ column ", k)
   if auto & !escape
-    return review_stack(username, meshset, area, slice, k+1; auto=true, fps=fps)
+    return review_stack(username, meshset, area, slice, k+1; auto=true, fps=fps, ben=ben)
   end
 end
 
@@ -324,7 +324,7 @@ end
 
 """
 """
-function mark_stack(mov; fps=10, include_reverse=true)
+function mark_stack(mov; fps=10, include_reverse=true, ben=false)
   e = Condition()
 
   N = size(mov, 3)
@@ -333,7 +333,7 @@ function mark_stack(mov; fps=10, include_reverse=true)
   end
   frame_errors = zeros(Int64, N)
   escape = false
-  paused = false
+  paused = true
 
   imgc, img2 = view(mov, pixelspacing=[1,1])
   state = imgc.navigationstate
@@ -341,15 +341,18 @@ function mark_stack(mov; fps=10, include_reverse=true)
   showframe = state -> ImageView.reslice(imgc, img2, state)
 
   set_fps!(state, fps)
-  start_loop(imgc, img2, fps)
+  # start_loop(imgc, img2, fps)
 
   c = canvas(imgc)
   win = Tk.toplevel(c)
   bind(win, "<KP_1>", path->mark_frame(1))
   bind(win, "<KP_2>", path->mark_frame(2))
   bind(win, "<KP_3>", path->mark_frame(3))
-  bind(win, "<KP_Enter>", path->destroy())
-  bind(win, "<Return>", path->destroy())
+  if ben
+    bind(win, "<Return>", path->destroy())
+  else
+    bind(win, "<KP_Enter>", path->destroy())
+  end
   bind(win, "<Up>", path->adjust_fps(1))
   bind(win, "<Down>", path->adjust_fps(-1))
   bind(win, "<Right>", path->stept(1,ctrls,state,showframe))
