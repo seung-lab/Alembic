@@ -348,9 +348,8 @@ function mark_stack(mov; fps=10, include_reverse=true, ben=false)
   bind(win, "<KP_1>", path->mark_frame(1))
   bind(win, "<KP_2>", path->mark_frame(2))
   bind(win, "<KP_3>", path->mark_frame(3))
-  if ben
-    bind(win, "<Return>", path->destroy())
-  else
+  bind(win, "<Return>", path->destroy())
+  if !ben
     bind(win, "<KP_Enter>", path->destroy())
   end
   bind(win, "<Up>", path->adjust_fps(1))
