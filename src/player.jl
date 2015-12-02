@@ -171,7 +171,7 @@ function store_stack_errors(path, username, slice_range, k, errors)
     stack_errors = readdlm(path)
     stack_errors = vcat(stack_errors, error_line)
   end
-  stack_errors = stack_errors[sortperm(stack_errors[:, 3]), :]
+  stack_errors = stack_errors[sortperm(stack_errors[:, 7]), :]
   println("Saving stack_errors:\n", path)
   writedlm(path, stack_errors)
 end
