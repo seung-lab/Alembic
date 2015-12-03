@@ -222,7 +222,3 @@ global REGISTRY_ALIGNED = parse_registry(aligned_registry_path)
 global GLOBAL_BB = BoundingBox(-4000,-4000,38000,38000)
 
 show_plot = false
-<<<<<<< HEAD:src/filesystem.jl
-=======
-num_procs = nprocs()
->>>>>>> origin/inspection:src/Params.jl

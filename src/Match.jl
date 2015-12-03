@@ -86,12 +86,12 @@ function filter_r_val!(match::Match, min_r)
 	r_vals = map(get_r_val, match.correspondence_properties);
 	filtered_inds = find(i -> i < min_r, r_vals);
 	push!(match.filters, Dict{Any, Any}(
-				"by"	  => ENV["USER"]
-				"type"	  => "r_val, absolute"
-				"threshold" => min_r
+				"by"	  => ENV["USER"],
+				"type"	  => "r_val, absolute",
+				"threshold" => min_r,
 				"timestamp" => string(now()),
 				"rejected"  => filtered_inds
-			      );
+			      ));
 	return;
 end
 
@@ -101,9 +101,9 @@ function filter_norm_absolute!(match::Match, max_norm)
 	norms = map(get_norm, match.correspondence_properties);
 	filtered_inds = find(i -> i > max_norm, norms);
 	push!(match.filters, Dict{Any, Any}(
-				"by"	  => ENV["USER"]
-				"type"	  => "max_norm, absolute"
-				"threshold" => max_norm
+				"by"	  => ENV["USER"],
+				"type"	  => "max_norm, absolute",
+				"threshold" => max_norm,
 				"timestamp" => string(now()),
 				"rejected"  => filtered_inds
 			      ));
@@ -120,13 +120,12 @@ function filter_manual!(match::Match)
 		#undo by pop!
 	end
 	push!(match.filters, Dict{Any, Any}(
-				"by"	  => ENV["USER"]
-				"type"	  => "manual"
+				"by"	  => ENV["USER"],
+				"type"	  => "manual",
 				"timestamp" => string(now()),
 				"rejected"  => filtered_inds
 			      ));
 	return;
-return;
 end
 
 function undo_filter!(match::Match)

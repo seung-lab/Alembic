@@ -55,7 +55,7 @@ function MeshSet(first_index, last_index, params=get_params(first_index))
 	ind_range = get_index_range(first_index, last_index);
 	meshes = map(Mesh, ind_range)
  	matches = Array{Match, 1}(0)		
-  	properties = Dict{Any, Any}}();
+  	properties = Dict{Any, Any}();
 	properties["params"] = params;
 
 	meshset = MeshSet(meshes, matches, properties);
