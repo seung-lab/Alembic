@@ -1,5 +1,7 @@
 _archive/
 EM_images/
+src/filesystem.jl
+src/filesystem.jl~
 *.pyc
 *.jl~
 *.swp
