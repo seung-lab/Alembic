@@ -4,7 +4,9 @@ type Match
 
   src_points::Points	    # source point coordinate in image
   dst_points::Points        # destination point coordinate in image
-  properties::Array{Dict{Any, Any}} # in the same array order, contains parameters
+  correspondence_properties::Array{Dict{Any, Any}} # in the same array order as points, contains properties of correspondences
+
+  filters::Array{Dict{Any, Any}}    # Array of filters 
 end
 
 function count_correspondences(match::Match) return size(match.src_points, 1);	end
@@ -63,32 +65,78 @@ function get_match(pt, src_mesh, src_image, dst_mesh, dst_image, params)
   	rad_i = round(Int64, (size(xc, 1) - 1)/ 2)  
   	rad_j = round(Int64, (size(xc, 2) - 1)/ 2)  
 	di, dj = i_max - 1 - rad_i, j_max - 1 - rad_j;
-	properties = Dict{Any, Any}();
-	properties["di"] = di;
-	properties["dj"] = dj;
-	properties["r_val"] = r_max;
+	correspondence_properties = Dict{Any, Any}();
+	correspondence_properties["di"] = di;
+	correspondence_properties["dj"] = dj;
+	correspondence_properties["r_val"] = r_max;
 
-	return vcat(pt + get_offsets(src_mesh) - get_offsets(dst_mesh) + [i_max - 1 - rad_i; j_max - 1 - rad_j], properties);
+	return vcat(pt + get_offsets(src_mesh) - get_offsets(dst_mesh) + [i_max - 1 - rad_i; j_max - 1 - rad_j], correspondence_properties);
 
 end
 
-#=
-"""
-Write out blockmatches during the blockmatching process
-"""
-function write_blockmatches(A, B, xc, idx, partial_fn)        
-  #=imwrite(grayim((A[idx]/255)'), string(partial_fn, "_src.jpg"))
-  imwrite(grayim((B[idx]/255)'), string(partial_fn, "_dst.jpg"))
-  if (!isnan(sum(xc[idx])))   
-    imwrite(grayim(xc[idx]'), string(partial_fn, "_xc.jpg"))
-  end=#
-  imwrite(grayim((A[idx]/255)'), string(partial_fn, "_src.tif"))
-  imwrite(grayim((B[idx]/255)'), string(partial_fn, "_dst.tif"))
-  if (!isnan(sum(xc[idx])))   
-    imwrite(grayim(xc[idx]'), string(partial_fn, "_xc.tif"))
-  end
+function get_r_val(correspondence_property)
+	return correspondence_property["r_val"];
 end
-=#
+
+function get_norm(correspondence_property)
+	return norm(correspondence_property["di"], correspondence_property["dj"]);
+end
+
+function filter_r_val!(match::Match, min_r)
+	r_vals = map(get_r_val, match.correspondence_properties);
+	filtered_inds = find(i -> i < min_r, r_vals);
+	push!(match.filters, Dict{Any, Any}(
+				"by"	  => ENV["USER"]
+				"type"	  => "r_val, absolute"
+				"threshold" => min_r
+				"timestamp" => string(now()),
+				"rejected"  => filtered_inds
+			      );
+	return;
+end
+
+
+
+function filter_norm_absolute!(match::Match, max_norm)
+	norms = map(get_norm, match.correspondence_properties);
+	filtered_inds = find(i -> i > max_norm, norms);
+	push!(match.filters, Dict{Any, Any}(
+				"by"	  => ENV["USER"]
+				"type"	  => "max_norm, absolute"
+				"threshold" => max_norm
+				"timestamp" => string(now()),
+				"rejected"  => filtered_inds
+			      ));
+	return;
+end
+
+### ADD MANUAL FILTER
+function filter_manual!(match::Match)
+	filtered_inds = Points(0)
+	while(true)
+		#choose point and add
+		ind_to_remove = 0;
+		push!(filtered_inds, ind_to_remove)
+		#undo by pop!
+	end
+	push!(match.filters, Dict{Any, Any}(
+				"by"	  => ENV["USER"]
+				"type"	  => "manual"
+				"timestamp" => string(now()),
+				"rejected"  => filtered_inds
+			      ));
+	return;
+return;
+end
+
+function undo_filter!(match::Match)
+	pop!(match.filters);
+end
+
+function get_filtered_indices(match::Match)
+	return setdiff(1:count_correspondences(match), union(map(getindex, match.filters, repeated("rejected"))...));
+end
+
 function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh))
 	println("Matching $(src_mesh.index) -> $(dst_mesh.index):#########\n");
 	if src_mesh == dst_mesh
@@ -109,12 +157,13 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh))
 	matched_inds = find(i -> i != nothing, dst_allpoints);
 	src_points = copy(src_mesh.src_nodes[matched_inds]);
 	dst_points = similar(src_points, 0);
-	properties = Array{Dict{Any, Any}}(0);
+	correspondence_properties = Array{Dict{Any, Any}}(0);
+	filters = Array{Dict{Any, Any}}(0);
 
 	for ind in matched_inds
 		push!(dst_points, convert(Point, dst_allpoints[ind][1:2]));
-		push!(properties, dst_allpoints[ind][3]);
+		push!(correspondence_properties, dst_allpoints[ind][3]);
 	end
 
-	return Match(src_index, dst_index, src_points, dst_points, properties);
+	return Match(src_index, dst_index, src_points, dst_points, correspondence_properties, filters);
 end

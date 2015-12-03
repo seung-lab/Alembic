@@ -1,7 +1,7 @@
 type MeshSet
  	meshes::Array{Mesh, 1}			# vector of meshes in the set
  	matches::Array{Match, 1}		# vector of matches in the set
-  	history::Array{Dict{Any, Any}}		# in the same array order, contains parameters
+  	properties::Dict{Any, Any}		# in the same array order, contains parameters and filters
 end
 
 ### IO.jl
@@ -46,18 +46,19 @@ end
 function MeshSet()
  	meshes = Array{Mesh, 1}(0)
  	matches = Array{Match, 1}(0)		
-  	history = Array{Dict{Any, Any}}(0)
+  	properties = Dict{Any, Any}()
 
-	return MeshSet(meshes, matches, history)
+	return MeshSet(meshes, matches, properties)
 end
 
-function MeshSet(first_index, last_index)
+function MeshSet(first_index, last_index, params=get_params(first_index))
 	ind_range = get_index_range(first_index, last_index);
 	meshes = map(Mesh, ind_range)
  	matches = Array{Match, 1}(0)		
-  	history = Array{Dict{Any, Any}}(0)
+  	properties = Dict{Any, Any}}();
+	properties["params"] = params;
 
-	meshset = MeshSet(meshes, matches, history);
+	meshset = MeshSet(meshes, matches, properties);
 	match!(meshset);
 	return meshset;
 end
@@ -91,6 +92,8 @@ function match!(meshset::MeshSet)
 	end
 end
 
+function filter()
+
 # JLS SAVE
 function save(filename::String, meshset::MeshSet)
   println("Saving meshset to ", filename)
@@ -98,15 +101,6 @@ function save(filename::String, meshset::MeshSet)
     serialize(file, meshset)
   end
 end
-
-# JLS SAVE
- function save(filename::String, Ms::MeshSet)
-   println("Saving meshset to ", filename)
-   open(filename, "w") do file
-     serialize(file, Ms)
-   end
- end
->>>>>>> origin/inspection
 
 function save(meshset::MeshSet)
   firstindex = Ms.meshes[1].index

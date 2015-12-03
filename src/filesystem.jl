@@ -160,11 +160,8 @@ else
         end
     end
 end
-<<<<<<< HEAD:src/filesystem.jl
 =#
-=======
 
->>>>>>> origin/inspection:src/Params.jl
 datasets_dir_path = "research/Julimaps/datasets"
 cur_dataset = "piriform"
 #cur_dataset = "zebrafish"
