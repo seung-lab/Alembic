@@ -1,5 +1,3 @@
-using Optim
-
 """
 MeshConjGrad- given spring mesh, solve for equilibrium positions of vertices with nonlinear conjugate gradient
 
@@ -21,8 +19,6 @@ MeshConjGrad- given spring mesh, solve for equilibrium positions of vertices wit
     'Moving' - integer vector containing indices of moving vertices
  could be changed to 1xE binary vector
 """
-    
-#import PyPlot
 
 global eps = 1E-8
 
@@ -76,6 +72,6 @@ function SolveMesh2!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths)
 
     res = optimize(df,Vertices[:,Moving][:],method=:cg,show_trace=true,ftol=1e-8)
     # return res
-    Vertices[:,Moving][:]=res.minimum
+    Vertices[:,Moving] = reshape(res.minimum, 2, div(length(res.minimum),2))
 end
 
