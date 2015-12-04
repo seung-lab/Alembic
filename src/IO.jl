@@ -20,8 +20,8 @@ function ufixed8_to_uint8(img)
   reinterpret(UInt8, -img)
 end
 
-function get_h5_path(index::Index)
-  return string(get_path(index)[1:end-4], ".h5")
+function get_h5_path(index::Index; verbose=true)
+  return string(get_path(index, verbose)[1:end-4], ".h5")
 end
 
 function get_h5_slice(path::String, slice)
