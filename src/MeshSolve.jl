@@ -95,6 +95,7 @@ function Hessian2( Springs, Incidence, Stiffnesses, RestLengths)
         end
         dH = Stiffnesses[a]*dH;
         VertexList=find(Incidence[:,a])    # vertices incident on spring a
+       # VertexList=nonzeroinds(Incidence[:, a])    # vertices incident on spring a
         for i=VertexList
             for j=VertexList
                 # indices and values of (i,j) block of Hessian
@@ -119,7 +120,6 @@ function SolveMesh!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, eta_gr
     g=similar(Vertices)  # gradient of potential energy
 
     iter = 1;
-
     while true
         Springs=Vertices*Incidence
         g=Gradient(Springs, Incidence, Stiffnesses, RestLengths)
@@ -133,17 +133,18 @@ function SolveMesh!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, eta_gr
     	end
         iter += 1;
     end
-
     while true
     	Springs=Vertices*Incidence
     	g=Gradient(Springs, Incidence, Stiffnesses, RestLengths)
     	H=Hessian2(Springs, Incidence, Stiffnesses, RestLengths)
         #Vertices[:,Moving]=Vertices[:,Moving]-eta_newton*reshape(H[Moving2,Moving2]\g[:,Moving][:],2,length(find(Moving)))
-        Vertices[:,Moving]=Vertices[:,Moving]-eta_newton*reshape(cg(H[Moving2,Moving2],g[:,Moving][:])[1],2,length(find(Moving)))
+        Vertices[:,Moving]=Vertices[:,Moving]-eta_newton*reshape(cg(H[Moving2,Moving2],g[:,Moving][:], maxiter = 40)[1],2,length(find(Moving)))
     	push!(U, Energy(Springs,Stiffnesses,RestLengths))
         println(iter," ", U[iter])
-        if abs((U[iter-1] - U[iter]) / U[iter-1]) < ftol_newton
+        if iter != 1
+	    if abs((U[iter-1] - U[iter]) / U[iter-1]) < ftol_newton
             println("Converged below ", ftol_newton); break;
+	    end
         end
         iter+=1;
     end
