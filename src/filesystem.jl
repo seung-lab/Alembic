@@ -140,7 +140,7 @@ function parse_registry(path::String)
     return registry
 end
 
-bucket_dir_path = "/mnt/bucket/labs/seung"
+bucket_dir_path = "/home/ubuntu"
 #=if isfile("bucket_dir_path.txt")
     bucket_dir_path = rstrip(readall("bucket_dir_path.txt"), '\n')
 elseif isfile("../bucket_dir_path.txt")
@@ -162,7 +162,7 @@ else
 end
 =#
 
-datasets_dir_path = "research/Julimaps/datasets"
+datasets_dir_path = "Julimaps_data/datasets"
 cur_dataset = "piriform"
 #cur_dataset = "zebrafish"
 affine_dir_path = "~"
@@ -222,3 +222,7 @@ global REGISTRY_ALIGNED = parse_registry(aligned_registry_path)
 global GLOBAL_BB = BoundingBox(-4000,-4000,38000,38000)
 
 show_plot = false
+
+if myid() != 1
+	REGISTRY_PREMONTAGED, REGISTRY_MONTAGED, REGISTRY_PREALIGNED, REGISTRY_ALIGNED = remotecall_fetch(1, get_registries)
+end

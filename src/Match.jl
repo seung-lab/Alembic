@@ -44,8 +44,8 @@ function get_patch(img, range)
 		indices_within_range = findin(range[1], range_in_img[1]), findin(range[2], range_in_img[2])
 		intersect_img = img[range_in_img...];
 		avg = mean(intersect_img);
-		if isnan(avg) return fill(UInt8(0), length(range[1]), length(range[2])); end
-		avg = round(UInt8, avg);
+		if isnan(avg) return fill(eltype(img)(0), length(range[1]), length(range[2])); end
+		avg = round(eltype(img), avg);
 		padded_img = fill(avg, length(range[1]), length(range[2]));
 		padded_img[indices_within_range...] = intersect_img;
 		return padded_img;
@@ -54,7 +54,11 @@ end
 
 function get_match(pt, src_mesh, src_image, dst_mesh, dst_image, params)
 	src_range, dst_range, dst_range_padded = get_ranges(pt, src_mesh, dst_mesh, params);
-	xc = normxcorr2(get_patch(src_image, src_range), get_patch(dst_image, dst_range));
+	src_patch = remotecall_fetch(1, get_patch, src_image, src_range)
+	dst_patch = remotecall_fetch(1, get_patch, dst_image, dst_range)
+	if std(src_patch) == 0 || std(dst_patch) == 0	return nothing	end;
+#	xc = normxcorr2(get_patch(src_image, src_range), get_patch(dst_image, dst_range));
+	xc = normxcorr2(src_patch, dst_patch);
 	r_max = maximum(xc)
 	if isnan(r_max) return nothing end;
   	ind = findfirst(r_max .== xc)
@@ -92,6 +96,7 @@ function filter_r_val!(match::Match, min_r)
 				"timestamp" => string(now()),
 				"rejected"  => filtered_inds
 			      ));
+	println("$(length(filtered_inds)) / $(count_correspondences(match)) rejected.");
 	return;
 end
 
@@ -107,6 +112,7 @@ function filter_norm_absolute!(match::Match, max_norm)
 				"timestamp" => string(now()),
 				"rejected"  => filtered_inds
 			      ));
+	println("$(length(filtered_inds)) / $(count_correspondences(match)) rejected.");
 	return;
 end
 
@@ -152,7 +158,13 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh))
   	src_index = src_mesh.index;
 	dst_index = dst_mesh.index;
 
-	dst_allpoints = pmap(get_match, src_mesh.src_nodes, repeated(src_mesh), repeated(src_image), repeated(dst_mesh), repeated(dst_image), repeated(params));
+	src_image_ref = RemoteRef();
+	dst_image_ref = RemoteRef();
+	put!(src_image_ref, src_image_local);
+	put!(dst_image_ref, dst_image_local);
+
+#	dst_allpoints = pmap(get_match, src_mesh.src_nodes, repeated(src_mesh), repeated(src_image), repeated(dst_mesh), repeated(dst_image), repeated(params));
+	dst_allpoints = pmap(get_match, src_mesh.src_nodes, repeated(src_mesh), repeated(src_image_ref), repeated(dst_mesh), repeated(dst_image_ref), repeated(params));
 	matched_inds = find(i -> i != nothing, dst_allpoints);
 	src_points = copy(src_mesh.src_nodes[matched_inds]);
 	dst_points = similar(src_points, 0);
@@ -165,4 +177,24 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh))
 	end
 
 	return Match(src_index, dst_index, src_points, dst_points, correspondence_properties, filters);
+end
+
+function sync_images(src_image_ref, dst_image_ref)
+
+end
+
+
+
+function Base.size(r::RemoteRef, args...)
+      if r.where == myid()
+	return size(fetch(r), args...)
+		    end
+	return remotecall_fetch(r.where, size, r, args...)
+end
+
+function Base.eltype(r::RemoteRef, args...)
+      if r.where == myid()
+	return eltype(fetch(r), args...)
+		    end
+	return remotecall_fetch(r.where, eltype, r, args...)
 end

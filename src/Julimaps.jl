@@ -56,6 +56,7 @@ using ImageRegistration
 # using PyPlot
 
 include("Index.jl")
+include("registry.jl")
 include("filesystem.jl")
 include("IO.jl")
 include("Params_session.jl")

@@ -73,7 +73,7 @@ end
 function optimize_all_cores(img_d::Int64)
     img = rand(img_d, img_d)
 	@sync begin
-	  for p in 1:num_procs
+	  for p in 1:nprocs()
 	    @async begin
 		remotecall_fetch(p, optimize_normxcorr2, img);
 		end
