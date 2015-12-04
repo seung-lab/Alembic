@@ -53,7 +53,9 @@ using Base.Test
 using Cairo
 using IterativeSolvers
 using ImageRegistration
-# using PyPlot
+using PyPlot
+using Optim
+using ASCIIPlots
 
 include("Params.jl")
 include("IO.jl")
@@ -70,6 +72,7 @@ include("prealign.jl")
 include("imageprocessing.jl")
 include("render.jl")
 include("review.jl")
+include("MeshConjGrad.jl")
 include("solve.jl")
 include("visualize.jl")
 include("utilities.jl")

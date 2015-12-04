@@ -33,13 +33,39 @@ function remove_matches_from_meshset!(meshset, indices_to_remove, match_index=1)
   println("after: ", length(meshset.matches[match_index].dst_points))
 end
 
-function update_meshset_with_stored_edits!(meshset, path)
-  pts = readdlm(path)
-  for i in 1:size(pts,1)
-    match_index = pts[i,5]
-    indices_to_remove = [pts[i,6]]
+"""
+Combine tracer point inspection logs into one table
+"""
+function compile_tracer_point_inspection_logs(meshset)
+  tracers = ["hmcgowan", "bsilverman", "tmacrina_cleanup"]
+  logs = []
+  for tracer in tracers
+    path = get_storage_path(meshset, tracer)
+    if isfile(path)
+      push!(logs, readdlm(path))
+    end
+  end
+  log = vcat(logs...)
+  return log[sortperm(log[:, 1]), :]
+end
+
+"""
+Return indices of matches that have not been reviewed by any tracer
+"""
+function list_missing_inspections(meshset)
+  log = compile_tracer_point_inspection_logs(meshset)
+  match_nums = collect(1:length(meshset.matches))
+  inspections = unique(log[:,5])
+  match_nums[inspections] = 0
+  return match_nums[match_nums .!= 0]
+end
+
+function update_meshset_with_edits!(meshset, log)
+  for i in 1:size(log,1)
+    match_index = log[i,5]
+    indices_to_remove = [log[i,6]]
     if typeof(indices_to_remove[1]) != Int64
-      indices_to_remove = readdlm(IOBuffer(pts[i,6]), ',', Int)
+      indices_to_remove = readdlm(IOBuffer(log[i,6]), ',', Int)
     end
     if indices_to_remove[1] != 0
       remove_matches_from_meshset!(meshset, indices_to_remove, match_index)
@@ -126,7 +152,7 @@ function create_hot_colormap()
               linspace(RGB(1,1,0), RGB(1,1,1), 55))
 end
 
-function apply_colormap{T}(img::Array{UInt8}, colormap::Array{T})
+function apply_colormap{T}(img, colormap::Array{T})
   new_img = zeros(T, size(img)...)
   for i in eachindex(img, new_img)
     @inbounds new_img[i] = colormap[img[i]]
@@ -378,6 +404,13 @@ function update_annotations(imgc, img2, lines, mask)
   println("Removing ", sum(!mask), " matches from GUI")
   ImageView.redraw(imgc)
   return mask
+end
+
+function review_matches(meshset, indexA, indexB)
+  k = find_matches_index(meshset, indexA, indexB)
+  println(indexA, indexB, ": ", k)
+  assert(k > 0)
+  return review_matches(meshset, k)
 end
 
 """
