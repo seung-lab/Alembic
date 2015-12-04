@@ -221,6 +221,7 @@ function solve_meshset!(Ms)
   end
 
   SolveMesh!(nodes, nodes_fixed, edges, edge_coeffs, edge_lengths, eta_gradient, ftol_gradient, eta_newton, ftol_newton)
+  # SolveMesh2!(nodes, nodes_fixed, edges, edge_coeffs, edge_lengths)
   nodes_t = Points(0)
   for i in 1:size(nodes, 2)
           push!(nodes_t, vec(nodes[:, i]))

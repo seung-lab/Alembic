@@ -250,11 +250,9 @@ function render_aligned(waferA, secA, waferB, secB, start=1, finish=0)
   end
 
   indices = 1:length(meshset.matches)
-  z = zip(reverse(indices), reverse(meshset.matches))
 
-  # map(warp_pad_write, meshset.meshes)
-  for (k, matches) in zip(reverse(indices), reverse(meshset.matches))
-  # for (k, matches) in enumerate(meshset.matches)
+  # for (k, matches) in zip(reverse(indices), reverse(meshset.matches))
+  for (k, matches) in enumerate(meshset.matches)
     src_index = matches.src_index
     dst_index = matches.dst_index
     if start <= src_index[2] <= finish && start <= dst_index[2] <= finish

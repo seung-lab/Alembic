@@ -79,7 +79,7 @@ end
 #     
 # extensions:
 # Mesh.jl: get_path(mesh::Mesh)
-function get_path(index::Index)
+function get_path(index::Index, verbose=true)
     name = get_name(index)
     if is_overview(index)
         if cur_dataset == "zebrafish"
@@ -102,7 +102,9 @@ function get_path(index::Index)
         end
         path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ".tif"))
     end
-    println(path)
+    if verbose
+        println(path)
+    end
     return path
 end
 

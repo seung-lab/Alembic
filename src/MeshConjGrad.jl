@@ -44,7 +44,7 @@ function Gradient( Springs, Incidence, Stiffnesses, RestLengths)
     Forces*Incidence'
 end
 
-function SolveMesh(Vertices, Fixed, Incidence, Stiffnesses, RestLengths)
+function SolveMesh2!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths)
 
     function cost(x)
         Vert = copy(Vertices)
@@ -62,20 +62,20 @@ function SolveMesh(Vertices, Fixed, Incidence, Stiffnesses, RestLengths)
     end
     df = DifferentiableFunction(cost, cost_gradient!)
 
-#    function cost_and_gradient!(x,storage)
-#        Vert = copy(Vertices)
-#        Vert[:,Moving]=reshape(x,2,div(length(x),2))
-#        Springs=Vert*Incidence
-#        g = Gradient(Springs, Incidence, Stiffnesses, RestLengths)
-#        storage[:] = g[:,Moving][:]
-#        return Energy(Springs,Stiffnesses,RestLengths)
-#    end
-#    df = DifferentiableFunction(cost, cost_gradient!, cost_and_gradient!)
-    
+    #    function cost_and_gradient!(x,storage)
+    #        Vert = copy(Vertices)
+    #        Vert[:,Moving]=reshape(x,2,div(length(x),2))
+    #        Springs=Vert*Incidence
+    #        g = Gradient(Springs, Incidence, Stiffnesses, RestLengths)
+    #        storage[:] = g[:,Moving][:]
+    #        return Energy(Springs,Stiffnesses,RestLengths)
+    #    end
+    #    df = DifferentiableFunction(cost, cost_gradient!, cost_and_gradient!)
+
     Moving = ~Fixed
 
-    res=optimize(df,Vertices[:,Moving][:],method=:cg,show_trace=true,ftol=1e-8)
-    return res
-#    Vertices[:,Moving][:]=res.minimum
+    res = optimize(df,Vertices[:,Moving][:],method=:cg,show_trace=true,ftol=1e-8)
+    # return res
+    Vertices[:,Moving][:]=res.minimum
 end
 
