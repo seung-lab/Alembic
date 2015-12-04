@@ -54,8 +54,8 @@ using Cairo
 using IterativeSolvers
 using ImageRegistration
 using PyPlot
-using Optim
-using ASCIIPlots
+# using Optim
+# using ASCIIPlots
 
 include("Params.jl")
 include("IO.jl")
