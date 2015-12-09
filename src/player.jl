@@ -146,19 +146,20 @@ function get_stack_errors_path(meshset, username)
 end
 
 function review_stack(username, meshset, area, slice, k; auto=false, fps=12, ben=false)
+  n = k
   if review_round == "round2"
     a = readdlm(joinpath(INSPECTION_DIR, "round2.txt"), ',', Int)
-    k = ij_to_k(area, slice, a[k,:]...)
+    k = ij_to_k(area, slice, a[n,:]...)
   end
   mov, slice_range = go_to(meshset, area, slice, k; include_reverse=true)
   println("slice_range: ", slice_range)
-  println("Reviewing stack @ column ", k)
+  println("Reviewing stack @ column ", n)
   errors, escape, fps = mark_stack(mov; fps=fps, include_reverse=true, ben=ben)
   path = get_stack_errors_path(meshset, username)
   store_stack_errors(path, username, slice_range, k, errors)
-  println("Last reviewed stack @ column ", k)
+  println("Last reviewed stack @ column ", n)
   if auto & !escape
-    return review_stack(username, meshset, area, slice, k+1; auto=true, fps=fps, ben=ben)
+    return review_stack(username, meshset, area, slice, n+1; auto=true, fps=fps, ben=ben)
   end
 end
 
