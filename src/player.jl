@@ -125,21 +125,12 @@ end
 meshset, area, slice, username, path = load_stack_params("hmcgowan")
 review_stack(username, meshset, area, slice, 1, true)
 """
-function load_stack_params(username)
-  meshset = load_aligned((1,2,-3,-3), (1,167,-3,-3))
-  area = BoundingBox(5000,5000,28000,28000)
-  slice = [400, 400]
-  path = get_stack_errors_path(meshset, username)
-  return meshset, area, slice, username, path
-end
-
-function load_pre_solved_meshset(username)
-  fn = get_name((1,2,-3,-3), (1,167,-3,-3), "jls");
-  # fn = string(fn[1:end-4], "_cleaned_unsolved.jls")
-  fn = string(fn[1:end-4], "_pre_cleaning.jls")
-  println(fn)
+function load_stack_params(username, suffix="", bb=[5000,5000,28000,28000])
+  fn = get_name((1,2,-3,-3), (1,167,-3,-3), "jls")
+  fn = string(fn[1:end-4], suffix, ".jls")
+  # meshset = load_aligned((1,2,-3,-3), (1,167,-3,-3))
   meshset = open(deserialize, fn)
-  area = BoundingBox(5000,5000,28000,28000)
+  area = BoundingBox(bb...)
   slice = [400, 400]
   path = get_stack_errors_path(meshset, username)
   return meshset, area, slice, username, path
@@ -151,10 +142,14 @@ function get_stack_errors_path(meshset, username)
   fn = string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","),
                 "_aligned_stack_errors.txt")
   fn = update_filename(fn, username)
-  return joinpath(INSPECTION_DIR, fn)
+  return joinpath(INSPECTION_DIR, review_round, fn)
 end
 
 function review_stack(username, meshset, area, slice, k; auto=false, fps=12, ben=false)
+  if review_round == "round2"
+    a = readdlm(joinpath(INSPECTION_DIR, "round2.txt"), ',', Int)
+    k = ij_to_k(area, slice, a[k,:]...)
+  end
   mov, slice_range = go_to(meshset, area, slice, k; include_reverse=true)
   println("slice_range: ", slice_range)
   println("Reviewing stack @ column ", k)
@@ -359,6 +354,7 @@ function show_tracer_progress(meshset, area, slice)
     PyPlot.plot(log_k, log_time, ".")
   end
   PyPlot.plot(x[y.==0], y[y.==0], ".")
+  println("Reviewed stack columns: ", length(unique(logs[:,7])), " / ", n*m)
 end
 
 """
@@ -392,8 +388,32 @@ function orthogonal_views(z)
   println("xy, yz; ignore xz")
   si, sj, sk = size(z)
   view_errors(reshape(sum(z,3), si, sj))
-  # view_errors(reshape(sum(z,2), si, sk))
+  view_errors(reshape(sum(z,2), si, sk))
   view_errors(reshape(sum(z,1), sj, sk)')
+end
+
+"""
+Inspect errors in a column
+"""
+function debug_column(meshset, area, slice, i, j)
+  logs = compile_tracer_stack_error_logs(meshset)
+  k = ij_to_k(area, slice, i, j)
+  log = logs[findlast(logs[:,7], k), :]
+  println(log[2])
+  println((log[3]:log[3]+log[5], log[4]:log[4]+log[6]))
+  f = readdlm(IOBuffer(log[8]), ',', Int)
+  class3s = eachindex(f)'[f .== 3]
+  println("Class 3 frames:\n", class3s)
+  match_indices = []
+  for s in class3s
+    mi = [find_matches_index(meshset, (1,s,-3,-3), (1,s+1,-3,-3)),
+          find_matches_index(meshset, (1,s+1,-3,-3), (1,s,-3,-3)),
+          find_matches_index(meshset, (1,s-1,-3,-3), (1,s,-3,-3)),
+          find_matches_index(meshset, (1,s,-3,-3), (1,s-1,-3,-3))] 
+    push!(match_indices, mi...)
+  end
+  println("Match indices:\n", match_indices)
+  # Need function to zoom in on problem spots
 end
 
 """

@@ -227,7 +227,7 @@ function render_aligned(waferA, secA, waferB, secB, start=1, finish=0)
       @time img = rescopeimage(img, offset, GLOBAL_BB)
       new_fn = string(join(mesh.index[1:2], ","), "_aligned.h5")
       println("Writing ", new_fn)
-      f = h5open(joinpath(dir, new_fn), "w")
+      f = h5open(joinpath(dir, "round2", new_fn), "w")
       @time f["img", "chunk", (1000,1000)] = img
       close(f)
       # @time imwrite(img, joinpath(dir, new_fn))

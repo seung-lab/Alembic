@@ -201,6 +201,10 @@ premontaged_dir_path = "1_premontaged"
 montaged_dir_path = "2_montaged"
 prealigned_dir_path = "3_prealigned"
 aligned_dir_path = "4_aligned"
+if isdefined(:review_round)
+    println("LOADING ", review_round)
+    aligned_dir_path = joinpath(aligned_dir_path, review_round)
+end
 
 wafer_filename = "wafer_paths.txt"
 premontaged_offsets_filename = "premontaged_offsets.txt"
