@@ -129,6 +129,11 @@ function load_stack_params(username, suffix="", bb=[5000,5000,28000,28000])
   fn = get_name((1,2,-3,-3), (1,167,-3,-3), "jls")
   fn = string(fn[1:end-4], suffix, ".jls")
   # meshset = load_aligned((1,2,-3,-3), (1,167,-3,-3))
+  if isdefined(:training)
+      if training
+          fn = get_name((1,2,-3,-3), (1,16,-3,-3), "jls")
+      end
+  end
   meshset = open(deserialize, fn)
   area = BoundingBox(bb...)
   slice = [400, 400]
@@ -142,7 +147,11 @@ function get_stack_errors_path(meshset, username)
   fn = string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","),
                 "_aligned_stack_errors.txt")
   fn = update_filename(fn, username)
-  return joinpath(INSPECTION_DIR, review_round, fn)
+  r = ""
+  if isdefined(:review_round)
+    r = review_round
+  end
+  return joinpath(INSPECTION_DIR, r, fn)
 end
 
 function review_stack(username, meshset, area, slice, k; auto=false, fps=12, ben=false)
