@@ -204,6 +204,8 @@ aligned_dir_path = "4_aligned"
 if isdefined(:review_round)
     println("LOADING ", review_round)
     aligned_dir_path = joinpath(aligned_dir_path, review_round)
+else
+    println("review_round not set")
 end
 
 wafer_filename = "wafer_paths.txt"

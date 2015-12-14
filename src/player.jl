@@ -317,9 +317,9 @@ function parse_stack_errors2(log, area)
     i = floor(Int64, (log[k, 3] - area.i) / log[k, 5]) + 1
     j = floor(Int64, (log[k, 4] - area.j) / log[k, 6]) + 1
     f = readdlm(IOBuffer(log[k, 8]), ',', Int)
-    z1[i, j, :] = ones(Int64, sz) + (f .== 1)'
-    z2[i, j, :] = ones(Int64, sz) + (f .== 2)'
-    z3[i, j, :] = ones(Int64, sz) + (f .== 3)'
+    z1[i, j, :] = (f .== 1)'
+    z2[i, j, :] = (f .== 2)'
+    z3[i, j, :] = (f .== 3)'
   end
   return z1, z2, z3
 end
@@ -364,8 +364,8 @@ Display stack errors with heat colormap and allow count display on hover
 function view_errors(z)
   # a = normalize_to_uint8(z)
   maxz = maximum(z)
-  # minz = minimum(z)
-  minz = minimum(z[z!=minimum(z)]) # second smallest
+  minz = minimum(z)
+  # minz = minimum(z[z!=minimum(z)]) # second smallest
   # println("maxz, minz: ", (maxz,minz))
   cm = create_stack_colormap(minz, maxz)
   b = apply_colormap(z, cm)
@@ -383,14 +383,39 @@ function view_errors(z)
 end
 
 """
-Display xy and yz movies of a 3D stack error matrix
+Display xy, yz, and xz movies of a 3D stack error matrix
 """
-function orthogonal_views(z)
-  println("xy, yz; ignore xz")
-  si, sj, sk = size(z)
-  view_errors(reshape(sum(z,3), si, sj))
-  view_errors(reshape(sum(z,2), si, sk))
-  view_errors(reshape(sum(z,1), sj, sk)')
+function orthogonal_views(d)
+  println("xy, yz, xz")
+  si, sj, sk = size(d)
+  view_errors(reshape(sum(d,3), si, sj))
+  view_errors(reshape(sum(d,2), si, sk))
+  view_errors(reshape(sum(d,1), sj, sk)')
+end
+
+"""
+Show 3D scatter plot of a 3D stack error matrix
+"""
+function scatter_view(d)
+  x, y, z = find_nonzeros(d)
+  # PyPlot.figure()
+  # subplot(111, projection="3d")
+  scatter3D(x, y, z, s=40, c=z, cmap="coolwarm", linewidths=0)
+  title("Class 3 errors")
+  xlabel("i")
+  ylabel("j")
+  zlabel("k")
+end
+
+function find_nonzeros{T}(a::AbstractArray{T,3})
+  x, y, z = [], [], []
+  sx, sy, sz = size(a)
+  for i=1:sx, j=1:sy, k=1:sz
+    if a[i,j,k] != 0
+      push!(x,i); push!(y,j); push!(z,k)
+    end
+  end
+  return x, y, z
 end
 
 """
@@ -400,8 +425,10 @@ function debug_column(meshset, area, slice, i, j)
   logs = compile_tracer_stack_error_logs(meshset)
   k = ij_to_k(area, slice, i, j)
   log = logs[findlast(logs[:,7], k), :]
+  println(k, ": ", (i,j))
   println(log[2])
-  println((log[3]:log[3]+log[5], log[4]:log[4]+log[6]))
+  bounds = (log[3]:log[3]+log[5], log[4]:log[4]+log[6])
+  println(bounds)
   f = readdlm(IOBuffer(log[8]), ',', Int)
   class3s = eachindex(f)'[f .== 3]
   println("Class 3 frames:\n", class3s)
@@ -413,8 +440,8 @@ function debug_column(meshset, area, slice, i, j)
           find_matches_index(meshset, (1,s,-3,-3), (1,s-1,-3,-3))] 
     push!(match_indices, mi...)
   end
-  println("Match indices:\n", match_indices)
-  # Need function to zoom in on problem spots
+  println("Match indices:\n", sort(collect(Set(match_indices))))
+  return bounds
 end
 
 """

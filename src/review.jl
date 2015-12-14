@@ -293,7 +293,8 @@ function edit_matches(imgc, img2, vectors, vectors_t, params)
     win = Tk.toplevel(c)
     bind(c, "<Button-3>", (c, x, y)->inspect_match(parse(Int, x), parse(Int, y)))
     bind(c, "<Control-Button-3>", (c, x, y)->remove_match(parse(Int, x), parse(Int, y)))
-    bind(win, "<Delete>", path->remove_inspected_match())
+    bind(win, "<Delete>", path->path)
+    bind(win, "<Escape>", path->end_edit())
     bind(win, "<Destroy>", path->end_edit())
 
     inspect_window = Void
@@ -364,11 +365,12 @@ function edit_matches(imgc, img2, vectors, vectors_t, params)
         bind(c, "<Control-Button-3>", path->path)
         bind(win, "<Delete>", path->path)
         bind(win, "<Destroy>", path->path)
+        bind(win, "<Escape>", path->path)
     end
 
     println("1) Right click to inspect correspondences\n",
             "2) Ctrl + right click to remove correspondences\n",
-            "3) Exit window")
+            "3) Exit window or press Escape")
     wait(e)
 
     return indices_to_remove
@@ -414,7 +416,7 @@ function review_matches(meshset, indexA, indexB)
 end
 
 """
-Display index k match pair meshes are two frames in movie to scroll between
+Display matches index k as overlayed images with points
 """
 function review_matches(meshset, k)
   matches = meshset.matches[k]
@@ -617,7 +619,7 @@ end
 imview, vectors, disp, k = prepare_review_matches(meshset, 18);
 mask = update_annotations(imview..., vectors, disp .< 70);
 store_mask(path, k, mask, "disp.<70");
-indices_to_remove = edit_matches2(imview..., vectors[:,mask]);
+indices_to_remove = edit_matches(imview..., vectors[:,mask]);
 store_points(path, k, indices_to_remove, "manual_after_disp");
 """
 function prepare_review_matches(meshset, k)
@@ -625,6 +627,17 @@ function prepare_review_matches(meshset, k)
   disp = calculate_displacements(meshset, k)
   imview, vectors, vectors_t, lines, params = review_matches(meshset, k)
   return imview, vectors, vectors_t, lines, disp, k, params
+end
+
+"""
+Display matches index k as overlayed images with points & image zoomed to bounds
+"""
+function prepare_review_matches(meshset, k, bounds)
+  imview, v, vt, l, d, k, p = prepare_review_matches(meshset, k)
+  b = [bounds[2][1], bounds[2][end], bounds[1][1], bounds[1][end]]
+  bb = Graphics.BoundingBox(b*params["scale"]...)
+  ImageView.zoombb(imview..., bb)
+  return imview, v, vt, l, d, k, p
 end
 
 """
@@ -894,6 +907,14 @@ function display_blockmatches(images, edit_mode_on=false, start_index=1)
 end
 
 """
+Boolean if bounding boxes intersect
+"""
+function intersects(bbA::BoundingBox, bbB::BoundingBox)
+  bb = bbA - bbB
+  return !isequal(bb.i, NaN)
+end
+
+"""
 Given list of bounding boxes, calculate pairs of indices with overlaps
 """
 function find_overlaps(boundingboxes)
@@ -1007,9 +1028,9 @@ end
 function get_matches(meshset, indexA, indexB)
   match_no = find_matches_index(meshset, indexA, indexB)
   if match_no > 0
-    src_pts, dst_pts = get_matched_points_t(meshset, match_no)
+    return get_matched_points_t(meshset, match_no)
   end
-  return src_pts, dst_pts
+  return [], []
 end
 
 function make_thumbnail(img, vectors, colors, match_nums, factor=1.0)
@@ -1212,4 +1233,91 @@ function plot_matches_outline(meshset, factor=5)
   draw_vectors(img..., vectors, RGB(0,0,1), RGB(1,0,1), factor)
   # draw_indices(img..., vectors[1:2,:], 14.0, [-8,-20])
   return img[1], img[2]
+end
+
+function review_montages(username, i=1)
+  path = joinpath(MONTAGED_DIR, "review")
+  assert(isdir(path))
+  review_path = joinpath(path, string("montage_review_", username, ".txt"))
+  should_break = false
+  d = readdir(path)
+  fn = d[i]
+  println(i, " / ", length(d) , ": ", fn)
+  img = Images.imread(joinpath(path, fn))
+  imgc, img2 = view(img, pixelspacing=[1,1])
+
+  e = Condition()
+  c = canvas(imgc)
+  win = Tk.toplevel(c)
+  bind(win, "g", path->good_exit())
+  bind(win, "b", path->bad_exit())
+  bind(win, "<space>", path->toggle_rating())
+  bind(win, "<Escape>", path->exit_loop())
+  bind(win, "<Destroy>", path->end_review())
+
+  isgood = true
+
+  function good_exit()
+    log_montage_review(username, fn, true)
+    end_review()
+  end
+
+  function bad_exit()
+    log_montage_review(username, fn, true)
+    end_review()
+  end
+
+  function toggle_rating()
+    isgood = !isgood
+    isgood ? println("good") : println("bad")
+    log_montage_review(username, fn, isgood)
+  end
+
+  function exit_loop()
+    should_break = true
+    log_montage_review(username, fn, isgood)
+    end_review()
+  end
+
+  function end_review()
+    notify(e)
+    bind(win, "g", path->path)
+    bind(win, "b", path->path)
+    bind(win, "<space>", path->path)
+    bind(win, "<Destroy>", path->path)
+    bind(win, "<Escape>", path->path)
+    destroy(win)
+  end
+
+  wait(e)
+
+  if !should_break
+    return review_montages(username, i+1)
+  end
+  return i+1
+end
+
+"""
+Write points to remove in a text file
+"""
+function log_montage_review(username, fn, isgood)
+  path = joinpath(INSPECTION_DIR, string("montage_review_", username, ".txt"))
+  ts = Dates.format(now(), "yymmddHHMMSS")
+  row = [ts, username, fn, Int(isgood)]'
+  if !isfile(path)
+    f = open(path, "w")
+    close(f)
+    table = row
+  else  
+    table = readdlm(path)
+    i = findfirst(table[:,3], fn)
+    if i != 0
+      table[i, :] = row
+    else
+      table = vcat(table, row)
+    end
+  end
+  table = table[sortperm(table[:, 3]), :]
+  # println("Saving montage_review:\n", path)
+  writedlm(path, table)
 end

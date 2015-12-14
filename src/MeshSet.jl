@@ -157,8 +157,8 @@ end
 function load(firstindex::Index, lastindex::Index)
   filename = get_name(firstindex, lastindex)
   println("Loading meshset from ", filename)
- # return load(filename)
-  return open(deserialize, filename)
+  return load(filename)
+  # return open(deserialize, filename)
 end
 
 function load_aligned(firstindex::Index, lastindex::Index)

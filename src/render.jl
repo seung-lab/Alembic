@@ -6,7 +6,7 @@ function meshwarp_mesh(mesh::Mesh)
   src_nodes = hcat(mesh.nodes...)'
   dst_nodes = hcat(mesh.nodes_t...)'
   offset = mesh.disp
-  node_dict = incidence_to_dict(mesh.edges)
+  node_dict = incidence_to_dict(mesh.edges')
   triangles = dict_to_triangles(node_dict)
   return @time meshwarp(img, src_nodes, dst_nodes, triangles, offset), mesh.index
 end
@@ -40,7 +40,7 @@ function render_montaged(waferA, secA, waferB, secB, render_full=false)
   for index in get_index_range(indexA, indexB)
     idx = (index[1:2]..., 1, 1)
     meshset = load(idx, idx)
-    new_fn = string(idx[1], ",", idx[2], "_montaged.tif")
+    new_fn = string(idx[1], ",", idx[2], "_montaged.h5")
     println("Rendering ", new_fn)
     warps = pmap(meshwarp_mesh, meshset.meshes);
     imgs = [x[1][1] for x in warps];
