@@ -1251,42 +1251,46 @@ function review_montages(username, i=1)
   win = Tk.toplevel(c)
   bind(win, "g", path->good_exit())
   bind(win, "b", path->bad_exit())
-  bind(win, "<space>", path->toggle_rating())
+  # bind(win, "<space>", path->toggle_rating())
   bind(win, "<Escape>", path->exit_loop())
-  bind(win, "<Destroy>", path->end_review())
+  # bind(win, "<Enter>", path->end_review())
+  bind(win, "<Destroy>", path->exit_loop())
 
   isgood = true
 
   function good_exit()
+    println("good")
     log_montage_review(username, fn, true)
     end_review()
   end
 
   function bad_exit()
-    log_montage_review(username, fn, true)
+    println("bad")
+    log_montage_review(username, fn, false)
     end_review()
   end
 
-  function toggle_rating()
-    isgood = !isgood
-    isgood ? println("good") : println("bad")
-    log_montage_review(username, fn, isgood)
-  end
+  # function toggle_rating()
+  #   isgood = !isgood
+  #   isgood ? println("good") : println("bad")
+  #   log_montage_review(username, fn, isgood)
+  # end
 
   function exit_loop()
     should_break = true
-    log_montage_review(username, fn, isgood)
+    # log_montage_review(username, fn, isgood)
     end_review()
   end
 
   function end_review()
-    notify(e)
     bind(win, "g", path->path)
     bind(win, "b", path->path)
-    bind(win, "<space>", path->path)
-    bind(win, "<Destroy>", path->path)
+    # bind(win, "<space>", path->path)
     bind(win, "<Escape>", path->path)
+    # bind(win, "<Enter>", path->path)
+    bind(win, "<Destroy>", path->path)
     destroy(win)
+    notify(e)
   end
 
   wait(e)
@@ -1294,7 +1298,7 @@ function review_montages(username, i=1)
   if !should_break
     return review_montages(username, i+1)
   end
-  return i+1
+  return i
 end
 
 """
@@ -1312,7 +1316,7 @@ function log_montage_review(username, fn, isgood)
     table = readdlm(path)
     i = findfirst(table[:,3], fn)
     if i != 0
-      table[i, :] = row
+      table = vcat(table[1:i-1, :], row, table[i+1:end,:])
     else
       table = vcat(table, row)
     end
