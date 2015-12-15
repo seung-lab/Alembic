@@ -1239,7 +1239,7 @@ function review_montages(username, i=1)
   path = joinpath(MONTAGED_DIR, "review")
   assert(isdir(path))
   review_path = joinpath(path, string("montage_review_", username, ".txt"))
-  should_break = false
+  break_review = false
   d = readdir(path)
   fn = d[i]
   println(i, " / ", length(d) , ": ", fn)
@@ -1253,22 +1253,35 @@ function review_montages(username, i=1)
   bind(win, "b", path->bad_exit())
   bind(win, "<KP_0>", path->good_exit())
   bind(win, "<KP_4>", path->bad_exit())
+  bind(win, "<Left>", path->go_back())
+  bind(win, "<Right>", path->go_next())
   # bind(win, "<space>", path->toggle_rating())
   bind(win, "<Escape>", path->exit_loop())
   # bind(win, "<Enter>", path->end_review())
   bind(win, "<Destroy>", path->exit_loop())
 
   isgood = true
+  j = i
 
   function good_exit()
     println("good")
     log_montage_review(username, fn, true)
-    end_review()
+    go_next()
   end
 
   function bad_exit()
     println("bad")
     log_montage_review(username, fn, false)
+    go_next()
+  end
+
+  function go_next()
+    j = i+1
+    end_review()
+  end
+
+  function go_back()
+    j = i-1
     end_review()
   end
 
@@ -1279,7 +1292,7 @@ function review_montages(username, i=1)
   # end
 
   function exit_loop()
-    should_break = true
+    break_review = true
     # log_montage_review(username, fn, isgood)
     end_review()
   end
@@ -1289,6 +1302,8 @@ function review_montages(username, i=1)
     bind(win, "b", path->path)
     bind(win, "<KP_0>", path->path)
     bind(win, "<KP_4>", path->path)
+    bind(win, "<Left>", path->path)
+    bind(win, "<Right>", path->path)
     # bind(win, "<space>", path->path)
     bind(win, "<Escape>", path->path)
     # bind(win, "<Enter>", path->path)
@@ -1299,8 +1314,8 @@ function review_montages(username, i=1)
 
   wait(e)
 
-  if !should_break
-    return review_montages(username, i+1)
+  if !break_review
+    return review_montages(username, j)
   end
   return i
 end
