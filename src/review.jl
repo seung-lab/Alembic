@@ -1320,11 +1320,15 @@ function review_montages(username, i=1)
   return i
 end
 
+function get_montage_review_path(username)
+  return joinpath(INSPECTION_DIR, string("montage_review_", username, ".txt"))
+end
+
 """
 Write points to remove in a text file
 """
 function log_montage_review(username, fn, isgood)
-  path = joinpath(INSPECTION_DIR, string("montage_review_", username, ".txt"))
+  path = get_montage_review_path(username)
   ts = Dates.format(now(), "yymmddHHMMSS")
   row = [ts, username, fn, Int(isgood)]'
   if !isfile(path)
@@ -1343,4 +1347,37 @@ function log_montage_review(username, fn, isgood)
   table = table[sortperm(table[:, 3]), :]
   # println("Saving montage_review:\n", path)
   writedlm(path, table)
+end
+
+"""
+Combine stack error log files of all tracers to create one log matrix
+"""
+function compile_tracer_montage_review_logs()
+  tracers = ["hmcgowan", "bsilverman", "merlinm", "kpw3"]
+  logs = []
+  for tracer in tracers
+    path = get_montage_review_path(tracer)
+    if isfile(path)
+      push!(logs, readdlm(path))
+    end
+  end
+  return vcat(logs...)
+end
+
+function show_montage_review_progress()
+  path = joinpath(MONTAGED_DIR, "review")
+  montages = readdir(path)
+  x = 1:length(montages)
+  y = zeros(Int64, length(montages))
+  logs = compile_tracer_montage_review_logs()
+  tracers = unique(logs[:, 2])
+  for tracer in tracers
+    log = logs[logs[:,2] .== tracer, :]
+    log_time = round(Int64, (log[:,1] % 10^6) / 100)
+    log_k = map(x -> findfirst(montages, x), log[:,3])
+    y[log_k] = log_time
+    PyPlot.plot(log_k, log_time, ".")
+  end
+  PyPlot.plot(x[y.==0], y[y.==0], ".")
+  println("Reviewed stack columns: ", length(unique(logs[:,3])), " / ", length(montages))
 end
