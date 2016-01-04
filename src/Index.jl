@@ -67,7 +67,7 @@ function get_metadata(index)
   return registry[find_in_registry(index), :];
 end
 
-function get_offsets(index)
+function get_offset(index)
 	metadata = get_metadata(index);
 	return metadata[3:4];
 end
@@ -85,6 +85,14 @@ function get_preceding(index)
   return registry[loc_in_reg - 1, 2];
 end
 
+function get_succeeding(index)
+  registry = get_registry(index);
+  loc_in_reg = find_in_registry(index);
+  if loc_in_reg == 0 return NO_INDEX; end
+  if loc_in_reg == 1 return NO_INDEX; end
+  return registry[loc_in_reg + 1, 2];
+end
+
 function get_index_range(first_index, last_index)
 	return get_registry(first_index)[find_in_registry(first_index):find_in_registry(last_index), 2];
 end
@@ -99,18 +107,6 @@ function get_range_in_registry(indexA, indexB)
 end
 
 """
-Find first row of the offset file that matches index and return
-of previous offset arrays
-"""
-function find_offset(offset_file, index)
-  if findfirst(offset_file[:,2], index) != 0
-    return collect(offset_file[findfirst(offset_file[:,2], index), 3:4])
-  else
-    return [0,0]
-  end
-end
-
-"""
 Find first row of the offset file that matches index and return cumulative sum 
 of previous offset arrays
 """
@@ -122,18 +118,6 @@ function find_cumulative_offset(offset_file, index)
   end
 end
 
-"""
-Find appropriate offset file and pull out the offset array for the index
-"""
-function load_offset(index)
-  if is_prealigned(index)
-    return find_offset(MONTAGED_OFFSETS, (index[1:2]..., -2, -2))
-  elseif is_aligned(index)
-    return find_offset(PREALIGNED_OFFSETS, (index[1:2]..., -3, -3))
-  else
-    return [0,0]
-  end
-end
 """
 Generate list of indices between indexA and indexB
 """

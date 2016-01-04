@@ -18,7 +18,7 @@ end
 function get_ranges(pt, src_mesh, dst_mesh, block_size::Int64, search_r::Int64)
 	# convert to local coordinates in both src / dst images, and then round up to an integer
 	src_pt = ceil(Int64, pt);
-	dst_pt = pt + get_offsets(src_mesh) - get_offsets(dst_mesh);
+	dst_pt = pt + get_offset(src_mesh) - get_offset(dst_mesh);
 	dst_pt = ceil(Int64, dst_pt);
 
 	block_range = -block_size:block_size;
@@ -52,6 +52,29 @@ function get_patch(img, range)
 	end
 end
 
+function get_match_remote(pt, src_index, dst_index, params)
+	src_range, dst_range, dst_range_padded = get_ranges(pt, src_index, dst_index, params);
+	src_image = LOCAL_SRC_IMAGE;
+	dst_image = LOCAL_DST_IMAGE;
+	xc = normxcorr2(get_patch(src_image, src_range), get_patch(dst_image, dst_range));
+	r_max = maximum(xc)
+	if isnan(r_max) return nothing end;
+  	ind = findfirst(r_max .== xc)
+	i_max, j_max = rem(ind, size(xc, 1)), cld(ind, size(xc, 1));
+  	if i_max == 0 
+    		i_max = size(xc, 1)
+  	end
+  	rad_i = round(Int64, (size(xc, 1) - 1)/ 2)  
+  	rad_j = round(Int64, (size(xc, 2) - 1)/ 2)  
+	di, dj = i_max - 1 - rad_i, j_max - 1 - rad_j;
+	correspondence_properties = Dict{Any, Any}();
+	correspondence_properties["di"] = di;
+	correspondence_properties["dj"] = dj;
+	correspondence_properties["r_val"] = r_max;
+
+	return vcat(pt + get_offset(src_index) - get_offset(dst_index) + [i_max - 1 - rad_i; j_max - 1 - rad_j], correspondence_properties);
+end
+
 function get_match(pt, src_mesh, src_image, dst_mesh, dst_image, params)
 	src_range, dst_range, dst_range_padded = get_ranges(pt, src_mesh, dst_mesh, params);
 	src_patch = remotecall_fetch(1, get_patch, src_image, src_range)
@@ -74,7 +97,7 @@ function get_match(pt, src_mesh, src_image, dst_mesh, dst_image, params)
 	correspondence_properties["dj"] = dj;
 	correspondence_properties["r_val"] = r_max;
 
-	return vcat(pt + get_offsets(src_mesh) - get_offsets(dst_mesh) + [i_max - 1 - rad_i; j_max - 1 - rad_j], correspondence_properties);
+	return vcat(pt + get_offset(src_mesh) - get_offset(dst_mesh) + [i_max - 1 - rad_i; j_max - 1 - rad_j], correspondence_properties);
 
 end
 
@@ -138,23 +161,34 @@ function undo_filter!(match::Match)
 	pop!(match.filters);
 end
 
+function count_filtered_correspondences(match::Match)
+	return length(get_filtered_indices(match));
+end
+
+function get_filtered_correspondences(match::Match)
+	return match.src_points[get_filtered_indices(match)], match.dst_points[get_filtered_indices(match)];
+end
+
 function get_filtered_indices(match::Match)
 	return setdiff(1:count_correspondences(match), union(map(getindex, match.filters, repeated("rejected"))...));
 end
 
-function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh))
+function Match(src_mesh::Mesh, dst_mesh::Mesh, src_image=nothing, dst_image=nothing, params=get_params(src_mesh))
 	println("Matching $(src_mesh.index) -> $(dst_mesh.index):#########\n");
 	if src_mesh == dst_mesh
 		return nothing
 	end
 
-	src_image_local = get_image(src_mesh);
-	dst_image_local = get_image(dst_mesh);
+	src_image_local = src_image;
+	dst_image_local = dst_image;
 
-	src_image = SharedArray(eltype(src_image_local), size(src_image_local));
-	dst_image = SharedArray(eltype(dst_image_local), size(dst_image_local));
-	src_image[:, :] = src_image_local[:, :];
-	dst_image[:, :] = dst_image_local[:, :];
+	if src_image == nothing src_image_local = get_image(src_mesh); end
+	if dst_image == nothing dst_image_local = get_image(dst_mesh); end
+
+	#global src_image = SharedArray(eltype(src_image_local), size(src_image_local));
+	#global dst_image = SharedArray(eltype(dst_image_local), size(dst_image_local));
+	#src_image[:, :] = src_image_local[:, :];
+	#dst_image[:, :] = dst_image_local[:, :];
   	src_index = src_mesh.index;
 	dst_index = dst_mesh.index;
 
@@ -163,27 +197,77 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh))
 	put!(src_image_ref, src_image_local);
 	put!(dst_image_ref, dst_image_local);
 
-#	dst_allpoints = pmap(get_match, src_mesh.src_nodes, repeated(src_mesh), repeated(src_image), repeated(dst_mesh), repeated(dst_image), repeated(params));
-	dst_allpoints = pmap(get_match, src_mesh.src_nodes, repeated(src_mesh), repeated(src_image_ref), repeated(dst_mesh), repeated(dst_image_ref), repeated(params));
+	tofetch = Array{RemoteRef}(0);
+	for pid in HOST_HEADS
+		push!(tofetch, remotecall(pid, sync_images, src_image_ref, dst_image_ref));
+	end
+      	for ref in tofetch
+		wait(ref);
+	end
+	
+	println("Synced.")
+
+	#dst_allpoints = pmap(get_match, src_mesh.src_nodes, repeated(src_mesh), repeated(src_image), repeated(dst_mesh), repeated(dst_image), repeated(params));
+	#dst_allpoints = pmap(get_match, src_mesh.src_nodes, repeated(src_mesh), repeated(src_image_ref), repeated(dst_mesh), repeated(dst_image_ref), repeated(params));
+	#dst_allpoints = pmap(get_match_remote, src_mesh.src_nodes, repeated(src_mesh), repeated(dst_mesh), repeated(params));
+	dst_allpoints = pmap(get_match_remote, src_mesh.src_nodes, repeated(src_index), repeated(dst_index), repeated(params));
 	matched_inds = find(i -> i != nothing, dst_allpoints);
 	src_points = copy(src_mesh.src_nodes[matched_inds]);
-	dst_points = similar(src_points, 0);
-	correspondence_properties = Array{Dict{Any, Any}}(0);
+#	dst_points = similar(src_points, 0);
+#	correspondence_properties = Array{Dict{Any, Any}}(0);
 	filters = Array{Dict{Any, Any}}(0);
 
-	for ind in matched_inds
+	dst_points = [convert(Point, dst_allpoints[ind][1:2]) for ind in matched_inds]
+	correspondence_properties = [dst_allpoints[ind][3] for ind in matched_inds]
+
+#=	for ind in matched_inds
 		push!(dst_points, convert(Point, dst_allpoints[ind][1:2]));
 		push!(correspondence_properties, dst_allpoints[ind][3]);
-	end
+	end=#
 
 	return Match(src_index, dst_index, src_points, dst_points, correspondence_properties, filters);
 end
 
 function sync_images(src_image_ref, dst_image_ref)
+	src_image_local = fetch(src_image_ref);
+	dst_image_local = fetch(dst_image_ref);
+	global LOCAL_SRC_IMAGE = SharedArray(eltype(src_image_local), size(src_image_local), pids=local_procs());
+	global LOCAL_DST_IMAGE = SharedArray(eltype(dst_image_local), size(dst_image_local), pids=local_procs());
+	LOCAL_SRC_IMAGE[:, :] = src_image_local[:, :];
+	LOCAL_DST_IMAGE[:, :] = dst_image_local[:, :];
 
+	for pid in local_procs()
+	remotecall(pid, sync_images_subroutine, LOCAL_SRC_IMAGE, LOCAL_DST_IMAGE);
+      end
+#=	tofetch = Array{RemoteRef}(0);
+	for pid in local_procs()
+		push!(tofetch, remotecall(pid, sync_images_subroutine, LOCAL_SRC_IMAGE, LOCAL_DST_IMAGE));
+	end
+      	for ref in tofetch
+		fetch(ref);
+	end
+=#
 end
 
+function sync_images_subroutine(local_src_image, local_dst_image)
+	global LOCAL_SRC_IMAGE = local_src_image;
+	global LOCAL_DST_IMAGE = local_dst_image;
+end
 
+function my_host_addr()
+	return Base.Worker(myid()).bind_addr;
+end
+
+function get_local_host_addr(id)
+	return remotecall_fetch(id, my_host_addr);
+end
+
+function local_procs()
+	localhost = Base.Worker(myid()).bind_addr;
+	remotehosts = map(get_local_host_addr, procs());
+	local_procs_indices = find(p -> p == localhost, remotehosts);
+	return procs()[local_procs_indices];
+end
 
 function Base.size(r::RemoteRef, args...)
       if r.where == myid()

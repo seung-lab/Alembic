@@ -1,4 +1,8 @@
-
+function save(path::String, img::Array)
+      f = h5open(path, "w")
+      @time f["img", "chunk", (1000,1000)] = img
+      close(f)
+    end
 
 # extensions:
 # Mesh.jl	get_image(mesh::Mesh)

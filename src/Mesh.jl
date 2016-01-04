@@ -17,7 +17,7 @@ function is_preceding(Am::Mesh, Bm::Mesh)	return is_preceding(Am.index, Bm.index
 function get_params(mesh::Mesh)			return get_params(mesh.index);		end
 	     
 ### META.jl EXTENSIONS
-function get_offsets(mesh::Mesh)		return get_offsets(mesh.index);		end
+function get_offset(mesh::Mesh)		return get_offset(mesh.index);		end
 function get_image_sizes(mesh::Mesh)		return get_image_sizes(get_metadata(mesh.index));	end
 function get_metadata(mesh::Mesh)		return get_metadata(mesh.index);	end
 
@@ -31,6 +31,30 @@ function count_edges(mesh::Mesh)		return size(mesh.edges, 2);		end
 
 ### internal
 function get_topleft_offset(mesh::Mesh)		return mesh.src_nodes[1];		end
+function get_edge_points(mesh::Mesh, ind)
+	src_ind = find(this -> this < 0, mesh.edges[:, ind]);
+	dst_ind = find(this -> this > 0, mesh.edges[:, ind]);
+	return mesh.src_nodes[src_ind], mesh.src_nodes[dst_ind]
+end
+#=
+function get_edge_points(mesh::Mesh, ind)
+	start_tri_inds = find(this -> this < 0, mesh.edges[:, ind]);
+	start_tri_nodes = mesh.src_nodes[start_tri_inds];
+	start_tri_weights = [mesh.edges[start_tri_inds[1], ind]; mesh.edges[start_tri_inds[2], ind]; mesh.edges[start_tri_inds[3], ind]]
+	start_pt = dot(start_tri_nodes, start_tri_weights) * -1;
+
+	end_tri_inds = find(this -> this > 0, mesh.edges[:, ind]);
+	end_tri_nodes = mesh.src_nodes[end_tri_inds];
+	end_tri_weights = [mesh.edges[end_tri_inds[1], ind]; mesh.edges[end_tri_inds[2], ind]; mesh.edges[end_tri_inds[3], ind]]
+	end_pt = dot(end_tri_nodes, end_tri_weights);
+      return start_pt, end_pt;
+end
+=#
+function get_edge_length(mesh::Mesh, ind)	
+	start_pt, end_pt = get_edge_points(mesh, ind);
+      return norm(start_pt - end_pt);
+    end
+function get_edge_lengths(mesh::Mesh)		return map(get_edge_length, repeated(mesh), collect(1:count_edges(mesh)));		end
 function get_dims_and_dists(mesh::Mesh)
 	n = count_nodes(mesh);
 
@@ -160,33 +184,51 @@ function find_mesh_triangle(mesh::Mesh, point::Point)
 	theta = abs(atan(res[1] / res[2]));
 	if (theta < pi / 3)
 		if (res[2] >= 0)
-			ind1 = get_mesh_index(dims, i0, j0 + 1);
 			if (res[1] >= 0)
 				if isodd(i0)
+					ind1 = get_mesh_index(dims, i0, j0 + 1);
 					ind2 = get_mesh_index(dims, i0+1, j0);
 				else
+					ind1 = get_mesh_index(dims, i0, j0 + 1);
 					ind2 = get_mesh_index(dims, i0+1, j0+1);
+					if ind1 == 0
+						ind1 = get_mesh_index(dims, i0-1, j0 + 1);
+					end
 				end
 			else
 				if isodd(i0)
+					ind1 = get_mesh_index(dims, i0, j0 + 1);
 					ind2 = get_mesh_index(dims, i0-1, j0);
 				else
+					ind1 = get_mesh_index(dims, i0, j0 + 1);
 					ind2 = get_mesh_index(dims, i0-1, j0+1);
+					if ind1 == 0
+						ind1 = get_mesh_index(dims, i0+1, j0 + 1);
+					end
 				end
 			end
 		else
-			ind1 = get_mesh_index(dims, i0, j0 - 1);
 			if (res[1] >= 0)
 				if isodd(i0)
+					ind1 = get_mesh_index(dims, i0, j0 - 1);
 					ind2 = get_mesh_index(dims, i0+1, j0-1);
 				else
+					ind1 = get_mesh_index(dims, i0, j0 - 1);
 					ind2 = get_mesh_index(dims, i0+1, j0);
+					if ind1 == 0
+						ind1 = get_mesh_index(dims, i0-1, j0);
+					end
 				end
 			else
 				if isodd(i0)
+					ind1 = get_mesh_index(dims, i0, j0 - 1);
 					ind2 = get_mesh_index(dims, i0-1, j0-1);
 				else
+					ind1 = get_mesh_index(dims, i0, j0 - 1);
 					ind2 = get_mesh_index(dims, i0-1, j0);
+					if ind1 == 0
+						ind1 = get_mesh_index(dims, i0+1, j0);
+					end
 				end
 			end
 		end
@@ -195,6 +237,12 @@ function find_mesh_triangle(mesh::Mesh, point::Point)
 			if isodd(i0)
 				ind1 = get_mesh_index(dims, i0+1, j0-1);
 				ind2 = get_mesh_index(dims, i0+1, j0);
+				if ind1 == 0
+					ind1 = get_mesh_index(dims, i0+2, j0);
+				end
+				if ind2 == 0
+					ind2 = get_mesh_index(dims, i0+2, j0);
+				end
 			else
 				ind1 = get_mesh_index(dims, i0+1, j0);
 				ind2 = get_mesh_index(dims, i0+1, j0+1);
@@ -203,6 +251,12 @@ function find_mesh_triangle(mesh::Mesh, point::Point)
 			if isodd(i0)
 				ind1 = get_mesh_index(dims, i0-1, j0-1);
 				ind2 = get_mesh_index(dims, i0-1, j0);
+				if ind1 == 0
+					ind1 = get_mesh_index(dims, i0-2, j0);
+				end
+				if ind2 == 0
+					ind2 = get_mesh_index(dims, i0-2, j0);
+				end
 			else
 				ind1 = get_mesh_index(dims, i0-1, j0);
 				ind2 = get_mesh_index(dims, i0-1, j0+1);
@@ -211,18 +265,20 @@ function find_mesh_triangle(mesh::Mesh, point::Point)
 	end
 
 	if (ind1 == 0 || ind2 == 0)
+	  	println("Missing triangle");
+		println("$res at $ind0");
 		return NO_TRIANGLE;
 	end
 	return (ind0, ind1, ind2);
 end
 
 # Convert Cartesian coordinate to triple of barycentric coefficients
-function get_triangle_weights(m::Mesh, point::Point, triangle::Triangle)
-	R = vcat(mesh.nodes[triangle[1]]', mesh.nodes[triangle[2]]', mesh.nodes[triangle[3]]')
+function get_triangle_weights(mesh::Mesh, point::Point, triangle::Triangle)
+	R = vcat(mesh.src_nodes[triangle[1]]', mesh.src_nodes[triangle[2]]', mesh.src_nodes[triangle[3]]')
 	R = hcat(R, ones(Float64, 3, 1));
 	r = vcat(point, 1.0);
 
-	V = r * R^-1;
+	V = r' * R^-1;
 
 	return (V[1], V[2], V[3]);
 end

@@ -14,8 +14,10 @@ function get_homogeneous_nodes(meshset::MeshSet, k)
   return get_homogeneous_nodes(meshset.meshes[k]);
 end
 
+#filtered ones only
 function get_homogeneous_correspondences(match::Match)
-  return homogenize_points(match.src_points), homogenize_points(match.dst_points);
+  src_points, dst_points = get_filtered_correspondences(match);
+  return homogenize_points(src_points), homogenize_points(dst_points);
 end
 
 function get_homogeneous_correspondences(meshset::MeshSet, k)
@@ -100,73 +102,85 @@ function affine_solve_meshset!(Ms)
   Ms.meshes[Ms.matches_pairs[1][1]].nodes_t = nodes_t
   stats(Ms)
   return Ms
+  offset = mesh.disp
 end
 
 
-function solve_meshset(meshset)
-
-end
 
 """
 Elastic solve
 """
-function solve_meshset!(Ms)
-  match_coeff = Ms.params["match_coeff"]
-  eta_gradient = Ms.params["eta_gradient"]
-  ftol_gradient = Ms.params["ftol_gradient"]
-  eta_newton = Ms.params["eta_newton"]
-  ftol_newton = Ms.params["ftol_newton"]
+function solve_meshset!(meshset)
+  match_coeff = (meshset.properties["params"])["match_coeff"]
+  mesh_coeff = (meshset.properties["params"])["mesh_coeff"]
+  eta_gradient = (meshset.properties["params"])["eta_gradient"]
+  ftol_gradient = (meshset.properties["params"])["ftol_gradient"]
+  eta_newton = (meshset.properties["params"])["eta_newton"]
+  ftol_newton = (meshset.properties["params"])["ftol_newton"]
 
-  nodes = Points(0)
+  nodes = Array{Float64, 2}(2, 0);
   nodes_fixed = BinaryProperty(0)
-  edges = spzeros(Float64, Ms.n, 0)
+  edges = spzeros(Float64, count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset));
   edge_lengths = FloatProperty(0)
   edge_coeffs = FloatProperty(0)
 
-  for i in 1:Ms.N
-    cur_mesh = Ms.meshes[i]
-    if i == 1 nodes = hcat(cur_mesh.nodes...)
-    else nodes = hcat(nodes, hcat(cur_mesh.nodes...)); end
-    append!(nodes_fixed, cur_mesh.nodes_fixed)
-    append!(edge_lengths, cur_mesh.edge_lengths)
-    append!(edge_coeffs, cur_mesh.edge_coeffs)
-    if (i == Ms.N)  
-      edges = hcat(edges, vcat(spzeros(Float64, Ms.nodes_indices[i], cur_mesh.m), 
-             cur_mesh.edges))
-    else
-      edges = hcat(edges, vcat(spzeros(Float64, Ms.nodes_indices[i], cur_mesh.m), 
-             cur_mesh.edges, 
-             spzeros(Float64, Ms.n - Ms.nodes_indices[i] - cur_mesh.n, cur_mesh.m)))
-    end
+  blockranges = Dict{Any, Any}();
+  meshes = Dict{Any, Any}();
+  cum_nodes = 0; cum_edges = 0;
+  for mesh in meshset.meshes
+	blockranges[mesh.index] = (cum_nodes + (1:count_nodes(mesh)), cum_edges + (1:count_edges(mesh)))
+	meshes[mesh.index] = mesh
+	cum_nodes = cum_nodes + count_nodes(mesh);
+	cum_edges = cum_edges + count_edges(mesh);
   end
 
-  for i in 1:Ms.M
-    cur_matches = Ms.matches[i]
-    append!(edge_lengths, fill(0.0, cur_matches.n))
-    append!(edge_coeffs, fill(convert(Float64, match_coeff), cur_matches.n))
-    edges_padded = spzeros(Float64, Ms.n, cur_matches.n)
-
-    for j in 1:Ms.matches[i].n
-      edges_padded[find_node(Ms, Ms.matches_pairs[i][1], cur_matches.src_points_indices[j]), j] = -1
-      edges_padded[find_node(Ms, Ms.matches_pairs[i][2], cur_matches.dst_triangles[j][1]), j] = cur_matches.dst_weights[j][1]
-      edges_padded[find_node(Ms, Ms.matches_pairs[i][2], cur_matches.dst_triangles[j][2]), j] = cur_matches.dst_weights[j][2]
-      edges_padded[find_node(Ms, Ms.matches_pairs[i][2], cur_matches.dst_triangles[j][3]), j] = cur_matches.dst_weights[j][3]
-    end
-    edges = hcat(edges, edges_padded)
+  for match in meshset.matches
+	blockranges[match] = cum_edges + (1:count_filtered_correspondences(match));
+	cum_edges = cum_edges + count_filtered_correspondences(match);
   end
+
+  for mesh in meshset.meshes
+    nodes = hcat(nodes, mesh.src_nodes...);
+    num_nodes = count_nodes(mesh);
+    append!(nodes_fixed, fill(false, num_nodes));
+    append!(edge_lengths, get_edge_lengths(mesh));
+    append!(edge_coeffs, fill(mesh_coeff, count_edges(mesh)));
+    edges[blockranges[mesh.index]...] = mesh.edges;
+  end
+
+  for match in meshset.matches
+    	src_mesh = meshes[match.src_index];
+    	dst_mesh = meshes[match.dst_index];
+	src_pts, dst_pts = get_filtered_correspondences(match);
+	src_pt_triangles = map(find_mesh_triangle, repeated(src_mesh), src_pts);
+	src_pt_weights = map(get_triangle_weights, repeated(src_mesh), src_pts, src_pt_triangles);
+	dst_pt_triangles = map(find_mesh_triangle, repeated(dst_mesh), dst_pts);
+	dst_pt_weights = map(get_triangle_weights, repeated(dst_mesh), dst_pts, dst_pt_triangles);
+
+	for ind in 1:count_filtered_correspondences(match)
+		edges[((blockranges[match.src_index])[1])[collect(src_pt_triangles[ind])], ind] = (-1) * collect(src_pt_weights[ind]);
+		edges[((blockranges[match.dst_index])[1])[collect(dst_pt_triangles[ind])], ind] = collect(dst_pt_weights[ind]);
+	end
+    	append!(edge_lengths, fill(0, count_filtered_correspondences(match)));
+    	append!(edge_coeffs, fill(match_coeff, count_filtered_correspondences(match)));
+  end
+
+	println("nodes, ", size(nodes));
+	println("nodes_fixed, ", size(nodes_fixed));
+	println("edges, ", size(edges));
+	println("edge_coeffs, ", size(edge_coeffs));
+	println("edge_lengths, ", size(edge_lengths));
 
   SolveMesh!(nodes, nodes_fixed, edges, edge_coeffs, edge_lengths, eta_gradient, ftol_gradient, eta_newton, ftol_newton)
-  nodes_t = Points(0)
+  dst_nodes = Points(0)
   for i in 1:size(nodes, 2)
-          push!(nodes_t, vec(nodes[:, i]))
+          push!(dst_nodes, vec(nodes[:, i]))
         end
-  for i in 1:Ms.N
-    cur_mesh = Ms.meshes[i]
-    cur_mesh.nodes_t = nodes_t[Ms.nodes_indices[i] + (1:cur_mesh.n)]
-  end
 
-    print(Ms.params)
-    stats(Ms)
+  for mesh in meshset.meshes
+	mesh.dst_nodes = dst_nodes[blockranges[mesh.index][1]];
+  end
+  println("DONE!");
 end
 
 function stats(Ms::MeshSet)

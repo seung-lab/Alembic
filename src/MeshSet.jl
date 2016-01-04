@@ -20,6 +20,8 @@ function count_edges(meshset::MeshSet)			return sum(map(count_edges, meshset.mes
 
 function count_correspondences(meshset::MeshSet)	return sum(map(count_correspondences, meshset.matches));		end
 
+function count_filtered_correspondences(meshset::MeshSet)	return sum(map(count_filtered_correspondences, meshset.matches));		end
+
 ### finding
 function find_mesh_index(meshset::MeshSet, index)
   return findfirst(this -> index == this.index, meshset.meshes)
@@ -92,8 +94,6 @@ function match!(meshset::MeshSet)
 	end
 end
 
-function filter()
-
 # JLS SAVE
 function save(filename::String, meshset::MeshSet)
   println("Saving meshset to ", filename)
@@ -144,7 +144,7 @@ function load_prealigned(wafer_num, sec_num)
 	return load(firstindex, lastindex)
 end
 
-function get_name(firstindex::Index, lastindex::Index, ext="jld")
+function load(firstindex, lastindex)
   if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex))
     filename = joinpath(PREALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned.jls"))
   elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex))
@@ -152,15 +152,21 @@ function get_name(firstindex::Index, lastindex::Index, ext="jld")
   else 
     filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "_montaged.jls"))
   end
-  return filename
-end
 
   println("Loading meshset from ", filename)
   return load(filename)
-  end
+end
+
+function load(index)
+  	if is_montaged(index)
+	  return load_montaged(index[1:2]...)
+	end
+end
 
 function load(filename::String)
-  Ms = deserialize(filename);
+  open(filename, "r") do file
+    Ms = deserialize(filename)
+  end
   return Ms
 end
 
