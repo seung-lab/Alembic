@@ -171,7 +171,7 @@ function solve_meshset!(meshset)
 	println("edge_coeffs, ", size(edge_coeffs));
 	println("edge_lengths, ", size(edge_lengths));
 
-  SolveMesh!(nodes, nodes_fixed, edges, edge_coeffs, edge_lengths, eta_gradient, ftol_gradient, eta_newton, ftol_newton)
+  SolveMesh2!(nodes, nodes_fixed, edges, edge_coeffs, edge_lengths, ftol_newton)
   dst_nodes = Points(0)
   for i in 1:size(nodes, 2)
           push!(dst_nodes, vec(nodes[:, i]))

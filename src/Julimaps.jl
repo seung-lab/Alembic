@@ -53,7 +53,8 @@ using Base.Test
 using Cairo
 using IterativeSolvers
 using ImageRegistration
-# using PyPlot
+using Optim
+#using PyPlot
 
 include("Index.jl")
 include("registry.jl")
@@ -63,9 +64,9 @@ include("Params_session.jl")
 include("convolve.jl")
 include("Mesh.jl")
 include("Match.jl")
-#include("MatchLocHeads.jl")
 include("MeshSet.jl")
 include("MeshSolve.jl")
+include("MeshConjGrad.jl")
 include("MeshSession.jl")
 include("TileToOverview.jl")
 include("prealign.jl")

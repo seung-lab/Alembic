@@ -3,12 +3,21 @@ Load image, then apply meshwarp
 """
 function meshwarp(mesh::Mesh)
   @time img = get_image(mesh)
-  src_nodes = hcat(mesh.src_nodes...)'
-  dst_nodes = hcat(mesh.dst_nodes...)'
-  offset = get_offset(mesh)
+  src_nodes = mesh.src_nodes;
+  dst_nodes = mesh.dst_nodes;
+  offset = get_offset(mesh);
+  for node in src_nodes
+	node = node + offset;
+  end
+  for node in dst_nodes
+	node = node + offset;
+  end
+  src_nodes = hcat(src_nodes...)'
+  dst_nodes = hcat(dst_nodes...)'
+  offset = get_offset(mesh) - get_topleft_offset(mesh)
   node_dict = incidence_to_dict(mesh.edges')
   triangles = dict_to_triangles(node_dict)
-  return @time meshwarp(img, src_nodes, dst_nodes, triangles, offset)
+  return @time ImageRegistration.meshwarp(img, src_nodes, dst_nodes, triangles, offset)
 end  
 
 """

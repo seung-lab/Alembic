@@ -40,7 +40,7 @@ function Gradient( Springs, Incidence, Stiffnesses, RestLengths)
     Forces*Incidence'
 end
 
-function SolveMesh2!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths)
+function SolveMesh2!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, ftol)
 
     function cost(x)
         Vert = copy(Vertices)
@@ -70,7 +70,7 @@ function SolveMesh2!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths)
 
     Moving = ~Fixed
 
-    res = optimize(df,Vertices[:,Moving][:],method=:cg,show_trace=true,ftol=1e-8)
+    res = optimize(df,Vertices[:,Moving][:],method=:cg,show_trace=true,iterations=10000000,ftol=ftol)
     # return res
     Vertices[:,Moving] = reshape(res.minimum, 2, div(length(res.minimum),2))
 end

@@ -103,8 +103,8 @@ function save(filename::String, meshset::MeshSet)
 end
 
 function save(meshset::MeshSet)
-  firstindex = Ms.meshes[1].index
-  lastindex = Ms.meshes[count_meshes(meshset)].index
+  firstindex = meshset.meshes[1].index
+  lastindex = meshset.meshes[count_meshes(meshset)].index
 
 
   if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex))
@@ -164,10 +164,7 @@ function load(index)
 end
 
 function load(filename::String)
-  open(filename, "r") do file
-    Ms = deserialize(filename)
-  end
-  return Ms
+  return open(deserialize, filename)
 end
 
 function add_pair_matches_with_thumbnails!(meshset, src, dst, images = Void)
