@@ -43,7 +43,9 @@ function get_path(index, ext = ".h5")
         else
             section_folder = string("S2-W00", index[1], "_Sec", index[2], "_Montage")
         end
-        path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ext))
+        #path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ext))
+	#temporary hack for .tif raw images
+        path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ".tif"))
     end
     println(path)
     return path
@@ -140,7 +142,7 @@ function parse_registry(path::String)
     return registry
 end
 
-bucket_dir_path = "/home/ubuntu"
+bucket_dir_path = "/mnt/bucket/labs/seung/"
 #=if isfile("bucket_dir_path.txt")
     bucket_dir_path = rstrip(readall("bucket_dir_path.txt"), '\n')
 elseif isfile("../bucket_dir_path.txt")
@@ -162,7 +164,7 @@ else
 end
 =#
 
-datasets_dir_path = "Julimaps_data/datasets"
+datasets_dir_path = "research/Julimaps/datasets"
 cur_dataset = "piriform"
 #cur_dataset = "zebrafish"
 affine_dir_path = "~"
@@ -209,6 +211,7 @@ global WAFER_DIR_DICT = waferpaths_to_dict(waferpath_filename)
 
 premontaged_registry_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, premontaged_dir_path, premontaged_registry_filename)
 global REGISTRY_PREMONTAGED = parse_registry(premontaged_registry_path)
+global REGISTRY_PREMONTAGED = hcat(REGISTRY_PREMONTAGED, fill(8000, size(REGISTRY_PREMONTAGED)[1], 2));
 
 montaged_registry_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, montaged_dir_path, montaged_registry_filename)
 global REGISTRY_MONTAGED = parse_registry(montaged_registry_path)

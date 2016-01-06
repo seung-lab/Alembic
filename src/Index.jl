@@ -94,15 +94,19 @@ function get_succeeding(index)
 end
 
 function get_index_range(first_index, last_index)
-	return get_registry(first_index)[find_in_registry(first_index):find_in_registry(last_index), 2];
+	return get_registry(first_index)[get_range_in_registry(first_index, last_index), 2];
 end
 
 function get_range_in_registry(indexA, indexB)
 	if indexA[3] != indexB[3] || indexA[4] != indexB[4]
-		println("The indices are from different pipeline stages. Aborting.");
+		if indexA[1:2] == indexB[1:2]
+			return find(ind -> ind[1:2] == indexA[1:2], REGISTRY_PREMONTAGED[:, 2]);
+		else
+		println("The indices are from different pipeline stages or from different sections for premontage. Aborting.");
 		return Void;
+		end
 	end
-	
+
 	return find_in_registry(indexA):find_in_registry(indexB);
 end
 

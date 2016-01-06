@@ -15,48 +15,39 @@ function get_ranges(pt, src_mesh, dst_mesh, params)
 	get_ranges(pt, src_mesh, dst_mesh, params["block_size"], params["search_r"]);
 end
 
-function get_ranges(pt, src_mesh, dst_mesh, block_size::Int64, search_r::Int64)
+function get_ranges(pt, src_index, dst_index, block_size::Int64, search_r::Int64)
 	# convert to local coordinates in both src / dst images, and then round up to an integer
 	src_pt = ceil(Int64, pt);
-	dst_pt = pt + get_offset(src_mesh) - get_offset(dst_mesh);
+	dst_pt = pt + get_offset(src_index) - get_offset(dst_index);
 	dst_pt = ceil(Int64, dst_pt);
 
 	block_range = -block_size:block_size;
 	search_range = -(block_size+search_r):(block_size+search_r);
-	search_range_padded = -(block_size+search_r):(block_size+search_r+1);
 
 	src_range = src_pt[1] + block_range, src_pt[2] + block_range;
 	dst_range = dst_pt[1] + search_range, dst_pt[2] + search_range;
-	dst_range_padded = dst_pt[1] + search_range_padded, dst_pt[2] + search_range_padded;
+
+	src_img_size = get_image_sizes(src_index);
+	dst_img_size = get_image_sizes(dst_index);
 	
-	return src_range, dst_range, dst_range_padded;
-end
+	range_in_src = intersect(src_range[1], 1:src_img_size[1]), intersect(src_range[2], 1:src_img_size[2]);
+	range_in_dst = intersect(dst_range[1], 1:dst_img_size[1]), intersect(dst_range[2], 1:dst_img_size[2]);
 
+	src_pt_locs = findfirst(range_in_src[1] .== src_pt[1]), findfirst(range_in_src[2] .== src_pt[2]);
+	dst_pt_locs = findfirst(range_in_dst[1] .== dst_pt[1]), findfirst(range_in_dst[2] .== dst_pt[2]);
 
-# retrieve the ranges, only works with UInt8
-function get_patch(img, range)
-	range_in_img = intersect(range[1], 1:size(img)[1]), intersect(range[2], 1:size(img)[2]);
-
-	# if the image is fully contained, then return the intersection - otherwise find location and pad by mean
-	if length(range_in_img[1]) == length(range[1]) && length(range_in_img[2]) == length(range[2])
-		return img[range_in_img...];
-	else
-		indices_within_range = findin(range[1], range_in_img[1]), findin(range[2], range_in_img[2])
-		intersect_img = img[range_in_img...];
-		avg = mean(intersect_img);
-		if isnan(avg) return fill(eltype(img)(0), length(range[1]), length(range[2])); end
-		avg = round(eltype(img), avg);
-		padded_img = fill(avg, length(range[1]), length(range[2]));
-		padded_img[indices_within_range...] = intersect_img;
-		return padded_img;
+	if src_pt_locs[1] == 0 || src_pt_locs[2] == 0 || dst_pt_locs[1] == 0 || dst_pt_locs[2] == 0 
+	return nothing
 	end
+
+	return src_index, range_in_src, [src_pt_locs[1][1], src_pt_locs[2][1]], dst_index, range_in_dst, [dst_pt_locs[1][1], dst_pt_locs[2][1]];
 end
 
-function get_match_remote(pt, src_index, dst_index, params)
-	src_range, dst_range, dst_range_padded = get_ranges(pt, src_index, dst_index, params);
-	src_image = LOCAL_SRC_IMAGE;
-	dst_image = LOCAL_DST_IMAGE;
-	xc = normxcorr2(get_patch(src_image, src_range), get_patch(dst_image, dst_range));
+#using sharedarray
+function get_match(pt, ranges, src_image, dst_image, params)
+	src_index, src_range, src_pt_loc, dst_index, dst_range, dst_pt_loc = ranges;
+	
+	xc = normxcorr2(src_image[src_range[1], src_range[2]], dst_image[dst_range[1], dst_range[2]]);
 	r_max = maximum(xc)
 	if isnan(r_max) return nothing end;
   	ind = findfirst(r_max .== xc)
@@ -64,41 +55,19 @@ function get_match_remote(pt, src_index, dst_index, params)
   	if i_max == 0 
     		i_max = size(xc, 1)
   	end
-  	rad_i = round(Int64, (size(xc, 1) - 1)/ 2)  
-  	rad_j = round(Int64, (size(xc, 2) - 1)/ 2)  
-	di, dj = i_max - 1 - rad_i, j_max - 1 - rad_j;
+
+	di = i_max + src_pt_loc[1] - dst_pt_loc[1];	
+	dj = j_max + src_pt_loc[2] - dst_pt_loc[2];	
+
 	correspondence_properties = Dict{Any, Any}();
+	correspondence_properties["src_range"] = src_range;
+	correspondence_properties["src_pt_loc"] = src_pt_loc;
+	correspondence_properties["dst_range"] = dst_range;
+	correspondence_properties["dst_pt_loc"] = dst_pt_loc;
 	correspondence_properties["di"] = di;
 	correspondence_properties["dj"] = dj;
 	correspondence_properties["r_val"] = r_max;
-
-	return vcat(pt + get_offset(src_index) - get_offset(dst_index) + [i_max - 1 - rad_i; j_max - 1 - rad_j], correspondence_properties);
-end
-
-function get_match(pt, src_mesh, src_image, dst_mesh, dst_image, params)
-	src_range, dst_range, dst_range_padded = get_ranges(pt, src_mesh, dst_mesh, params);
-	src_patch = remotecall_fetch(1, get_patch, src_image, src_range)
-	dst_patch = remotecall_fetch(1, get_patch, dst_image, dst_range)
-	if std(src_patch) == 0 || std(dst_patch) == 0	return nothing	end;
-#	xc = normxcorr2(get_patch(src_image, src_range), get_patch(dst_image, dst_range));
-	xc = normxcorr2(src_patch, dst_patch);
-	r_max = maximum(xc)
-	if isnan(r_max) return nothing end;
-  	ind = findfirst(r_max .== xc)
-	i_max, j_max = rem(ind, size(xc, 1)), cld(ind, size(xc, 1));
-  	if i_max == 0 
-    		i_max = size(xc, 1)
-  	end
-  	rad_i = round(Int64, (size(xc, 1) - 1)/ 2)  
-  	rad_j = round(Int64, (size(xc, 2) - 1)/ 2)  
-	di, dj = i_max - 1 - rad_i, j_max - 1 - rad_j;
-	correspondence_properties = Dict{Any, Any}();
-	correspondence_properties["di"] = di;
-	correspondence_properties["dj"] = dj;
-	correspondence_properties["r_val"] = r_max;
-
-	return vcat(pt + get_offset(src_mesh) - get_offset(dst_mesh) + [i_max - 1 - rad_i; j_max - 1 - rad_j], correspondence_properties);
-
+	return vcat(pt + get_offset(src_index) - get_offset(dst_index) + [di; dj], correspondence_properties);
 end
 
 function get_r_val(correspondence_property)
@@ -174,7 +143,8 @@ function get_filtered_indices(match::Match)
 end
 
 function Match(src_mesh::Mesh, dst_mesh::Mesh, src_image=nothing, dst_image=nothing, params=get_params(src_mesh))
-	println("Matching $(src_mesh.index) -> $(dst_mesh.index):#########\n");
+	println("Matching $(src_mesh.index) -> $(dst_mesh.index)");
+	
 	if src_mesh == dst_mesh
 		return nothing
 	end
@@ -185,45 +155,27 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, src_image=nothing, dst_image=noth
 	if src_image == nothing src_image_local = get_image(src_mesh); end
 	if dst_image == nothing dst_image_local = get_image(dst_mesh); end
 
-	#global src_image = SharedArray(eltype(src_image_local), size(src_image_local));
-	#global dst_image = SharedArray(eltype(dst_image_local), size(dst_image_local));
-	#src_image[:, :] = src_image_local[:, :];
-	#dst_image[:, :] = dst_image_local[:, :];
+	LOCAL_SRC_IMAGE = SharedArray(eltype(src_image_local), size(src_image_local), pids=local_procs());
+	LOCAL_SRC_IMAGE[:, :] = src_image_local;
+	LOCAL_DST_IMAGE = SharedArray(eltype(dst_image_local), size(dst_image_local), pids=local_procs());
+	LOCAL_DST_IMAGE[:, :] = dst_image_local;
+
   	src_index = src_mesh.index;
 	dst_index = dst_mesh.index;
 
-	src_image_ref = RemoteRef();
-	dst_image_ref = RemoteRef();
-	put!(src_image_ref, src_image_local);
-	put!(dst_image_ref, dst_image_local);
+	ranges = pmap(get_ranges, src_mesh.src_nodes, repeated(src_index), repeated(dst_index), repeated(params));
+	ranged_inds = find(i -> i != nothing, ranges);
+	src_nodes = copy(src_mesh.src_nodes[ranged_inds]);
+	ranges = copy(ranges[ranged_inds]);
+	println("Nodes to check for correspondences: $(length(src_nodes)) / $(length(src_mesh.src_nodes))")
 
-	tofetch = Array{RemoteRef}(0);
-	for pid in HOST_HEADS
-		push!(tofetch, remotecall(pid, sync_images, src_image_ref, dst_image_ref));
-	end
-      	for ref in tofetch
-		wait(ref);
-	end
-	
-	println("Synced.")
-
-	#dst_allpoints = pmap(get_match, src_mesh.src_nodes, repeated(src_mesh), repeated(src_image), repeated(dst_mesh), repeated(dst_image), repeated(params));
-	#dst_allpoints = pmap(get_match, src_mesh.src_nodes, repeated(src_mesh), repeated(src_image_ref), repeated(dst_mesh), repeated(dst_image_ref), repeated(params));
-	#dst_allpoints = pmap(get_match_remote, src_mesh.src_nodes, repeated(src_mesh), repeated(dst_mesh), repeated(params));
-	dst_allpoints = pmap(get_match_remote, src_mesh.src_nodes, repeated(src_index), repeated(dst_index), repeated(params));
+	dst_allpoints = pmap(get_match, src_nodes, ranges, repeated(LOCAL_SRC_IMAGE), repeated(LOCAL_DST_IMAGE), repeated(params));
 	matched_inds = find(i -> i != nothing, dst_allpoints);
-	src_points = copy(src_mesh.src_nodes[matched_inds]);
-#	dst_points = similar(src_points, 0);
-#	correspondence_properties = Array{Dict{Any, Any}}(0);
+	src_points = copy(src_nodes[matched_inds]);
 	filters = Array{Dict{Any, Any}}(0);
 
 	dst_points = [convert(Point, dst_allpoints[ind][1:2]) for ind in matched_inds]
 	correspondence_properties = [dst_allpoints[ind][3] for ind in matched_inds]
-
-#=	for ind in matched_inds
-		push!(dst_points, convert(Point, dst_allpoints[ind][1:2]));
-		push!(correspondence_properties, dst_allpoints[ind][3]);
-	end=#
 
 	return Match(src_index, dst_index, src_points, dst_points, correspondence_properties, filters);
 end

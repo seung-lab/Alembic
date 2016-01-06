@@ -62,8 +62,11 @@ function MeshSet(first_index, last_index, params=get_params(first_index))
 
 	meshset = MeshSet(meshes, matches, properties);
 	match!(meshset);
+#	solve_meshset!(meshset);
+	save(meshset);
 	return meshset;
 end
+
 
 ### match
 function get_all_overlaps(meshset::MeshSet)	return get_all_overlaps(meshset.meshes);	end;
@@ -89,8 +92,13 @@ end
 
 function match!(meshset::MeshSet)
 	pairs = get_all_overlaps(meshset);
+	imgdict = Dict{Mesh, Array}();
+	for mesh in meshset.meshes
+		imgdict[mesh] = get_image(mesh);
+	end
+
 	for i in 1:length(pairs)
-		add_match!(meshset, Match(meshset.meshes[pairs[i][1]], meshset.meshes[pairs[i][2]]));
+		add_match!(meshset, Match(meshset.meshes[pairs[i][1]], meshset.meshes[pairs[i][2]], imgdict[meshset.meshes[pairs[i][1]]], imgdict[meshset.meshes[pairs[i][2]]]));
 	end
 end
 

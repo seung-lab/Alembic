@@ -105,8 +105,6 @@ function affine_solve_meshset!(Ms)
   offset = mesh.disp
 end
 
-
-
 """
 Elastic solve
 """
@@ -118,34 +116,43 @@ function solve_meshset!(meshset)
   eta_newton = (meshset.properties["params"])["eta_newton"]
   ftol_newton = (meshset.properties["params"])["ftol_newton"]
 
-  nodes = Array{Float64, 2}(2, 0);
-  nodes_fixed = BinaryProperty(0)
-  edges = spzeros(Float64, count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset));
-  edge_lengths = FloatProperty(0)
-  edge_coeffs = FloatProperty(0)
+  println("Solving meshset: $(count_nodes(meshset)) nodes, $(count_edges(meshset)) edges, $(count_filtered_correspondences(meshset)) correspondences");
 
-  blockranges = Dict{Any, Any}();
+  nodes = Array{Float64, 2}(2, count_nodes(meshset));
+  nodes_fixed = BinaryProperty(count_nodes(meshset))
+  edges = spzeros(Float64, count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset));
+  edge_lengths = FloatProperty(count_edges(meshset) + count_filtered_correspondences(meshset))
+  edge_coeffs = FloatProperty(count_edges(meshset) + count_filtered_correspondences(meshset))
+
+  noderanges = Dict{Any, Any}();
+  edgeranges = Dict{Any, Any}();
   meshes = Dict{Any, Any}();
   cum_nodes = 0; cum_edges = 0;
+
   for mesh in meshset.meshes
-	blockranges[mesh.index] = (cum_nodes + (1:count_nodes(mesh)), cum_edges + (1:count_edges(mesh)))
+  	noderanges[mesh.index] = cum_nodes + (1:count_nodes(mesh))
+	edgeranges[mesh.index] = cum_edges + (1:count_edges(mesh))
 	meshes[mesh.index] = mesh
 	cum_nodes = cum_nodes + count_nodes(mesh);
 	cum_edges = cum_edges + count_edges(mesh);
   end
 
   for match in meshset.matches
-	blockranges[match] = cum_edges + (1:count_filtered_correspondences(match));
+	edgeranges[match] = cum_edges + (1:count_filtered_correspondences(match));
 	cum_edges = cum_edges + count_filtered_correspondences(match);
   end
 
   for mesh in meshset.meshes
-    nodes = hcat(nodes, mesh.src_nodes...);
-    num_nodes = count_nodes(mesh);
-    append!(nodes_fixed, fill(false, num_nodes));
-    append!(edge_lengths, get_edge_lengths(mesh));
-    append!(edge_coeffs, fill(mesh_coeff, count_edges(mesh)));
-    edges[blockranges[mesh.index]...] = mesh.edges;
+    nodes[:, noderanges[mesh.index]] = get_globalized_nodes(mesh)[1];
+    nodes_fixed[noderanges[mesh.index]] = fill(false, count_nodes(mesh));
+    edge_lengths[edgeranges[mesh.index]] = get_homogenous_edge_lengths(mesh);
+    edge_coeffs[edgeranges[mesh.index]] = fill(mesh_coeff, count_edges(mesh));
+  end
+
+  println("meshes collated: $(count_meshes(meshset)) meshes")
+
+  for mesh in meshset.meshes
+    edges[noderanges[mesh.index], edgeranges[mesh.index]] = mesh.edges;
   end
 
   for match in meshset.matches
@@ -157,19 +164,24 @@ function solve_meshset!(meshset)
 	dst_pt_triangles = map(find_mesh_triangle, repeated(dst_mesh), dst_pts);
 	dst_pt_weights = map(get_triangle_weights, repeated(dst_mesh), dst_pts, dst_pt_triangles);
 
+	noderange_src = noderanges[match.src_index];
+	noderange_dst = noderanges[match.dst_index];
+	edgerange = edgeranges[match];
+
 	for ind in 1:count_filtered_correspondences(match)
-		edges[((blockranges[match.src_index])[1])[collect(src_pt_triangles[ind])], ind] = (-1) * collect(src_pt_weights[ind]);
-		edges[((blockranges[match.dst_index])[1])[collect(dst_pt_triangles[ind])], ind] = collect(dst_pt_weights[ind]);
+		edges[noderange_src[src_pt_triangles[ind][1]], edgerange[ind]] = -src_pt_weights[ind][1];
+		edges[noderange_src[src_pt_triangles[ind][2]], edgerange[ind]] = -src_pt_weights[ind][2];
+		edges[noderange_src[src_pt_triangles[ind][3]], edgerange[ind]] = -src_pt_weights[ind][3];
+		edges[noderange_dst[dst_pt_triangles[ind][1]], edgerange[ind]] = dst_pt_weights[ind][1];
+		edges[noderange_dst[dst_pt_triangles[ind][2]], edgerange[ind]] = dst_pt_weights[ind][2];
+		edges[noderange_dst[dst_pt_triangles[ind][3]], edgerange[ind]] = dst_pt_weights[ind][3];
 	end
-    	append!(edge_lengths, fill(0, count_filtered_correspondences(match)));
-    	append!(edge_coeffs, fill(match_coeff, count_filtered_correspondences(match)));
+
+    	edge_lengths[edgeranges[match]] = fill(0, count_filtered_correspondences(match));
+    	edge_coeffs[edgeranges[match]] = fill(match_coeff, count_filtered_correspondences(match));
   end
 
-	println("nodes, ", size(nodes));
-	println("nodes_fixed, ", size(nodes_fixed));
-	println("edges, ", size(edges));
-	println("edge_coeffs, ", size(edge_coeffs));
-	println("edge_lengths, ", size(edge_lengths));
+  println("matches collated: $(count_matches(meshset)) matches")
 
   SolveMesh2!(nodes, nodes_fixed, edges, edge_coeffs, edge_lengths, ftol_newton)
   dst_nodes = Points(0)
@@ -178,34 +190,45 @@ function solve_meshset!(meshset)
         end
 
   for mesh in meshset.meshes
-	mesh.dst_nodes = dst_nodes[blockranges[mesh.index][1]];
+	mesh.dst_nodes = dst_nodes[noderanges[mesh.index]] - fill(get_offset(mesh), count_nodes(mesh));
   end
-  println("DONE!");
+
+  stats(meshset);
+
 end
 
-function stats(Ms::MeshSet)
+function stats(meshset::MeshSet)
   residuals = Points(0)
-  residuals_t = Points(0)
-  movement_src = Points(0)
-  movement_dst = Points(0)
-  for k in 1:Ms.M
-    for i in 1:Ms.matches[k].n
-      w = Ms.matches[k].dst_weights[i]
-      t = Ms.matches[k].dst_triangles[i]
-      p = Ms.matches[k].src_points_indices[i]
-      src = Ms.meshes[find_index(Ms, Ms.matches[k].src_index)]
-      dst = Ms.meshes[find_index(Ms, Ms.matches[k].dst_index)]
-      p1 = src.nodes[p]
-      p2 = dst.nodes[t[1]] * w[1] + dst.nodes[t[2]] * w[2] + dst.nodes[t[3]] * w[3]
-      p1_t = src.nodes_t[p]
-      p2_t = dst.nodes_t[t[1]] * w[1] + dst.nodes_t[t[2]] * w[2] + dst.nodes_t[t[3]] * w[3]
-      push!(residuals, p2-p1)
-      push!(residuals_t, p2_t-p1_t)
-      push!(movement_src, p1_t-p1)
-      push!(movement_dst, p2_t-p2)
-    end
+  residuals_after = Points(0)
+
+  meshes = Dict{Any, Any}();
+  for mesh in meshset.meshes
+	meshes[mesh.index] = mesh;
   end
 
+  for match in meshset.matches
+	src_pts, dst_pts = get_filtered_correspondences(match);
+
+	src_mesh = meshes[match.src_index]
+	dst_mesh = meshes[match.dst_index]
+
+	src_pt_triangles = map(find_mesh_triangle, repeated(src_mesh), src_pts);
+	src_pt_weights = map(get_triangle_weights, repeated(src_mesh), src_pts, src_pt_triangles);
+	dst_pt_triangles = map(find_mesh_triangle, repeated(dst_mesh), dst_pts);
+	dst_pt_weights = map(get_triangle_weights, repeated(dst_mesh), dst_pts, dst_pt_triangles);
+
+	src_pts_after = map(get_tripoint_dst, repeated(src_mesh), src_pt_triangles, src_pt_weights);
+	dst_pts_after = map(get_tripoint_dst, repeated(dst_mesh), dst_pt_triangles, dst_pt_weights);
+
+	g_src_pts = src_pts + fill(get_offset(match.src_index), length(src_pts));
+	g_dst_pts = dst_pts + fill(get_offset(match.dst_index), length(dst_pts));
+
+	g_src_pts_after = src_pts_after + fill(get_offset(match.src_index), length(src_pts));
+	g_dst_pts_after = dst_pts_after + fill(get_offset(match.dst_index), length(dst_pts));
+
+	append!(residuals, g_dst_pts - g_src_pts)
+	append!(residuals_after, g_dst_pts_after - g_src_pts_after)
+  end
 
    res_norm = map(norm, residuals)
    rms = sqrt(mean(res_norm.^2))
@@ -214,17 +237,14 @@ function stats(Ms::MeshSet)
    max = maximum(res_norm)
 
 
-   res_norm_t = map(norm, residuals_t)
-   rms_t = sqrt(mean(res_norm_t.^2))
-   avg_t = mean(res_norm_t)
-   sig_t = std(res_norm_t)
-   max_t = maximum(res_norm_t)
+   res_norm_after = map(norm, residuals_after)
+   rms_after = sqrt(mean(res_norm_after.^2))
+   avg_after = mean(res_norm_after)
+   sig_after = std(res_norm_after)
+   max_after = maximum(res_norm_after)
 
-   println("Statistics: ###")
-   println("Total number of matched points: $(Ms.m_e) across $(Ms.M) Match between $(Ms.N) Meshes\n")
-   println("Residuals before solving: rms: $rms,  mean: $avg, sigma = $sig, max = $max\n")
-   println("Residuals after solving: rms: $rms_t,  mean: $avg_t, sigma = $sig_t, max = $max_t\n")
-   println("###")
+   println("Residuals before solving: rms: $rms,  mean: $avg, sigma = $sig, max = $max")
+   println("Residuals after solving: rms: $rms_after,  mean: $avg_after, sigma = $sig_after, max = $max_after")
 end
 
 function decomp_affine(tform::Array{Float64, 2})

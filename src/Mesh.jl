@@ -36,7 +36,8 @@ function get_edge_points(mesh::Mesh, ind)
 	dst_ind = find(this -> this > 0, mesh.edges[:, ind]);
 	return mesh.src_nodes[src_ind], mesh.src_nodes[dst_ind]
 end
-#=
+
+### math
 function get_edge_points(mesh::Mesh, ind)
 	start_tri_inds = find(this -> this < 0, mesh.edges[:, ind]);
 	start_tri_nodes = mesh.src_nodes[start_tri_inds];
@@ -49,12 +50,21 @@ function get_edge_points(mesh::Mesh, ind)
 	end_pt = dot(end_tri_nodes, end_tri_weights);
       return start_pt, end_pt;
 end
-=#
-function get_edge_length(mesh::Mesh, ind)	
-	start_pt, end_pt = get_edge_points(mesh, ind);
+
+function get_edge_length(mesh::Mesh, ind)	start_pt, end_pt = get_edge_points(mesh, ind);
       return norm(start_pt - end_pt);
-    end
-function get_edge_lengths(mesh::Mesh)		return map(get_edge_length, repeated(mesh), collect(1:count_edges(mesh)));		end
+end
+
+function get_edge_lengths(mesh::Mesh)		return pmap(get_edge_length, repeated(mesh), collect(1:count_edges(mesh)));		end
+
+function get_homogenous_edge_lengths(mesh::Mesh)	return fill(get_edge_length(mesh, 1), count_edges(mesh));		end
+
+function get_globalized_nodes(mesh::Mesh)
+    g_src_nodes = mesh.src_nodes + fill(Point(get_offset(mesh)), count_nodes(mesh));
+    g_dst_nodes = mesh.dst_nodes + fill(Point(get_offset(mesh)), count_nodes(mesh));
+    return hcat(g_src_nodes...), hcat(g_dst_nodes...)
+end
+
 function get_dims_and_dists(mesh::Mesh)
 	n = count_nodes(mesh);
 
@@ -283,3 +293,8 @@ function get_triangle_weights(mesh::Mesh, point::Point, triangle::Triangle)
 	return (V[1], V[2], V[3]);
 end
 
+function get_tripoint_dst(mesh::Mesh, triangle, weights)
+	dst_trinodes = mesh.dst_nodes[triangle[1]], mesh.dst_nodes[triangle[2]], mesh.dst_nodes[triangle[3]]
+	dst_point = dst_trinodes[1] * weights[1] + dst_trinodes[2] * weights[2] + dst_trinodes[3] * weights[3];
+	return dst_point;
+end

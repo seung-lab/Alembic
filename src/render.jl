@@ -1,23 +1,28 @@
 """
-Load image, then apply meshwarp
+Multiple dispatch for meshwarp on Mesh object
 """
-function meshwarp(mesh::Mesh)
-  @time img = get_image(mesh)
-  src_nodes = mesh.src_nodes;
-  dst_nodes = mesh.dst_nodes;
-  offset = get_offset(mesh);
-  for node in src_nodes
-	node = node + offset;
-  end
-  for node in dst_nodes
-	node = node + offset;
-  end
-  src_nodes = hcat(src_nodes...)'
-  dst_nodes = hcat(dst_nodes...)'
+function meshwarp_mesh(mesh::Mesh)
+  img = get_image(mesh)
+  src_nodes, dst_nodes = get_globalized_nodes(mesh);
+  src_nodes = src_nodes'
+  dst_nodes = dst_nodes'
   offset = get_offset(mesh) - get_topleft_offset(mesh)
   node_dict = incidence_to_dict(mesh.edges')
   triangles = dict_to_triangles(node_dict)
-  return @time ImageRegistration.meshwarp(img, src_nodes, dst_nodes, triangles, offset)
+  return @time ImageRegistration.meshwarp(img, src_nodes, dst_nodes, triangles, offset), mesh.index
+end
+
+"""
+Load image from hdf5, then apply meshwarp
+"""
+function meshwarp_h5(mesh::Mesh)
+  @time img = get_h5_image(mesh)
+  src_nodes = hcat(mesh.nodes...)'
+  dst_nodes = hcat(mesh.nodes_t...)'
+  offset = mesh.disp
+  node_dict = incidence_to_dict(mesh.edges')
+  triangles = dict_to_triangles(node_dict)
+  return @time meshwarp(img, src_nodes, dst_nodes, triangles, offset)
 end  
 
 """
@@ -28,27 +33,30 @@ function render_montaged(wafer_no, section_no, render_full=false)
 end
 
 """
-Cycle through JLS files in montaged directory and render montage
+Cycle through JLD files in montaged directory and render montage
 """
 function render_montaged(waferA, secA, waferB, secB, render_full=false)
   indexA = (waferA, secA, -2, -2)
   indexB = (waferB, secB, -2, -2)
   for index in get_index_range(indexA, indexB)
-    meshset = load(index)
-    new_fn = get_path(index);
+    idx = (index[1:2]..., 1, 1)
+    meshset = load(idx, idx)
+    new_fn = string(idx[1], ",", idx[2], "_montaged.h5")
     println("Rendering ", new_fn)
-    warps = pmap(meshwarp, meshset.meshes);
-    imgs = [x[1] for x in warps];
-    bb_offsets = [x[2] for x in warps];
-    indices = [mesh.index for mesh in meshset.meshes];
+    warps = pmap(meshwarp_mesh, meshset.meshes);
+    imgs = [x[1][1] for x in warps];
+    offsets = [x[1][2] for x in warps];
+    indices = [x[2] for x in warps];
     # review images
-    write_seams(meshset, imgs, bb_offsets, indices)
+    write_seams(meshset, imgs, offsets, indices)
     if render_full
       println(typeof(imgs))
-      img, offset = merge_images(imgs, bb_offsets)
+      img, offset = merge_images(imgs, offsets)
       println("Writing ", new_fn)
-      save(new_fn, img);
-      update_offsets(index, [0,0], size(img))
+      f = h5open(joinpath(MONTAGED_DIR, new_fn), "w")
+      @time f["img", "chunk", (1000,1000)] = img
+      close(f)
+      update_offsets((index[1:2]...,-2,-2), [0,0], size(img))
     end
   end
 end
@@ -63,7 +71,7 @@ function calculate_cumulative_tform(index, dir=PREALIGNED_DIR)
     for (indexA, indexB) in index_pairs
       meshset = load(indexA, indexB)
       # tform = affine_approximate(meshset)
-      offset = get_offset(indexB)
+      offset = load_offset(indexB)
       translation = [1 0 0; 0 1 0; offset[1] offset[2] 1]
       tform = regularized_solve(meshset, lambda=0.9)
       cumulative_tform = cumulative_tform*translation*tform
@@ -118,9 +126,9 @@ function stage_image(mesh, cumulative_tform, tform, scale=0.05)
   stage["index"] = (mesh.index[1:2]..., -3, -3)
   img = get_uint8_image(mesh)
   println("tform:\n", tform)
-  println("Warping ", mesh.index)
+  println("Warping ", mesh.name)
   @time stage["img"], stage["offset"] = imwarp(img, cumulative_tform*tform, [0,0])
-  println("Warping thumbnail for ", mesh.index)
+  println("Warping thumbnail for ", mesh.name)
   stage["thumb_fixed"], stage["thumb_offset_fixed"] = imwarp(img, s, [0,0])
   stage["thumb_moving"], stage["thumb_offset_moving"] = imwarp(img, tform*s, [0,0])
   stage["scale"] = scale
@@ -145,8 +153,9 @@ function render_prealigned(waferA, secA, waferB, secB)
   fixed = Dict()
 
   cumulative_tform = calculate_cumulative_tform(indexA)
+  log_path = joinpath(dir, "prealigned_offsets.txt")
 
-  function save_image(stage, dir)
+  function save_image(stage, dir, log_path)
     new_fn = string(join(stage["index"][1:2], ","), "_prealigned.h5")
     update_offsets(stage["index"], stage["offset"], size(stage["img"]))
     println("Writing image:\n\t", new_fn)
@@ -167,11 +176,11 @@ function render_prealigned(waferA, secA, waferB, secB)
         # save_image(fixed, dir, log_path)
       end
     end
-    offset = get_offset(indexB)
+    offset = load_offset(indexB)
     translation = [1 0 0; 0 1 0; offset[1] offset[2] 1]
     tform = regularized_solve(meshset, lambda=0.9)
     moving = stage_image(meshset.meshes[2], cumulative_tform, translation*tform)
-    save_image(moving, dir)
+    save_image(moving, dir, log_path)
     moving["nodes"], fixed["nodes"] = get_matched_points(meshset, 1)
     moving["nodes"] = transform_matches(moving["nodes"], tform)
     write_thumbnail_from_dict(fixed, moving)
@@ -200,7 +209,8 @@ function render_aligned(waferA, secA, waferB, secB, start=1, finish=0)
   s = [scale 0 0; 0 scale 0; 0 0 1]
 
   # Log file for image offsets
-  meshset = load(indexA, indexB)
+  log_path = joinpath(dir, "aligned_offsets.txt")
+  meshset = load_aligned(indexA, indexB)
   if start == 0
     start = 1
   end
@@ -218,7 +228,7 @@ function render_aligned(waferA, secA, waferB, secB, start=1, finish=0)
       @time img = rescopeimage(img, offset, GLOBAL_BB)
       new_fn = string(join(mesh.index[1:2], ","), "_aligned.h5")
       println("Writing ", new_fn)
-      f = h5open(joinpath(dir, new_fn), "w")
+      f = h5open(joinpath(dir, "round2", new_fn), "w")
       @time f["img", "chunk", (1000,1000)] = img
       close(f)
       # @time imwrite(img, joinpath(dir, new_fn))
@@ -241,11 +251,9 @@ function render_aligned(waferA, secA, waferB, secB, start=1, finish=0)
   end
 
   indices = 1:length(meshset.matches)
-  z = zip(reverse(indices), reverse(meshset.matches))
 
-  # map(warp_pad_write, meshset.meshes)
-  for (k, matches) in zip(reverse(indices), reverse(meshset.matches))
-  # for (k, matches) in enumerate(meshset.matches)
+  # for (k, matches) in zip(reverse(indices), reverse(meshset.matches))
+  for (k, matches) in enumerate(meshset.matches)
     src_index = matches.src_index
     dst_index = matches.dst_index
     if start <= src_index[2] <= finish && start <= dst_index[2] <= finish
