@@ -142,7 +142,8 @@ function parse_registry(path::String)
     return registry
 end
 
-bucket_dir_path = "/mnt/bucket/labs/seung/"
+# bucket_dir_path = "/mnt/bucket/labs/seung/"
+bucket_dir_path = joinpath(homedir(), "seungmount/")
 #=if isfile("bucket_dir_path.txt")
     bucket_dir_path = rstrip(readall("bucket_dir_path.txt"), '\n')
 elseif isfile("../bucket_dir_path.txt")
