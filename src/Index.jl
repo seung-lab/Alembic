@@ -69,7 +69,7 @@ end
 
 function get_offset(index)
 	metadata = get_metadata(index);
-	return metadata[3:4];
+	return Point(metadata[3:4]);
 end
 
 function get_image_sizes(index)

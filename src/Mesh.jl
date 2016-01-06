@@ -64,8 +64,8 @@ function get_edge_lengths(mesh::Mesh)		return pmap(get_edge_length, repeated(mes
 function get_homogenous_edge_lengths(mesh::Mesh)	return fill(get_edge_length(mesh, 1), count_edges(mesh));		end
 
 function get_globalized_nodes(mesh::Mesh)
-    g_src_nodes = mesh.src_nodes + fill(Point(get_offset(mesh)), count_nodes(mesh));
-    g_dst_nodes = mesh.dst_nodes + fill(Point(get_offset(mesh)), count_nodes(mesh));
+    g_src_nodes = mesh.src_nodes + fill(get_offset(mesh), count_nodes(mesh));
+    g_dst_nodes = mesh.dst_nodes + fill(get_offset(mesh), count_nodes(mesh));
     return hcat(g_src_nodes...), hcat(g_dst_nodes...)
 end
 
