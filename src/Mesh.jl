@@ -39,7 +39,11 @@ end
 
 ### math
 function get_edge_points(mesh::Mesh, ind)
-	start_tri_inds = find(this -> this < 0, mesh.edges[:, ind]);
+	start_pt = find(this -> this < 0, mesh.edges[:, ind]);
+	end_pt = find(this -> this > 0, mesh.edges[:, ind]);
+	start_pt = mesh.src_nodes[start_pt];
+	end_pt = mesh.src_nodes[end_pt];
+	#=start_tri_inds = find(this -> this < 0, mesh.edges[:, ind]);
 	start_tri_nodes = mesh.src_nodes[start_tri_inds];
 	start_tri_weights = [mesh.edges[start_tri_inds[1], ind]; mesh.edges[start_tri_inds[2], ind]; mesh.edges[start_tri_inds[3], ind]]
 	start_pt = dot(start_tri_nodes, start_tri_weights) * -1;
@@ -47,7 +51,7 @@ function get_edge_points(mesh::Mesh, ind)
 	end_tri_inds = find(this -> this > 0, mesh.edges[:, ind]);
 	end_tri_nodes = mesh.src_nodes[end_tri_inds];
 	end_tri_weights = [mesh.edges[end_tri_inds[1], ind]; mesh.edges[end_tri_inds[2], ind]; mesh.edges[end_tri_inds[3], ind]]
-	end_pt = dot(end_tri_nodes, end_tri_weights);
+	end_pt = dot(end_tri_nodes, end_tri_weights);=#
       return start_pt, end_pt;
 end
 
@@ -79,8 +83,7 @@ function get_dims_and_dists(mesh::Mesh)
 		else i_dist = i_dif; break;
 		end
 	end
-
-	i_dim = convert(Int64, 1 + (mesh.src_nodes[count_nodes(mesh)][1] - mesh.src_nodes[1][1]) / i_dist);
+	i_dim = round(Int64, 1 + (mesh.src_nodes[count_nodes(mesh)][1] - mesh.src_nodes[1][1]) / i_dist);
 	return (i_dim, j_dim), [i_dist, j_dist];
 end
 
