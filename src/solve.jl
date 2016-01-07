@@ -197,6 +197,37 @@ function solve_meshset!(meshset)
 
 end
 
+# RENAME to get_filtered_correspondences
+function get_matched_points_t(meshset, ind)
+  meshes = Dict{Any, Any}();
+  for mesh in meshset.meshes
+	meshes[mesh.index] = mesh;
+  end
+
+  match = meshset.matches[ind];
+  
+	src_pts, dst_pts = get_filtered_correspondences(match);
+
+	src_mesh = meshes[match.src_index]
+	dst_mesh = meshes[match.dst_index]
+
+	src_pt_triangles = map(find_mesh_triangle, repeated(src_mesh), src_pts);
+	src_pt_weights = map(get_triangle_weights, repeated(src_mesh), src_pts, src_pt_triangles);
+	dst_pt_triangles = map(find_mesh_triangle, repeated(dst_mesh), dst_pts);
+	dst_pt_weights = map(get_triangle_weights, repeated(dst_mesh), dst_pts, dst_pt_triangles);
+
+	src_pts_after = map(get_tripoint_dst, repeated(src_mesh), src_pt_triangles, src_pt_weights);
+	dst_pts_after = map(get_tripoint_dst, repeated(dst_mesh), dst_pt_triangles, dst_pt_weights);
+
+	g_src_pts = src_pts + fill(get_offset(match.src_index), length(src_pts));
+	g_dst_pts = dst_pts + fill(get_offset(match.dst_index), length(dst_pts));
+
+	g_src_pts_after = src_pts_after + fill(get_offset(match.src_index), length(src_pts));
+	g_dst_pts_after = dst_pts_after + fill(get_offset(match.dst_index), length(dst_pts));
+
+	return g_src_pts_after, g_dst_pts_after;
+end
+
 function stats(meshset::MeshSet)
   residuals = Points(0)
   residuals_after = Points(0)
