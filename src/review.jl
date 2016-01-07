@@ -200,6 +200,37 @@ function draw_box(img::Array{UInt32}, bounds)
   return get_drawing(srf)
 end
 
+function show_blockmatch(match, ind, params)
+  match_details = get_correspondence_patches(match, ind)
+  display_blockmatch(match_details..., params)  
+end
+
+function display_blockmatch(src_patch, src_pt, dst_patch, dst_pt, xc, offset, params)
+  block_r = params["block_rad"]
+  search_r = params["search_r"]
+  N=size(xc, 1)
+  M=size(xc, 2)
+  surf([i for i=1:N, j=1:M], [j for i=1:N, j=1:M], xc, cmap=get_cmap("hot"), 
+                          rstride=10, cstride=10, linewidth=0, antialiased=false)
+  xc_image = xcorr2Image(xc)
+  xc_image = padimage(xc_image, block_r, block_r, block_r, block_r, 1)
+  hot = create_hot_colormap()
+  xc_color = apply_colormap(xc_image, hot)
+  xc = padimage(xc', block_r, block_r, block_r, block_r, 1)
+  fused_img, _ = imfuse(dst_patch, [0,0], src_patch, offset)
+
+  src = convert(Array{UInt32,2}, src_patch).<< 8
+  dst = convert(Array{UInt32,2}, dst_patch).<< 16
+
+  cgrid = canvasgrid(2,2; pad=10)
+  opts = Dict(:pixelspacing => [1,1])
+
+  imgc, img2 = view(cgrid[1,1], src'; opts...)
+  imgc, img2 = view(cgrid[2,1], dst'; opts...)
+  imgc, img2 = view(cgrid[2,2], fused_img'; opts...)
+  imgc, img2 = view(cgrid[1,2], xc_color; opts...)
+end
+
 function display_blockmatch(params, src_point, dst_point)
   src_index = params["src_index"]
   dst_index = params["dst_index"]
@@ -1082,8 +1113,8 @@ function write_seams(meshset, imgs, offsets, indices, fn_label="seam")
       vectors = (vectorsA, vectorsB)
       match_nums = (matchij, matchji)
       colors = ([0,0,0], [1,1,1])
-      factor = 100
-      write_thumbnail(img_cropped, path, vectors, colors, match_nums, factor)
+      # factor = 100
+      write_thumbnail(img_cropped, path, vectors, colors, match_nums)
     end
 end
 
