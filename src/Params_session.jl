@@ -5,8 +5,7 @@ GAUSSIAN_SIGMA_MONTAGE = 0
 MIN_DYN_RANGE_RATIO_MONTAGE = 5
 BLOT_THRESHOLD_MONTAGE = 5/255
 MAX_BLOTTING_RATIO_MONTAGE = 0.1
-BLOCK_SIZE_MONTAGE = 48
-#SEARCH_R_MONTAGE = 100
+BLOCK_R_MONTAGE = 48
 SEARCH_R_MONTAGE = 80
 MIN_R_MONTAGE = 0.35
 OUTLIER_SIGMAS_MONTAGE = 1.5
@@ -26,7 +25,7 @@ GAUSSIAN_SIGMA_PREALIGNMENT = 0
 MIN_DYN_RANGE_RATIO_PREALIGNMENT = 10
 BLOT_THRESHOLD_PREALIGNMENT = 10/255
 MAX_BLOTTING_RATIO_PREALIGNMENT = 0.05
-BLOCK_SIZE_PREALIGNMENT = 322			# Specified at scaling factor of 1.0x 
+BLOCK_R_PREALIGNMENT = 322			# Specified at scaling factor of 1.0x 
 SEARCH_R_PREALIGNMENT = 1500			# Specified at scaling factor of 1.0x
 MIN_R_PREALIGNMENT = 0.20
 OUTLIER_SIGMAS_PREALIGNMENT = 2.0
@@ -45,7 +44,7 @@ GAUSSIAN_SIGMA_ALIGNMENT = 0
 MIN_DYN_RANGE_RATIO_ALIGNMENT = 3.5
 BLOT_THRESHOLD_ALIGNMENT = 0
 MAX_BLOTTING_RATIO_ALIGNMENT = 0.1
-BLOCK_SIZE_ALIGNMENT = 400
+BLOCK_R_ALIGNMENT = 400
 SEARCH_R_ALIGNMENT = 207
 MIN_R_ALIGNMENT = 0.24
 OUTLIER_SIGMAS_ALIGNMENT = 2.0
@@ -64,7 +63,7 @@ global PARAMS_MONTAGE = Dict("scaling_factor" => SCALING_FACTOR_MONTAGE,
 								"min_dyn_range_ratio" => MIN_DYN_RANGE_RATIO_MONTAGE, 
 								"blot_threshold" => BLOT_THRESHOLD_MONTAGE,
 								"max_blotting_ratio" => MAX_BLOTTING_RATIO_MONTAGE,
-								"block_size" => BLOCK_SIZE_MONTAGE, 
+								"block_r" => BLOCK_R_MONTAGE, 
 								"search_r" => SEARCH_R_MONTAGE, 
 								"min_r" => MIN_R_MONTAGE,
 								"outlier_sigmas" => OUTLIER_SIGMAS_MONTAGE,
@@ -82,7 +81,7 @@ global PARAMS_PREALIGNMENT = Dict("scaling_factor" => SCALING_FACTOR_PREALIGNMEN
 								"min_dyn_range_ratio" => MIN_DYN_RANGE_RATIO_PREALIGNMENT, 
 								"blot_threshold" => BLOT_THRESHOLD_PREALIGNMENT,
 								"max_blotting_ratio" => MAX_BLOTTING_RATIO_PREALIGNMENT,
-								"block_size" => BLOCK_SIZE_PREALIGNMENT, 
+								"block_r" => BLOCK_R_PREALIGNMENT, 
 								"search_r" => SEARCH_R_PREALIGNMENT, 
 								"min_r" => MIN_R_PREALIGNMENT, 
 								"outlier_sigmas" => OUTLIER_SIGMAS_PREALIGNMENT,
@@ -101,7 +100,7 @@ global PARAMS_ALIGNMENT = Dict("scaling_factor" => SCALING_FACTOR_ALIGNMENT,
 								"min_dyn_range_ratio" => MIN_DYN_RANGE_RATIO_ALIGNMENT, 
 								"blot_threshold" => BLOT_THRESHOLD_ALIGNMENT,
 								"max_blotting_ratio" => MAX_BLOTTING_RATIO_ALIGNMENT,
-								"block_size" => BLOCK_SIZE_ALIGNMENT, 
+								"block_r" => BLOCK_R_ALIGNMENT, 
 								"search_r" => SEARCH_R_ALIGNMENT, 
 								"min_r" => MIN_R_ALIGNMENT, 
 								"outlier_sigmas" => OUTLIER_SIGMAS_ALIGNMENT,
@@ -114,6 +113,6 @@ global PARAMS_ALIGNMENT = Dict("scaling_factor" => SCALING_FACTOR_ALIGNMENT,
 								"global_offsets" => GLOBAL_OFFSETS_ALIGNMENT)
 
 function optimize_all_cores(params)
-  	img_d = 2 * (params["search_r"] + params["block_size"]) + 1
+  	img_d = 2 * (params["search_r"] + params["block_r"]) + 1
 	optimize_all_cores(img_d)
 end

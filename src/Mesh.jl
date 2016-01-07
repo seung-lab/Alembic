@@ -6,6 +6,7 @@ type Mesh
 	dst_nodes::Points		 			# in the same order as src_nodes, after some transformation
 
 	edges::Edges				                # n-by-m sparse incidence matrix, each column is zero except at two elements with value -1 and 1
+	properties::Dict{Any, Any}
 end
 
 ### INDEX.jl EXTENSIONS
@@ -66,10 +67,14 @@ function get_edge_lengths(mesh::Mesh)		return map(get_edge_length, repeated(mesh
 
 function get_homogenous_edge_lengths(mesh::Mesh)	return fill(get_edge_length(mesh, 1), count_edges(mesh));		end
 
+function get_globalized_nodes_h(mesh::Mesh)
+	g_src_nodes, g_dst_nodes = get_globalized_nodes(mesh);
+    return hcat(g_src_nodes...), hcat(g_dst_nodes...)
+end
 function get_globalized_nodes(mesh::Mesh)
     g_src_nodes = mesh.src_nodes + fill(get_offset(mesh), count_nodes(mesh));
     g_dst_nodes = mesh.dst_nodes + fill(get_offset(mesh), count_nodes(mesh));
-    return hcat(g_src_nodes...), hcat(g_dst_nodes...)
+    return g_src_nodes, g_dst_nodes
 end
 
 function get_dims_and_dists(mesh::Mesh)
@@ -139,7 +144,9 @@ function Mesh(index, params = get_params(index))
 	edges = edges[:, 1:m];
 	dst_nodes = copy(src_nodes);
 
-	return Mesh(index, src_nodes, dst_nodes, edges);
+	properties = Dict{Any, Any}();
+
+	return Mesh(index, src_nodes, dst_nodes, edges, properties);
 end
 
 

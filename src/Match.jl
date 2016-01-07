@@ -7,6 +7,7 @@ type Match
   correspondence_properties::Array{Dict{Any, Any}} # in the same array order as points, contains properties of correspondences
 
   filters::Array{Dict{Any, Any}}    # Array of filters 
+  properties::Dict{Any, Any}
 end
 
 function count_correspondences(match::Match) return size(match.src_points, 1);	end
@@ -19,49 +20,64 @@ function get_correspondence_patches(match::Match, ind)
 	dst_patch = dst_img[match.correspondence_properties[ind]["dst_range"]...]
 	dst_pt = match.correspondence_properties[ind]["dst_pt_loc"]
 	xc = normxcorr2(src_patch, dst_patch);
-	di = match.correspondence_properties[ind]["di"]
-	dj = match.correspondence_properties[ind]["dj"]
+	dv = match.correspondence_properties[ind]["dv"]
 
-	return src_patch, src_pt, dst_patch, dst_pt, xc, dst_pt-src_pt+[di, dj]
+	return src_patch, src_pt, dst_patch, dst_pt, xc, dst_pt-src_pt+dv
 end
 
 function get_ranges(pt, src_mesh, dst_mesh, params)
-	get_ranges(pt, src_mesh, dst_mesh, params["block_size"], params["search_r"]);
+	get_ranges(pt, src_mesh, dst_mesh, params["block_r"], params["search_r"]);
 end
 
-function get_ranges(pt, src_index, dst_index, block_size::Int64, search_r::Int64)
+function get_ranges(pt, src_index, dst_index, block_r::Int64, search_r::Int64)
 	# convert to local coordinates in both src / dst images, and then round up to an integer
 	src_pt = ceil(Int64, pt);
 	dst_pt = pt + get_offset(src_index) - get_offset(dst_index);
 	dst_pt = ceil(Int64, dst_pt);
 
-	block_range = -block_size:block_size;
-	search_range = -(block_size+search_r):(block_size+search_r);
+	block_range = -block_r:block_r;
+	search_range = -(block_r+search_r):(block_r+search_r);
 
-	src_range = src_pt[1] + block_range, src_pt[2] + block_range;
-	dst_range = dst_pt[1] + search_range, dst_pt[2] + search_range;
+	src_range_full = src_pt[1] + block_range, src_pt[2] + block_range;
+	dst_range_full = dst_pt[1] + search_range, dst_pt[2] + search_range;
 
 	src_img_size = get_image_sizes(src_index);
 	dst_img_size = get_image_sizes(dst_index);
 	
-	range_in_src = intersect(src_range[1], 1:src_img_size[1]), intersect(src_range[2], 1:src_img_size[2]);
-	range_in_dst = intersect(dst_range[1], 1:dst_img_size[1]), intersect(dst_range[2], 1:dst_img_size[2]);
+	range_in_src = intersect(src_range_full[1], 1:src_img_size[1]), intersect(src_range_full[2], 1:src_img_size[2]);
+	range_in_dst = intersect(dst_range_full[1], 1:dst_img_size[1]), intersect(dst_range_full[2], 1:dst_img_size[2]);
 
 	src_pt_locs = findfirst(range_in_src[1] .== src_pt[1]), findfirst(range_in_src[2] .== src_pt[2]);
 	dst_pt_locs = findfirst(range_in_dst[1] .== dst_pt[1]), findfirst(range_in_dst[2] .== dst_pt[2]);
+	dst_pt_locs_full = findfirst(dst_range_full[1] .== dst_pt[1]), findfirst(dst_range_full[2] .== dst_pt[2]);
 
 	if src_pt_locs[1] == 0 || src_pt_locs[2] == 0 || dst_pt_locs[1] == 0 || dst_pt_locs[2] == 0 
 	return nothing
 	end
 
-	return src_index, range_in_src, [src_pt_locs[1][1], src_pt_locs[2][1]], dst_index, range_in_dst, [dst_pt_locs[1][1], dst_pt_locs[2][1]];
+
+	return src_index, range_in_src, [src_pt_locs[1], src_pt_locs[2]], dst_index, range_in_dst, dst_range_full, [dst_pt_locs[1], dst_pt_locs[2]], [dst_pt_locs_full[1], dst_pt_locs_full[2]];
 end
 
 #using sharedarray
 function get_match(pt, ranges, src_image, dst_image, params)
-	src_index, src_range, src_pt_loc, dst_index, dst_range, dst_pt_loc = ranges;
-	
+	src_index, src_range, src_pt_loc, dst_index, dst_range, dst_range_full, dst_pt_loc, dst_pt_loc_full = ranges;
+
+	if dst_range != dst_range_full
+		indices_within_range = findin(dst_range_full[1], dst_range[1]), findin(dst_range_full[2], dst_range[2])
+		intersect_img = dst_image[dst_range...];
+		avg = mean(intersect_img);
+		if isnan(avg) padded_img = fill(eltype(dst_image)(0), length(dst_range_full[1]), length(dst_range_full[2]));
+		else
+		avg = round(eltype(dst_image), avg);
+		padded_img = fill(avg, length(dst_range_full[1]), length(dst_range_full[2]));
+		padded_img[indices_within_range...] = intersect_img;
+		end
+		xc = normxcorr2(src_image[src_range[1], src_range[2]], padded_img);
+	else
 	xc = normxcorr2(src_image[src_range[1], src_range[2]], dst_image[dst_range[1], dst_range[2]]);
+	end
+
 	r_max = maximum(xc)
 	if isnan(r_max) return nothing end;
   	ind = findfirst(r_max .== xc)
@@ -70,18 +86,17 @@ function get_match(pt, ranges, src_image, dst_image, params)
     		i_max = size(xc, 1)
   	end
 
-	di = i_max + src_pt_loc[1] - dst_pt_loc[1];	
-	dj = j_max + src_pt_loc[2] - dst_pt_loc[2];	
+	di = i_max + src_pt_loc[1] - dst_pt_loc_full[1];	
+	dj = j_max + src_pt_loc[2] - dst_pt_loc_full[2];	
 
 	correspondence_properties = Dict{Any, Any}();
 	correspondence_properties["src_range"] = src_range;
 	correspondence_properties["src_pt_loc"] = src_pt_loc;
 	correspondence_properties["dst_range"] = dst_range;
 	correspondence_properties["dst_pt_loc"] = dst_pt_loc;
-	correspondence_properties["di"] = di;
-	correspondence_properties["dj"] = dj;
+	correspondence_properties["dv"] = [di, dj];
 	correspondence_properties["r_val"] = r_max;
-	return vcat(pt + get_offset(src_index) - get_offset(dst_index) + [di; dj], correspondence_properties);
+	return vcat(pt + get_offset(src_index) - get_offset(dst_index) + [di, dj], correspondence_properties);
 end
 
 function get_r_val(correspondence_property)
@@ -179,7 +194,7 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, src_image=nothing, dst_image=noth
   	src_index = src_mesh.index;
 	dst_index = dst_mesh.index;
 
-	@time ranges = pmap(get_ranges, src_mesh.src_nodes, repeated(src_index), repeated(dst_index), repeated(params));
+	ranges = pmap(get_ranges, src_mesh.src_nodes, repeated(src_index), repeated(dst_index), repeated(params));
 	ranged_inds = find(i -> i != nothing, ranges);
 	src_nodes = copy(src_mesh.src_nodes[ranged_inds]);
 	ranges = copy(ranges[ranged_inds]);
@@ -192,8 +207,9 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, src_image=nothing, dst_image=noth
 
 	dst_points = [convert(Point, dst_allpoints[ind][1:2]) for ind in matched_inds]
 	correspondence_properties = [dst_allpoints[ind][3] for ind in matched_inds]
+  	properties = Dict{Any, Any}();
 
-	return Match(src_index, dst_index, src_points, dst_points, correspondence_properties, filters);
+	return Match(src_index, dst_index, src_points, dst_points, correspondence_properties, filters, properties);
 end
 
 function sync_images(src_image_ref, dst_image_ref)
