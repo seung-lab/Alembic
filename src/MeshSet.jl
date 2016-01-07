@@ -9,6 +9,8 @@ function get_path(meshset::MeshSet)			return get_path(meshset.meshes);		end
 
 function get_images(meshset::MeshSet, dtype = UInt8)	return map(get_image, meshset.meshes, repeated(dtype));	end
 
+function get_correspondence_patches(meshset::MeshSet, match_ind, corr_ind) return get_correspondence_patches(meshset.matches[match_ind], corr_ind)	end
+
 ### counting
 function count_meshes(meshset::MeshSet)			return length(meshset.meshes);		end
 

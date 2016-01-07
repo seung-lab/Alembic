@@ -11,6 +11,18 @@ end
 
 function count_correspondences(match::Match) return size(match.src_points, 1);	end
 
+function get_correspondence_patches(match::Match, ind)
+	src_img = get_image(match.src_index);
+	dst_img = get_image(match.dst_index);
+	src_patch = src_img[match.correspondence_properties[ind]["src_range"]...]
+	src_pt = match.correspondence_properties[ind]["src_pt_loc"]
+	dst_patch = dst_img[match.correspondence_properties[ind]["dst_range"]...]
+	dst_pt = match.correspondence_properties[ind]["dst_pt_loc"]
+	xc = normxcorr2(src_patch, dst_patch);
+
+	return src_patch, src_pt, dst_patch, dst_pt, xc
+end
+
 function get_ranges(pt, src_mesh, dst_mesh, params)
 	get_ranges(pt, src_mesh, dst_mesh, params["block_size"], params["search_r"]);
 end
