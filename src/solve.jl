@@ -145,7 +145,7 @@ function solve_meshset!(meshset)
   for mesh in meshset.meshes
     nodes[:, noderanges[mesh.index]] = get_globalized_nodes(mesh)[1];
     nodes_fixed[noderanges[mesh.index]] = fill(false, count_nodes(mesh));
-    edge_lengths[edgeranges[mesh.index]] = get_homogenous_edge_lengths(mesh);
+    edge_lengths[edgeranges[mesh.index]] = get_edge_lengths(mesh);
     edge_coeffs[edgeranges[mesh.index]] = fill(mesh_coeff, count_edges(mesh));
   end
 

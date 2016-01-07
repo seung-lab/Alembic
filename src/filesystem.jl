@@ -143,11 +143,11 @@ function parse_registry(path::String)
 end
 
 if contains(gethostname(), "seunglab")
- bucket_dir_path = joinpath(homedir(), "seungmount/")
+ bucket_dir_path = "/mnt/bucket/labs/seung/"
 end
 
 if contains(gethostname(), "seungworkstation")
- bucket_dir_path = "/mnt/bucket/labs/seung/"
+ bucket_dir_path = joinpath(homedir(), "seungmount/")
 end
 
 #=if isfile("bucket_dir_path.txt")

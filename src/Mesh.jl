@@ -32,12 +32,13 @@ function count_edges(mesh::Mesh)		return size(mesh.edges, 2);		end
 ### internal
 function get_topleft_offset(mesh::Mesh)		return mesh.src_nodes[1];		end
 function get_edge_points(mesh::Mesh, ind)
-	src_ind = find(this -> this < 0, mesh.edges[:, ind]);
-	dst_ind = find(this -> this > 0, mesh.edges[:, ind]);
+	src_ind = findfirst(this -> this < 0, mesh.edges[:, ind]);
+	dst_ind = findfirst(this -> this > 0, mesh.edges[:, ind]);
 	return mesh.src_nodes[src_ind], mesh.src_nodes[dst_ind]
 end
 
 ### math
+#=
 function get_edge_points(mesh::Mesh, ind)
 	start_pt = find(this -> this < 0, mesh.edges[:, ind]);
 	end_pt = find(this -> this > 0, mesh.edges[:, ind]);
@@ -54,6 +55,7 @@ function get_edge_points(mesh::Mesh, ind)
 	end_pt = dot(end_tri_nodes, end_tri_weights);=#
       return start_pt, end_pt;
 end
+=#
 
 function get_edge_length(mesh::Mesh, ind)	start_pt, end_pt = get_edge_points(mesh, ind);
       return norm(start_pt - end_pt);
