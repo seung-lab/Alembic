@@ -150,6 +150,10 @@ function get_filtered_correspondences(match::Match)
 	return match.src_points[get_filtered_indices(match)], match.dst_points[get_filtered_indices(match)];
 end
 
+function get_filtered_correspondence_properties(match::Match)
+	return match.correspondence_properties[get_filtered_indices(match)]
+end
+
 function get_filtered_indices(match::Match)
 	return setdiff(1:count_correspondences(match), union(map(getindex, match.filters, repeated("rejected"))...));
 end
