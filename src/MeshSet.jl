@@ -62,7 +62,7 @@ function MeshSet(first_index, last_index, params=get_params(first_index))
 
 	meshset = MeshSet(meshes, matches, properties);
 	match!(meshset);
-#	solve_meshset!(meshset);
+	solve_meshset!(meshset);
 	save(meshset);
 	return meshset;
 end

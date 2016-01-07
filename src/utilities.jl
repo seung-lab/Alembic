@@ -46,39 +46,39 @@ sz: 2-element collection for the i,j height and width
 """
 function update_offsets(index::Index, offset, sz=[0, 0])
   
-  if is_montaged(index) offsets_fp = montaged_offsets_path;
-  elseif is_prealigned(index) offsets_fp = prealigned_offsets_path;
-  elseif is_aligned(index) offsets_fp = aligned_offsets_path;
-  else offsets_fp = premontaged_offsets_path; end
+  if is_montaged(index) registry_fp = montaged_registry_path;
+  elseif is_prealigned(index) registry_fp = prealigned_registry_path;
+  elseif is_aligned(index) registry_fp = aligned_registry_path;
+  else registry_fp = premontaged_registry_path; end
 
   image_fn = string(get_name(index));
 
-  println("Updating offsets for ", image_fn, " in:\n", offsets_fp)
+  println("Updating registry for ", image_fn, " in:\n", registry_fp)
 
-  if !isfile(offsets_fp)
-    f = open(offsets_fp, "w")
+  if !isfile(registry_fp)
+    f = open(registry_fp, "w")
     close(f)
-    offsets = [image_fn, offset..., sz...]'
+    registry = [image_fn, offset..., sz...]'
   else  
-    offsets = readdlm(offsets_fp)
-    idx = findfirst(offsets[:,1], image_fn)
+    registry = readdlm(registry_fp)
+    idx = findfirst(registry[:,1], image_fn)
     if idx != 0
-      offsets[idx, 2:3] = collect(offset)
+      registry[idx, 2:3] = collect(offset)
       if sz != [0, 0]
-        offsets[idx, 4:5] = collect(sz)
+        registry[idx, 4:5] = collect(sz)
       end
     else
-      offsets_line = [image_fn, offset..., sz...]
-      offsets = vcat(offsets, offsets_line')
+      registry_line = [image_fn, offset..., sz...]
+      registry = vcat(registry, registry_line')
     end
   end
-  offsets = offsets[sortperm(offsets[:, 1], by=parse_name), :];
-  writedlm(offsets_fp, offsets)
+  registry = registry[sortperm(registry[:, 1], by=parse_name), :];
+  writedlm(registry_fp, registry)
   
-  if is_montaged(index) global MONTAGED_OFFSETS = parse_offsets(offsets_fp);
-  elseif is_prealigned(index) global PREALIGNED_OFFSETS = parse_offsets(offsets_fp);
-  elseif is_aligned(index) global ALIGNED_OFFSETS = parse_offsets(offsets_fp);
-  else global PREMONTAGED_OFFSETS = parse_offsets(offsets_fp);
+  if is_montaged(index) global REGISTRY_MONTAGED = parse_registry(registry_fp);
+  elseif is_prealigned(index) global REGISTRY_PREALIGNED = parse_registry(registry_fp);
+  elseif is_aligned(index) global REGISTRY_ALIGNED = parse_registry(registry_fp);
+  else global REGISTRY_PREMONTAGED = parse_registry(registry_fp);
   end
 end
 

@@ -6,7 +6,7 @@ function meshwarp_mesh(mesh::Mesh)
   src_nodes, dst_nodes = get_globalized_nodes(mesh);
   src_nodes = src_nodes'
   dst_nodes = dst_nodes'
-  offset = get_offset(mesh) + get_topleft_offset(mesh)
+  offset = get_offset(mesh);
   node_dict = incidence_to_dict(mesh.edges')
   triangles = dict_to_triangles(node_dict)
   return @time ImageRegistration.meshwarp(img, src_nodes, dst_nodes, triangles, offset), mesh.index

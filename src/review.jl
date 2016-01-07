@@ -1053,7 +1053,7 @@ function write_thumbnail(img, path, vectors, colors, match_nums, factor=1.0)
   drawing = make_thumbnail(img, vectors, colors, match_nums, factor)
   img = convert_drawing(drawing)
   println("Writing thumbnail\n\t", path)
-  Images.save(path, reshape_seam(img))
+  FileIO.save(path, reshape_seam(img))
 end
 
 """

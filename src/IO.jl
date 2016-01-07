@@ -11,8 +11,8 @@ function get_image(path::String, dtype = UInt8)
 	ext = splitext(path)[2];
   	if ext == ".tif"
 		img = imread(path)
-		img = img[:, :, 1]
- 		img.properties["timedim"] = 0
+		img = img[:, :, 1]'
+ 		#img.properties["timedim"] = 0
   		return convert(Array{dtype, 2}, round(convert(Array, img)*255))
 	elseif ext == ".h5"
  		return convert(Array{dtype, 2}, h5read(path, "img"))
