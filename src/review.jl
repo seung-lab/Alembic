@@ -861,6 +861,14 @@ function display_blockmatches(images, edit_mode_on=false, start_index=1)
 end
 
 """
+Boolean if bounding boxes intersect
+"""
+function intersects(bbA::BoundingBox, bbB::BoundingBox)
+  bb = bbA - bbB
+  return !isequal(bb.i, NaN)
+end
+
+"""
 Given list of bounding boxes, calculate pairs of indices with overlaps
 """
 function find_overlaps(boundingboxes)
