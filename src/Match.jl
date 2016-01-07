@@ -19,8 +19,10 @@ function get_correspondence_patches(match::Match, ind)
 	dst_patch = dst_img[match.correspondence_properties[ind]["dst_range"]...]
 	dst_pt = match.correspondence_properties[ind]["dst_pt_loc"]
 	xc = normxcorr2(src_patch, dst_patch);
+	di = match.correspondence_properties[ind]["di"]
+	dj = match.correspondence_properties[ind]["dj"]
 
-	return src_patch, src_pt, dst_patch, dst_pt, xc
+	return src_patch, src_pt, dst_patch, dst_pt, xc, dst_pt-src_pt+[di, dj]
 end
 
 function get_ranges(pt, src_mesh, dst_mesh, params)

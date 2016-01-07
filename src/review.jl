@@ -200,8 +200,13 @@ function draw_box(img::Array{UInt32}, bounds)
   return get_drawing(srf)
 end
 
-function display_blockmatch(src_patch, src_pt, dst_patch, dst_pt, xc, params)
-  block_r = params["block_size"]
+function show_blockmatch(match, ind, params)
+  match_details = get_correspondence_patches(match, ind)
+  display_blockmatch(match_details..., params)  
+end
+
+function display_blockmatch(src_patch, src_pt, dst_patch, dst_pt, xc, offset, params)
+  block_r = params["block_rad"]
   search_r = params["search_r"]
   N=size(xc, 1)
   M=size(xc, 2)
@@ -212,26 +217,18 @@ function display_blockmatch(src_patch, src_pt, dst_patch, dst_pt, xc, params)
   hot = create_hot_colormap()
   xc_color = apply_colormap(xc_image, hot)
   xc = padimage(xc', block_r, block_r, block_r, block_r, 1)
+  fused_img, _ = imfuse(dst_patch, [0,0], src_patch, offset)
 
-  offset = round(Int64, (dst_pt-block_r) - (src_pt-block_r-search_r))
-  println(offset)
-  # reverse_offset = collect(size(dst_img_orig)) - (collect(size(src_img)) + offset)
-  # src_padded = padimage(src_img, reverse(offset)..., reverse(reverse_offset)...)
-  fused_img, _ = imfuse(dst_img_orig, [0,0], src_img, offset)
-  # view(reinterpret(UFixed8, src_img'), pixelspacing=[1,1])
-
-  bounds = (search_r, search_r, size(src_img)...)
-  src = draw_box(convert(Array{UInt32,2}, src_img_full).<< 8, bounds)
-  bounds = (offset..., size(src_img)...)
-  dst = draw_box(convert(Array{UInt32,2}, dst_img_orig).<< 16, bounds)
+  src = convert(Array{UInt32,2}, src_patch).<< 8
+  dst = convert(Array{UInt32,2}, dst_patch).<< 16
 
   cgrid = canvasgrid(2,2; pad=10)
   opts = Dict(:pixelspacing => [1,1])
 
   imgc, img2 = view(cgrid[1,1], src'; opts...)
   imgc, img2 = view(cgrid[2,1], dst'; opts...)
-  imgc, img2 = view(cgrid[2,2], fused_img; opts...)
-  imgc, img2 = view(cgrid[1,2], xc_color'; opts...)
+  imgc, img2 = view(cgrid[2,2], fused_img'; opts...)
+  imgc, img2 = view(cgrid[1,2], xc_color; opts...)
 end
 
 function display_blockmatch(params, src_point, dst_point)
