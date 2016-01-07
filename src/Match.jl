@@ -155,8 +155,6 @@ function get_filtered_indices(match::Match)
 end
 
 function Match(src_mesh::Mesh, dst_mesh::Mesh, src_image=nothing, dst_image=nothing, params=get_params(src_mesh))
-	println("Matching $(src_mesh.index) -> $(dst_mesh.index)");
-	
 	if src_mesh == dst_mesh
 		return nothing
 	end
@@ -175,11 +173,11 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, src_image=nothing, dst_image=noth
   	src_index = src_mesh.index;
 	dst_index = dst_mesh.index;
 
-	ranges = pmap(get_ranges, src_mesh.src_nodes, repeated(src_index), repeated(dst_index), repeated(params));
+	@time ranges = pmap(get_ranges, src_mesh.src_nodes, repeated(src_index), repeated(dst_index), repeated(params));
 	ranged_inds = find(i -> i != nothing, ranges);
 	src_nodes = copy(src_mesh.src_nodes[ranged_inds]);
 	ranges = copy(ranges[ranged_inds]);
-	println("Nodes to check for correspondences: $(length(src_nodes)) / $(length(src_mesh.src_nodes))")
+	println("Matching $(src_mesh.index) -> $(dst_mesh.index): $(length(src_nodes)) / $(length(src_mesh.src_nodes)) nodes to check.")
 
 	dst_allpoints = pmap(get_match, src_nodes, ranges, repeated(LOCAL_SRC_IMAGE), repeated(LOCAL_DST_IMAGE), repeated(params));
 	matched_inds = find(i -> i != nothing, dst_allpoints);
