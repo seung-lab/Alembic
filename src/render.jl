@@ -32,6 +32,16 @@ function render_montaged(wafer_no, section_no, render_full=false)
   render_montaged(wafer_no, section_no, wafer_no, section_no, render_full)
 end
 
+function render_montaged_review(fn)
+  meshset = load(joinpath(MONTAGED_DIR, fn))
+  warps = pmap(meshwarp_mesh, meshset.meshes);
+  imgs = [x[1][1] for x in warps];
+  offsets = [x[1][2] for x in warps];
+  indices = [x[2] for x in warps];
+  # review images
+  write_seams(meshset, imgs, offsets, indices, fn[1:end-4])
+end
+
 """
 Cycle through JLD files in montaged directory and render montage
 """

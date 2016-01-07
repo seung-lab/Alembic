@@ -1005,7 +1005,7 @@ end
 """
 `WRITE_SEAMS` - Write out overlays of montaged seams
 """ 
-function write_seams(meshset, imgs, offsets, indices)
+function write_seams(meshset, imgs, offsets, indices, fn_label="seam")
     bbs = []
     for (img, offset) in zip(imgs, offsets)
         push!(bbs, BoundingBox(offset..., size(img)...))
@@ -1015,7 +1015,7 @@ function write_seams(meshset, imgs, offsets, indices)
       println("Writing seam ", k, " / ", length(overlap_tuples))
       img, fuse_offset = imfuse(imgs[i], offsets[i], imgs[j], offsets[j])
       bb = bbs[i] - bbs[j]
-      path = get_outline_filename("seam", indices[i], indices[j])
+      path = get_outline_filename(fn_label, indices[i], indices[j])
       img_cropped = imcrop(img, fuse_offset, bb)
       # imwrite(reshape_seam(img_cropped), path)
       offset = [bb.i, bb.j]
