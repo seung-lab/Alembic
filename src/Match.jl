@@ -113,9 +113,10 @@ function filter_r_val!(match::Match, min_r)
 	inds_to_filter = find(i -> i < min_r, r_vals);
 	push!(match.filters, Dict{Any, Any}(
 				"by"	  => ENV["USER"],
+				"machine" => gethostname(),
+				"timestamp" => string(now()),
 				"type"	  => "r_val, absolute",
 				"threshold" => min_r,
-				"timestamp" => string(now()),
 				"rejected"  => inds_to_filter
 			      ));
 	#println("$(length(inds_to_filter)) / $(count_correspondences(match)) rejected.");

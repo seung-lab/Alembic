@@ -62,9 +62,11 @@ function MeshSet(first_index, last_index; params=get_params(first_index), solve_
 	ind_range = get_index_range(first_index, last_index);
 	meshes = map(Mesh, ind_range, repeated(params))
  	matches = Array{Match, 1}(0)		
-  	properties = Dict{Any, Any}();
-	properties["params"] = params;
-
+	properties = Dict(	"params"  => params,
+				"by"	  => ENV["USER"],
+				"machine" => gethostname(),
+				"timestamp" => string(now())
+				)
 	meshset = MeshSet(meshes, matches, properties);
 	match!(meshset);
 	solve!(meshset, method=solve_method);
@@ -104,7 +106,7 @@ function match!(meshset::MeshSet)
 	end
 
 	for i in 1:length(pairs)
-		add_match!(meshset, Match(meshset.meshes[pairs[i][1]], meshset.meshes[pairs[i][2]], src_image=imgdict[meshset.meshes[pairs[i][1]]], dst_image=imgdict[meshset.meshes[pairs[i][2]]], params=params));
+		add_match!(meshset, Match(meshset.meshes[pairs[i][1]], meshset.meshes[pairs[i][2]], src_image=imgdict[meshset.meshes[pairs[i][1]]], dst_image=imgdict[meshset.meshes[pairs[i][2]]], params));
 	end
 end
 
