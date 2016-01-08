@@ -26,7 +26,7 @@ function get_correspondence_patches(match::Match, ind)
 end
 
 function get_ranges(pt, src_mesh, dst_mesh, params)
-	get_ranges(pt, src_mesh, dst_mesh, params["block_r"], params["search_r"]);
+	get_ranges(pt, src_mesh, dst_mesh, params["match"]["block_r"], params["match"]["search_r"]);
 end
 
 function get_ranges(pt, src_index, dst_index, block_r::Int64, search_r::Int64)
@@ -60,19 +60,17 @@ function get_ranges(pt, src_index, dst_index, block_r::Int64, search_r::Int64)
 end
 
 #using sharedarray
-function get_match(pt, ranges, src_image, dst_image, params)
+function get_match(pt, ranges, src_image, dst_image)
 	src_index, src_range, src_pt_loc, dst_index, dst_range, dst_range_full, dst_pt_loc, dst_pt_loc_full = ranges;
 
 	if dst_range != dst_range_full
 		indices_within_range = findin(dst_range_full[1], dst_range[1]), findin(dst_range_full[2], dst_range[2])
 		intersect_img = dst_image[dst_range...];
 		avg = mean(intersect_img);
-		if isnan(avg) padded_img = fill(eltype(dst_image)(0), length(dst_range_full[1]), length(dst_range_full[2]));
-		else
+		if isnan(avg) return nothing; end
 		avg = round(eltype(dst_image), avg);
 		padded_img = fill(avg, length(dst_range_full[1]), length(dst_range_full[2]));
 		padded_img[indices_within_range...] = intersect_img;
-		end
 		xc = normxcorr2(src_image[src_range[1], src_range[2]], padded_img);
 	else
 	xc = normxcorr2(src_image[src_range[1], src_range[2]], dst_image[dst_range[1], dst_range[2]]);
@@ -90,67 +88,96 @@ function get_match(pt, ranges, src_image, dst_image, params)
 	dj = j_max + src_pt_loc[2] - dst_pt_loc_full[2];	
 
 	correspondence_properties = Dict{Any, Any}();
+	correspondence_properties["src_normalized_dyn_range"] = (maximum(src_image[src_range...]) - minimum(src_image[src_range...])) / typemax(eltype(src_image));
+	correspondence_properties["src_kurtosis"] = kurtosis(src_image[src_range...]);
 	correspondence_properties["src_range"] = src_range;
 	correspondence_properties["src_pt_loc"] = src_pt_loc;
 	correspondence_properties["dst_range"] = dst_range;
 	correspondence_properties["dst_pt_loc"] = dst_pt_loc;
 	correspondence_properties["dv"] = [di, dj];
+	correspondence_properties["norm"] = norm([di, dj]);
 	correspondence_properties["r_val"] = r_max;
 	return vcat(pt + get_offset(src_index) - get_offset(dst_index) + [di, dj], correspondence_properties);
 end
 
-function get_r_val(correspondence_property)
-	return correspondence_property["r_val"];
+function get_property(correspondence_property, property_name::String)
+	return correspondence_property[property_name];
 end
 
-function get_norm(correspondence_property)
-	return norm(correspondence_property["di"], correspondence_property["dj"]);
+function get_properties(match::Match, property_name::String)
+	return map(get_property, match.correspondence_property, repeated(property_name));
 end
 
 function filter_r_val!(match::Match, min_r)
 	r_vals = map(get_r_val, match.correspondence_properties);
-	filtered_inds = find(i -> i < min_r, r_vals);
+	inds_to_filter = find(i -> i < min_r, r_vals);
 	push!(match.filters, Dict{Any, Any}(
 				"by"	  => ENV["USER"],
 				"type"	  => "r_val, absolute",
 				"threshold" => min_r,
 				"timestamp" => string(now()),
-				"rejected"  => filtered_inds
+				"rejected"  => inds_to_filter
 			      ));
-	println("$(length(filtered_inds)) / $(count_correspondences(match)) rejected.");
-	return;
+	#println("$(length(inds_to_filter)) / $(count_correspondences(match)) rejected.");
+	return length(inds_to_filter);
 end
 
+function filter_normalized_dyn_range!(match::Match, min_normalized_dyn_range)
+	norm_dyn_ranges = map(get_property, match.correspondence_properties, repeated("src_normalized_dyn_range"));
+	inds_to_filter = find(i -> i < min_normalized_dyn_range, norm_dyn_ranges);
+	push!(match.filters, Dict{Any, Any}(
+				"by"	  => ENV["USER"],
+				"type"	  => "normalized_dyn_range, src",
+				"threshold" => min_normalized_dyn_range,
+				"timestamp" => string(now()),
+				"rejected"  => inds_to_filter
+			      ));
+	#println("$(length(inds_to_filter)) / $(count_correspondences(match)) rejected.");
+	return length(inds_to_filter);
+end
 
+function filter_kurtosis!(match::Match, max_acceptable_kurtosis)
+	kurtoses = map(get_property, match.correspondence_properties, repeated("src_kurtosis"));
+	inds_to_filter = find(i -> abs(i) > max_acceptable_kurtosis, kurtoses);
+	push!(match.filters, Dict{Any, Any}(
+				"by"	  => ENV["USER"],
+				"type"	  => "kurtosis, absolute, src",
+				"threshold" => max_acceptable_kurtosis,
+				"timestamp" => string(now()),
+				"rejected"  => inds_to_filter
+			      ));
+	println("$(length(inds_to_filter)) / $(count_correspondences(match)) rejected.");
+	return length(inds_to_filter);
+end
 
 function filter_norm_absolute!(match::Match, max_norm)
 	norms = map(get_norm, match.correspondence_properties);
-	filtered_inds = find(i -> i > max_norm, norms);
+	inds_to_filter = find(i -> i > max_norm, norms);
 	push!(match.filters, Dict{Any, Any}(
 				"by"	  => ENV["USER"],
 				"type"	  => "max_norm, absolute",
 				"threshold" => max_norm,
 				"timestamp" => string(now()),
-				"rejected"  => filtered_inds
+				"rejected"  => inds_to_filter
 			      ));
-	println("$(length(filtered_inds)) / $(count_correspondences(match)) rejected.");
-	return;
+	#println("$(length(inds_to_filter)) / $(count_correspondences(match)) rejected.");
+	return length(inds_to_filter);
 end
 
 ### ADD MANUAL FILTER
 function filter_manual!(match::Match)
-	filtered_inds = Points(0)
+	inds_to_filter = Points(0)
 	while(true)
 		#choose point and add
 		ind_to_remove = 0;
-		push!(filtered_inds, ind_to_remove)
+		push!(inds_to_filter, ind_to_remove)
 		#undo by pop!
 	end
 	push!(match.filters, Dict{Any, Any}(
 				"by"	  => ENV["USER"],
 				"type"	  => "manual",
 				"timestamp" => string(now()),
-				"rejected"  => filtered_inds
+				"rejected"  => inds_to_filter
 			      ));
 	return;
 end
@@ -161,6 +188,14 @@ end
 
 function count_filtered_correspondences(match::Match)
 	return length(get_filtered_indices(match));
+end
+
+function get_correspondences(match::Match)
+	return match.src_points, match.dst_points;
+end
+
+function get_correspondence_properties(match::Match)
+	return match.correspondence_properties;
 end
 
 function get_filtered_correspondences(match::Match)
@@ -175,7 +210,7 @@ function get_filtered_indices(match::Match)
 	return setdiff(1:count_correspondences(match), union(map(getindex, match.filters, repeated("rejected"))...));
 end
 
-function Match(src_mesh::Mesh, dst_mesh::Mesh, src_image=nothing, dst_image=nothing, params=get_params(src_mesh))
+function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); src_image=nothing, dst_image=nothing)
 	if src_mesh == dst_mesh
 		return nothing
 	end
@@ -200,7 +235,7 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, src_image=nothing, dst_image=noth
 	ranges = copy(ranges[ranged_inds]);
 	println("Matching $(src_mesh.index) -> $(dst_mesh.index): $(length(src_nodes)) / $(length(src_mesh.src_nodes)) nodes to check.")
 
-	dst_allpoints = pmap(get_match, src_nodes, ranges, repeated(LOCAL_SRC_IMAGE), repeated(LOCAL_DST_IMAGE), repeated(params));
+	dst_allpoints = pmap(get_match, src_nodes, ranges, repeated(LOCAL_SRC_IMAGE), repeated(LOCAL_DST_IMAGE));
 	matched_inds = find(i -> i != nothing, dst_allpoints);
 	src_points = copy(src_nodes[matched_inds]);
 	filters = Array{Dict{Any, Any}}(0);
