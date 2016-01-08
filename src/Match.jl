@@ -190,6 +190,14 @@ function count_filtered_correspondences(match::Match)
 	return length(get_filtered_indices(match));
 end
 
+function get_correspondences(match::Match)
+	return match.src_points, match.dst_points;
+end
+
+function get_correspondence_properties(match::Match)
+	return match.correspondence_properties;
+end
+
 function get_filtered_correspondences(match::Match)
 	return match.src_points[get_filtered_indices(match)], match.dst_points[get_filtered_indices(match)];
 end

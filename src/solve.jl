@@ -204,7 +204,7 @@ function elastic_solve!(meshset)
 end
 
 # RENAME to get_filtered_correspondences
-function get_matched_points_t(meshset, ind)
+function get_globalized_correspondences_post(meshset, ind)
   meshes = Dict{Any, Any}();
   for mesh in meshset.meshes
 	meshes[mesh.index] = mesh;
@@ -212,7 +212,8 @@ function get_matched_points_t(meshset, ind)
 
   match = meshset.matches[ind];
   
-	src_pts, dst_pts = get_filtered_correspondences(match);
+	src_pts, dst_pts = get_correspondences(match);
+	filtered_inds = get_filtered_inds(match);
 
 	src_mesh = meshes[match.src_index]
 	dst_mesh = meshes[match.dst_index]
@@ -231,7 +232,7 @@ function get_matched_points_t(meshset, ind)
 	g_src_pts_after = src_pts_after + fill(get_offset(match.src_index), length(src_pts));
 	g_dst_pts_after = dst_pts_after + fill(get_offset(match.dst_index), length(dst_pts));
 
-	return g_src_pts_after, g_dst_pts_after;
+	return g_src_pts_after, g_dst_pts_after, filtered_inds;
 end
 
 function stats(meshset::MeshSet)
