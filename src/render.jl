@@ -42,6 +42,15 @@ function render_montaged_review(fn)
   write_seams(meshset, imgs, offsets, indices, fn[1:end-4])
 end
 
+function render_montaged(meshset)
+  warps = pmap(meshwarp_mesh, meshset.meshes);
+  imgs = [x[1][1] for x in warps];
+  offsets = [x[1][2] for x in warps];
+  indices = [x[2] for x in warps];
+  # review images
+  write_seams(meshset, imgs, offsets, indices)
+end
+
 """
 Cycle through JLD files in montaged directory and render montage
 """
@@ -59,7 +68,7 @@ function render_montaged(waferA, secA, waferB, secB, render_full=false)
     indices = [x[2] for x in warps];
     # review images
     write_seams(meshset, imgs, offsets, indices)
-    write_seams_with_points(meshset, imgs, offsets, indices)
+    # write_seams_with_points(meshset, imgs, offsets, indices)
     if render_full
       println(typeof(imgs))
       img, offset = merge_images(imgs, offsets)
