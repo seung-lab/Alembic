@@ -206,7 +206,7 @@ function show_blockmatch(match, ind, params)
 end
 
 function display_blockmatch(src_patch, src_pt, dst_patch, dst_pt, xc, offset, params)
-  block_r = params["block_rad"]
+  block_r = params["block_r"]
   search_r = params["search_r"]
   N=size(xc, 1)
   M=size(xc, 2)
@@ -225,16 +225,16 @@ function display_blockmatch(src_patch, src_pt, dst_patch, dst_pt, xc, offset, pa
   cgrid = canvasgrid(2,2; pad=10)
   opts = Dict(:pixelspacing => [1,1])
 
-  imgc, img2 = view(cgrid[1,1], src'; opts...)
-  imgc, img2 = view(cgrid[2,1], dst'; opts...)
-  imgc, img2 = view(cgrid[2,2], fused_img'; opts...)
-  imgc, img2 = view(cgrid[1,2], xc_color; opts...)
+  imgc, img2 = view(cgrid[1,1], src; opts...)
+  imgc, img2 = view(cgrid[2,1], dst; opts...)
+  imgc, img2 = view(cgrid[2,2], fused_img; opts...)
+  imgc, img2 = view(cgrid[1,2], xc_color'; opts...)
 end
 
 function display_blockmatch(params, src_point, dst_point)
   src_index = params["src_index"]
   dst_index = params["dst_index"]
-  block_r = params["block_size"]
+  block_r = params["block_r"]
   search_r = params["search_r"]
   
   src_pt = src_point - params["src_offset"]
@@ -1102,6 +1102,30 @@ function write_seams(meshset, imgs, offsets, indices, fn_label="seam")
       bb = bbs[i] - bbs[j]
       path = get_outline_filename(fn_label, indices[i], indices[j])
       img_cropped = imcrop(img, fuse_offset, bb)
+      f = h5open(path, "w")
+      @time f["img", "chunk", (100,100)] = img_cropped
+      f["offset"] = [bb.i, bb.j]
+      f["scale"] = 1.0
+      close(f)
+    end
+end
+
+"""
+`WRITE_SEAMS_WITH_POINTS` - Write out overlays of montaged seams with points
+""" 
+function write_seams_with_points(meshset, imgs, offsets, indices, fn_label="seam_pts")
+    bbs = []
+    for (img, offset) in zip(imgs, offsets)
+        push!(bbs, BoundingBox(offset..., size(img)...))
+    end
+    overlap_tuples = find_overlaps(bbs)
+    for (k, (i,j)) in enumerate(overlap_tuples)
+      println("Writing seam ", k, " / ", length(overlap_tuples))
+      img, fuse_offset = imfuse(imgs[i], offsets[i], imgs[j], offsets[j])
+      bb = bbs[i] - bbs[j]
+      path = get_outline_filename(fn_label, indices[i], indices[j])
+      path = string(path[1:end-3], ".jpg")
+      img_cropped = imcrop(img, fuse_offset, bb)
       # imwrite(reshape_seam(img_cropped), path)
       offset = [bb.i, bb.j]
       vectorsA = get_matches(meshset, indices[i], indices[j])
@@ -1113,8 +1137,8 @@ function write_seams(meshset, imgs, offsets, indices, fn_label="seam")
       vectors = (vectorsA, vectorsB)
       match_nums = (matchij, matchji)
       colors = ([0,0,0], [1,1,1])
-      # factor = 100
-      write_thumbnail(img_cropped, path, vectors, colors, match_nums)
+      factor = 1
+      write_thumbnail(img_cropped, path, vectors, colors, match_nums, factor)
     end
 end
 
@@ -1202,7 +1226,7 @@ function get_outline_filename(prefix, src_index, dst_index=(0,0,0,0))
   if is_premontaged(src_index)
     dir = MONTAGED_DIR
     ind = string(join(src_index, ","), "-", join(dst_index, ","))
-    fn = string(prefix, "_", ind, ".jpg")
+    fn = string(prefix, "_", ind, ".h5")
   elseif is_montaged(src_index)
     dir = PREALIGNED_DIR
     fn = string(prefix, "_", indstring, ".tif")
