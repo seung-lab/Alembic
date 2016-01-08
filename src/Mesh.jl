@@ -30,6 +30,8 @@ function get_image(mesh::Mesh, dtype = UInt8)	return get_image(mesh.index, dtype
 function count_nodes(mesh::Mesh)		return size(mesh.src_nodes, 1);		end
 function count_edges(mesh::Mesh)		return size(mesh.edges, 2);		end
 
+function get_index(mesh::Mesh)		return mesh.index;		end
+
 ### internal
 function get_topleft_offset(mesh::Mesh)		return mesh.src_nodes[1];		end
 function get_edge_points(mesh::Mesh, ind)

@@ -1103,7 +1103,7 @@ function write_seams(meshset, imgs, offsets, indices, fn_label="seam")
       path = get_outline_filename(fn_label, indices[i], indices[j])
       img_cropped = imcrop(img, fuse_offset, bb)
       f = h5open(path, "w")
-      @time f["img", "chunk", (1000,1000)] = img_cropped
+      @time f["img", "chunk", (100,100)] = img_cropped
       f["offset"] = [bb.i, bb.j]
       f["scale"] = 1.0
       close(f)
@@ -1137,7 +1137,7 @@ function write_seams_with_points(meshset, imgs, offsets, indices, fn_label="seam
       vectors = (vectorsA, vectorsB)
       match_nums = (matchij, matchji)
       colors = ([0,0,0], [1,1,1])
-      factor = 10
+      factor = 1
       write_thumbnail(img_cropped, path, vectors, colors, match_nums, factor)
     end
 end
