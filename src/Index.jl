@@ -1,3 +1,19 @@
+function overview(wafer, section)
+	return (wafer, section, OVERVIEW_INDEX, OVERVIEW_INDEX);
+end
+
+function montaged(wafer, section)
+	return (wafer, section, MONTAGED_INDEX, MONTAGED_INDEX);
+end
+
+function prealigned(wafer, section)
+	return (wafer, section, PREALIGNED_INDEX, PREALIGNED_INDEX);
+end
+
+function aligned(wafer, section)
+	return (wafer, section, ALIGNED_INDEX, ALIGNED_INDEX);
+end
+
 function is_overview(index)
     if index[3:4] == (OVERVIEW_INDEX, OVERVIEW_INDEX)   return true else return false end
 end

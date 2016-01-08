@@ -54,13 +54,14 @@ using Cairo
 using IterativeSolvers
 using ImageRegistration
 using Optim
+using Distributions
 #using PyPlot
 
 include("Index.jl")
 include("registry.jl")
 include("filesystem.jl")
 include("IO.jl")
-include("Params_session.jl")
+include("Params.jl")
 include("convolve.jl")
 include("Mesh.jl")
 include("Match.jl")

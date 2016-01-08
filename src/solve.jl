@@ -90,7 +90,7 @@ end
 """
 Calculate affine transform of the matches, and set nodes_t of the moving mesh
 """
-function affine_solve_meshset!(Ms)
+function affine_solve!(Ms)
 	tform = affine_solve(Ms, 1);	
 	nodes = Ms.meshes[Ms.matches_pairs[1][1]].nodes
 	nodes_t = Points(size(nodes, 1))
@@ -105,16 +105,22 @@ function affine_solve_meshset!(Ms)
   offset = mesh.disp
 end
 
+function solve!(meshset; method="elastic")
+	if method == "elastic" return elastic_solve!(meshset); end
+	if method == "translate" return translate_solve!(meshset); end
+	if method == "rigid" return rigid_solve!(meshset); end
+	if method == "regularized" return regularized_solve!(meshset); end
+	if method == "affine" return affine_solve!(meshset); end
+end
+
 """
 Elastic solve
 """
-function solve_meshset!(meshset)
-  match_coeff = (meshset.properties["params"])["match_coeff"]
-  mesh_coeff = (meshset.properties["params"])["mesh_coeff"]
-  eta_gradient = (meshset.properties["params"])["eta_gradient"]
-  ftol_gradient = (meshset.properties["params"])["ftol_gradient"]
-  eta_newton = (meshset.properties["params"])["eta_newton"]
-  ftol_newton = (meshset.properties["params"])["ftol_newton"]
+function elastic_solve!(meshset)
+  params = get_params(meshset)
+  match_spring_coeff = params["solve"]["match_spring_coeff"]
+  mesh_spring_coeff = params["solve"]["mesh_spring_coeff"]
+  ftol_cg = params["solve"]["ftol_cg"]
 
   println("Solving meshset: $(count_nodes(meshset)) nodes, $(count_edges(meshset)) edges, $(count_filtered_correspondences(meshset)) correspondences");
 
@@ -122,7 +128,7 @@ function solve_meshset!(meshset)
   nodes_fixed = BinaryProperty(count_nodes(meshset))
   edges = spzeros(Float64, count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset));
   edge_lengths = FloatProperty(count_edges(meshset) + count_filtered_correspondences(meshset))
-  edge_coeffs = FloatProperty(count_edges(meshset) + count_filtered_correspondences(meshset))
+  edge_spring_coeffs = FloatProperty(count_edges(meshset) + count_filtered_correspondences(meshset))
 
   noderanges = Dict{Any, Any}();
   edgeranges = Dict{Any, Any}();
@@ -146,7 +152,7 @@ function solve_meshset!(meshset)
     nodes[:, noderanges[mesh.index]] = get_globalized_nodes_h(mesh)[1];
     nodes_fixed[noderanges[mesh.index]] = fill(false, count_nodes(mesh));
     edge_lengths[edgeranges[mesh.index]] = get_edge_lengths(mesh);
-    edge_coeffs[edgeranges[mesh.index]] = fill(mesh_coeff, count_edges(mesh));
+    edge_spring_coeffs[edgeranges[mesh.index]] = fill(mesh_spring_coeff, count_edges(mesh));
   end
 
   println("meshes collated: $(count_meshes(meshset)) meshes")
@@ -178,12 +184,12 @@ function solve_meshset!(meshset)
 	end
 
     	edge_lengths[edgeranges[match]] = fill(0, count_filtered_correspondences(match));
-    	edge_coeffs[edgeranges[match]] = fill(match_coeff, count_filtered_correspondences(match));
+    	edge_spring_coeffs[edgeranges[match]] = fill(match_spring_coeff, count_filtered_correspondences(match));
   end
 
   println("matches collated: $(count_matches(meshset)) matches")
 
-  SolveMesh2!(nodes, nodes_fixed, edges, edge_coeffs, edge_lengths, ftol_newton)
+  SolveMesh2!(nodes, nodes_fixed, edges, edge_spring_coeffs, edge_lengths, ftol_cg)
   dst_nodes = Points(0)
   for i in 1:size(nodes, 2)
           push!(dst_nodes, vec(nodes[:, i]))

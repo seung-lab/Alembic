@@ -99,7 +99,7 @@ end
 function Mesh(index, params = get_params(index))
 	
 	# mesh lengths in each dimension
-	dists = [params["mesh_length"] * sin(pi / 3); params["mesh_length"]];
+	dists = [params["mesh"]["mesh_length"] * sin(pi / 3); params["mesh"]["mesh_length"]];
 
 	# dimensions of the mesh as a rectangular grid, maximal in each dimension
 	# e.g. a mesh with 5-4-5-4-5-4-5-4 nodes in each row will have dims = (8, 5)

@@ -11,6 +11,9 @@ function get_images(meshset::MeshSet, dtype = UInt8)	return map(get_image, meshs
 
 function get_correspondence_patches(meshset::MeshSet, match_ind, corr_ind) return get_correspondence_patches(meshset.matches[match_ind], corr_ind)	end
 
+
+function get_params(meshset::MeshSet)			return meshset.properties["params"];		end
+
 ### counting
 function count_meshes(meshset::MeshSet)			return length(meshset.meshes);		end
 
@@ -55,16 +58,16 @@ function MeshSet()
 	return MeshSet(meshes, matches, properties)
 end
 
-function MeshSet(first_index, last_index, params=get_params(first_index))
+function MeshSet(first_index, last_index; params=get_params(first_index), solve_method="elastic")
 	ind_range = get_index_range(first_index, last_index);
-	meshes = map(Mesh, ind_range)
+	meshes = map(Mesh, ind_range, repeated(params))
  	matches = Array{Match, 1}(0)		
   	properties = Dict{Any, Any}();
 	properties["params"] = params;
 
 	meshset = MeshSet(meshes, matches, properties);
 	match!(meshset);
-	solve_meshset!(meshset);
+	solve!(meshset, method=solve_method);
 	save(meshset);
 	return meshset;
 end
@@ -93,6 +96,7 @@ succeeding_pairs = Pairings(0)
 end
 
 function match!(meshset::MeshSet)
+	params = get_params(meshset);
 	pairs = get_all_overlaps(meshset);
 	imgdict = Dict{Mesh, Array}();
 	for mesh in meshset.meshes
@@ -100,7 +104,7 @@ function match!(meshset::MeshSet)
 	end
 
 	for i in 1:length(pairs)
-		add_match!(meshset, Match(meshset.meshes[pairs[i][1]], meshset.meshes[pairs[i][2]], imgdict[meshset.meshes[pairs[i][1]]], imgdict[meshset.meshes[pairs[i][2]]]));
+		add_match!(meshset, Match(meshset.meshes[pairs[i][1]], meshset.meshes[pairs[i][2]], src_image=imgdict[meshset.meshes[pairs[i][1]]], dst_image=imgdict[meshset.meshes[pairs[i][2]]], params=params));
 	end
 end
 
@@ -115,7 +119,6 @@ end
 function save(meshset::MeshSet)
   firstindex = meshset.meshes[1].index
   lastindex = meshset.meshes[count_meshes(meshset)].index
-
 
   if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex))
     filename = joinpath(PREALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned.jls"))
@@ -175,68 +178,6 @@ end
 
 function load(filename::String)
   return open(deserialize, filename)
-end
-
-function add_pair_matches_with_thumbnails!(meshset, src, dst, images = Void)
-  if images == Void
-  images = load_section_pair(meshset, src, dst)
-  end
-  src_mesh = meshset.meshes[find_index(meshset, src)]
-  dst_mesh = meshset.meshes[find_index(meshset, dst)]
-  matches = calculate_matches(images..., src_mesh, dst_mesh, meshset.params)
-  add_matches(matches, meshset)  
-  #write_prealignment_thumbnail(images..., meshset)
-end
-
-function add_all_matches!(Ms, images)
-
-pairs = get_all_overlaps(Ms)
-n = length(pairs)
-i = 1
-nextidx() = (idx=i; i+=1; idx)
-matches_array = cell(n)
-
-        while true
-          idx = nextidx()
-            if idx > n
-              break
-            end
-          (a, b) = pairs[idx]
-          matches_array[idx] = Match(images[a], Ms.meshes[a], images[b], Ms.meshes[b], Ms.params)
-        end
-for k in 1:n
-    M = matches_array[k]
-    if typeof(M) == Void || M == Void continue; end
-    add_matches(M, Ms)
-end
-  return Ms
-end
-
-
-
-function load_section(offsets, wafer_num, section_num)
-  indices = find(i -> offsets[i,2][1:2] == (wafer_num, section_num), 1:size(offsets, 1))
-  Ms = MeshSet(PARAMS_MONTAGE)
-  num_tiles = length(indices)
-  paths = Array{String, 1}(num_tiles)
-
-# images = Array{SharedArray{UInt8, 2}, 1}(0)
-  images = Array{Array{UInt8, 2}, 1}(0)
-
-
-  for i in indices
-    name = offsets[i, 1];
-    index = offsets[i, 2];
-    dy = offsets[i, 3] #/ 0.07; ##################################
-    dx = offsets[i, 4] #/ 0.07; ##################################
-    image = get_image(get_path(name));
-    add_mesh(Mesh(name, image, index, dy, dx, false, PARAMS_MONTAGE), Ms);
-    #image_shared = SharedArray(UInt8, size(image, 1), size(image, 2));
-    #image_shared[:, :] = image[:, :];
-    push!(images, image)
-  end
-
-  return Ms, images
 end
 
 function make_stack(first_index, last_index, fixed_interval = 0)
