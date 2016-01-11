@@ -60,6 +60,7 @@ end
 
 function MeshSet(first_index, last_index; params=get_params(first_index), solve_method="elastic")
 	ind_range = get_index_range(first_index, last_index);
+	if length(ind_range) == 0 return 0; end
 	meshes = map(Mesh, ind_range, repeated(params))
  	matches = Array{Match, 1}(0)		
 	properties = Dict(	"params"  => params,
@@ -69,6 +70,7 @@ function MeshSet(first_index, last_index; params=get_params(first_index), solve_
 				)
 	meshset = MeshSet(meshes, matches, properties);
 	match!(meshset);
+	#render_montaged(meshset);
 	solve!(meshset, method=solve_method);
 	save(meshset);
 	return meshset;
