@@ -222,10 +222,8 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); src_
 	if src_image == nothing src_image_local = get_image(src_mesh); end
 	if dst_image == nothing dst_image_local = get_image(dst_mesh); end
 
-	LOCAL_SRC_IMAGE = SharedArray(eltype(src_image_local), size(src_image_local), pids=local_procs());
-	LOCAL_SRC_IMAGE[:, :] = src_image_local;
-	LOCAL_DST_IMAGE = SharedArray(eltype(dst_image_local), size(dst_image_local), pids=local_procs());
-	LOCAL_DST_IMAGE[:, :] = dst_image_local;
+	SHARED_SRC_IMAGE[1:size(src_image_local, 1), 1:size(src_image_local, 2)] = src_image_local;
+	SHARED_DST_IMAGE[1:size(dst_image_local, 1), 1:size(dst_image_local, 2)] = dst_image_local;
 
   	src_index = src_mesh.index;
 	dst_index = dst_mesh.index;
@@ -236,7 +234,7 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); src_
 	ranges = copy(ranges[ranged_inds]);
 	println("Matching $(src_mesh.index) -> $(dst_mesh.index): $(length(src_nodes)) / $(length(src_mesh.src_nodes)) nodes to check.")
 
-	dst_allpoints = pmap(get_match, src_nodes, ranges, repeated(LOCAL_SRC_IMAGE), repeated(LOCAL_DST_IMAGE));
+	dst_allpoints = pmap(get_match, src_nodes, ranges, repeated(SHARED_SRC_IMAGE), repeated(SHARED_DST_IMAGE));
 	matched_inds = find(i -> i != nothing, dst_allpoints);
 	src_points = copy(src_nodes[matched_inds]);
 	filters = Array{Dict{Any, Any}}(0);
@@ -251,17 +249,17 @@ end
 function sync_images(src_image_ref, dst_image_ref)
 	src_image_local = fetch(src_image_ref);
 	dst_image_local = fetch(dst_image_ref);
-	global LOCAL_SRC_IMAGE = SharedArray(eltype(src_image_local), size(src_image_local), pids=local_procs());
-	global LOCAL_DST_IMAGE = SharedArray(eltype(dst_image_local), size(dst_image_local), pids=local_procs());
-	LOCAL_SRC_IMAGE[:, :] = src_image_local[:, :];
-	LOCAL_DST_IMAGE[:, :] = dst_image_local[:, :];
+	global SHARED_SRC_IMAGE = SharedArray(eltype(src_image_local), size(src_image_local), pids=local_procs());
+	global SHARED_DST_IMAGE = SharedArray(eltype(dst_image_local), size(dst_image_local), pids=local_procs());
+	SHARED_SRC_IMAGE[:, :] = src_image_local[:, :];
+	SHARED_DST_IMAGE[:, :] = dst_image_local[:, :];
 
 	for pid in local_procs()
-	remotecall(pid, sync_images_subroutine, LOCAL_SRC_IMAGE, LOCAL_DST_IMAGE);
+	remotecall(pid, sync_images_subroutine, SHARED_SRC_IMAGE, SHARED_DST_IMAGE);
       end
 #=	tofetch = Array{RemoteRef}(0);
 	for pid in local_procs()
-		push!(tofetch, remotecall(pid, sync_images_subroutine, LOCAL_SRC_IMAGE, LOCAL_DST_IMAGE));
+		push!(tofetch, remotecall(pid, sync_images_subroutine, SHARED_SRC_IMAGE, SHARED_DST_IMAGE));
 	end
       	for ref in tofetch
 		fetch(ref);
@@ -270,8 +268,8 @@ function sync_images(src_image_ref, dst_image_ref)
 end
 
 function sync_images_subroutine(local_src_image, local_dst_image)
-	global LOCAL_SRC_IMAGE = local_src_image;
-	global LOCAL_DST_IMAGE = local_dst_image;
+	global SHARED_SRC_IMAGE = local_src_image;
+	global SHARED_DST_IMAGE = local_dst_image;
 end
 
 function my_host_addr()
