@@ -186,7 +186,7 @@ end
 
 function inspect_montages(username, meshset_ind, match_ind)
   path = get_montage_review_path(username)
-  indrange = get_index_range(indexA, indexB)
+  indrange = get_index_range((1,1,-2,-2), (8,173,-2,-2))
   meshset = load(indrange[meshset_ind])
   println(meshset_ind, ": ", indrange[meshset_ind], " @ ", match_ind, " / ", length(meshset.matches))
   imview, matches, vectors, lines, params = inspect_matches(meshset, match_ind);
