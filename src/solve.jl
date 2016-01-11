@@ -307,6 +307,13 @@ function stats(meshset::MeshSet)
 	residuals_match_post = g_dst_pts_after - g_src_pts_after;
 	r_vals_match = Array{Float64}(map(getindex, props, repeated("r_val")));
 
+	# handle for empty match
+  	if count_filtered_correspondences(match) == 0
+		residuals_match_pre = [[0, 0]];
+		residuals_match_post = [[0, 0]];
+		r_vals_match = [0];
+	end
+
    	res_norm = map(norm, residuals_match_pre)
    	rms_pre = sqrt(mean(res_norm.^2))
    	avg_pre = mean(res_norm)
