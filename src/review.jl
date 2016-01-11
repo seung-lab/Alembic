@@ -206,8 +206,8 @@ function show_blockmatch(match, ind, params)
 end
 
 function display_blockmatch(src_patch, src_pt, dst_patch, dst_pt, xc, offset, params)
-  block_r = params["match"]["block_r"]
-  search_r = params["match"]["search_r"]
+  block_r = params["block_r"]
+  search_r = params["search_r"]
   N=size(xc, 1)
   M=size(xc, 2)
   surf([i for i=1:N, j=1:M], [j for i=1:N, j=1:M], xc, cmap=get_cmap("hot"), 
