@@ -207,7 +207,7 @@ function get_globalized_correspondences(meshset, ind)
   	match = meshset.matches[ind];
   
 	src_pts, dst_pts = get_correspondences(match);
-	filtered_inds = get_filtered_inds(match);
+	filtered_inds = get_filtered_indices(match);
 
 	g_src_pts = src_pts + fill(get_offset(match.src_index), length(src_pts));
 	g_dst_pts = dst_pts + fill(get_offset(match.dst_index), length(dst_pts));
@@ -224,7 +224,7 @@ function get_globalized_correspondences_post(meshset, ind)
   match = meshset.matches[ind];
   
 	src_pts, dst_pts = get_correspondences(match);
-	filtered_inds = get_filtered_inds(match);
+	filtered_inds = get_filtered_indices(match);
 
 	src_mesh = meshes[match.src_index]
 	dst_mesh = meshes[match.dst_index]
