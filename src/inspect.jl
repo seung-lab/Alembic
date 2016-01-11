@@ -16,15 +16,15 @@ function inspect_matches(meshset, k)
 
   img = vcat(img, ones(UInt32, 400, size(img, 2)))
 
-  params = meshset.params
+  params = meshset.properties["params"]["match"]
   params["scale"] = scale
   params["thumb_offset"] = offset
   params["src_index"] = matches.src_index
   params["dst_index"] = matches.dst_index
-  params["src_offset"] = get_offset(meshset.meshes[find_index(meshset, indexA)])
-  params["dst_offset"] = get_offset(meshset.meshes[find_index(meshset, indexB)])
-  params["src_size"] = get_image_size(matches.src_index)
-  params["dst_size"] = get_image_size(matches.dst_index)
+  params["src_offset"] = get_offset(meshset.meshes[find_mesh_index(meshset, indexA)])
+  params["dst_offset"] = get_offset(meshset.meshes[find_mesh_index(meshset, indexB)])
+  params["src_size"] = get_image_sizes(matches.src_index)
+  params["dst_size"] = get_image_sizes(matches.dst_index)
 
   src_nodes, dst_nodes = get_globalized_correspondences(meshset, k)
   vectors = [hcat(src_nodes...); hcat(dst_nodes...)]

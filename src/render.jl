@@ -51,6 +51,12 @@ function render_montaged(meshset)
   write_seams(meshset, imgs, offsets, indices)
 end
 
+function render_while_we_wait()
+  render_montaged(2, 20, 2, 70)
+  render_montaged(3, 25, 3, 100)
+  render_montaged(4, 25, 4, 120)
+end
+
 """
 Cycle through JLD files in montaged directory and render montage
 """
