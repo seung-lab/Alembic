@@ -45,9 +45,9 @@ function get_path(index, ext = ".h5")
         end
         #path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ext))
 	#temporary hack for .tif raw images
-        path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ".tif"))
+        path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ext))
     end
-    println(path)
+    # println(path)
     return path
 end
 
@@ -148,6 +148,10 @@ end
 
 if contains(gethostname(), "seungworkstation")
  bucket_dir_path = joinpath(homedir(), "seungmount/")
+end
+
+if contains(gethostname(), "seungworkstation08")
+ bucket_dir_path = joinpath(homedir(), "seungmount/Omni/alignment/datasets/")
 end
 
 #=if isfile("bucket_dir_path.txt")

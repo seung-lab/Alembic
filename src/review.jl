@@ -200,37 +200,6 @@ function draw_box(img::Array{UInt32}, bounds)
   return get_drawing(srf)
 end
 
-function show_blockmatch(match, ind, params)
-  match_details = get_correspondence_patches(match, ind)
-  display_blockmatch(match_details..., params)  
-end
-
-function display_blockmatch(src_patch, src_pt, dst_patch, dst_pt, xc, offset, params)
-  block_r = params["block_r"]
-  search_r = params["search_r"]
-  N=size(xc, 1)
-  M=size(xc, 2)
-  surf([i for i=1:N, j=1:M], [j for i=1:N, j=1:M], xc, cmap=get_cmap("hot"), 
-                          rstride=10, cstride=10, linewidth=0, antialiased=false)
-  xc_image = xcorr2Image(xc)
-  xc_image = padimage(xc_image, block_r, block_r, block_r, block_r, 1)
-  hot = create_hot_colormap()
-  xc_color = apply_colormap(xc_image, hot)
-  xc = padimage(xc', block_r, block_r, block_r, block_r, 1)
-  fused_img, _ = imfuse(dst_patch, [0,0], src_patch, offset)
-
-  src = convert(Array{UInt32,2}, src_patch).<< 8
-  dst = convert(Array{UInt32,2}, dst_patch).<< 16
-
-  cgrid = canvasgrid(2,2; pad=10)
-  opts = Dict(:pixelspacing => [1,1])
-
-  imgc, img2 = view(cgrid[1,1], src; opts...)
-  imgc, img2 = view(cgrid[2,1], dst; opts...)
-  imgc, img2 = view(cgrid[2,2], fused_img; opts...)
-  imgc, img2 = view(cgrid[1,2], xc_color'; opts...)
-end
-
 function display_blockmatch(params, src_point, dst_point)
   src_index = params["src_index"]
   dst_index = params["dst_index"]
@@ -254,10 +223,10 @@ function display_blockmatch(params, src_point, dst_point)
   src_slice_full = colon(src_bnds_full[1:2]...), colon(src_bnds_full[3:4]...)
   dst_slice_orig = colon(dst_bnds_orig[1:2]...), colon(dst_bnds_orig[3:4]...)
   
-  src_img = get_h5_slice(get_h5_path(src_index), src_slice)
-  dst_img_new = get_h5_slice(get_h5_path(dst_index), dst_slice)
-  src_img_full = get_h5_slice(get_h5_path(src_index), src_slice_full)  
-  dst_img_orig = get_h5_slice(get_h5_path(dst_index), dst_slice_orig)  
+  src_img = get_h5_slice(get_path(src_index), src_slice)
+  dst_img_new = get_h5_slice(get_path(dst_index), dst_slice)
+  src_img_full = get_h5_slice(get_path(src_index), src_slice_full)  
+  dst_img_orig = get_h5_slice(get_path(dst_index), dst_slice_orig)  
 
   xc = normxcorr2(src_img, dst_img_orig)
   N=size(xc, 1)
@@ -368,7 +337,8 @@ function edit_matches(imgc, img2, vectors, vectors_t, params)
             #   update_annotations(imgc, img2, original_lines, mask)
             #   push!(indices_to_remove, idx)
             # end
-            inspect_window = display_blockmatch(params, ptA, ptB)
+            inspect_window = show_blockmatch(match, idx, params)
+            # inspect_window = display_blockmatch(params, ptA, ptB)
             inspected_index_removed = false
             inspected_index = idx
           end
@@ -1059,7 +1029,8 @@ end
 function get_matches(meshset, indexA, indexB)
   match_no = find_matches_index(meshset, indexA, indexB)
   if match_no > 0
-    return get_matched_points_t(meshset, match_no)
+    src_nodes, dst_nods, filter = get_globalized_correspondences(meshset, match_no)
+    return src_nodes[filter], dst_nodes[filter]
   end
   return [], []
 end

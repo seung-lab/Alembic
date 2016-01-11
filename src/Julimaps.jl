@@ -55,7 +55,7 @@ using IterativeSolvers
 using ImageRegistration
 using Optim
 using Distributions
-#using PyPlot
+using PyPlot
 
 include("Index.jl")
 include("registry.jl")
