@@ -150,7 +150,7 @@ if contains(gethostname(), "seungworkstation")
  bucket_dir_path = joinpath(homedir(), "seungmount/")
 end
 
-if contains(gethostname(), "seungworkstation08")
+if contains(gethostname(), "seungworkstation04")
  bucket_dir_path = joinpath(homedir(), "seungmount/Omni/alignment/datasets/")
 end
 
