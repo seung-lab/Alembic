@@ -74,7 +74,7 @@ function render_montaged(waferA, secA, waferB, secB, render_full=false)
     indices = [x[2] for x in warps];
     # review images
     # write_seams(meshset, imgs, offsets, indices)
-    write_seams_with_points(meshset, imgs, offsets, indices)
+    # write_seams_with_points(meshset, imgs, offsets, indices)
     if render_full
       println(typeof(imgs))
       img, offset = merge_images(imgs, offsets)

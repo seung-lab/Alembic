@@ -84,7 +84,7 @@ function edit_matches(imgc, img2, matches, vectors, params)
           # annpt = ([lines[2,annidx], lines[1,annidx]] + offset) / scale 
           annpt = [lines[2,annidx], lines[1,annidx]]
           println(annidx, ": ", annpt)
-          idx = find_idx_of_nearest_pt(vectors[1:2,:], annpt, 10)
+          idx = find_idx_of_nearest_pt(vectors[1:2,:], annpt, 15)
           if idx > 0
             ptA = vectors[1:2,idx] # - params["src_offset"]
             ptB = vectors[3:4,idx] # - params["dst_offset"]
@@ -194,7 +194,7 @@ function inspect_montages(username, meshset_ind, match_ind)
   path = get_montage_review_path(username)
   indrange = get_index_range((1,1,-2,-2), (8,173,-2,-2))
   meshset = load(indrange[meshset_ind])
-  println(meshset_ind, ": ", indrange[meshset_ind], " @ ", match_ind, " / ", length(meshset.matches))
+  println("\n", meshset_ind, ": ", indrange[meshset_ind], " @ ", match_ind, " / ", length(meshset.matches))
   imview, matches, vectors, lines, params = inspect_matches(meshset, match_ind);
   indices_to_remove, break_review = edit_matches(imview..., matches, vectors, params);
   if !break_review
