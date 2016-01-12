@@ -34,6 +34,7 @@ Remove points displayed on ImageView with right-click
 function edit_matches(imgc, img2, matches, vectors, params)
     e = Condition()
 
+    break_review = false
     indices_to_remove = Array{Integer,1}()
     lines = Void
     original_lines = Void
@@ -50,7 +51,7 @@ function edit_matches(imgc, img2, matches, vectors, params)
     bind(c, "<Button-3>", (c, x, y)->inspect_match(parse(Int, x), parse(Int, y)))
     bind(c, "<Control-Button-3>", (c, x, y)->remove_match(parse(Int, x), parse(Int, y)))
     bind(win, "<Delete>", path->path)
-    bind(win, "<Escape>", path->end_edit())
+    bind(win, "<Escape>", path->exit_loop())
     bind(win, "<Destroy>", path->end_edit())
 
     inspect_window = Void
@@ -116,6 +117,11 @@ function edit_matches(imgc, img2, matches, vectors, params)
       end
     end
 
+  function exit_loop()
+    break_review = true
+    end_edit()
+  end
+
     function end_edit()
         println("End edit\n")
         notify(e)
@@ -131,7 +137,7 @@ function edit_matches(imgc, img2, matches, vectors, params)
     #         "3) Exit window or press Escape")
     wait(e)
 
-    return indices_to_remove
+    return indices_to_remove, break_review
 end
 
 """
@@ -186,10 +192,18 @@ end
 
 function inspect_montages(username, meshset_ind, match_ind)
   path = get_montage_review_path(username)
-  indrange = get_index_range((1,1,-2,-2), (8,173,-2,-2))
+  indrange = get_index_range(indexA, indexB)
   meshset = load(indrange[meshset_ind])
   println(meshset_ind, ": ", indrange[meshset_ind], " @ ", match_ind, " / ", length(meshset.matches))
   imview, matches, vectors, lines, params = inspect_matches(meshset, match_ind);
-  indices_to_remove = edit_matches(imview..., matches, vectors, params);
-  store_points(path, meshset, match_ind, indices_to_remove, username, "manual")
+  indices_to_remove, break_review = edit_matches(imview..., matches, vectors, params);
+  if !break_review
+    store_points(path, meshset, k, indices_to_remove, username, "manual")
+    match_ind += 1
+    if match_ind > length(meshset.matches)
+      meshset_ind += 1
+      match_ind = 1
+    end
+    inspect_montages(username, meshset_ind, match_ind)
+  end
 end
