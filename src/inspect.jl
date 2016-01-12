@@ -191,5 +191,5 @@ function inspect_montages(username, meshset_ind, match_ind)
   println(meshset_ind, ": ", indrange[meshset_ind], " @ ", match_ind, " / ", length(meshset.matches))
   imview, matches, vectors, lines, params = inspect_matches(meshset, match_ind);
   indices_to_remove = edit_matches(imview..., matches, vectors, params);
-  store_points(path, meshset, k, indices_to_remove, username, "manual")
+  store_points(path, meshset, match_ind, indices_to_remove, username, "manual")
 end
