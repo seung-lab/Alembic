@@ -126,9 +126,9 @@ function edit_matches(imgc, img2, matches, vectors, params)
         bind(win, "<Escape>", path->path)
     end
 
-    println("1) Right click to inspect correspondences\n",
-            "2) Ctrl + right click to remove correspondences\n",
-            "3) Exit window or press Escape")
+    # println("1) Right click to inspect correspondences\n",
+    #         "2) Ctrl + right click to remove correspondences\n",
+    #         "3) Exit window or press Escape")
     wait(e)
 
     return indices_to_remove
