@@ -404,7 +404,7 @@ function update_annotations(imgc, img2, lines, mask)
       an.data.lines = lines[:, mask]
     end
   end
-  println("Removing ", sum(!mask), " matches from GUI")
+  # println("Removing ", sum(!mask), " matches from GUI")
   ImageView.redraw(imgc)
   return mask
 end

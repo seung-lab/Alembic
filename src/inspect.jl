@@ -198,7 +198,7 @@ function inspect_montages(username, meshset_ind, match_ind)
   imview, matches, vectors, lines, params = inspect_matches(meshset, match_ind);
   indices_to_remove, break_review = edit_matches(imview..., matches, vectors, params);
   if !break_review
-    store_points(path, meshset, k, indices_to_remove, username, "manual")
+    store_points(path, meshset, match_ind, indices_to_remove, username, "manual")
     match_ind += 1
     if match_ind > length(meshset.matches)
       meshset_ind += 1
