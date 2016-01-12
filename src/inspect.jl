@@ -53,6 +53,8 @@ function edit_matches(imgc, img2, matches, vectors, params)
     bind(win, "<Delete>", path->path)
     bind(win, "<Escape>", path->exit_loop())
     bind(win, "<Destroy>", path->end_edit())
+    bind(win, "<Return>", path->end_edit())
+    bind(win, "z", path->end_edit())
 
     inspect_window = Void
     inspected_index = Void
@@ -84,7 +86,7 @@ function edit_matches(imgc, img2, matches, vectors, params)
           # annpt = ([lines[2,annidx], lines[1,annidx]] + offset) / scale 
           annpt = [lines[2,annidx], lines[1,annidx]]
           println(annidx, ": ", annpt)
-          idx = find_idx_of_nearest_pt(vectors[1:2,:], annpt, 15)
+          idx = find_idx_of_nearest_pt(vectors[1:2,:], annpt, 11)
           if idx > 0
             ptA = vectors[1:2,idx] # - params["src_offset"]
             ptB = vectors[3:4,idx] # - params["dst_offset"]
@@ -122,15 +124,18 @@ function edit_matches(imgc, img2, matches, vectors, params)
     end_edit()
   end
 
-    function end_edit()
-        println("End edit\n")
-        notify(e)
-        bind(c, "<Button-3>", path->path)
-        bind(c, "<Control-Button-3>", path->path)
-        bind(win, "<Delete>", path->path)
-        bind(win, "<Destroy>", path->path)
-        bind(win, "<Escape>", path->path)
-    end
+  function end_edit()
+    println("End edit\n")
+    notify(e)
+    bind(c, "<Button-3>", path->path)
+    bind(c, "<Control-Button-3>", path->path)
+    bind(win, "<Delete>", path->path)
+    bind(win, "<Destroy>", path->path)
+    bind(win, "<Escape>", path->path)
+    bind(win, "<Return>", path->path)
+    bind(win, "z", path->path)
+    destroy(win)
+  end
 
     # println("1) Right click to inspect correspondences\n",
     #         "2) Ctrl + right click to remove correspondences\n",
