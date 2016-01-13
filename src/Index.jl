@@ -2,6 +2,10 @@ function overview(wafer, section)
 	return (wafer, section, OVERVIEW_INDEX, OVERVIEW_INDEX);
 end
 
+function premontaged(wafer, section)
+	return (wafer, section, PREMONTAGED_INDEX, PREMONTAGED_INDEX);
+end
+
 function montaged(wafer, section)
 	return (wafer, section, MONTAGED_INDEX, MONTAGED_INDEX);
 end
@@ -97,7 +101,8 @@ function get_preceding(index)
   registry = get_registry(index);
   loc_in_reg = find_in_registry(index);
   if loc_in_reg == 0 return NO_INDEX; end
-  if loc_in_reg == 1 return NO_INDEX; end
+  if loc_in_reg == 1 return index; end
+  #if loc_in_reg == 1 return NO_INDEX; end
   return registry[loc_in_reg - 1, 2];
 end
 
@@ -114,15 +119,14 @@ function get_index_range(first_index, last_index)
 end
 
 function get_range_in_registry(indexA, indexB)
-	if indexA[3] != indexB[3] || indexA[4] != indexB[4]
-		if indexA[1:2] == indexB[1:2]
+	
+	if indexA[1:2] == indexB[1:2] && is_premontaged(indexA) && is_premontaged(indexB)
 			return find(ind -> ind[1:2] == indexA[1:2], REGISTRY_PREMONTAGED[:, 2]);
-		else
-		println("The indices are from different pipeline stages or from different sections for premontage. Aborting.");
-		return Void;
-		end
 	end
-
+	if indexA[3] != indexB[3] || indexA[4] != indexB[4]
+		println("The indices are from different pipeline stages or from different sections for premontage. Aborting.");
+		return nothing;
+	end
 	return find_in_registry(indexA):find_in_registry(indexB);
 end
 

@@ -43,8 +43,6 @@ function get_path(index, ext = ".h5")
         else
             section_folder = string("S2-W00", index[1], "_Sec", index[2], "_Montage")
         end
-        #path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ext))
-	#temporary hack for .tif raw images
         path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ext))
     end
     # println(path)
