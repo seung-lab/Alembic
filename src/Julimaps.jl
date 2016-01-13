@@ -37,6 +37,7 @@ global const NO_RANGE = (0:0, 0:0);
 global const NO_INDEX = (0, 0, 0, 0);
 
 global const OVERVIEW_INDEX = -1;
+global const PREMONTAGED_INDEX = 1;
 global const MONTAGED_INDEX = -2;
 global const PREALIGNED_INDEX = -3;
 global const ALIGNED_INDEX = -4;

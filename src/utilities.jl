@@ -44,7 +44,7 @@ index: 4-element tuple for section identifier
 offset: 2-element collection for the i,j offset
 sz: 2-element collection for the i,j height and width
 """
-function update_offsets(index::Index, offset, sz=[0, 0])
+function update_offset(index::Index, offset, sz=[0, 0])
   
   if is_montaged(index) registry_fp = montaged_registry_path;
   elseif is_prealigned(index) registry_fp = prealigned_registry_path;
@@ -82,8 +82,8 @@ function update_offsets(index::Index, offset, sz=[0, 0])
   end
 end
 
-function update_offsets(name, offset, sz=[0, 0])
-  update_offsets(parse_name(name), offset, sz);
+function update_offset(name, offset, sz=[0, 0])
+  update_offset(parse_name(name), offset, sz);
 end
 """
 Create array of alphabetized filenames that have file extension in directory

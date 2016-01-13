@@ -49,6 +49,15 @@ function add_match!(meshset::MeshSet, match::Match)
   push!(meshset.matches, match);
 end
 
+### adding
+function filter!(meshset::MeshSet, property_name, compare, threshold)
+	total = 0;
+	for match in meshset.matches
+		total = total + filter!(match, property_name, compare, threshold)
+	end
+	println("$total / $(count_correspondences(meshset)) matches filtered")
+end
+
 ### initialise
 function MeshSet()
  	meshes = Array{Mesh, 1}(0)
@@ -56,6 +65,23 @@ function MeshSet()
   	properties = Dict{Any, Any}()
 
 	return MeshSet(meshes, matches, properties)
+end
+
+function prealign(index; params=get_params(index))
+	src_index = index;
+	dst_index = get_preceding(src_index)
+	meshset = MeshSet();
+	push!(meshset.meshes, Mesh(src_index, params))
+	push!(meshset.meshes, Mesh(dst_index, params))
+	push!(meshset.matches, Match(meshset.meshes[1], meshset.meshes[2], params))
+	solve!(meshset, method="regularized");
+	save(meshset);
+	return meshset;
+end
+
+function MeshSet(index; params=get_params(index))
+	if is_premontaged(index) return MeshSet(index, index); end
+	if is_montaged(index) return MeshSet(index, index); end
 end
 
 function MeshSet(first_index, last_index; params=get_params(first_index), solve_method="elastic")
@@ -70,7 +96,6 @@ function MeshSet(first_index, last_index; params=get_params(first_index), solve_
 				)
 	meshset = MeshSet(meshes, matches, properties);
 	match!(meshset);
-	#render_montaged(meshset);
 	solve!(meshset, method=solve_method);
 	save(meshset);
 	return meshset;
@@ -106,7 +131,7 @@ function match!(meshset::MeshSet)
 	for mesh in meshset.meshes
 		imgdict[mesh] = get_image(mesh);
 	end
-
+	# monoblock match for detection
 	for i in 1:length(pairs)
 		add_match!(meshset, Match(meshset.meshes[pairs[i][1]], meshset.meshes[pairs[i][2]], src_image=imgdict[meshset.meshes[pairs[i][1]]], dst_image=imgdict[meshset.meshes[pairs[i][2]]], params));
 	end

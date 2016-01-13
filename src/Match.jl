@@ -26,13 +26,17 @@ function get_correspondence_patches(match::Match, ind)
 end
 
 function get_ranges(pt, src_mesh, dst_mesh, params)
-	get_ranges(pt, src_mesh, dst_mesh, params["match"]["block_r"], params["match"]["search_r"]);
+	get_ranges(pt, src_mesh, dst_mesh, params["match"]["block_r"], params["match"]["search_r"], params["registry"]["global_offsets"]);
 end
 
-function get_ranges(pt, src_index, dst_index, block_r::Int64, search_r::Int64)
+function get_ranges(pt, src_index, dst_index, block_r::Int64, search_r::Int64, global_offsets = true)
 	# convert to local coordinates in both src / dst images, and then round up to an integer
 	src_pt = ceil(Int64, pt);
+	if global_offsets
 	dst_pt = pt + get_offset(src_index) - get_offset(dst_index);
+	else
+	dst_pt = pt + get_offset(src_index)
+	end
 	dst_pt = ceil(Int64, dst_pt);
 
 	block_range = -block_r:block_r;
@@ -59,8 +63,37 @@ function get_ranges(pt, src_index, dst_index, block_r::Int64, search_r::Int64)
 	return src_index, range_in_src, [src_pt_locs[1], src_pt_locs[2]], dst_index, range_in_dst, dst_range_full, [dst_pt_locs[1], dst_pt_locs[2]], [dst_pt_locs_full[1], dst_pt_locs_full[2]];
 end
 
+# includes range for this
+function monoblock_match(src_index, dst_index, src_image, dst_image, params=get_params(src_index))
+	if params["match"]["monoblock_match"] == false return; end
+	scale = params["match"]["monoblock_scale"];
+	padding = params["match"]["monoblock_padding"];
+	src_image_scaled = imscale(src_image, scale)[1]
+	dst_image_scaled = imscale(dst_image, scale)[1]
+
+	range_in_src = 1:size(src_image_scaled, 1), 1:size(src_image_scaled, 2);
+	range_in_dst = 1:size(dst_image_scaled, 1), 1:size(dst_image_scaled, 2);
+	dst_range_full = 1 - round(Int64, padding * size(dst_image_scaled, 1)):round(Int64, (1 + padding) * size(dst_image_scaled, 1)), 1 - round(Int64, padding * size(dst_image_scaled, 2)):round(Int64, (1 + padding) * size(dst_image_scaled, 2))
+	src_pt_locs = [1, 1]; 
+	dst_pt_locs = [1, 1];
+	dst_pt_locs_full = [1 + round(Int64, padding * size(dst_image_scaled, 2)), 1 + round(Int64, padding * size(dst_image_scaled, 2))];
+
+	ranges = src_index, range_in_src, src_pt_locs, dst_index, range_in_dst, dst_range_full, dst_pt_locs, dst_pt_locs_full
+
+	dv = get_match([1, 1], ranges, src_image, dst_image)[3]["dv"]
+
+	if params["registry"]["global_offsets"]
+	update_offset(src_index, get_offset(dst_index) + dv / scale);
+	else
+	update_offset(src_index, dv / scale);
+	end
+	print("    ")
+	println("Monoblock matched... relative displacement calculated at $(dv / scale)")
+
+end
+
 #using sharedarray
-function get_match(pt, ranges, src_image, dst_image)
+function get_match(pt, ranges, src_image, dst_image, global_offset = true)
 	src_index, src_range, src_pt_loc, dst_index, dst_range, dst_range_full, dst_pt_loc, dst_pt_loc_full = ranges;
 
 	if dst_range != dst_range_full
@@ -97,7 +130,11 @@ function get_match(pt, ranges, src_image, dst_image)
 	correspondence_properties["dv"] = [di, dj];
 	correspondence_properties["norm"] = norm([di, dj]);
 	correspondence_properties["r_val"] = r_max;
+	if global_offset
 	return vcat(pt + get_offset(src_index) - get_offset(dst_index) + [di, dj], correspondence_properties);
+	else
+	return vcat(pt + get_offset(src_index) + [di, dj], correspondence_properties);
+	end
 end
 
 function get_property(correspondence_property, property_name::String)
@@ -108,57 +145,15 @@ function get_properties(match::Match, property_name::String)
 	return map(get_property, match.correspondence_property, repeated(property_name));
 end
 
-function filter_r_val!(match::Match, min_r)
-	r_vals = map(get_r_val, match.correspondence_properties);
-	inds_to_filter = find(i -> i < min_r, r_vals);
+function filter!(match::Match, property_name, compare, threshold)
+	attributes = map(get_property, match.correspondence_properties, repeated(property_name));
+	inds_to_filter = find(i -> compare(i, threshold), attributes);
 	push!(match.filters, Dict{Any, Any}(
 				"by"	  => ENV["USER"],
 				"machine" => gethostname(),
 				"timestamp" => string(now()),
-				"type"	  => "r_val, absolute",
-				"threshold" => min_r,
-				"rejected"  => inds_to_filter
-			      ));
-	#println("$(length(inds_to_filter)) / $(count_correspondences(match)) rejected.");
-	return length(inds_to_filter);
-end
-
-function filter_normalized_dyn_range!(match::Match, min_normalized_dyn_range)
-	norm_dyn_ranges = map(get_property, match.correspondence_properties, repeated("src_normalized_dyn_range"));
-	inds_to_filter = find(i -> i < min_normalized_dyn_range, norm_dyn_ranges);
-	push!(match.filters, Dict{Any, Any}(
-				"by"	  => ENV["USER"],
-				"type"	  => "normalized_dyn_range, src",
-				"threshold" => min_normalized_dyn_range,
-				"timestamp" => string(now()),
-				"rejected"  => inds_to_filter
-			      ));
-	#println("$(length(inds_to_filter)) / $(count_correspondences(match)) rejected.");
-	return length(inds_to_filter);
-end
-
-function filter_kurtosis!(match::Match, max_acceptable_kurtosis)
-	kurtoses = map(get_property, match.correspondence_properties, repeated("src_kurtosis"));
-	inds_to_filter = find(i -> abs(i) > max_acceptable_kurtosis, kurtoses);
-	push!(match.filters, Dict{Any, Any}(
-				"by"	  => ENV["USER"],
-				"type"	  => "kurtosis, absolute, src",
-				"threshold" => max_acceptable_kurtosis,
-				"timestamp" => string(now()),
-				"rejected"  => inds_to_filter
-			      ));
-	println("$(length(inds_to_filter)) / $(count_correspondences(match)) rejected.");
-	return length(inds_to_filter);
-end
-
-function filter_norm_absolute!(match::Match, max_norm)
-	norms = map(get_norm, match.correspondence_properties);
-	inds_to_filter = find(i -> i > max_norm, norms);
-	push!(match.filters, Dict{Any, Any}(
-				"by"	  => ENV["USER"],
-				"type"	  => "max_norm, absolute",
-				"threshold" => max_norm,
-				"timestamp" => string(now()),
+				"type"	  => property_name,
+				"threshold" => threshold,
 				"rejected"  => inds_to_filter
 			      ));
 	#println("$(length(inds_to_filter)) / $(count_correspondences(match)) rejected.");
@@ -211,30 +206,27 @@ function get_filtered_indices(match::Match)
 	return setdiff(1:count_correspondences(match), union(map(getindex, match.filters, repeated("rejected"))...));
 end
 
-function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); src_image=nothing, dst_image=nothing)
+function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); src_image=get_image(src_mesh), dst_image=get_image(dst_mesh))
 	if src_mesh == dst_mesh
 		return nothing
 	end
 
-	src_image_local = src_image;
-	dst_image_local = dst_image;
-
-	if src_image == nothing src_image_local = get_image(src_mesh); end
-	if dst_image == nothing dst_image_local = get_image(dst_mesh); end
-
-	SHARED_SRC_IMAGE[1:size(src_image_local, 1), 1:size(src_image_local, 2)] = src_image_local;
-	SHARED_DST_IMAGE[1:size(dst_image_local, 1), 1:size(dst_image_local, 2)] = dst_image_local;
-
+	SHARED_SRC_IMAGE[1:size(src_image, 1), 1:size(src_image, 2)] = src_image;
+	SHARED_DST_IMAGE[1:size(dst_image, 1), 1:size(dst_image, 2)] = dst_image;
+	println("Matching $(src_mesh.index) -> $(dst_mesh.index):")
   	src_index = src_mesh.index;
 	dst_index = dst_mesh.index;
+
+	monoblock_match(src_index, dst_index, src_image, dst_image, params);
 
 	ranges = pmap(get_ranges, src_mesh.src_nodes, repeated(src_index), repeated(dst_index), repeated(params));
 	ranged_inds = find(i -> i != nothing, ranges);
 	src_nodes = copy(src_mesh.src_nodes[ranged_inds]);
 	ranges = copy(ranges[ranged_inds]);
-	println("Matching $(src_mesh.index) -> $(dst_mesh.index): $(length(src_nodes)) / $(length(src_mesh.src_nodes)) nodes to check.")
+	print("    ")
+	println("$(length(src_nodes)) / $(length(src_mesh.src_nodes)) nodes to check.")
 
-	dst_allpoints = pmap(get_match, src_nodes, ranges, repeated(SHARED_SRC_IMAGE), repeated(SHARED_DST_IMAGE));
+	dst_allpoints = pmap(get_match, src_nodes, ranges, repeated(SHARED_SRC_IMAGE), repeated(SHARED_DST_IMAGE), repeated(params["registry"]["global_offsets"]));
 	matched_inds = find(i -> i != nothing, dst_allpoints);
 	src_points = copy(src_nodes[matched_inds]);
 	filters = Array{Dict{Any, Any}}(0);

@@ -88,6 +88,16 @@ function regularized_solve(Ms::MeshSet; k=1, lambda=0.9)
 end
 
 """
+ONLY WORKS ON CASES WHERE MATCHES[1] = MESHES[1] -> MESHES[2]
+"""
+function regularized_solve!(Ms::MeshSet; k=1, lambda=0.9)
+	tform = regularized_solve(Ms, k, lambda);
+	for ind in 1:count_nodes(Ms.meshes[1])
+		dst_nodes[ind] = ([src_nodes[ind]; 1]' * tform)[1:2]
+	end
+end
+
+"""
 Calculate affine transform of the matches, and set nodes_t of the moving mesh
 """
 function affine_solve!(Ms)
@@ -283,11 +293,22 @@ function stats(meshset::MeshSet)
 	println();
 
   for match in meshset.matches
-	src_pts, dst_pts = get_filtered_correspondences(match);
-	props = get_filtered_correspondence_properties(match);
-
 	src_mesh = meshes[match.src_index]
 	dst_mesh = meshes[match.dst_index]
+
+	# handle for empty match
+  	if count_filtered_correspondences(match) == 0
+		print(@sprintf("%4i", findfirst(this -> meshset.matches[this] == match, 1:count_matches(meshset))));
+		print(@sprintf("%14s", string(src_mesh.index)))
+		print("->")
+		print(@sprintf("%14s", string(dst_mesh.index)))
+		print(@sprintf("%6i", count_filtered_correspondences(match)))
+		println()
+		continue;
+	end
+
+	src_pts, dst_pts = get_filtered_correspondences(match);
+	props = get_filtered_correspondence_properties(match);
 
 	src_pt_triangles = map(find_mesh_triangle, repeated(src_mesh), src_pts);
 	src_pt_weights = map(get_triangle_weights, repeated(src_mesh), src_pts, src_pt_triangles);
@@ -306,13 +327,6 @@ function stats(meshset::MeshSet)
 	residuals_match_pre = g_dst_pts - g_src_pts;
 	residuals_match_post = g_dst_pts_after - g_src_pts_after;
 	r_vals_match = Array{Float64}(map(getindex, props, repeated("r_val")));
-
-	# handle for empty match
-  	if count_filtered_correspondences(match) == 0
-		residuals_match_pre = [[0, 0]];
-		residuals_match_post = [[0, 0]];
-		r_vals_match = [0];
-	end
 
    	res_norm = map(norm, residuals_match_pre)
    	rms_pre = sqrt(mean(res_norm.^2))
