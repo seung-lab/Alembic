@@ -13,14 +13,18 @@ end
 function count_correspondences(match::Match) return size(match.src_points, 1);	end
 
 function get_correspondence_patches(match::Match, ind)
-	src_img = get_image(match.src_index);
-	dst_img = get_image(match.dst_index);
-	src_patch = src_img[match.correspondence_properties[ind]["src_range"]...]
-	src_pt = match.correspondence_properties[ind]["src_pt_loc"]
-	dst_patch = dst_img[match.correspondence_properties[ind]["dst_range"]...]
-	dst_pt = match.correspondence_properties[ind]["dst_pt_loc"]
+	src_path = get_path(match.src_index);
+	dst_path = get_path(match.dst_index);
+	
+	assert(src_path[end-1:end] == "h5")
+
+	props = match.correspondence_properties[ind]
+	src_patch = h5read(src_path, "img", props["src_range"])
+	src_pt = props["src_pt_loc"]
+	dst_patch = h5read(dst_path, "img", props["dst_range"])
+	dst_pt = props["dst_pt_loc"]
 	xc = normxcorr2(src_patch, dst_patch);
-	dv = match.correspondence_properties[ind]["dv"]
+	dv = props["dv"]
 
 	return src_patch, src_pt, dst_patch, dst_pt, xc, dst_pt-src_pt+dv
 end

@@ -44,10 +44,8 @@ function get_path(index, ext = ".h5")
             section_folder = string("S2-W00", index[1], "_Sec", index[2], "_Montage")
         end
         path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ext))
-	#temporary hack for .tif raw images
-    #    path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ".tif"))
     end
-    println(path)
+    # println(path)
     return path
 end
 
@@ -86,6 +84,11 @@ function waferpaths_to_dict(waferpath_filename)
         end
     end
     return wdict
+end
+
+function parse_index(s::String)
+    m = match(r"(\d*),(\d*),(\d*),(\d*)", s)
+    return (parse(Int, m[1]), parse(Int, m[2]), parse(Int, m[3]), parse(Int, m[4]))
 end
 
 function parse_name(name::String)
@@ -148,6 +151,10 @@ end
 
 if contains(gethostname(), "seungworkstation")
  bucket_dir_path = joinpath(homedir(), "seungmount/")
+end
+
+if contains(gethostname(), "seungworkstation04")
+ bucket_dir_path = joinpath(homedir(), "seungmount/Omni/alignment/datasets/")
 end
 
 #=if isfile("bucket_dir_path.txt")
