@@ -88,6 +88,11 @@ function waferpaths_to_dict(waferpath_filename)
     return wdict
 end
 
+function parse_index(s::String)
+    m = match(r"(\d*),(\d*),(\d*),(\d*)", s)
+    return (parse(Int, m[1]), parse(Int, m[2]), parse(Int, m[3]), parse(Int, m[4]))
+end
+
 function parse_name(name::String)
 
     ret = (0, 0, 0, 0)
@@ -150,9 +155,7 @@ if contains(gethostname(), "seungworkstation")
  bucket_dir_path = joinpath(homedir(), "seungmount/")
 end
 
-tracer_hostnames = ["seungworkstation04", "mycroft", "seungworkstation10", "hogwarts"]
-
-if gethostname() in tracer_hostnames
+if contains(gethostname(), "seungworkstation04")
  bucket_dir_path = joinpath(homedir(), "seungmount/Omni/alignment/datasets/")
 end
 

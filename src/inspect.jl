@@ -212,3 +212,54 @@ function inspect_montages(username, meshset_ind, match_ind)
     inspect_montages(username, meshset_ind, match_ind)
   end
 end
+
+"""
+Combine stack error log files of all tracers to create one log matrix
+"""
+function compile_tracer_montage_review_logs()
+  tracers = ["hmcgowan", "bsilverman", "merlinm", "kpw3"]
+  logs = []
+  for tracer in tracers
+    path = get_montage_review_path(tracer)
+    if isfile(path)
+      push!(logs, readdlm(path))
+    end
+  end
+  return vcat(logs...)
+end
+
+function show_montage_inspection_progress(show_stats=false)
+  path = joinpath(MONTAGED_DIR, "review")
+  montages = get_index_range((1,1,-2,-2), (8,173,-2,-2))
+  factor = 100
+  x = 1:(factor*length(montages))
+  y = zeros(Int64, factor*length(montages))
+  logs = compile_tracer_montage_review_logs()
+  tracers = unique(logs[:, 2])
+  fig, ax = PyPlot.subplots()
+  for tracer in tracers
+    log = logs[logs[:,2] .== tracer, :]
+    log_time = round(Int64, (log[:,1] % 10^6) / 100)
+    meshset_indices = [(parse_index(l)[1:2]..., -2, -2) for l in log[:,3]]
+    log_k = map(x -> findfirst(montages, x)*factor, meshset_indices)
+    log_k += log[:,5]
+    y[log_k] = log_time
+    ax[:plot](log_k, log_time, ".", label=tracer)
+    if show_stats
+      times = log[sortperm(log[:, 1]), 1]
+      dt = [times[i] - times[i-1] for i in 2:length(times)]
+      dt_med = median(dt)
+      reviews = size(log,1)
+      first_day = round(Int, minimum(times) / 1000000) % 10
+      last_day = round(Int, maximum(times) / 1000000) % 10
+      work_hrs = 8
+      println(tracer, ": ", dt_med, " s, ", reviews, ", ", round(Int, reviews/(last_day-first_day+1)/8), " seams/hr")
+    end
+  end
+  ax[:legend](loc="best")
+  x_wo = x[y.==0]
+  x_wo = x_wo[0 .< x_wo % factor .<= 84]
+  PyPlot.plot(x_wo, zeros(Int64, length(x_wo)), ".")
+  seams = [join([logs[i,3], logs[i,4]]) for i in 1:size(logs, 1)]
+  println("Reviewed seams: ", length(unique(seams)), " / ", sum(y.>0) + length(x_wo))
+end
