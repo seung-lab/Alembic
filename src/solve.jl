@@ -15,13 +15,13 @@ function get_homogeneous_nodes(meshset::MeshSet, k)
 end
 
 #filtered ones only
-function get_homogeneous_correspondences(match::Match)
-  src_points, dst_points = get_filtered_correspondences(match);
+function get_homogeneous_correspondences(match::Match; globalized = false)
+  src_points, dst_points = get_filtered_correspondences(match; globalized=globalized);
   return homogenize_points(src_points), homogenize_points(dst_points);
 end
 
-function get_homogeneous_correspondences(meshset::MeshSet, k)
-  return get_homogeneous_correspondences(meshset.matches[k])
+function get_homogeneous_correspondences(meshset::MeshSet, k; globalized = false)
+  return get_homogeneous_correspondences(meshset.matches[k]; globalized=globalized)
 end
 
 """
@@ -65,7 +65,8 @@ Return right-hand matrix for the matches
 `pts_src*T ~= pts_dst`
 """
 function affine_solve(Ms::MeshSet, k=1)
-  pts_src, pts_dst = get_homogeneous_correspondences(Ms, k)
+  pts_dst = get_homogeneous_correspondences(Ms, k; globalized=false)[2]
+  pts_src = get_homogeneous_correspondences(Ms, k; globalized=true)[1]
   return find_affine(pts_src, pts_dst)
 end
 
@@ -74,7 +75,8 @@ Return right-hand matrix for the matches
 `pts_src*T ~= pts_dst`
 """
 function rigid_solve(Ms::MeshSet, k=1)
-  pts_src, pts_dst = get_homogeneous_correspondences(Ms, k)
+  pts_dst = get_homogeneous_correspondences(Ms, k; globalized=false)[2]
+  pts_src = get_homogeneous_correspondences(Ms, k; globalized=true)[1]
   return find_rigid(pts_src, pts_dst)
 end
 
@@ -91,28 +93,11 @@ end
 ONLY WORKS ON CASES WHERE MATCHES[1] = MESHES[1] -> MESHES[2]
 """
 function regularized_solve!(Ms::MeshSet; k=1, lambda=0.9)
-	tform = regularized_solve(Ms, k, lambda);
-	for ind in 1:count_nodes(Ms.meshes[1])
-		dst_nodes[ind] = ([src_nodes[ind]; 1]' * tform)[1:2]
+	tform = regularized_solve(Ms, k=k, lambda=lambda);
+	for ind in 1:count_nodes(Ms.meshes[k])
+		Ms.meshes[k].dst_nodes[ind] = ([Ms.meshes[k].src_nodes[ind]; 1]' * tform)[1:2]
 	end
-end
-
-"""
-Calculate affine transform of the matches, and set nodes_t of the moving mesh
-"""
-function affine_solve!(Ms)
-	tform = affine_solve(Ms, 1);	
-	nodes = Ms.meshes[Ms.matches_pairs[1][1]].nodes
-	nodes_t = Points(size(nodes, 1))
-
-  for i in 1:size(nodes, 1)
-    h_pt = [nodes[i]; 1]
-    nodes_t[i] = (h_pt' * tform)[1:2]
-  end
-  Ms.meshes[Ms.matches_pairs[1][1]].nodes_t = nodes_t
-  stats(Ms)
-  return Ms
-  offset = mesh.disp
+	stats(Ms);
 end
 
 function solve!(meshset; method="elastic")
@@ -260,6 +245,8 @@ function stats(meshset::MeshSet)
 
   println("Computing statistics...")
 
+  params = get_params(meshset)
+
   residuals_pre = Points(0)
   residuals_post = Points(0)
   r_vals = Array{Float64}(0)
@@ -319,10 +306,16 @@ function stats(meshset::MeshSet)
 	dst_pts_after = Points(map(get_tripoint_dst, repeated(dst_mesh), dst_pt_triangles, dst_pt_weights));
 
 	g_src_pts = src_pts + fill(get_offset(match.src_index), length(src_pts));
-	g_dst_pts = dst_pts + fill(get_offset(match.dst_index), length(dst_pts));
-
 	g_src_pts_after = src_pts_after + fill(get_offset(match.src_index), length(src_pts));
-	g_dst_pts_after = dst_pts_after + fill(get_offset(match.dst_index), length(dst_pts));
+
+	if params["registry"]["global_offsets"]
+		g_dst_pts = dst_pts + fill(get_offset(match.dst_index), length(dst_pts));
+		g_dst_pts_after = dst_pts_after + fill(get_offset(match.dst_index), length(dst_pts));
+	else
+		g_dst_pts = dst_pts;
+		g_dst_pts_after = dst_pts_after;
+
+	end
 
 	residuals_match_pre = g_dst_pts - g_src_pts;
 	residuals_match_post = g_dst_pts_after - g_src_pts_after;

@@ -62,7 +62,9 @@ using IterativeSolvers
 using ImageRegistration
 using Optim
 using Distributions
+if ENV["USER"] != "dih"
 using PyPlot
+end
 
 include("Index.jl")
 include("registry.jl")

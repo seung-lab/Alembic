@@ -71,6 +71,7 @@ function prealign(index; params=get_params(index))
 	src_index = index;
 	dst_index = get_preceding(src_index)
 	meshset = MeshSet();
+	meshset.properties["params"] = params;
 	push!(meshset.meshes, Mesh(src_index, params))
 	push!(meshset.meshes, Mesh(dst_index, params))
 	push!(meshset.matches, Match(meshset.meshes[1], meshset.meshes[2], params))

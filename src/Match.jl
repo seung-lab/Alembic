@@ -71,20 +71,22 @@ end
 function monoblock_match(src_index, dst_index, src_image, dst_image, params=get_params(src_index))
 	if params["match"]["monoblock_match"] == false return; end
 	scale = params["match"]["monoblock_scale"];
-	padding = params["match"]["monoblock_padding"];
+	ratio = params["match"]["monoblock_ratio"];
 	src_image_scaled = imscale(src_image, scale)[1]
 	dst_image_scaled = imscale(dst_image, scale)[1]
 
-	range_in_src = 1:size(src_image_scaled, 1), 1:size(src_image_scaled, 2);
+	scaled_rads = round(Int64, ratio * size(src_image_scaled, 1) / 2), round(Int64, ratio * size(src_image_scaled, 2) / 2)
+	range_in_src = round(Int64, size(src_image_scaled, 1) / 2) + (-scaled_rads[1]:scaled_rads[1]), round(Int64, size(src_image_scaled, 2) / 2) + (-scaled_rads[2]:scaled_rads[2])
+
 	range_in_dst = 1:size(dst_image_scaled, 1), 1:size(dst_image_scaled, 2);
-	dst_range_full = 1 - round(Int64, padding * size(dst_image_scaled, 1)):round(Int64, (1 + padding) * size(dst_image_scaled, 1)), 1 - round(Int64, padding * size(dst_image_scaled, 2)):round(Int64, (1 + padding) * size(dst_image_scaled, 2))
+	dst_range_full = 1:size(dst_image_scaled, 1), 1:size(dst_image_scaled, 2);
 	src_pt_locs = [1, 1]; 
-	dst_pt_locs = [1, 1];
-	dst_pt_locs_full = [1 + round(Int64, padding * size(dst_image_scaled, 2)), 1 + round(Int64, padding * size(dst_image_scaled, 2))];
+	dst_pt_locs = [first(range_in_src[1]), first(range_in_src[2])];
+	dst_pt_locs_full = dst_pt_locs;
 
 	ranges = src_index, range_in_src, src_pt_locs, dst_index, range_in_dst, dst_range_full, dst_pt_locs, dst_pt_locs_full
 
-	dv = get_match([1, 1], ranges, src_image, dst_image)[3]["dv"]
+	dv = get_match(dst_pt_locs, ranges, src_image_scaled, dst_image_scaled)[3]["dv"]
 
 	if params["registry"]["global_offsets"]
 	update_offset(src_index, get_offset(dst_index) + dv / scale);
@@ -92,7 +94,7 @@ function monoblock_match(src_index, dst_index, src_image, dst_image, params=get_
 	update_offset(src_index, dv / scale);
 	end
 	print("    ")
-	println("Monoblock matched... relative displacement calculated at $(dv / scale)")
+	println("Monoblock matched... relative displacement calculated at $( dv / scale)")
 
 end
 
@@ -146,7 +148,7 @@ function get_property(correspondence_property, property_name::String)
 end
 
 function get_properties(match::Match, property_name::String)
-	return map(get_property, match.correspondence_property, repeated(property_name));
+	return map(get_property, match.correspondence_properties, repeated(property_name));
 end
 
 function filter!(match::Match, property_name, compare, threshold)
@@ -190,16 +192,21 @@ function count_filtered_correspondences(match::Match)
 	return length(get_filtered_indices(match));
 end
 
-function get_correspondences(match::Match)
+function get_correspondences(match::Match; globalized=false)
+	if globalized
+	return match.src_points + fill(get_offset(match.src_index), count_correspondences(match)), match.dst_points + fill(get_offset(match.dst_index), count_correspondences(match))
+	else
 	return match.src_points, match.dst_points;
+	end
 end
 
 function get_correspondence_properties(match::Match)
 	return match.correspondence_properties;
 end
 
-function get_filtered_correspondences(match::Match)
-	return match.src_points[get_filtered_indices(match)], match.dst_points[get_filtered_indices(match)];
+function get_filtered_correspondences(match::Match; globalized=false)
+	src_pts, dst_pts = get_correspondences(match; globalized = globalized);
+	return src_pts[get_filtered_indices(match)], dst_pts[get_filtered_indices(match)];
 end
 
 function get_filtered_correspondence_properties(match::Match)
