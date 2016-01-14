@@ -153,7 +153,8 @@ if contains(gethostname(), "seungworkstation")
  bucket_dir_path = joinpath(homedir(), "seungmount/")
 end
 
-if contains(gethostname(), "seungworkstation04")
+tracerhostnames = ["seungworkstation04", "mycroft", "seungworkstation10", "hogwarts"]
+if gethostname() in tracerhostnames
  bucket_dir_path = joinpath(homedir(), "seungmount/Omni/alignment/datasets/")
 end
 
