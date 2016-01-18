@@ -82,7 +82,7 @@ function render_montaged(waferA, secA, waferB, secB, render_full=false)
       f = h5open(joinpath(MONTAGED_DIR, new_fn), "w")
       @time f["img", "chunk", (1000,1000)] = img
       close(f)
-      update_offsets((index[1:2]...,-2,-2), [0,0], size(img))
+      update_offset((index[1:2]...,-2,-2), [0,0], size(img))
     end
   end
 end
@@ -173,8 +173,8 @@ end
 Prealignment where offsets are global
 """
 function render_prealigned(waferA, secA, waferB, secB)
-  indexA = (waferA, secA, -2, -2)
-  indexB = (waferB, secB, -2, -2)
+  indexA = montaged(waferA, secA)
+  indexB = montaged(waferB, secB)
   dir = PREALIGNED_DIR
   fixed = Dict()
 
@@ -183,7 +183,7 @@ function render_prealigned(waferA, secA, waferB, secB)
 
   function save_image(stage, dir, log_path)
     new_fn = string(join(stage["index"][1:2], ","), "_prealigned.h5")
-    update_offsets(stage["index"], stage["offset"], size(stage["img"]))
+    update_offset(stage["index"], stage["offset"], size(stage["img"]))
     println("Writing image:\n\t", new_fn)
     # @time imwrite(stage["img"], joinpath(dir, fn))
     f = h5open(joinpath(dir, new_fn), "w")
@@ -269,7 +269,7 @@ function render_aligned(waferA, secA, waferB, secB, start=1, finish=0)
       # path = update_ext(path, "tif")
       # @time Images.save(path, img)
       # Log image offsets
-      update_offsets(index, offset, size(img))
+      update_offset(index, offset, size(img))
       # end
       images[index] = img
     end

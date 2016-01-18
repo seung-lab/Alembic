@@ -145,7 +145,7 @@ function parse_registry(path::String)
     return registry
 end
 
-if contains(gethostname(), "seunglab")
+if contains(gethostname(), "seunglab") || contains(gethostname(), "spock") 
  bucket_dir_path = "/mnt/bucket/labs/seung/"
 end
 

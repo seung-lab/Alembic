@@ -65,8 +65,10 @@ Return right-hand matrix for the matches
 `pts_src*T ~= pts_dst`
 """
 function affine_solve(Ms::MeshSet, k=1)
-  pts_dst = get_homogeneous_correspondences(Ms, k; globalized=false)[2]
-  pts_src = get_homogeneous_correspondences(Ms, k; globalized=true)[1]
+  pts_src, pts_dst = get_homogeneous_correspondences(Ms, k; globalized=false)
+	for ind in 1:size(pts_dst, 1)
+  	pts_dst[ind, 1:2] = pts_dst[ind, 1:2] - get_offset(Ms.matches[k].src_index)'
+	end
   return find_affine(pts_src, pts_dst)
 end
 
@@ -75,8 +77,10 @@ Return right-hand matrix for the matches
 `pts_src*T ~= pts_dst`
 """
 function rigid_solve(Ms::MeshSet, k=1)
-  pts_dst = get_homogeneous_correspondences(Ms, k; globalized=false)[2]
-  pts_src = get_homogeneous_correspondences(Ms, k; globalized=true)[1]
+  pts_src, pts_dst = get_homogeneous_correspondences(Ms, k; globalized=false)
+	for ind in 1:size(pts_dst, 1)
+  	pts_dst[ind, 1:2] = pts_dst[ind, 1:2] - get_offset(Ms.matches[k].src_index)'
+	end
   return find_rigid(pts_src, pts_dst)
 end
 

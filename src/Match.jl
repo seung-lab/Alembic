@@ -219,6 +219,9 @@ end
 
 function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); src_image=get_image(src_mesh), dst_image=get_image(dst_mesh))
 	if src_mesh == dst_mesh
+		println("nothing at")
+		println(src_mesh.index)
+		println(dst_mesh.index)
 		return nothing
 	end
 

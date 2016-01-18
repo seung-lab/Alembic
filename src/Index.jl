@@ -54,7 +54,6 @@ function is_preceding(A_index, B_index)
 end
 
 
-
 function get_overview_index(index)
   return (index[1:2]..., OVERVIEW_INDEX, OVERVIEW_INDEX)
 end
@@ -101,8 +100,8 @@ function get_preceding(index)
   registry = get_registry(index);
   loc_in_reg = find_in_registry(index);
   if loc_in_reg == 0 return NO_INDEX; end
-  if loc_in_reg == 1 return index; end
-  #if loc_in_reg == 1 return NO_INDEX; end
+  #if loc_in_reg == 1 return index; end
+  if loc_in_reg == 1 return NO_INDEX; end
   return registry[loc_in_reg - 1, 2];
 end
 
