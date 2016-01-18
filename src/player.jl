@@ -126,7 +126,7 @@ meshset, area, slice, username, path = load_stack_params("hmcgowan")
 review_stack(username, meshset, area, slice, 1, true)
 """
 function load_stack_params(username)
-  meshset = load_aligned((1,2,-3,-3), (1,167,-3,-3))
+  meshset = load((1,2,-3,-3), (1,167,-3,-3))
   area = BoundingBox(5000,5000,28000,28000)
   slice = [400, 400]
   path = get_stack_errors_path(meshset, username)

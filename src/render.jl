@@ -97,68 +97,13 @@ function calculate_cumulative_tform(index, dir=PREALIGNED_DIR)
     for (indexA, indexB) in index_pairs
       meshset = load(indexA, indexB)
       # tform = affine_approximate(meshset)
-      offset = load_offset(indexB)
+      offset = get_offset(indexB)
       translation = [1 0 0; 0 1 0; offset[1] offset[2] 1]
       tform = regularized_solve(meshset, lambda=0.9)
       cumulative_tform = cumulative_tform*translation*tform
     end
   end
   return cumulative_tform
-end
-
-"""
-Scale & transform moving image for thumbnail using first matches type in meshset
-"""
-function write_prealignment_thumbnail(moving_img, fixed_img, meshset, scale=0.05)
-  moving = Dict()
-  fixed = Dict()
-  s = [scale 0 0; 0 scale 0; 0 0 1]
-  moving_offset = collect(meshset.meshes[2].disp)
-  tform = regularized_solve(meshset, lambda=0.9)
-  moving["nodes"], fixed["nodes"] = get_matched_points(meshset, 1)
-  moving["nodes"] = transform_matches(moving["nodes"], tform)
-  fixed["index"] = (meshset.meshes[1].index[1:2]..., -3, -3)
-  moving["index"] = (meshset.meshes[2].index[1:2]..., -3, -3)
-  fixed["thumb_fixed"], fixed["thumb_offset_fixed"] = imwarp(fixed_img, s)
-  moving["thumb_moving"], moving["thumb_offset_moving"] = imwarp(moving_img, tform*s, moving_offset)
-  fixed["scale"] = scale
-  moving["scale"] = scale
-  write_thumbnail_from_dict(fixed, moving)
-end
-
-"""
-Fuse and save thumbnail images
-"""
-function write_thumbnail_from_dict(A, B)
-  path = get_outline_filename("thumb", B["index"], A["index"])
-  # path = string(path[1:end-4], ".png")
-  O, O_bb = imfuse(A["thumb_fixed"], A["thumb_offset_fixed"], 
-                            B["thumb_moving"], B["thumb_offset_moving"])
-  vectorsA = scale_matches(A["nodes"], A["scale"])
-  vectorsB = scale_matches(B["nodes"], B["scale"])
-  vectors = (offset_matches(vectorsA, vectorsB, O_bb),)
-  match_nums = (1,)
-  colors = ([1,1,1],)
-  factor = 20
-  write_thumbnail(O, path, vectors, colors, match_nums, factor)
-end
-
-"""
-Return Dictionary of staged image to remove redundancy in loading
-"""
-function stage_image(mesh, cumulative_tform, tform, scale=0.05)
-  s = [scale 0 0; 0 scale 0; 0 0 1]
-  stage = Dict()
-  stage["index"] = (mesh.index[1:2]..., -3, -3)
-  img = get_uint8_image(mesh)
-  println("tform:\n", tform)
-  println("Warping ", mesh.name)
-  @time stage["img"], stage["offset"] = imwarp(img, cumulative_tform*tform, [0,0])
-  println("Warping thumbnail for ", mesh.name)
-  stage["thumb_fixed"], stage["thumb_offset_fixed"] = imwarp(img, s, [0,0])
-  stage["thumb_moving"], stage["thumb_offset_moving"] = imwarp(img, tform*s, [0,0])
-  stage["scale"] = scale
-  return stage
 end
 
 """
@@ -176,10 +121,28 @@ function render_prealigned(waferA, secA, waferB, secB)
   indexA = montaged(waferA, secA)
   indexB = montaged(waferB, secB)
   dir = PREALIGNED_DIR
+  scale = 0.05
+  s = [scale 0 0; 0 scale 0; 0 0 1]
   fixed = Dict()
 
-  cumulative_tform = calculate_cumulative_tform(indexA)
+  # cumulative_tform = calculate_cumulative_tform(indexA)
+  cumulative_tform = eye(3)
   log_path = joinpath(dir, "prealigned_offsets.txt")
+
+  # return Dictionary of staged image to remove redundancy in loading
+  function stage_image(mesh, cumulative_tform, tform)
+    stage = Dict()
+    stage["index"] = (mesh.index[1:2]..., -3, -3)
+    img = get_image(mesh)
+    println("tform:\n", tform)
+    println("Warping ", get_index(mesh))
+    @time stage["img"], stage["offset"] = imwarp(img, cumulative_tform*tform, [0,0])
+    println("Warping thumbnail for ", get_index(mesh))
+    stage["thumb_fixed"], stage["thumb_offset_fixed"] = imwarp(img, s, [0,0])
+    stage["thumb_moving"], stage["thumb_offset_moving"] = imwarp(img, tform*s, [0,0])
+    stage["scale"] = scale
+    return stage
+  end
 
   function save_image(stage, dir, log_path)
     new_fn = string(join(stage["index"][1:2], ","), "_prealigned.h5")
@@ -195,33 +158,36 @@ function render_prealigned(waferA, secA, waferB, secB)
   index_pairs = get_sequential_index_pairs(indexA, indexB)
   for (k, (indexA, indexB)) in enumerate(index_pairs)
     println("\nPrealigning ", indexA, " & ", indexB)
-    meshset = load(indexA, indexB)
+    meshset = load(indexB, indexA)
     if k==1
-      fixed = stage_image(meshset.meshes[1], cumulative_tform, eye(3))
+      fixed = stage_image(meshset.meshes[2], cumulative_tform, eye(3))
       if is_first_section(indexA)
         # save_image(fixed, dir, log_path)
       end
     end
-    offset = load_offset(indexB)
+    offset = get_offset(indexB)
     translation = [1 0 0; 0 1 0; offset[1] offset[2] 1]
-    tform = regularized_solve(meshset, lambda=0.9)
-    moving = stage_image(meshset.meshes[2], cumulative_tform, translation*tform)
-    save_image(moving, dir, log_path)
-    moving["nodes"], fixed["nodes"] = get_matched_points(meshset, 1)
-    moving["nodes"] = transform_matches(moving["nodes"], tform)
-    write_thumbnail_from_dict(fixed, moving)
-    fixed = moving
-    cumulative_tform = cumulative_tform*translation*tform
-  end
-end
+    tform = translation*regularized_solve(meshset, lambda=0.9)
+    moving = stage_image(meshset.meshes[1], cumulative_tform, tform)
+    
+    # save full scale image
+    # save_image(moving, dir, log_path)
 
-function update_ext(fn, ext)
-  i = searchindex(fn, ".")
-  s = fn
-  if i > 0
-    s = string(fn[1:i], ext)
+    # save thumbnail of fused images
+    path = get_review_filename("thumb", moving["index"], fixed["index"])
+    O, O_bb = imfuse(fixed["thumb_fixed"], fixed["thumb_offset_fixed"], 
+                          moving["thumb_moving"], moving["thumb_offset_moving"])
+    f = h5open(path, "w")
+    @time f["img", "chunk", (1000,1000)] = O
+    f["offset"] = O_bb
+    f["scale"] = scale
+    f["tform"] = tform
+    close(f)
+
+    # propagate for the next section
+    fixed = moving
+    cumulative_tform = cumulative_tform*tform
   end
-  return s
 end
 
 """
@@ -259,15 +225,13 @@ function render_aligned(waferA, secA, waferB, secB, start=1, finish=0)
       close(f)
       # @time imwrite(img, joinpath(dir, new_fn))
       img, _ = imwarp(img, s)
-      path = get_outline_filename("thumb", index)
+      path = get_review_filename("thumb", index)
       println("Writing thumbnail:\n\t", path)
       f = h5open(path, "w")
       @time f["img", "chunk", (1000,1000)] = img
       f["offset"] = [GLOBAL_BB.i, GLOBAL_BB.j] * scale
       f["scale"] = scale
       close(f)
-      # path = update_ext(path, "tif")
-      # @time Images.save(path, img)
       # Log image offsets
       update_offset(index, offset, size(img))
       # end
@@ -298,7 +262,7 @@ function render_aligned(waferA, secA, waferB, secB, start=1, finish=0)
       indexA = (src_index[1:2]..., -4, -4)
       indexB = (dst_index[1:2]..., -4, -4)
 
-      path = get_outline_filename("thumb_imfuse", indexB, indexA)
+      path = get_review_filename("thumb_imfuse", indexB, indexA)
       println("Writing thumbnail:\n\t", path)
       f = h5open(path, "w")
       @time f["img", "chunk", (1000,1000)] = O
@@ -306,18 +270,6 @@ function render_aligned(waferA, secA, waferB, secB, start=1, finish=0)
       f["scale"] = scale
       close(f)
 
-      # path = update_ext(get_outline_filename("thumb_pts", indexB, indexA), "tif")
-      # vectors = (offset_matches(vectorsA, vectorsB, O_bb),)
-      # match_nums = (find_matches_index(meshset, src_index, dst_index),)
-      # colors = ([1,1,1],)
-      # factor = 1
-      # write_thumbnail(O, path, vectors, colors, match_nums, factor)
-      # println("Writing thumbnail:\n", path)
-      # f = h5open(path, "w")
-      # @time f["img", "chunk", (1000,1000)] = drawing
-      # f["offset"] = [GLOBAL_BB.i, GLOBAL_BB.j] * scale
-      # f["scale"] = scale
-      # close(f)
     end
   end
 end

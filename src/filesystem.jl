@@ -158,6 +158,12 @@ if gethostname() in tracerhostnames
  bucket_dir_path = joinpath(homedir(), "seungmount/Omni/alignment/datasets/")
 end
 
+if isdefined(:omni)
+    if omni
+        bucket_dir_path = joinpath(homedir(), "seungmount/Omni/alignment/datasets/")
+    end
+end  
+
 #=if isfile("bucket_dir_path.txt")
     bucket_dir_path = rstrip(readall("bucket_dir_path.txt"), '\n')
 elseif isfile("../bucket_dir_path.txt")
@@ -188,6 +194,10 @@ premontaged_dir_path = "1_premontaged"
 montaged_dir_path = "2_montaged"
 prealigned_dir_path = "3_prealigned"
 aligned_dir_path = "4_aligned"
+
+if isdefined(:review_round)
+    aligned_dir_path = joinpath(aligned_dir_path, review_round)
+end    
 
 wafer_filename = "wafer_paths.txt"
 premontaged_registry_filename = "registry_premontaged.txt"
@@ -242,5 +252,5 @@ global GLOBAL_BB = BoundingBox(-4000,-4000,38000,38000)
 show_plot = false
 
 if myid() != 1
-	REGISTRY_PREMONTAGED, REGISTRY_MONTAGED, REGISTRY_PREALIGNED, REGISTRY_ALIGNED = remotecall_fetch(1, get_registries)
+    REGISTRY_PREMONTAGED, REGISTRY_MONTAGED, REGISTRY_PREALIGNED, REGISTRY_ALIGNED = remotecall_fetch(1, get_registries)
 end
