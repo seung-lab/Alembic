@@ -424,7 +424,7 @@ function review_matches(meshset, k)
   indexA = (matches.src_index[1:2]..., -4, -4)
   indexB = (matches.dst_index[1:2]..., -4, -4)
 
-  path = get_outline_filename("thumb_imfuse", indexB, indexA)
+  path = get_review_filename("thumb_imfuse", indexB, indexA)
   img = h5read(path, "img")
   offset = h5read(path, "offset")
   scale = h5read(path, "scale")
@@ -1071,7 +1071,7 @@ function write_seams(meshset, imgs, offsets, indices, fn_label="seam")
       println("Writing seam ", k, " / ", length(overlap_tuples))
       img, fuse_offset = imfuse(imgs[i], offsets[i], imgs[j], offsets[j])
       bb = bbs[i] - bbs[j]
-      path = get_outline_filename(fn_label, indices[i], indices[j])
+      path = get_review_filename(fn_label, indices[i], indices[j])
       img_cropped = imcrop(img, fuse_offset, bb)
       f = h5open(path, "w")
       @time f["img", "chunk", (100,100)] = img_cropped
@@ -1094,7 +1094,7 @@ function write_seams_with_points(meshset, imgs, offsets, indices, fn_label="seam
       println("Writing seam ", k, " / ", length(overlap_tuples))
       img, fuse_offset = imfuse(imgs[i], offsets[i], imgs[j], offsets[j])
       bb = bbs[i] - bbs[j]
-      path = get_outline_filename(fn_label, indices[i], indices[j])
+      path = get_review_filename(fn_label, indices[i], indices[j])
       path = string(path[1:end-3], ".jpg")
       img_cropped = imcrop(img, fuse_offset, bb)
       # imwrite(reshape_seam(img_cropped), path)
@@ -1184,28 +1184,24 @@ function plot_matches_outline(meshset, match_no, factor=5)
 end
 
 function indices2string(indexA, indexB)
+  if indexB[1] == 0
+    return join(indexA[1:2], ",")
+  end
   return string(join(indexA[1:2], ","), "-", join(indexB[1:2], ","))
 end
 
-function get_outline_filename(prefix, src_index, dst_index=(0,0,0,0))
+function get_review_filename(prefix, src_index, dst_index=(0,0,0,0))
   dir = ALIGNED_DIR
-  indstring = indices2string(src_index, dst_index)
-  if dst_index[1] == 0
-    indstring = join(src_index[1:2], ",")
-  end
-  fn = string(prefix, "_", indstring, ".h5")
+  ind = indices2string(src_index, dst_index)
   if is_premontaged(src_index)
     dir = MONTAGED_DIR
     ind = string(join(src_index, ","), "-", join(dst_index, ","))
-    fn = string(prefix, "_", ind, ".h5")
   elseif is_montaged(src_index)
     dir = PREALIGNED_DIR
-    fn = string(prefix, "_", indstring, ".tif")
   elseif is_prealigned(src_index)
     dir = PREALIGNED_DIR
-    fn = string(prefix, "_", indstring, ".tif")
   end
-  # return joinpath(dir, "review/151106_1,2-1,16_cleaned", fn)
+  fn = string(prefix, "_", ind, ".h5")
   return joinpath(dir, "review", fn)
 end
 
@@ -1213,7 +1209,7 @@ function write_meshset_match_outlines(meshset, factor=5)
   for k in 1:length(meshset.matches)
     imgc, img2 = plot_matches_outline(meshset, k, factor)
     matches = meshset.matches[k]
-    path = get_outline_filename("outline", matches.src_index, matches.dst_index)
+    path = get_review_filename("outline", matches.src_index, matches.dst_index)
     path = string(path[1:end-4], ".png")
     write_canvas(imgc, path)
     close_image(imgc)
@@ -1350,7 +1346,7 @@ end
 Write points to remove in a text file
 """
 function log_montage_review(username, fn, isgood)
-  path = get_montage_review_path(username)
+  path = get_inspection_path(username, "montage")
   ts = Dates.format(now(), "yymmddHHMMSS")
   row = [ts, username, fn, Int(isgood)]'
   if !isfile(path)

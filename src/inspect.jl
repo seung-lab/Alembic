@@ -1,7 +1,7 @@
 function show_blockmatch(match, ind, params)
   src_patch, src_pt, dst_patch, dst_pt, xc, offset = get_correspondence_patches(match, ind)
-  block_r = params["match"]["block_r"]
-  search_r = params["match"]["search_r"]
+  block_r = params["block_r"]
+  search_r = params["search_r"]
   N=size(xc, 1)
   M=size(xc, 2)
   surf([i for i=1:N, j=1:M], [j for i=1:N, j=1:M], xc, cmap=get_cmap("hot"), 
@@ -85,7 +85,6 @@ function edit_matches(imgc, img2, matches, vectors, params)
         if annidx > 0
           # annpt = ([lines[2,annidx], lines[1,annidx]] + offset) / scale 
           annpt = [lines[2,annidx], lines[1,annidx]]
-          println(annidx, ": ", annpt)
           idx = find_idx_of_nearest_pt(vectors[1:2,:], annpt, 11)
           if idx > 0
             ptA = vectors[1:2,idx] # - params["src_offset"]
@@ -148,14 +147,14 @@ end
 """
 Display matches index k as overlayed images with points
 """
-function inspect_matches(meshset, k)
+function inspect_matches(meshset, k, prefix="review")
   matches = meshset.matches[k]
   indexA = matches.src_index
   indexB = matches.dst_index
 
-  path = get_outline_filename("seam", indexB, indexA)
+  path = get_review_filename(prefix, indexB, indexA)
   if !isfile(path)
-    path = get_outline_filename("seam", indexA, indexB)
+    path = get_review_filename(prefix, indexA, indexB)
   end
   img = h5read(path, "img")
   offset = h5read(path, "offset")
@@ -177,30 +176,32 @@ function inspect_matches(meshset, k)
   params["src_size"] = get_image_sizes(matches.src_index)
   params["dst_size"] = get_image_sizes(matches.dst_index)
 
-  # src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences(meshset, k)
-  # vectors = [hcat(src_nodes...); hcat(dst_nodes...)]
-  src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences_post(meshset, k)
+  src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences(meshset, k)
+  # src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences_post(meshset, k)
   vectorsA = scale_matches(src_nodes, scale)
   vectorsB = scale_matches(dst_nodes, scale)
   vecs = offset_matches(vectorsA, vectorsB, offset)
   vectors = [hcat(vecs[1]...); hcat(vecs[2]...)]
 
   imview = view(img, pixelspacing=[1,1])
-  big_vecs = change_vector_lengths([hcat(vecs[1]...); hcat(vecs[2]...)], 20)
+  big_vecs = change_vector_lengths([hcat(vecs[1]...); hcat(vecs[2]...)], 2)
   an_pts, an_vectors = show_vectors(imview..., big_vecs, RGB(0,0,1), RGB(1,0,1))
   return imview, matches, vectors, copy(an_vectors.ann.data.lines), params
 end
 
-function get_montage_review_path(username)
-  return joinpath(INSPECTION_DIR, string("montage_inspection_", username, ".txt"))
+function get_inspection_path(username, stage_name)
+  return joinpath(INSPECTION_DIR, string(stage_name, "_inspection_", username, ".txt"))
 end
 
+"""
+The only function called by tracers to inspect montage points
+"""
 function inspect_montages(username, meshset_ind, match_ind)
-  path = get_montage_review_path(username)
+  path = get_inspection_path(username, "montage")
   indrange = get_index_range((1,1,-2,-2), (8,173,-2,-2))
   meshset = load(indrange[meshset_ind])
   println("\n", meshset_ind, ": ", indrange[meshset_ind], " @ ", match_ind, " / ", length(meshset.matches))
-  imview, matches, vectors, lines, params = inspect_matches(meshset, match_ind);
+  imview, matches, vectors, lines, params = inspect_matches(meshset, match_ind, "seam");
   indices_to_remove, break_review = edit_matches(imview..., matches, vectors, params);
   if !break_review
     store_points(path, meshset, match_ind, indices_to_remove, username, "manual")
@@ -214,13 +215,35 @@ function inspect_montages(username, meshset_ind, match_ind)
 end
 
 """
+The only function called by tracers to inspect montage points
+"""
+function inspect_prealignments(username, meshset_ind, match_ind=1)
+  path = get_inspection_path(username, "prealignment")
+  index_pairs = collect(get_sequential_index_pairs((1,1,-2,-2), (2,3,-2,-2)))
+  indexA, indexB = index_pairs[meshset_ind]
+  meshset = load(indexB, indexA)
+  println("\n", meshset_ind, ": ", (indexB, indexA), " @ ", match_ind, " / ", length(meshset.matches))
+  imview, matches, vectors, lines, params = inspect_matches(meshset, match_ind, "thumb");
+  indices_to_remove, break_review = edit_matches(imview..., matches, vectors, params);
+  # if !break_review
+  #   store_points(path, meshset, match_ind, indices_to_remove, username, "manual")
+  #   match_ind += 1
+  #   if match_ind > length(meshset.matches)
+  #     meshset_ind += 1
+  #     match_ind = 1
+  #   end
+  #   inspect_prealignments(username, meshset_ind, match_ind)
+  # end
+end
+
+"""
 Combine stack error log files of all tracers to create one log matrix
 """
 function compile_tracer_montage_review_logs()
   tracers = ["hmcgowan", "bsilverman", "merlinm", "kpw3"]
   logs = []
   for tracer in tracers
-    path = get_montage_review_path(tracer)
+    path = get_inspection_path(tracer, "montage")
     if isfile(path)
       push!(logs, readdlm(path))
     end
@@ -228,6 +251,9 @@ function compile_tracer_montage_review_logs()
   return vcat(logs...)
 end
 
+"""
+Display time-based chart of montage point inspections for the tracers
+"""
 function show_montage_inspection_progress(show_stats=false)
   path = joinpath(MONTAGED_DIR, "review")
   montages = get_index_range((1,1,-2,-2), (8,173,-2,-2))
@@ -262,4 +288,61 @@ function show_montage_inspection_progress(show_stats=false)
   PyPlot.plot(x_wo, zeros(Int64, length(x_wo)), ".")
   seams = [join([logs[i,3], logs[i,4]]) for i in 1:size(logs, 1)]
   println("Reviewed seams: ", length(unique(seams)), " / ", sum(y.>0) + length(x_wo))
+end
+
+"""
+Turn index into a ten-based integer
+"""
+function create_index_id(ind::Index)
+  return ind[1]*10^7 + ind[2]*10^4 + ind[3]*10^2 + ind[4]
+end
+
+"""
+Create integer from two indices
+"""
+function create_seam_id(indexA::Index, indexB::Index)
+  return create_index_id(indexA)*10^8 + create_index_id(indexB)
+end
+
+"""
+Filter logs by most recent entry for each seam
+"""
+function get_most_recent_logs(logs)
+  logs = logs[sortperm(logs[:,1]), :]
+  indicesA = [parse_index(l) for l in logs[:,3]]
+  indicesB = [parse_index(l) for l in logs[:,4]]
+  seam_id = [create_seam_id(a,b) for (a,b) in zip(indicesA, indicesB)]
+  logs = hcat(logs, seam_id)
+  logs = logs[sortperm(logs[:,end]), :]
+  last_id = vcat([logs[i,end] != logs[i+1,end] for i=1:(size(logs,1)-1)], true)
+  return logs[last_id .== true, :]
+end
+
+function update_montage_meshsets(waferA, secA, waferB, secB)
+  indices = get_index_range((waferA,secA,-2,-2), (waferB,secB,-2,-2))
+  logs = compile_tracer_montage_review_logs()
+  logs = get_most_recent_logs(logs)
+  for ind in indices
+    meshset = get_meshset_with_edits(ind, logs)
+    save(meshset)
+    solve!(meshset, method="elastic")
+    save(meshset)
+  end
+end
+
+function get_meshset_with_edits(ind::Index, logs)
+  meshset = load(ind)
+  meshset_indices = [(parse_index(l)[1:2]..., -2, -2) for l in logs[:,3]]
+  logs = logs[meshset_indices .== ind, :]
+  for i in 1:size(logs,1)
+    match = meshset.matches[logs[i,5]]
+    inds_to_filter = [logs[i,6]]
+    if typeof(inds_to_filter[1]) != Int64
+      inds_to_filter = readdlm(IOBuffer(logs[i,6]), ',', Int)
+    end
+    if inds_to_filter[1] != 0
+      filter_manual!(match, inds_to_filter)
+    end
+  end
+  return meshset
 end
