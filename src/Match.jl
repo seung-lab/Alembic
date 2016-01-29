@@ -19,10 +19,20 @@ function get_correspondence_patches(match::Match, ind)
 	assert(src_path[end-1:end] == "h5")
 
 	props = match.correspondence_properties[ind]
+
+	# hack to support old properties
+	if !haskey(props, "full")
 	src_patch = h5read(src_path, "img", props["src_range"])
 	src_pt = props["src_pt_loc"]
 	dst_patch = h5read(dst_path, "img", props["dst_range"])
 	dst_pt = props["dst_pt_loc"]
+	else
+	src_patch = h5read(src_path, "img", props["full"]["src_range"])
+	src_pt = props["full"]["src_pt_loc"]
+	dst_patch = h5read(dst_path, "img", props["full"]["dst_range"])
+	dst_pt = props["full"]["dst_pt_loc"]
+	end
+
 	xc = normxcorr2(src_patch, dst_patch);
 	dv = props["dv"]
 
@@ -75,8 +85,8 @@ function monoblock_match(src_index, dst_index, src_image, dst_image, params=get_
 	src_image_scaled = imscale(src_image, scale)[1]
 	dst_image_scaled = imscale(dst_image, scale)[1]
 
-	scaled_rads = round(Int64, ratio * size(src_image_scaled, 1) / 2), round(Int64, ratio * size(src_image_scaled, 2) / 2)
-	range_in_src = round(Int64, size(src_image_scaled, 1) / 2) + (-scaled_rads[1]:scaled_rads[1]), round(Int64, size(src_image_scaled, 2) / 2) + (-scaled_rads[2]:scaled_rads[2])
+	scaled_rads = ceil(Int64, ratio * size(src_image_scaled, 1) / 2), round(Int64, ratio * size(src_image_scaled, 2) / 2)
+	range_in_src = ceil(Int64, size(src_image_scaled, 1) / 2) + (-scaled_rads[1]:scaled_rads[1]), round(Int64, size(src_image_scaled, 2) / 2) + (-scaled_rads[2]:scaled_rads[2])
 
 	range_in_dst = 1:size(dst_image_scaled, 1), 1:size(dst_image_scaled, 2);
 	dst_range_full = 1:size(dst_image_scaled, 1), 1:size(dst_image_scaled, 2);
@@ -99,8 +109,29 @@ function monoblock_match(src_index, dst_index, src_image, dst_image, params=get_
 end
 
 #using sharedarray
-function get_match(pt, ranges, src_image, dst_image, global_offset = true)
+function get_match(pt, ranges, src_image, dst_image, params = nothing)
 	src_index, src_range, src_pt_loc, dst_index, dst_range, dst_range_full, dst_pt_loc, dst_pt_loc_full = ranges;
+
+	if params == nothing
+		scale = 1;
+	else
+		scale = params["match"]["blockmatch_scale"]
+	end
+
+	correspondence_properties = Dict{Any, Any}();
+	correspondence_properties["full"] = Dict{Any, Any}();
+	correspondence_properties["full"]["src_pt_loc"] = src_pt_loc;
+	correspondence_properties["full"]["src_range"] = src_range;
+	correspondence_properties["full"]["dst_pt_loc"] = dst_pt_loc;
+	correspondence_properties["full"]["dst_range"] = dst_range;
+
+
+	src_range = ceil(Int64, scale * first(src_range[1])) : ceil(Int64, scale * last(src_range[1])), ceil(Int64, scale * first(src_range[2])) : ceil(Int64, scale * last(src_range[2]))
+	dst_range = ceil(Int64, scale * first(dst_range[1])) : ceil(Int64, scale * last(dst_range[1])), ceil(Int64, scale * first(dst_range[2])) : ceil(Int64, scale * last(dst_range[2]))
+	dst_range_full = ceil(Int64, scale * first(dst_range_full[1])) : ceil(Int64, scale * last(dst_range_full[1])), ceil(Int64, scale * first(dst_range_full[2])) : ceil(Int64, scale * last(dst_range_full[2]))
+	src_pt_loc = ceil(Int64, scale * src_pt_loc);
+	dst_pt_loc = ceil(Int64, scale * dst_pt_loc);
+	dst_pt_loc_full = ceil(Int64, scale * dst_pt_loc_full);
 
 	if dst_range != dst_range_full
 		indices_within_range = findin(dst_range_full[1], dst_range[1]), findin(dst_range_full[2], dst_range[2])
@@ -123,23 +154,28 @@ function get_match(pt, ranges, src_image, dst_image, global_offset = true)
     		i_max = size(xc, 1)
   	end
 
-	di = i_max + src_pt_loc[1] - dst_pt_loc_full[1];	
-	dj = j_max + src_pt_loc[2] - dst_pt_loc_full[2];	
+	di = (i_max + src_pt_loc[1] - dst_pt_loc_full[1]) / scale;
+	dj = (j_max + src_pt_loc[2] - dst_pt_loc_full[2]) / scale;
 
-	correspondence_properties = Dict{Any, Any}();
-	correspondence_properties["src_normalized_dyn_range"] = (maximum(src_image[src_range...]) - minimum(src_image[src_range...])) / typemax(eltype(src_image));
-	correspondence_properties["src_kurtosis"] = kurtosis(src_image[src_range...]);
-	correspondence_properties["src_range"] = src_range;
-	correspondence_properties["src_pt_loc"] = src_pt_loc;
-	correspondence_properties["dst_range"] = dst_range;
-	correspondence_properties["dst_pt_loc"] = dst_pt_loc;
+
+	#println("src_range: $src_range, dst_range: $dst_range")
+	#println("i_max, j_max: $i_max, $j_max, src_pt_loc: $src_pt_loc, dst_pt_loc: $dst_pt_loc, dst_pt_loc_full = $dst_pt_loc_full")
+	#println("di: $di, dj: $dj, scale = $scale")
+
+
+	correspondence_properties["img"] = Dict{Any, Any}();
+	correspondence_properties["img"]["src_normalized_dyn_range"] = (maximum(src_image[src_range...]) - minimum(src_image[src_range...])) / typemax(eltype(src_image));
+	correspondence_properties["img"]["src_kurtosis"] = kurtosis(src_image[src_range...]);
+	correspondence_properties["scale"] = scale;
 	correspondence_properties["dv"] = [di, dj];
 	correspondence_properties["norm"] = norm([di, dj]);
 	correspondence_properties["r_val"] = r_max;
-	if global_offset
-	return vcat(pt + get_offset(src_index) - get_offset(dst_index) + [di, dj], correspondence_properties);
+
+
+	if params == nothing || !params["registry"]["global_offsets"]
+		return vcat(pt + get_offset(src_index) + [di, dj], correspondence_properties);
 	else
-	return vcat(pt + get_offset(src_index) + [di, dj], correspondence_properties);
+		return vcat(pt + get_offset(src_index) - get_offset(dst_index) + [di, dj], correspondence_properties);
 	end
 end
 
@@ -217,14 +253,15 @@ function get_filtered_indices(match::Match)
 	return setdiff(1:count_correspondences(match), union(map(getindex, match.filters, repeated("rejected"))...));
 end
 
-function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); src_image=get_image(src_mesh), dst_image=get_image(dst_mesh))
+function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); src_image=get_image(src_mesh), dst_image=get_image(dst_mesh), rotate=0)
 	if src_mesh == dst_mesh
 		println("nothing at")
 		println(src_mesh.index)
 		println(dst_mesh.index)
 		return nothing
 	end
-
+	
+	#load at full scale for monoblock match
 	SHARED_SRC_IMAGE[1:size(src_image, 1), 1:size(src_image, 2)] = src_image;
 	SHARED_DST_IMAGE[1:size(dst_image, 1), 1:size(dst_image, 2)] = dst_image;
 	println("Matching $(src_mesh.index) -> $(dst_mesh.index):")
@@ -233,6 +270,16 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); src_
 
 	monoblock_match(src_index, dst_index, src_image, dst_image, params);
 
+	#load at full scale for monoblock match
+	scale = params["match"]["blockmatch_scale"];
+
+	if scale != 1
+	src_image = imscale(src_image, scale)[1]
+	dst_image = imscale(dst_image, scale)[1]
+	SHARED_SRC_IMAGE[1:size(src_image, 1), 1:size(src_image, 2)] = src_image;
+	SHARED_DST_IMAGE[1:size(dst_image, 1), 1:size(dst_image, 2)] = dst_image;
+	end
+
 	ranges = pmap(get_ranges, src_mesh.src_nodes, repeated(src_index), repeated(dst_index), repeated(params));
 	ranged_inds = find(i -> i != nothing, ranges);
 	src_nodes = copy(src_mesh.src_nodes[ranged_inds]);
@@ -240,7 +287,8 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); src_
 	print("    ")
 	println("$(length(src_nodes)) / $(length(src_mesh.src_nodes)) nodes to check.")
 
-	dst_allpoints = pmap(get_match, src_nodes, ranges, repeated(SHARED_SRC_IMAGE), repeated(SHARED_DST_IMAGE), repeated(params["registry"]["global_offsets"]));
+	dst_allpoints = pmap(get_match, src_nodes, ranges, repeated(SHARED_SRC_IMAGE), repeated(SHARED_DST_IMAGE), repeated(params));
+	#dst_allpoints = map(get_match, src_nodes, ranges, repeated(SHARED_SRC_IMAGE), repeated(SHARED_DST_IMAGE), repeated(params));
 	matched_inds = find(i -> i != nothing, dst_allpoints);
 	src_points = copy(src_nodes[matched_inds]);
 	filters = Array{Dict{Any, Any}}(0);

@@ -75,7 +75,7 @@ function prealign(index; params=get_params(index))
 	push!(meshset.meshes, Mesh(src_index, params))
 	push!(meshset.meshes, Mesh(dst_index, params))
 	push!(meshset.matches, Match(meshset.meshes[1], meshset.meshes[2], params))
-	solve!(meshset, method="regularized");
+	solve!(meshset, method=params["solve"]["method"]);
 	save(meshset);
 	return meshset;
 end

@@ -38,3 +38,8 @@ moving_pts * tform = fixed_pts
 function find_affine(moving_pts, fixed_pts)
   return moving_pts \ fixed_pts
 end
+
+function tform_rotate(theta)
+	theta = deg2rad(theta)
+	return [cos(theta) -sin(theta) 0.0; sin(theta) cos(theta) 0.0; 0.0 0.0 1.0]
+end
