@@ -176,15 +176,15 @@ function inspect_matches(meshset, k, prefix="review")
   params["src_size"] = get_image_sizes(matches.src_index)
   params["dst_size"] = get_image_sizes(matches.dst_index)
 
-  src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences(meshset, k)
-  # src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences_post(meshset, k)
+  # src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences(meshset, k)
+  src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences_post(meshset, k)
   vectorsA = scale_matches(src_nodes, scale)
   vectorsB = scale_matches(dst_nodes, scale)
   vecs = offset_matches(vectorsA, vectorsB, offset)
   vectors = [hcat(vecs[1]...); hcat(vecs[2]...)]
 
   imview = view(img, pixelspacing=[1,1])
-  big_vecs = change_vector_lengths([hcat(vecs[1]...); hcat(vecs[2]...)], 2)
+  big_vecs = change_vector_lengths([hcat(vecs[1]...); hcat(vecs[2]...)], 4)
   an_pts, an_vectors = show_vectors(imview..., big_vecs, RGB(0,0,1), RGB(1,0,1))
   return imview, matches, vectors, copy(an_vectors.ann.data.lines), params
 end
@@ -240,7 +240,7 @@ end
 Combine stack error log files of all tracers to create one log matrix
 """
 function compile_tracer_montage_review_logs()
-  tracers = ["hmcgowan", "bsilverman", "merlinm", "kpw3"]
+  tracers = ["hmcgowan", "bsilverman", "merlinm", "kpw3", "mmoore"]
   logs = []
   for tracer in tracers
     path = get_inspection_path(tracer, "montage")
