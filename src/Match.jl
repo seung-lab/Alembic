@@ -28,13 +28,22 @@ function get_correspondence_patches(match::Match, ind)
 	dst_pt = props["dst_pt_loc"]
 	else
 	src_patch = h5read(src_path, "img", props["full"]["src_range"])
-	src_pt = props["full"]["src_pt_loc"]
+	src_pt_loc = props["full"]["src_pt_loc"];
 	dst_patch = h5read(dst_path, "img", props["full"]["dst_range"])
-	dst_pt = props["full"]["dst_pt_loc"]
+	dst_pt_loc = props["full"]["dst_pt_loc"];
+	scale = props["scale"];
+	if props["scale"] != 1
+	src_pt_loc = ceil(Int64, scale * src_pt_loc);
+	dst_pt_loc = ceil(Int64, scale * dst_pt_loc);
+	src_patch = imscale(src_patch, scale)[1]
+	dst_patch = imscale(dst_patch, scale)[1]
+	end
+	src_pt = src_pt_loc
+	dst_pt = dst_pt_loc
 	end
 
 	xc = normxcorr2(src_patch, dst_patch);
-	dv = props["dv"]
+	dv = props["dv"] * scale 
 
 	return src_patch, src_pt, dst_patch, dst_pt, xc, dst_pt-src_pt+dv
 end
@@ -203,17 +212,6 @@ function filter!(match::Match, property_name, compare, threshold)
 end
 
 ### ADD MANUAL FILTER
-function filter_manual!(match::Match, inds_to_filter)
-	push!(match.filters, Dict{Any, Any}(
-				"by"	  => ENV["USER"],
-				"type"	  => "manual",
-				"timestamp" => string(now()),
-				"rejected"  => inds_to_filter
-			      ));
-	return;
-end
-
-### ADD MANUAL FILTER
 function filter_manual!(match::Match)
 	inds_to_filter = Points(0)
 	while(true)
@@ -265,17 +263,17 @@ function get_filtered_indices(match::Match)
 end
 
 function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); src_image=get_image(src_mesh), dst_image=get_image(dst_mesh), rotate=0)
+	println("Matching $(src_mesh.index) -> $(dst_mesh.index):")
 	if src_mesh == dst_mesh
 		println("nothing at")
 		println(src_mesh.index)
 		println(dst_mesh.index)
 		return nothing
 	end
-	
+
 	#load at full scale for monoblock match
 	SHARED_SRC_IMAGE[1:size(src_image, 1), 1:size(src_image, 2)] = src_image;
 	SHARED_DST_IMAGE[1:size(dst_image, 1), 1:size(dst_image, 2)] = dst_image;
-	println("Matching $(src_mesh.index) -> $(dst_mesh.index):")
   	src_index = src_mesh.index;
 	dst_index = dst_mesh.index;
 
