@@ -42,7 +42,11 @@ global const MONTAGED_INDEX = -2;
 global const PREALIGNED_INDEX = -3;
 global const ALIGNED_INDEX = -4;
 
-global const AWS = false;
+if ENV["USER"] != "ubuntu"
+global const ON_AWS = false;
+else
+global const ON_AWS = true;
+end
 
 global const IMG_ELTYPE = UInt8
 global const SUP_SIZE = (40000, 40000)
@@ -64,13 +68,15 @@ using IterativeSolvers
 using ImageRegistration
 using Optim
 using Distributions
-if ENV["USER"] != "dih"
+if ENV["USER"] != "dih" || ON_AWS
 using PyPlot
 end
 
 include("Index.jl")
 include("registry.jl")
-if AWS
+if ON_AWS
+  using AWS
+  using AWS.S3
 include("filesystem_aws.jl")
 else
 include("filesystem.jl")

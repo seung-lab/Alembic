@@ -145,6 +145,8 @@ function parse_registry(path::String)
     return registry
 end
 
+bucket_dir_path = homedir();
+
 if contains(gethostname(), "seunglab") || contains(gethostname(), "spock") 
  bucket_dir_path = "/mnt/bucket/labs/seung/"
 end
@@ -185,7 +187,7 @@ else
 end
 =#
 
-datasets_dir_path = "research/Julimaps/datasets"
+datasets_dir_path = "/datasets"
 cur_dataset = "piriform"
 #cur_dataset = "zebrafish"
 affine_dir_path = "~"
