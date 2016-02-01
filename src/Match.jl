@@ -167,6 +167,17 @@ function filter!(match::Match, property_name, compare, threshold)
 end
 
 ### ADD MANUAL FILTER
+function filter_manual!(match::Match, inds_to_filter)
+	push!(match.filters, Dict{Any, Any}(
+				"by"	  => ENV["USER"],
+				"type"	  => "manual",
+				"timestamp" => string(now()),
+				"rejected"  => inds_to_filter
+			      ));
+	return;
+end
+
+### ADD MANUAL FILTER
 function filter_manual!(match::Match)
 	inds_to_filter = Points(0)
 	while(true)
