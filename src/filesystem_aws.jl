@@ -24,7 +24,9 @@ end
 # Mesh.jl: get_path(mesh::Mesh)
 function get_path(index, ext = ".h5")
     name = get_name(index)
-    if is_overview(index)
+    if is_premontaged(index)
+    	path = joinpath(PREMONTAGED_DIR, string(name, ext))
+    elseif is_overview(index)
         if cur_dataset == "zebrafish"
             section_folder = string("W00", index[1], "_Sec", index[2], "_Montage")
         else
@@ -145,6 +147,8 @@ function parse_registry(path::String)
     return registry
 end
 
+bucket_dir_path = homedir();
+
 if contains(gethostname(), "seunglab") || contains(gethostname(), "spock") 
  bucket_dir_path = "/mnt/bucket/labs/seung/"
 end
@@ -185,7 +189,7 @@ else
 end
 =#
 
-datasets_dir_path = "research/Julimaps/datasets"
+datasets_dir_path = "datasets"
 cur_dataset = "piriform"
 #cur_dataset = "zebrafish"
 affine_dir_path = "~"
@@ -220,7 +224,7 @@ else
     end
 end
 
-export BUCKET, DATASET_DIR, AFFINE_DIR, WAFER_DIR_DICT, PREMONTAGED_OFFSETS, PREMONTAGE_DIR, ALIGNMENT_DIR, INSPECTION_DIR
+#export BUCKET, DATASET_DIR, AFFINE_DIR, WAFER_DIR_DICT, PREMONTAGE_DIR, ALIGNMENT_DIR, INSPECTION_DIR
 
 global BUCKET = bucket_dir_path
 global AFFINE_DIR = affine_dir_path
