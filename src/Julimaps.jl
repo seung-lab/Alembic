@@ -68,7 +68,7 @@ using IterativeSolvers
 using ImageRegistration
 using Optim
 using Distributions
-if ENV["USER"] != "dih" || ON_AWS
+if ENV["USER"] != "dih" && !ON_AWS
 using PyPlot
 end
 
@@ -78,6 +78,7 @@ if ON_AWS
   using AWS
   using AWS.S3
 include("filesystem_aws.jl")
+include("aws_credentials.jl")
 else
 include("filesystem.jl")
 end
