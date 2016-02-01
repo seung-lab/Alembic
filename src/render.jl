@@ -43,18 +43,17 @@ function render_montaged_review(fn)
 end
 
 function render_montaged(meshset)
-  warps = pmap(meshwarp_mesh, meshset.meshes);
-  imgs = [x[1][1] for x in warps];
-  offsets = [x[1][2] for x in warps];
-  indices = [x[2] for x in warps];
-  # review images
-  write_seams(meshset, imgs, offsets, indices)
-end
-
-function render_while_we_wait()
-  render_montaged(2, 20, 2, 70)
-  render_montaged(3, 25, 3, 100)
-  render_montaged(4, 25, 4, 120)
+  try
+    warps = pmap(meshwarp_mesh, meshset.meshes);
+    imgs = [x[1][1] for x in warps];
+    offsets = [x[1][2] for x in warps];
+    indices = [x[2] for x in warps];
+    # review images
+    write_seams(meshset, imgs, offsets, indices)
+  catch
+    idx = (meshset.meshes[1].index[1:2]..., -2, -2)
+    log_render_error(MONTAGED_DIR, idx, comment="")
+  end
 end
 
 """
@@ -66,25 +65,30 @@ function render_montaged(waferA, secA, waferB, secB, render_full=false)
   for index in get_index_range(indexA, indexB)
     idx = (index[1:2]..., 1, 1)
     meshset = load(idx, idx)
-    new_fn = string(idx[1], ",", idx[2], "_montaged.h5")
-    println("Rendering ", new_fn)
-    warps = pmap(meshwarp_mesh, meshset.meshes);
-    imgs = [x[1][1] for x in warps];
-    offsets = [x[1][2] for x in warps];
-    indices = [x[2] for x in warps];
-    # review images
-    write_seams(meshset, imgs, offsets, indices)
-    # write_seams_with_points(meshset, imgs, offsets, indices)
-    if render_full
-      println(typeof(imgs))
-      img, offset = merge_images(imgs, offsets)
-      println("Writing ", new_fn)
-      f = h5open(joinpath(MONTAGED_DIR, new_fn), "w")
-      @time f["img", "chunk", (1000,1000)] = img
-      close(f)
-      update_offset((index[1:2]...,-2,-2), [0,0], size(img))
+    try
+      new_fn = string(idx[1], ",", idx[2], "_montaged.h5")
+      println("Rendering ", new_fn)
+      warps = pmap(meshwarp_mesh, meshset.meshes);
+      imgs = [x[1][1] for x in warps];
+      offsets = [x[1][2] for x in warps];
+      indices = [x[2] for x in warps];
+      # review images
+      write_seams(meshset, imgs, offsets, indices)
+      # write_seams_with_points(meshset, imgs, offsets, indices)
+      if render_full
+        println(typeof(imgs))
+        img, offset = merge_images(imgs, offsets)
+        println("Writing ", new_fn)
+        f = h5open(joinpath(MONTAGED_DIR, new_fn), "w")
+        @time f["img", "chunk", (1000,1000)] = img
+        close(f)
+        update_offset((index[1:2]...,-2,-2), [0,0], size(img))
+      end
+    catch e
+      idx = (meshset.meshes[1].index[1:2]..., -2, -2)
+      log_render_error(MONTAGED_DIR, idx, e)
     end
-  end
+  end 
 end
 
 """
@@ -118,8 +122,8 @@ end
 Prealignment where offsets are global
 """
 function render_prealigned(waferA, secA, waferB, secB)
-  indexA = montaged(waferA, secA)
-  indexB = montaged(waferB, secB)
+  indexA = (waferA, secA, -2, -2)
+  indexB = (waferB, secB, -2, -2)
   dir = PREALIGNED_DIR
   scale = 0.05
   s = [scale 0 0; 0 scale 0; 0 0 1]
@@ -272,4 +276,24 @@ function render_aligned(waferA, secA, waferB, secB, start=1, finish=0)
 
     end
   end
+end
+
+"""
+Write any render errors to a log file
+"""
+function log_render_error(dir, idx, comment="")
+  ts = Dates.format(now(), "yymmddHHMMSS")
+  path = joinpath(dir, "render_error_log.txt")
+  new_row = [ts, idx, comment]'
+  if !isfile(path)
+    f = open(path, "w")
+    close(f)
+    log = new_row
+  else  
+    log = readdlm(path)
+    log = vcat(log, new_row)
+  end
+  log = log[sortperm(log[:, 1]), :]
+  println("Logging render error:\n", path)
+  writedlm(path, log)
 end

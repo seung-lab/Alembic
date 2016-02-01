@@ -1069,15 +1069,20 @@ function write_seams(meshset, imgs, offsets, indices, fn_label="seam")
     overlap_tuples = find_overlaps(bbs)
     for (k, (i,j)) in enumerate(overlap_tuples)
       println("Writing seam ", k, " / ", length(overlap_tuples))
-      img, fuse_offset = imfuse(imgs[i], offsets[i], imgs[j], offsets[j])
-      bb = bbs[i] - bbs[j]
       path = get_review_filename(fn_label, indices[i], indices[j])
-      img_cropped = imcrop(img, fuse_offset, bb)
-      f = h5open(path, "w")
-      @time f["img", "chunk", (100,100)] = img_cropped
-      f["offset"] = [bb.i, bb.j]
-      f["scale"] = 1.0
-      close(f)
+      try 
+        img, fuse_offset = imfuse(imgs[i], offsets[i], imgs[j], offsets[j])
+        bb = bbs[i] - bbs[j]
+        img_cropped = imcrop(img, fuse_offset, bb)
+        f = h5open(path, "w")
+        @time f["img", "chunk", (20,20)] = img_cropped
+        f["offset"] = [bb.i, bb.j]
+        f["scale"] = 1.0
+        close(f)
+      catch e
+        idx = (indices[i], indices[j])
+        log_render_error(MONTAGED_DIR, idx, e)
+      end
     end
 end
 
