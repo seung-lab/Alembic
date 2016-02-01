@@ -42,6 +42,8 @@ global const MONTAGED_INDEX = -2;
 global const PREALIGNED_INDEX = -3;
 global const ALIGNED_INDEX = -4;
 
+global const AWS = false;
+
 global const IMG_ELTYPE = UInt8
 global const SUP_SIZE = (40000, 40000)
 
@@ -68,7 +70,11 @@ end
 
 include("Index.jl")
 include("registry.jl")
+if AWS
+include("filesystem_aws.jl")
+else
 include("filesystem.jl")
+end
 include("IO.jl")
 include("Params.jl")
 include("convolve.jl")

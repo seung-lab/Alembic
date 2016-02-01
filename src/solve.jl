@@ -108,7 +108,7 @@ function solve!(meshset; method="elastic")
 	if method == "elastic" return elastic_solve!(meshset); end
 	if method == "translate" return translate_solve!(meshset); end
 	if method == "rigid" return rigid_solve!(meshset); end
-	if method == "regularized" return regularized_solve!(meshset); end
+	if method == "regularized" return regularized_solve!(meshset; lambda = meshset.properties["params"]["solve"]["lambda"]); end
 	if method == "affine" return affine_solve!(meshset); end
 end
 
@@ -312,14 +312,14 @@ function stats(meshset::MeshSet)
 	g_src_pts = src_pts + fill(get_offset(match.src_index), length(src_pts));
 	g_src_pts_after = src_pts_after + fill(get_offset(match.src_index), length(src_pts));
 
-	#if params["registry"]["global_offsets"]
+	if params["registry"]["global_offsets"]
 		g_dst_pts = dst_pts + fill(get_offset(match.dst_index), length(dst_pts));
 		g_dst_pts_after = dst_pts_after + fill(get_offset(match.dst_index), length(dst_pts));
-#	else
-#		g_dst_pts = dst_pts;
-#		g_dst_pts_after = dst_pts_after;
+	else
+		g_dst_pts = dst_pts;
+		g_dst_pts_after = dst_pts_after;
 
-#	end
+	end
 
 	residuals_match_pre = g_dst_pts - g_src_pts;
 	residuals_match_post = g_dst_pts_after - g_src_pts_after;
