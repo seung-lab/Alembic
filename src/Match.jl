@@ -43,7 +43,7 @@ function get_correspondence_patches(match::Match, ind)
 	end
 
 	xc = normxcorr2(src_patch, dst_patch);
-	dv = props["dv"] * scale 
+	dv = ceil(Int64, props["dv"] * scale)
 
 	return src_patch, src_pt, dst_patch, dst_pt, xc, dst_pt-src_pt+dv
 end
