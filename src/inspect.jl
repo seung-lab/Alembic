@@ -4,13 +4,12 @@ function show_blockmatch(match, ind, params)
   search_r = params["search_r"]
   N=size(xc, 1)
   M=size(xc, 2)
-  surf([i for i=1:N, j=1:M], [j for i=1:N, j=1:M], xc, cmap=get_cmap("hot"), 
-                          rstride=10, cstride=10, linewidth=0, antialiased=false)
+  # surf([i for i=1:N, j=1:M], [j for i=1:N, j=1:M], xc, cmap=get_cmap("hot"), 
+                          # rstride=10, cstride=10, linewidth=0, antialiased=false)
   xc_image = xcorr2Image(xc)
   xc_image = padimage(xc_image, block_r, block_r, block_r, block_r, 1)
   hot = create_hot_colormap()
   xc_color = apply_colormap(xc_image, hot)
-  xc = padimage(xc', block_r, block_r, block_r, block_r, 1)
   fused_img, _ = imfuse(dst_patch, [0,0], src_patch, offset)
 
   src = convert(Array{UInt32,2}, src_patch).<< 8
@@ -217,23 +216,20 @@ end
 """
 The only function called by tracers to inspect montage points
 """
-function inspect_prealignments(username, meshset_ind, match_ind=1)
+function inspect_prealignments(username, meshset_ind)
+  match_ind = 1
   path = get_inspection_path(username, "prealignment")
-  index_pairs = collect(get_sequential_index_pairs((1,1,-2,-2), (2,3,-2,-2)))
+  index_pairs = collect(get_sequential_index_pairs((1,1,-2,-2), (2,149,-2,-2)))
   indexA, indexB = index_pairs[meshset_ind]
   meshset = load(indexB, indexA)
   println("\n", meshset_ind, ": ", (indexB, indexA), " @ ", match_ind, " / ", length(meshset.matches))
   imview, matches, vectors, lines, params = inspect_matches(meshset, match_ind, "thumb");
   indices_to_remove, break_review = edit_matches(imview..., matches, vectors, params);
-  # if !break_review
-  #   store_points(path, meshset, match_ind, indices_to_remove, username, "manual")
-  #   match_ind += 1
-  #   if match_ind > length(meshset.matches)
-  #     meshset_ind += 1
-  #     match_ind = 1
-  #   end
-  #   inspect_prealignments(username, meshset_ind, match_ind)
-  # end
+  if !break_review
+    store_points(path, meshset, match_ind, indices_to_remove, username, "manual")
+    meshset_ind += 1
+    inspect_prealignments(username, meshset_ind)
+  end
 end
 
 """
