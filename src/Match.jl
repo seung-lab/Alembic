@@ -211,6 +211,100 @@ function filter!(match::Match, property_name, compare, threshold)
 	return length(inds_to_filter);
 end
 
+function eval_filter(match::Match, property_name, compare, threshold)
+	attributes = map(get_property, match.correspondence_properties, repeated(property_name));
+	inds_to_filter = find(i -> compare(i, threshold), attributes);
+	rejected_inds = get_rejected_indices(match);
+
+	false_rejections = setdiff(inds_to_filter, rejected_inds)
+	false_acceptances = setdiff(rejected_inds, inds_to_filter)
+	common_rejections = intersect(rejected_inds, inds_to_filter)
+
+#=
+	println("false_rejections: $false_rejections")
+	println("false_acceptances: $false_acceptances")
+	println("common_rejections: $common_rejections")
+=#
+	return length(false_rejections), length(false_acceptances), length(common_rejections), count_correspondences(match);
+end
+
+function eval_filters(match::Match, filters)
+
+	inds_to_filter = Array{Any, 1}();
+
+	for filter in filters
+	attributes = map(get_property, match.correspondence_properties, repeated(filter[1]));
+	push!(inds_to_filter, find(i -> filter[2](i, filter[3]), attributes));
+	end
+
+	inds_to_filter = union(inds_to_filter...)
+
+
+	rejected_inds = get_rejected_indices(match);
+
+	false_rejections = setdiff(inds_to_filter, rejected_inds)
+	false_acceptances = setdiff(rejected_inds, inds_to_filter)
+	common_rejections = intersect(rejected_inds, inds_to_filter)
+
+#=
+	println("false_rejections: $false_rejections")
+	println("false_acceptances: $false_acceptances")
+	println("common_rejections: $common_rejections")
+=#
+	return length(false_rejections), length(false_acceptances), length(common_rejections), count_correspondences(match);
+end
+
+function eval_filters(ms, filters)
+	evals = map(eval_filters, ms.matches, repeated(filters))
+
+	total_false_rej = 0;
+	total_false_acc = 0;
+	total_correct = 0;
+	total_corresp = 0;
+
+	for i in evals
+	total_false_rej = total_false_rej + i[1];
+	total_false_acc = total_false_acc + i[2];
+	total_correct = total_correct + i[3];
+	total_corresp = total_corresp + i[4];
+	end
+
+	total = total_false_acc + total_correct
+
+#	println("filtering by: $(filters...)")
+#=
+	println("false rejections: $(total_false_rej / total)")
+	println("false non-rejections: $(total_false_acc / total)")
+	println("correct rejections: $(total_correct / total)")
+=#
+	#println("precision: $(100 * total_correct / (total_false_rej + total_correct)) %")
+	#println("recall: $(100 * total_correct / (total_correct + total_false_acc)) %")
+	return total_false_rej, total_false_acc, total_correct, total_corresp
+end
+
+function eval_filters_meshsets(mses, filters)
+	evals = pmap(eval_filters, mses, repeated(filters))
+
+	total_false_rej = 0;
+	total_false_acc = 0;
+	total_correct = 0;
+
+	for i in evals
+	total_false_rej = total_false_rej + i[1];
+	total_false_acc = total_false_acc + i[2];
+	total_correct = total_correct + i[3];
+	total_corresp = total_corresp + i[4];
+	end
+
+	println("filtering by: $(filters...)")
+	println("precision: $(100 * total_correct / (total_false_rej + total_correct)) %")
+	println("recall: $(100 * total_correct / (total_correct + total_false_acc)) %")
+	println("total correspondences: $total_corresp")
+	println("total correct: $total_correct")
+	println("total falsely rejected: $total_false_rej")
+	println("total falsely accepted: $total_false_acc")
+end
+
 ### ADD MANUAL FILTER
 function filter_manual!(match::Match)
 	inds_to_filter = Points(0)
@@ -260,6 +354,10 @@ end
 
 function get_filtered_indices(match::Match)
 	return setdiff(1:count_correspondences(match), union(map(getindex, match.filters, repeated("rejected"))...));
+end
+
+function get_rejected_indices(match::Match)
+	return union(map(getindex, match.filters, repeated("rejected"))...)
 end
 
 function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); src_image=get_image(src_mesh), dst_image=get_image(dst_mesh), rotate=0)
