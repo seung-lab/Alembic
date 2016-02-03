@@ -23,17 +23,6 @@ A set of tools for elastic image registration in Julia.
 | alignment | 1.2 GB | 0.6 GB |
 | total (section) | 4.8 GB |
 
-# Milestones
-* Montage two tiles (8/9)
-* Montage one section (8/16)
-* Prealign two sections (9/1)
-* Align two sections (9/3)
-* Align five sections (9/5)
-* Align one wafer
-* Align one stack
-* Premontage one section
-* Run on AWS
-
 # Terminology
 * Tile: the base image unit from the microscope at the highest resolution
 * Section: the image formed by combining all the tiles together
@@ -50,3 +39,13 @@ Register tile images to one another by blockmatching in their overlapping portio
 Register montaged sections to the previous prealigned section by blockmatching. Render with a regularized affine transform (part affine, part rigid). Review by looking at overlays of the two sections. Intervene by removing bad correspondences by identifying bad blockmatch images, or by clicking on correspondences that have non-consistent displacements relative to their neighbors. 
 ## Alignment
 Register prealigned sections to each other, and N+k neighboring sections, by blockmatching. Cover each section image in a triangle mesh, and globally deform all the meshes elastically to accommodate the correspondences. Render with a piecewise affine transform. Review by inspecting the combined overlay plot of all tiles combined. Intervene by removing bad correspondences by identifying bad blockmatch images, or by clicking on correspondences that have non-consistent displacements relative to their neighbors.
+
+# To Do
+* Use masks
+* Compose transforms instead of using intermediate renders
+* Investigate L1 regularizer in the elastic solver
+* Make it more plug and play for a new dataset
+* Provide options to easily test blockmatch parameters
+* Write inspection edits directly to the meshsets
+* Update IO for work with AWS S3
+* Investigate AWS EMRFS
