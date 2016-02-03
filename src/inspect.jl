@@ -4,10 +4,11 @@ function show_blockmatch(match, ind, params)
   search_r = params["search_r"]
   N=size(xc, 1)
   M=size(xc, 2)
-  # surf([i for i=1:N, j=1:M], [j for i=1:N, j=1:M], xc, cmap=get_cmap("hot"), 
-                          # rstride=10, cstride=10, linewidth=0, antialiased=false)
+  surf([i for i=1:N, j=1:M], [j for i=1:N, j=1:M], xc, cmap=get_cmap("hot"), 
+                          rstride=10, cstride=10, linewidth=0, antialiased=false)
+  println("offset: ", offset)
   xc_image = xcorr2Image(xc)
-  xc_image = padimage(xc_image, block_r, block_r, block_r, block_r, 1)
+  # xc_image = padimage(xc_image, block_r, block_r, block_r, block_r, 1)
   hot = create_hot_colormap()
   xc_color = apply_colormap(xc_image, hot)
   fused_img, _ = imfuse(dst_patch, [0,0], src_patch, offset)
@@ -175,15 +176,17 @@ function inspect_matches(meshset, k, prefix="review")
   params["src_size"] = get_image_sizes(matches.src_index)
   params["dst_size"] = get_image_sizes(matches.dst_index)
 
-  # src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences(meshset, k)
+  #src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences(meshset, k)
   src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences_post(meshset, k)
   vectorsA = scale_matches(src_nodes, scale)
   vectorsB = scale_matches(dst_nodes, scale)
-  vecs = offset_matches(vectorsA, vectorsB, offset)
+  println("offset: ", offset)
+  # vecs = offset_matches(vectorsA, vectorsB, offset)
+  vecs = vectorsA, vectorsB
   vectors = [hcat(vecs[1]...); hcat(vecs[2]...)]
 
   imview = view(img, pixelspacing=[1,1])
-  big_vecs = change_vector_lengths([hcat(vecs[1]...); hcat(vecs[2]...)], 4)
+  big_vecs = change_vector_lengths([hcat(vecs[1]...); hcat(vecs[2]...)], 1)
   an_pts, an_vectors = show_vectors(imview..., big_vecs, RGB(0,0,1), RGB(1,0,1))
   return imview, matches, vectors, copy(an_vectors.ann.data.lines), params
 end
@@ -235,11 +238,11 @@ end
 """
 Combine stack error log files of all tracers to create one log matrix
 """
-function compile_tracer_montage_review_logs()
-  tracers = ["hmcgowan", "bsilverman", "merlinm", "kpw3", "mmoore"]
+function compile_review_logs(stage)
+  tracers = ["hmcgowan", "bsilverman", "merlinm", "kpw3", "mmoore", "dih"]
   logs = []
   for tracer in tracers
-    path = get_inspection_path(tracer, "montage")
+    path = get_inspection_path(tracer, stage)
     if isfile(path)
       push!(logs, readdlm(path))
     end
@@ -256,7 +259,7 @@ function show_montage_inspection_progress(show_stats=false)
   factor = 100
   x = 1:(factor*length(montages))
   y = zeros(Int64, factor*length(montages))
-  logs = compile_tracer_montage_review_logs()
+  logs = compile_review_logs("montage")
   tracers = unique(logs[:, 2])
   fig, ax = PyPlot.subplots()
   for tracer in tracers
@@ -290,13 +293,13 @@ end
 Turn index into a ten-based integer
 """
 function create_index_id(ind::Index)
-  return ind[1]*10^7 + ind[2]*10^4 + ind[3]*10^2 + ind[4]
+  return abs(ind[1])*10^7 + abs(ind[2])*10^4 + abs(ind[3])*10^2 + abs(ind[4])
 end
 
 """
 Create integer from two indices
 """
-function create_seam_id(indexA::Index, indexB::Index)
+function create_index_id(indexA::Index, indexB::Index)
   return create_index_id(indexA)*10^8 + create_index_id(indexB)
 end
 
@@ -307,23 +310,11 @@ function get_most_recent_logs(logs)
   logs = logs[sortperm(logs[:,1]), :]
   indicesA = [parse_index(l) for l in logs[:,3]]
   indicesB = [parse_index(l) for l in logs[:,4]]
-  seam_id = [create_seam_id(a,b) for (a,b) in zip(indicesA, indicesB)]
+  seam_id = [create_index_id(a,b) for (a,b) in zip(indicesA, indicesB)]
   logs = hcat(logs, seam_id)
   logs = logs[sortperm(logs[:,end]), :]
   last_id = vcat([logs[i,end] != logs[i+1,end] for i=1:(size(logs,1)-1)], true)
   return logs[last_id .== true, :]
-end
-
-function update_montage_meshsets(waferA, secA, waferB, secB)
-  indices = get_index_range((waferA,secA,-2,-2), (waferB,secB,-2,-2))
-  logs = compile_tracer_montage_review_logs()
-  logs = get_most_recent_logs(logs)
-  for ind in indices
-    meshset = get_meshset_with_edits(ind, logs)
-    save(meshset)
-    solve!(meshset, method="elastic")
-    save(meshset)
-  end
 end
 
 function get_meshset_with_edits(ind::Index, logs)
@@ -341,4 +332,28 @@ function get_meshset_with_edits(ind::Index, logs)
     end
   end
   return meshset
+end
+
+function update_montage_meshsets(waferA, secA, waferB, secB)
+  indices = get_index_range((waferA,secA,-2,-2), (waferB,secB,-2,-2))
+  logs = compile_review_logs("montage")
+  logs = get_most_recent_logs(logs)
+  for ind in indices
+    meshset = get_meshset_with_edits(ind, logs)
+    save(meshset)
+    solve!(meshset, method="elastic")
+    save(meshset)
+  end
+end
+
+function update_prealignment_meshsets(waferA, secA, waferB, secB)
+  indices = get_index_range((waferA,secA,-3,-3), (waferB,secB,-3,-3))
+  logs = compile_review_logs("prealignment")
+  logs = get_most_recent_logs(logs)
+  for ind in indices
+    meshset = get_meshset_with_edits(ind, logs)
+    save(meshset)
+    solve!(meshset, method="regularized")
+    save(meshset)
+  end
 end

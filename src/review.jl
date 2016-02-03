@@ -934,6 +934,11 @@ function find_overlaps(boundingboxes)
   return overlap_tuples
 end
 
+function find_boundingboxes(meshset)
+  nodes = [get_globalized_nodes_h(mesh)[2]' for mesh in meshset.meshes]
+  return map(ImageRegistration.find_mesh_bb, nodes)
+end
+
 """
 Crop image with offset to bounding box
 """
@@ -1075,7 +1080,7 @@ function write_seams(meshset, imgs, offsets, indices, fn_label="seam")
         bb = bbs[i] - bbs[j]
         img_cropped = imcrop(img, fuse_offset, bb)
         f = h5open(path, "w")
-        @time f["img", "chunk", (20,20)] = img_cropped
+        @time f["img", "chunk", (50,50)] = img_cropped
         f["offset"] = [bb.i, bb.j]
         f["scale"] = 1.0
         close(f)

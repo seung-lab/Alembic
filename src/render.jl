@@ -97,9 +97,9 @@ Calculate prealignment transforms from first section through section_num
 function calculate_cumulative_tform(index, dir=PREALIGNED_DIR)
   cumulative_tform = eye(3)
   if index != (1,1,-2,-2)
-    index_pairs = get_sequential_index_pairs((1,1,-2,-2), index)
+    index_pairs = get_sequential_index_pairs((1,168,-2,-2), index)
     for (indexA, indexB) in index_pairs
-      meshset = load(indexA, indexB)
+      meshset = load(indexB, indexA)
       # tform = affine_approximate(meshset)
       offset = get_offset(indexB)
       translation = [1 0 0; 0 1 0; offset[1] offset[2] 1]
@@ -129,8 +129,8 @@ function render_prealigned(waferA, secA, waferB, secB)
   s = [scale 0 0; 0 scale 0; 0 0 1]
   fixed = Dict()
 
-  # cumulative_tform = calculate_cumulative_tform(indexA)
-  cumulative_tform = eye(3)
+  cumulative_tform = calculate_cumulative_tform(indexA)
+  # cumulative_tform = eye(3)
   log_path = joinpath(dir, "prealigned_offsets.txt")
 
   # return Dictionary of staged image to remove redundancy in loading
