@@ -138,6 +138,25 @@ function match!(meshset::MeshSet)
 	end
 end
 
+function sanitize!(meshset::MeshSet)
+  meshes = Dict{Any, Any}();
+  for mesh in meshset.meshes
+  	meshes[mesh.index] = mesh;
+  end
+
+  for match in meshset.matches
+    	src_mesh = meshes[match.src_index];
+    	dst_mesh = meshes[match.dst_index];
+	src_pts, dst_pts = get_filtered_correspondences(match);
+	src_pt_triangles = map(find_mesh_triangle, repeated(src_mesh), src_pts);
+	dst_pt_triangles = map(find_mesh_triangle, repeated(dst_mesh), dst_pts);
+	invalids = union(find(ind -> src_pt_triangles[ind] == NO_TRIANGLE, 1:count_filtered_correspondences(match)), find(ind -> dst_pt_triangles[ind] == NO_TRIANGLE, 1:count_filtered_correspondences(match)))
+	if length(invalids) !=0
+	filter!(match; inds = invalids, filtertype = "sanitization");
+	end
+  end
+end
+
 # JLS SAVE
 function save(filename::String, meshset::MeshSet)
   println("Saving meshset to ", filename)
@@ -152,7 +171,7 @@ function save(meshset::MeshSet)
 
   if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex))
     filename = joinpath(PREALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned.jls"))
-    update_offsets(prealigned(firstindex), [0, 0]);
+    update_offset(prealigned(firstindex), [0, 0]);
   elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex))
     filename = joinpath(ALIGNED_DIR, string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned.jls"))
     update_offsets(aligned(firstindex), [0, 0]);

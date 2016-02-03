@@ -105,6 +105,7 @@ function regularized_solve!(Ms::MeshSet; k=1, lambda=0.9)
 end
 
 function solve!(meshset; method="elastic")
+	sanitize!(meshset);
 	if method == "elastic" return elastic_solve!(meshset); end
 	if method == "translate" return translate_solve!(meshset); end
 	if method == "rigid" return rigid_solve!(meshset); end
@@ -221,7 +222,7 @@ function get_globalized_correspondences(meshset, ind)
 	return g_src_pts, g_dst_pts, filtered_inds;
 end
 
-# 0 for both ends in invalids
+# invalids set to NO_POINT
 function get_globalized_correspondences_post(meshset, ind)
   meshes = Dict{Any, Any}();
   for mesh in meshset.meshes
@@ -241,20 +242,25 @@ function get_globalized_correspondences_post(meshset, ind)
 	dst_pt_triangles = map(find_mesh_triangle, repeated(dst_mesh), dst_pts);
 	dst_pt_weights = map(get_triangle_weights, repeated(dst_mesh), dst_pts, dst_pt_triangles);
 
-	invalids = union(find(ind -> src_pt_triangles[ind] == NO_TRIANGLE, 1:count_filtered_correspondences(match)), find(ind -> dst_pt_triangles[ind] == NO_TRIANGLE, 1:count_filtered_correspondences(match)))
+	invalid_src = find(ind -> src_pt_triangles[ind] == NO_TRIANGLE, 1:count_filtered_correspondences(match))
+	invalid_dst = find(ind -> dst_pt_triangles[ind] == NO_TRIANGLE, 1:count_filtered_correspondences(match))
 
 	src_pts_after = map(get_tripoint_dst, repeated(src_mesh), src_pt_triangles, src_pt_weights);
 	dst_pts_after = map(get_tripoint_dst, repeated(dst_mesh), dst_pt_triangles, dst_pt_weights);
 
-	if meshset.properties["params"]["registry"]["global_offsets"]
+	if haskey(meshset.properties["params"], "registry") && meshset.properties["params"]["registry"]["global_offsets"]
 	g_src_pts_after = src_pts_after + fill(get_offset(match.src_index), length(src_pts));
 	g_dst_pts_after = dst_pts_after + fill(get_offset(match.dst_index), length(dst_pts));
 	else
 	g_src_pts_after = src_pts_after + fill(get_offset(match.src_index), length(src_pts));
 	g_dst_pts_after = dst_pts_after;
 	end
-	g_src_pts_after[invalids] = NO_POINT;
-	g_dst_pts_after[invalids] = NO_POINT;
+	for i in invalid_src
+		g_src_pts_after[i] = NO_POINT;
+	end
+	for i in invalid_dst
+		g_dst_pts_after[i] = NO_POINT;
+	end
 
 	return g_src_pts_after, g_dst_pts_after, filtered_inds;
 end
@@ -320,16 +326,6 @@ function stats(meshset::MeshSet)
 	dst_pt_triangles = map(find_mesh_triangle, repeated(dst_mesh), dst_pts);
 	dst_pt_weights = map(get_triangle_weights, repeated(dst_mesh), dst_pts, dst_pt_triangles);
 
-	# handle for notriangles
-	valids = intersect(find(ind -> src_pt_triangles[ind] != NO_TRIANGLE, 1:count_filtered_correspondences(match)), find(ind -> dst_pt_triangles[ind] != NO_TRIANGLE, 1:count_filtered_correspondences(match)))
-	src_pts = src_pts[valids];
-	dst_pts = dst_pts[valids];
-
-	src_pt_triangles = src_pt_triangles[valids];
-	dst_pt_triangles = dst_pt_triangles[valids];
-	src_pt_weights = src_pt_weights[valids];
-	dst_pt_weights = dst_pt_weights[valids];
-
 	src_pts_after = Points(map(get_tripoint_dst, repeated(src_mesh), src_pt_triangles, src_pt_weights));
 	dst_pts_after = Points(map(get_tripoint_dst, repeated(dst_mesh), dst_pt_triangles, dst_pt_weights));
 
@@ -386,8 +382,7 @@ function stats(meshset::MeshSet)
 	print(@sprintf("%14s", string(src_mesh.index)))
 	print("->")
 	print(@sprintf("%14s", string(dst_mesh.index)))
-	#print(@sprintf("%6i", count_filtered_correspondences(match)))
-	print(@sprintf("%6i", length(valids)))
+	print(@sprintf("%6i", count_filtered_correspondences(match)))
 	print("    ")
 	print(rms_pre_s)
 	print(avg_pre_s)

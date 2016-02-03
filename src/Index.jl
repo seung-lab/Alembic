@@ -1,3 +1,24 @@
+function overview(index)
+	return (index[1], index[2], OVERVIEW_INDEX, OVERVIEW_INDEX);
+end
+
+function premontaged(index)
+	return (index[1], index[2], PREMONTAGED_INDEX, PREMONTAGED_INDEX);
+end
+
+function montaged(index)
+	return (index[1], index[2], MONTAGED_INDEX, MONTAGED_INDEX);
+end
+
+function prealigned(index)
+	return (index[1], index[2], PREALIGNED_INDEX, PREALIGNED_INDEX);
+end
+
+function aligned(index)
+	return (index[1], index[2], ALIGNED_INDEX, ALIGNED_INDEX);
+end
+
+
 function overview(wafer, section)
 	return (wafer, section, OVERVIEW_INDEX, OVERVIEW_INDEX);
 end
