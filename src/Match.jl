@@ -196,7 +196,18 @@ function get_properties(match::Match, property_name::String)
 	return map(get_property, match.correspondence_properties, repeated(property_name));
 end
 
-function filter!(match::Match, property_name, compare, threshold)
+function filter!(match::Match; by = ENV["USER"], timestamp = string(now()), machine = gethostname(), filtertype = "manual", inds = [])
+	push!(match.filters, Dict{Any, Any}(
+				"by"	  => by,
+				"machine" => machine,
+				"timestamp" => timestamp,
+				"type"	  => filtertype,
+				"rejected"  => inds,
+			      ));
+	return length(inds);
+	end
+
+function filter_by_params!(match::Match, property_name, compare, threshold)
 	attributes = map(get_property, match.correspondence_properties, repeated(property_name));
 	inds_to_filter = find(i -> compare(i, threshold), attributes);
 	push!(match.filters, Dict{Any, Any}(
