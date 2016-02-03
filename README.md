@@ -24,11 +24,11 @@ A set of tools for elastic image registration in Julia.
 | total (section) | 4.8 GB |
 
 # Terminology
-* Tile: the base image unit from the microscope at the highest resolution
-* Section: the image formed by combining all the tiles together
-* Overview: a downsampled image of the entire substrate from which the tiles were imaged (a downsampled superset of the section)
-* Wafer: a collection of sections, denoted by the number of substrates that can fit into the microscope at one time
-* Stack: a collection of sections, that include all the wafers
+* _Tile_: the base image unit from the microscope at the highest resolution
+* _Section_: the image formed by combining all the tiles together
+* _Overview_: a downsampled image of the entire substrate from which the tiles were imaged (a downsampled superset of the section)
+* _Wafer_: a collection of sections, denoted by the number of substrates that can fit into the microscope at one time
+* _Stack_: a collection of sections, that include all the wafers
 
 # Pipeline
 ## Premontage
