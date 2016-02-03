@@ -299,6 +299,7 @@ end
 
 # Convert Cartesian coordinate to triple of barycentric coefficients
 function get_triangle_weights(mesh::Mesh, point::Point, triangle::Triangle)
+	if triangle == NO_TRIANGLE return NO_WEIGHTS; end
 	R = vcat(mesh.src_nodes[triangle[1]]', mesh.src_nodes[triangle[2]]', mesh.src_nodes[triangle[3]]')
 	R = hcat(R, ones(Float64, 3, 1));
 	r = vcat(point, 1.0);
@@ -309,6 +310,7 @@ function get_triangle_weights(mesh::Mesh, point::Point, triangle::Triangle)
 end
 
 function get_tripoint_dst(mesh::Mesh, triangle, weights)
+	if triangle == NO_TRIANGLE return [0, 0]; end
 	dst_trinodes = mesh.dst_nodes[triangle[1]], mesh.dst_nodes[triangle[2]], mesh.dst_nodes[triangle[3]]
 	dst_point = dst_trinodes[1] * weights[1] + dst_trinodes[2] * weights[2] + dst_trinodes[3] * weights[3];
 	return dst_point;

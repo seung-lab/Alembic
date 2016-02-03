@@ -152,13 +152,17 @@ function save(meshset::MeshSet)
 
   if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex))
     filename = joinpath(PREALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned.jls"))
+    update_offsets(prealigned(firstindex), [0, 0]);
   elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex))
     filename = joinpath(ALIGNED_DIR, string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned.jls"))
+    update_offsets(aligned(firstindex), [0, 0]);
   else 
     filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "_montaged.jls"))
+    update_offsets(montaged(firstindex), [0, 0]);
   end
 
   save(filename, meshset);
+  update_offsets();
 end
 
 """
