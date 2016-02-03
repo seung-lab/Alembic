@@ -181,7 +181,6 @@ function save(meshset::MeshSet)
   end
 
   save(filename, meshset);
-  update_offsets();
 end
 
 """
