@@ -181,8 +181,8 @@ function inspect_matches(meshset, k, prefix="review")
   vectorsA = scale_matches(src_nodes, scale)
   vectorsB = scale_matches(dst_nodes, scale)
   println("offset: ", offset)
-  # vecs = offset_matches(vectorsA, vectorsB, offset)
-  vecs = vectorsA, vectorsB
+  vecs = offset_matches(vectorsA, vectorsB, offset)
+  # vecs = vectorsA, vectorsB
   vectors = [hcat(vecs[1]...); hcat(vecs[2]...)]
 
   imview = view(img, pixelspacing=[1,1])
