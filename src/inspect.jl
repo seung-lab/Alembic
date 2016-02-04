@@ -176,7 +176,7 @@ function inspect_matches(meshset, k, prefix="review")
   params["src_size"] = get_image_sizes(matches.src_index)
   params["dst_size"] = get_image_sizes(matches.dst_index)
 
-  #src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences(meshset, k)
+  # src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences(meshset, k)
   src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences_post(meshset, k)
   vectorsA = scale_matches(src_nodes, scale)
   vectorsB = scale_matches(dst_nodes, scale)
