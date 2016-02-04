@@ -319,7 +319,7 @@ end
 
 function get_meshset_with_edits(ind::Index, logs)
   meshset = load(ind)
-  meshset_indices = [(parse_index(l)[1:2]..., -2, -2) for l in logs[:,3]]
+  meshset_indices = [(parse_index(l)[1:2]..., ind[3:4]...) for l in logs[:,3]]
   logs = logs[meshset_indices .== ind, :]
   for i in 1:size(logs,1)
     match = meshset.matches[logs[i,5]]
