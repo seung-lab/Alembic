@@ -248,7 +248,7 @@ function get_globalized_correspondences_post(meshset, ind)
 	src_pts_after = map(get_tripoint_dst, repeated(src_mesh), src_pt_triangles, src_pt_weights);
 	dst_pts_after = map(get_tripoint_dst, repeated(dst_mesh), dst_pt_triangles, dst_pt_weights);
 
-	if haskey(meshset.properties["params"], "registry") && meshset.properties["params"]["registry"]["global_offsets"]
+	if is_montaged(meshset.meshes[1].index) || (haskey(meshset.properties["params"], "registry") && meshset.properties["params"]["registry"]["global_offsets"])
 	g_src_pts_after = src_pts_after + fill(get_offset(match.src_index), length(src_pts));
 	g_dst_pts_after = dst_pts_after + fill(get_offset(match.dst_index), length(dst_pts));
 	else
