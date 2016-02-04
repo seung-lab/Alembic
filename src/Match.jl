@@ -20,6 +20,12 @@ function get_correspondence_patches(match::Match, ind)
 
 	props = match.correspondence_properties[ind]
 
+	if haskey(props, "scale")
+	scale = props["scale"];
+	else
+	scale = 1
+	end
+
 	# hack to support old properties
 	if !haskey(props, "full")
 	src_patch = h5read(src_path, "img", props["src_range"])
@@ -31,8 +37,8 @@ function get_correspondence_patches(match::Match, ind)
 	src_pt_loc = props["full"]["src_pt_loc"];
 	dst_patch = h5read(dst_path, "img", props["full"]["dst_range"])
 	dst_pt_loc = props["full"]["dst_pt_loc"];
-	scale = props["scale"];
-	if props["scale"] != 1
+
+	if scale != 1
 	src_pt_loc = ceil(Int64, scale * src_pt_loc);
 	dst_pt_loc = ceil(Int64, scale * dst_pt_loc);
 	src_patch = imscale(src_patch, scale)[1]
