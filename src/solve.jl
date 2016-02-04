@@ -211,12 +211,12 @@ function get_globalized_correspondences(meshset, ind)
 	src_pts, dst_pts = get_correspondences(match);
 	filtered_inds = get_filtered_indices(match);
 
-	if meshset.properties["params"]["registry"]["global_offsets"]
-	g_src_pts = src_pts + fill(get_offset(match.src_index), length(src_pts));
-	g_dst_pts = dst_pts + fill(get_offset(match.dst_index), length(dst_pts));
-	else
+	if is_montaged(meshset.meshes[1].index) || (haskey(meshset.properties["params"], "registry") && !meshset.properties["params"]["registry"]["global_offsets"])
 	g_src_pts = src_pts + fill(get_offset(match.src_index), length(src_pts));
 	g_dst_pts = dst_pts;
+	else
+	g_src_pts = src_pts + fill(get_offset(match.src_index), length(src_pts));
+	g_dst_pts = dst_pts + fill(get_offset(match.dst_index), length(dst_pts));
 	end
 
 	return g_src_pts, g_dst_pts, filtered_inds;
@@ -248,12 +248,12 @@ function get_globalized_correspondences_post(meshset, ind)
 	src_pts_after = map(get_tripoint_dst, repeated(src_mesh), src_pt_triangles, src_pt_weights);
 	dst_pts_after = map(get_tripoint_dst, repeated(dst_mesh), dst_pt_triangles, dst_pt_weights);
 
-	if is_montaged(meshset.meshes[1].index) || (haskey(meshset.properties["params"], "registry") && meshset.properties["params"]["registry"]["global_offsets"])
-	g_src_pts_after = src_pts_after + fill(get_offset(match.src_index), length(src_pts));
-	g_dst_pts_after = dst_pts_after + fill(get_offset(match.dst_index), length(dst_pts));
-	else
+	if is_montaged(meshset.meshes[1].index) || (haskey(meshset.properties["params"], "registry") && !meshset.properties["params"]["registry"]["global_offsets"])
 	g_src_pts_after = src_pts_after + fill(get_offset(match.src_index), length(src_pts));
 	g_dst_pts_after = dst_pts_after;
+	else
+	g_src_pts_after = src_pts_after + fill(get_offset(match.src_index), length(src_pts));
+	g_dst_pts_after = dst_pts_after + fill(get_offset(match.dst_index), length(dst_pts));
 	end
 	for i in invalid_src
 		g_src_pts_after[i] = NO_POINT;
