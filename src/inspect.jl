@@ -31,7 +31,7 @@ end
 """
 Remove points displayed on ImageView with right-click
 """
-function edit_matches(imgc, img2, matches, vectors, params)
+function edit_matches(imgc, img2, matches, vectors, mask, params)
     e = Condition()
 
     break_review = false
@@ -44,7 +44,6 @@ function edit_matches(imgc, img2, matches, vectors, params)
         original_lines = copy(lines)
       end
     end
-    mask = ones(Bool, size(original_lines,2))
 
     c = canvas(imgc)
     win = Tk.toplevel(c)
@@ -194,7 +193,7 @@ function inspect_matches(meshset, k, prefix="review")
     lines = copy(an_vectors.ann.data.lines)
   end
   update_annotations(imview..., lines, mask)
-  return imview, matches, vectors, mask, lines, params
+  return imview, matches, vectors, lines, mask, params
 end
 
 function get_inspection_path(username, stage_name)
@@ -209,8 +208,8 @@ function inspect_montages(username, meshset_ind, match_ind)
   indrange = get_index_range((1,1,-2,-2), (8,173,-2,-2))
   meshset = load(indrange[meshset_ind])
   println("\n", meshset_ind, ": ", indrange[meshset_ind], " @ ", match_ind, " / ", length(meshset.matches))
-  imview, matches, vectors, lines, params = inspect_matches(meshset, match_ind, "seam");
-  indices_to_remove, break_review = edit_matches(imview..., matches, vectors, params);
+  imview, matches, vectors, lines, mask, params = inspect_matches(meshset, match_ind, "seam");
+  indices_to_remove, break_review = edit_matches(imview..., matches, vectors, mask, params);
   if !break_review
     store_points(path, meshset, match_ind, indices_to_remove, username, "manual")
     match_ind += 1
@@ -232,8 +231,8 @@ function inspect_prealignments(username, meshset_ind)
   indexA, indexB = index_pairs[meshset_ind]
   meshset = load(indexB, indexA)
   println("\n", meshset_ind, ": ", (indexB, indexA), " @ ", match_ind, " / ", length(meshset.matches))
-  imview, matches, vectors, lines, params = inspect_matches(meshset, match_ind, "thumb");
-  indices_to_remove, break_review = edit_matches(imview..., matches, vectors, params);
+  imview, matches, vectors, lines, mask, params = inspect_matches(meshset, match_ind, "thumb");
+  indices_to_remove, break_review = edit_matches(imview..., matches, vectors, mask, params);
   if !break_review
     store_points(path, meshset, match_ind, indices_to_remove, username, "manual")
     meshset_ind += 1
