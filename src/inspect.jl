@@ -35,7 +35,7 @@ function edit_matches(imgc, img2, matches, vectors, params)
     e = Condition()
 
     break_review = false
-    indices_to_remove = Array{Integer,1}()
+    indices_to_remove = []
     lines = []
     original_lines = []
     for annotation in values(imgc.annotations)
@@ -178,6 +178,7 @@ function inspect_matches(meshset, k, prefix="review")
 
   # src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences(meshset, k)
   src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences_post(meshset, k)
+  mask = !indices_to_mask(filtered_inds, length(src_nodes))
   vectorsA = scale_matches(src_nodes, scale)
   vectorsB = scale_matches(dst_nodes, scale)
   println("offset: ", offset)
@@ -192,7 +193,8 @@ function inspect_matches(meshset, k, prefix="review")
     an_pts, an_vectors = show_vectors(imview..., big_vecs, RGB(0,0,1), RGB(1,0,1))
     lines = copy(an_vectors.ann.data.lines)
   end
-  return imview, matches, vectors, lines, params
+  update_annotations(imview..., lines, mask)
+  return imview, matches, vectors, mask, lines, params
 end
 
 function get_inspection_path(username, stage_name)

@@ -466,6 +466,15 @@ function mask_to_indices(mask)
 end
 
 """
+Return Bool array of length n with indices set to false
+"""
+function indices_to_mask(indices, n)
+  mask = ones(Bool, n)
+  mask[indices] = false
+  return mask
+end
+
+"""
 Store indices of the false entries from a binary mask as matches to remove
 """
 function store_mask(path, meshset, k, mask, username, comment)
