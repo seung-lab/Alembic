@@ -381,10 +381,13 @@ end
 Maintain vector start point, but adjust end point for more prominent visual
 """
 function change_vector_lengths(vectors, k)
-  v = [vectors[2,:]; 
-        vectors[1,:]; 
-        (vectors[4,:]-vectors[2,:])*k + vectors[2,:]; 
-        (vectors[3,:]-vectors[1,:])*k + vectors[1,:]]
+  v = []
+  if length(vectors) > 0
+    v = [vectors[2,:]; 
+          vectors[1,:]; 
+          (vectors[4,:]-vectors[2,:])*k + vectors[2,:]; 
+          (vectors[3,:]-vectors[1,:])*k + vectors[1,:]]
+  end
   return v
 end
 

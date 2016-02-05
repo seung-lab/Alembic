@@ -36,8 +36,8 @@ function edit_matches(imgc, img2, matches, vectors, params)
 
     break_review = false
     indices_to_remove = Array{Integer,1}()
-    lines = Void
-    original_lines = Void
+    lines = []
+    original_lines = []
     for annotation in values(imgc.annotations)
       if :lines in fieldnames(annotation.data)
         lines = annotation.data.lines
@@ -187,8 +187,12 @@ function inspect_matches(meshset, k, prefix="review")
 
   imview = view(img, pixelspacing=[1,1])
   big_vecs = change_vector_lengths([hcat(vecs[1]...); hcat(vecs[2]...)], 1)
-  an_pts, an_vectors = show_vectors(imview..., big_vecs, RGB(0,0,1), RGB(1,0,1))
-  return imview, matches, vectors, copy(an_vectors.ann.data.lines), params
+  lines = []
+  if length(big_vecs) > 0
+    an_pts, an_vectors = show_vectors(imview..., big_vecs, RGB(0,0,1), RGB(1,0,1))
+    lines = copy(an_vectors.ann.data.lines)
+  end
+  return imview, matches, vectors, lines, params
 end
 
 function get_inspection_path(username, stage_name)
@@ -317,8 +321,7 @@ function get_most_recent_logs(logs)
   return logs[last_id .== true, :]
 end
 
-function get_meshset_with_edits(ind::Index, logs)
-  meshset = load(ind)
+function get_meshset_with_edits(meshset, ind, logs)
   meshset_indices = [(parse_index(l)[1:2]..., ind[3:4]...) for l in logs[:,3]]
   logs = logs[meshset_indices .== ind, :]
   for i in 1:size(logs,1)
@@ -338,8 +341,9 @@ function update_montage_meshsets(waferA, secA, waferB, secB)
   indices = get_index_range((waferA,secA,-2,-2), (waferB,secB,-2,-2))
   logs = compile_review_logs("montage")
   logs = get_most_recent_logs(logs)
-  for ind in indices
-    meshset = get_meshset_with_edits(ind, logs)
+  for index in indices
+    meshset = load(index)
+    meshset = get_meshset_with_edits(meshset, index, logs)
     save(meshset)
     solve!(meshset, method="elastic")
     save(meshset)
@@ -347,12 +351,13 @@ function update_montage_meshsets(waferA, secA, waferB, secB)
 end
 
 function update_prealignment_meshsets(waferA, secA, waferB, secB)
-  indices = get_index_range((waferA,secA,-3,-3), (waferB,secB,-3,-3))
   logs = compile_review_logs("prealignment")
   logs = get_most_recent_logs(logs)
-  for ind in indices
-    meshset = get_meshset_with_edits(ind, logs)
-    save(meshset)
+  index_pairs = get_sequential_index_pairs((waferA,secA,-2,-2), (waferB,secB,-2,-2))
+  for (indexA, indexB) in index_pairs
+    println(indexB, indexA)
+    meshset = load(indexB, indexA)
+    meshset = get_meshset_with_edits(meshset, indexB, logs)
     solve!(meshset, method="regularized")
     save(meshset)
   end
