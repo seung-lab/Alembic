@@ -45,6 +45,8 @@ function edit_matches(imgc, img2, matches, vectors, mask, params)
       end
     end
 
+    update_annotations(imgc, img2, original_lines, mask)
+
     c = canvas(imgc)
     win = Tk.toplevel(c)
     bind(c, "<Button-3>", (c, x, y)->inspect_match(parse(Int, x), parse(Int, y)))
@@ -192,7 +194,6 @@ function inspect_matches(meshset, k, prefix="review")
     an_pts, an_vectors = show_vectors(imview..., big_vecs, RGB(0,0,1), RGB(1,0,1))
     lines = copy(an_vectors.ann.data.lines)
   end
-  update_annotations(imview..., lines, mask)
   return imview, matches, vectors, lines, mask, params
 end
 
