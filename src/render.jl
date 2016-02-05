@@ -121,7 +121,7 @@ end
 """
 Prealignment where offsets are global
 """
-function render_prealigned(waferA, secA, waferB, secB)
+function render_prealigned(waferA, secA, waferB, secB, render_full=false)
   indexA = (waferA, secA, -2, -2)
   indexB = (waferB, secB, -2, -2)
   dir = PREALIGNED_DIR
@@ -175,7 +175,9 @@ function render_prealigned(waferA, secA, waferB, secB)
     moving = stage_image(meshset.meshes[1], cumulative_tform, tform)
     
     # save full scale image
-    # save_image(moving, dir, log_path)
+    if render_full
+      save_image(moving, dir, log_path)
+    end
 
     # save thumbnail of fused images
     path = get_review_filename("thumb", moving["index"], fixed["index"])
