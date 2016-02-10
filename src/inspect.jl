@@ -134,6 +134,9 @@ function edit_matches(imgc, img2, matches, vectors, mask, params)
     bind(win, "<Escape>", path->path)
     bind(win, "<Return>", path->path)
     bind(win, "z", path->path)
+    if break_review
+      println("Exit loop")
+    end
     destroy(win)
   end
 
@@ -177,8 +180,8 @@ function inspect_matches(meshset, k, prefix="review")
   params["src_size"] = get_image_sizes(matches.src_index)
   params["dst_size"] = get_image_sizes(matches.dst_index)
 
-  # src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences(meshset, k)
-  src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences_post(meshset, k)
+  src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences(meshset, k)
+  # src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences_post(meshset, k)
   mask = !indices_to_mask(filtered_inds, length(src_nodes))
   vectorsA = scale_matches(src_nodes, scale)
   vectorsB = scale_matches(dst_nodes, scale)
@@ -188,7 +191,7 @@ function inspect_matches(meshset, k, prefix="review")
   vectors = [hcat(vecs[1]...); hcat(vecs[2]...)]
 
   imview = view(img, pixelspacing=[1,1])
-  big_vecs = change_vector_lengths([hcat(vecs[1]...); hcat(vecs[2]...)], 1)
+  big_vecs = change_vector_lengths([hcat(vecs[1]...); hcat(vecs[2]...)], 4)
   lines = []
   if length(big_vecs) > 0
     an_pts, an_vectors = show_vectors(imview..., big_vecs, RGB(0,0,1), RGB(1,0,1))
@@ -223,7 +226,7 @@ function inspect_montages(username, meshset_ind, match_ind)
 end
 
 """
-The only function called by tracers to inspect montage points
+The only function called by tracers to inspect prealignment points
 """
 function inspect_prealignments(username, meshset_ind)
   match_ind = 1
@@ -238,6 +241,29 @@ function inspect_prealignments(username, meshset_ind)
     store_points(path, meshset, match_ind, indices_to_remove, username, "manual")
     meshset_ind += 1
     inspect_prealignments(username, meshset_ind)
+  end
+end
+
+"""
+The only function called by tracers to inspect alignment points
+"""
+function inspect_alignments(username, meshset, match_ind)
+  path = get_inspection_path(username, "alignment")
+
+  firstindex = meshset.meshes[1].index
+  lastindex = meshset.meshes[count_meshes(meshset)].index
+  name = string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned.jls")
+  match = meshset.matches[match_ind]
+  src_dst = string(join(match.src_index[1:2], ","), "-", join(match.dst_index[1:2], ","))
+  println("\n", name, ": ", src_dst, " @ ", match_ind, " / ", length(meshset.matches))
+  imview, matches, vectors, lines, mask, params = inspect_matches(meshset, match_ind, "thumb");
+  indices_to_remove, break_review = edit_matches(imview..., matches, vectors, mask, params);
+  if !break_review
+    store_points(path, meshset, match_ind, indices_to_remove, username, "manual")
+    match_ind += 1
+    if match_ind <= length(meshset.matches)
+      inspect_alignments(username, meshset, match_ind)
+    end
   end
 end
 
