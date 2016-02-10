@@ -13,19 +13,6 @@ function meshwarp_mesh(mesh::Mesh)
 end
 
 """
-Load image from hdf5, then apply meshwarp
-"""
-function meshwarp_h5(mesh::Mesh)
-  @time img = get_h5_image(mesh)
-  src_nodes = hcat(mesh.nodes...)'
-  dst_nodes = hcat(mesh.nodes_t...)'
-  offset = mesh.disp
-  node_dict = incidence_to_dict(mesh.edges')
-  triangles = dict_to_triangles(node_dict)
-  return @time meshwarp(img, src_nodes, dst_nodes, triangles, offset)
-end  
-
-"""
 Multiple dispatch so Dodam doesn't have to type sooo much
 """
 function render_montaged(wafer_no, section_no, render_full=false)
@@ -97,7 +84,7 @@ Calculate prealignment transforms from first section through section_num
 function calculate_cumulative_tform(index, dir=PREALIGNED_DIR)
   cumulative_tform = eye(3)
   if index != (1,1,-2,-2)
-    index_pairs = get_sequential_index_pairs((1,168,-2,-2), index)
+    index_pairs = get_sequential_index_pairs((1,167,-2,-2), index)
     for (indexA, indexB) in index_pairs
       meshset = load(indexB, indexA)
       # tform = affine_approximate(meshset)
@@ -121,7 +108,7 @@ end
 """
 Prealignment where offsets are global
 """
-function render_prealigned(waferA, secA, waferB, secB)
+function render_prealigned(waferA, secA, waferB, secB, render_full=false)
   indexA = (waferA, secA, -2, -2)
   indexB = (waferB, secB, -2, -2)
   dir = PREALIGNED_DIR
@@ -175,7 +162,9 @@ function render_prealigned(waferA, secA, waferB, secB)
     moving = stage_image(meshset.meshes[1], cumulative_tform, tform)
     
     # save full scale image
-    # save_image(moving, dir, log_path)
+    if render_full
+      save_image(moving, dir, log_path)
+    end
 
     # save thumbnail of fused images
     path = get_review_filename("thumb", moving["index"], fixed["index"])
@@ -197,16 +186,20 @@ end
 """
 Cycle through JLD files in aligned directory and render alignment
 """
-function render_aligned(waferA, secA, waferB, secB, start=1, finish=0)
+function render_aligned(waferA, secA, waferB, secB, render_full=false, start=1, finish=0)
   indexA = (waferA, secA, -3, -3)
   indexB = (waferB, secB, -3, -3)
+  meshset = load(indexA, indexB)
+  render_aligned(meshset, render_full, start, finish)
+end
+
+function render_aligned(meshset, render_full=false, start=1, finish=0)
   dir = ALIGNED_DIR
   scale = 0.10
   s = [scale 0 0; 0 scale 0; 0 0 1]
 
   # Log file for image offsets
   log_path = joinpath(dir, "aligned_offsets.txt")
-  meshset = load_aligned(indexA, indexB)
   if start == 0
     start = 1
   end
@@ -219,15 +212,17 @@ function render_aligned(waferA, secA, waferB, secB, start=1, finish=0)
   function retrieve_image(mesh)
     index = (mesh.index[1:2]..., -4, -4)
     if !(index in keys(images))
-      println("Warping ", mesh.name)
-      @time img, offset = meshwarp_h5(mesh)
+      println("Warping ", mesh.index)
+      @time (img, offset), _ = meshwarp_mesh(mesh)
       @time img = rescopeimage(img, offset, GLOBAL_BB)
-      new_fn = string(join(mesh.index[1:2], ","), "_aligned.h5")
-      println("Writing ", new_fn)
-      f = h5open(joinpath(dir, "round2", new_fn), "w")
-      @time f["img", "chunk", (1000,1000)] = img
-      close(f)
-      # @time imwrite(img, joinpath(dir, new_fn))
+      if render_full
+        new_fn = string(join(mesh.index[1:2], ","), "_aligned.h5")
+        println("Writing ", new_fn)
+        f = h5open(joinpath(dir, new_fn), "w")
+        @time f["img", "chunk", (1000,1000)] = img
+        close(f)
+      end
+
       img, _ = imwarp(img, s)
       path = get_review_filename("thumb", index)
       println("Writing thumbnail:\n\t", path)
@@ -251,10 +246,10 @@ function render_aligned(waferA, secA, waferB, secB, start=1, finish=0)
     src_index = matches.src_index
     dst_index = matches.dst_index
     if start <= src_index[2] <= finish && start <= dst_index[2] <= finish
-      src_mesh = meshset.meshes[find_index(meshset, src_index)]
-      dst_mesh = meshset.meshes[find_index(meshset, dst_index)]
+      src_mesh = meshset.meshes[find_mesh_index(meshset, src_index)]
+      dst_mesh = meshset.meshes[find_mesh_index(meshset, dst_index)]
 
-      src_nodes, dst_nodes = get_matched_points_t(meshset, k)
+      src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences_post(meshset, k)
       vectorsA = scale_matches(src_nodes, scale)
       vectorsB = scale_matches(dst_nodes, scale)
 

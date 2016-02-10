@@ -381,10 +381,13 @@ end
 Maintain vector start point, but adjust end point for more prominent visual
 """
 function change_vector_lengths(vectors, k)
-  v = [vectors[2,:]; 
-        vectors[1,:]; 
-        (vectors[4,:]-vectors[2,:])*k + vectors[2,:]; 
-        (vectors[3,:]-vectors[1,:])*k + vectors[1,:]]
+  v = []
+  if length(vectors) > 0
+    v = [vectors[2,:]; 
+          vectors[1,:]; 
+          (vectors[4,:]-vectors[2,:])*k + vectors[2,:]; 
+          (vectors[3,:]-vectors[1,:])*k + vectors[1,:]]
+  end
   return v
 end
 
@@ -431,7 +434,7 @@ function review_matches(meshset, k)
 
   img = vcat(img, ones(UInt32, 400, size(img, 2)))
 
-  params = meshset.params
+  params = meshset.properties["params"]["match"]
   params["scale"] = scale
   params["thumb_offset"] = offset
   params["src_index"] = matches.src_index
@@ -441,9 +444,9 @@ function review_matches(meshset, k)
   params["src_size"] = get_image_size(matches.src_index)
   params["dst_size"] = get_image_size(matches.dst_index)
 
-  src_nodes, dst_nodes = get_matched_points(meshset, k)
+  src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences(meshset, k)
   vectors = [hcat(src_nodes...); hcat(dst_nodes...)]
-  src_nodes, dst_nodes = get_matched_points_t(meshset, k)
+  src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences_post(meshset, k)
   vectors_t = [hcat(src_nodes...); hcat(dst_nodes...)]
   vectorsA = scale_matches(src_nodes, scale)
   vectorsB = scale_matches(dst_nodes, scale)
@@ -460,6 +463,15 @@ Get indices of the false entries in a binary array
 """
 function mask_to_indices(mask)
   return eachindex(mask)[!mask]
+end
+
+"""
+Return Bool array of length n with indices set to false
+"""
+function indices_to_mask(indices, n)
+  mask = ones(Bool, n)
+  mask[indices] = false
+  return mask
 end
 
 """
@@ -664,7 +676,7 @@ function calculate_r_values(meshset, k)
   block_r = meshset.params["block_size"]
   src_img = get_h5_image(get_h5_path(src_index))
   dst_img = get_h5_image(get_h5_path(dst_index))
-  src_nodes, dst_nodes = get_matched_points(meshset, k)
+   src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences(meshset, k)
   src_pts = [x - src_offset for x in src_nodes]
   dst_pts = [x - dst_offset for x in dst_nodes]
   for (src_pt, dst_pt) in zip(src_pts, dst_pts)
@@ -679,7 +691,7 @@ function calculate_r_values(meshset, k)
 end
 
 function calculate_displacements(meshset, k)
-  src_nodes, dst_nodes = get_matched_points_t(meshset, k)
+   src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences_post(meshset, k)
   return map(norm, src_nodes-dst_nodes)
 end
 
@@ -722,14 +734,14 @@ function review_matches_movie(meshset, k, step="post", downsample=2)
   dst_mesh = meshset.meshes[find_index(meshset, dst_index)]
 
   if step == "post"
-    src_nodes, dst_nodes = get_matched_points_t(meshset, k)
+     src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences_post(meshset, k)
     src_index = (src_mesh.index[1], src_mesh.index[2], src_mesh.index[3]-1, src_mesh.index[4]-1)
     dst_index = (dst_mesh.index[1], dst_mesh.index[2], dst_mesh.index[3]-1, dst_mesh.index[4]-1)
     global_bb = get_global_bb(meshset)
     src_offset = [global_bb.i, global_bb.j]
     dst_offset = [global_bb.i, global_bb.j]
   else
-    src_nodes, dst_nodes = get_matched_points(meshset, k)
+    src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences(meshset, k)
     src_offset = src_mesh.disp
     dst_offset = dst_mesh.disp
   end
@@ -797,8 +809,7 @@ function get_blockmatch_images(meshset, k, mesh_type, radius)
   matches = meshset.matches[k]
   index = matches.(symbol(mesh_type, "_index"))
   mesh = meshset.meshes[find_index(meshset, index)]
-  src_points, dst_points = get_matched_points(meshset, k)
-  # src_points_t, dst_points_t = get_matched_points_t(meshset, k)
+  src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences(meshset, k)
   scale = meshset.params["scaling_factor"]
   s = [scale 0 0; 0 scale 0; 0 0 1]
   img, _ = imwarp(get_ufixed8_image(mesh), s)
@@ -1174,7 +1185,7 @@ function plot_matches_outline(meshset, match_no, factor=5)
   img, offset = create_image(bb)
   offset = collect((offset..., 0))
 
-  src_pts, dst_pts = get_matched_points_t(meshset, match_no)
+  src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences(meshset, match_no)
   # src_pts = src_mesh.nodes
   # dst_pts = src_mesh.nodes_t
   src_pts = points_to_Nx3_matrix(src_pts*scale) .- offset'
@@ -1247,7 +1258,7 @@ function plot_matches_outline(meshset, factor=5)
   src_pts = []
   dst_pts = []
   for (k, matches) in enumerate(meshset.matches)
-    src, dst = get_matched_points_t(meshset, k)
+    src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences(meshset, k)
     src = points_to_Nx3_matrix(src*scale) .- offset'
     dst = points_to_Nx3_matrix(dst*scale) .- offset'
     push!(src_pts, src)
