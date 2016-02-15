@@ -118,6 +118,7 @@ Elastic solve
 """
 function elastic_solve!(meshset)
   params = get_params(meshset)
+  fixed = get_fixed(meshset)
   match_spring_coeff = params["solve"]["match_spring_coeff"]
   mesh_spring_coeff = params["solve"]["mesh_spring_coeff"]
   ftol_cg = params["solve"]["ftol_cg"]
@@ -150,7 +151,11 @@ function elastic_solve!(meshset)
 
   for mesh in meshset.meshes
     nodes[:, noderanges[mesh.index]] = get_globalized_nodes_h(mesh)[1];
+    if in(get_index(mesh), fixed)
+    nodes_fixed[noderanges[mesh.index]] = fill(true, count_nodes(mesh));
+    else
     nodes_fixed[noderanges[mesh.index]] = fill(false, count_nodes(mesh));
+    end
     edge_lengths[edgeranges[mesh.index]] = get_edge_lengths(mesh);
     edge_spring_coeffs[edgeranges[mesh.index]] = fill(mesh_spring_coeff, count_edges(mesh));
   end

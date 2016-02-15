@@ -112,6 +112,9 @@ function monoblock_match(src_index, dst_index, src_image, dst_image, params=get_
 
 	dv = get_match(dst_pt_locs, ranges, src_image_scaled, dst_image_scaled)[3]["dv"]
 
+	view(src_image_scaled[range_in_src...]/255)
+	view(dst_image_scaled[range_in_src...]/255)
+
 	if params["registry"]["global_offsets"]
 	update_offset(src_index, get_offset(dst_index) + dv / scale);
 	else

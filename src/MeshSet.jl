@@ -11,8 +11,9 @@ function get_images(meshset::MeshSet, dtype = UInt8)	return map(get_image, meshs
 
 function get_correspondence_patches(meshset::MeshSet, match_ind, corr_ind) return get_correspondence_patches(meshset.matches[match_ind], corr_ind)	end
 
-
 function get_params(meshset::MeshSet)			return meshset.properties["params"];		end
+
+function get_fixed(meshset::MeshSet)			return meshset.properties["fixed"];		end
 
 ### counting
 function count_meshes(meshset::MeshSet)			return length(meshset.meshes);		end
@@ -85,15 +86,18 @@ function MeshSet(index; params=get_params(index))
 	if is_montaged(index) return MeshSet(index, index); end
 end
 
-function MeshSet(first_index, last_index; params=get_params(first_index), solve_method="elastic")
+function MeshSet(first_index, last_index; params=get_params(first_index), solve_method="elastic", fix_first=false)
 	ind_range = get_index_range(first_index, last_index);
 	if length(ind_range) == 0 return 0; end
+	fixed = Array{Any, 1}(0);
+	if fix_first push!(fixed, first_index); end
 	meshes = map(Mesh, ind_range, repeated(params))
  	matches = Array{Match, 1}(0)		
 	properties = Dict(	"params"  => params,
 				"by"	  => ENV["USER"],
 				"machine" => gethostname(),
-				"timestamp" => string(now())
+				"timestamp" => string(now()),
+				"fixed" => fixed
 				)
 	meshset = MeshSet(meshes, matches, properties);
 	match!(meshset);
@@ -125,16 +129,21 @@ succeeding_pairs = Pairings(0)
   return pairs
 end
 
-function match!(meshset::MeshSet)
+function match!(meshset::MeshSet; prefetch_all = false)
 	params = get_params(meshset);
 	pairs = get_all_overlaps(meshset);
+	if prefetch_all
 	imgdict = Dict{Mesh, Array}();
 	for mesh in meshset.meshes
 		imgdict[mesh] = get_image(mesh);
 	end
-	# monoblock match for detection
 	for i in 1:length(pairs)
 		add_match!(meshset, Match(meshset.meshes[pairs[i][1]], meshset.meshes[pairs[i][2]], src_image=imgdict[meshset.meshes[pairs[i][1]]], dst_image=imgdict[meshset.meshes[pairs[i][2]]], params));
+	end
+	else
+	for i in 1:length(pairs)
+		add_match!(meshset, Match(meshset.meshes[pairs[i][1]], meshset.meshes[pairs[i][2]], params));
+	end
 	end
 end
 
@@ -171,15 +180,14 @@ function save(meshset::MeshSet)
 
   if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex))
     filename = joinpath(PREALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned.jls"))
-    update_offset(prealigned(firstindex), [0, 0]);
+    #update_offset(prealigned(firstindex), [0, 0]);
   elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex))
     filename = joinpath(ALIGNED_DIR, string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned.jls"))
-    update_offset(aligned(firstindex), [0, 0]);
+    #update_offset(aligned(firstindex), [0, 0]);
   else 
     filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "_montaged.jls"))
-    update_offset(montaged(firstindex), [0, 0]);
+    #update_offset(montaged(firstindex), [0, 0]);
   end
-
   save(filename, meshset);
 end
 
