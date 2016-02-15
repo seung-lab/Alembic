@@ -200,10 +200,10 @@ function render_aligned(meshset, render_full=false, start=1, finish=0)
 
   # Log file for image offsets
   log_path = joinpath(dir, "aligned_offsets.txt")
-  if start == 0
+  if start <= 0
     start = 1
   end
-  if finish == 0
+  if finish <= 0
     finish = length(meshset.meshes)
   end
   images = Dict()
@@ -213,27 +213,30 @@ function render_aligned(meshset, render_full=false, start=1, finish=0)
     index = (mesh.index[1:2]..., -4, -4)
     if !(index in keys(images))
       println("Warping ", mesh.index)
-      @time (img, offset), _ = meshwarp_mesh(mesh)
-      @time img = rescopeimage(img, offset, GLOBAL_BB)
       if render_full
+        @time (img, offset), _ = meshwarp_mesh(mesh)
+        @time img = rescopeimage(img, offset, GLOBAL_BB)
         new_fn = string(join(mesh.index[1:2], ","), "_aligned.h5")
         println("Writing ", new_fn)
         f = h5open(joinpath(dir, new_fn), "w")
         @time f["img", "chunk", (1000,1000)] = img
         close(f)
+        # Log image offsets
+        update_offset(index, offset, size(img))
       end
 
+      # 
+      img = get_image(mesh)
+      offset = get_offset(mesh)
+      @time img = rescopeimage(img, offset, GLOBAL_BB)
       img, _ = imwarp(img, s)
-      path = get_review_filename("thumb", index)
-      println("Writing thumbnail:\n\t", path)
-      f = h5open(path, "w")
-      @time f["img", "chunk", (1000,1000)] = img
-      f["offset"] = [GLOBAL_BB.i, GLOBAL_BB.j] * scale
-      f["scale"] = scale
-      close(f)
-      # Log image offsets
-      update_offset(index, offset, size(img))
-      # end
+      # path = get_review_filename("thumb", index)
+      # println("Writing thumbnail:\n\t", path)
+      # f = h5open(path, "w")
+      # @time f["img", "chunk", (1000,1000)] = img
+      # f["offset"] = [GLOBAL_BB.i, GLOBAL_BB.j] * scale
+      # f["scale"] = scale
+      # close(f)
       images[index] = img
     end
     return images[index]
@@ -242,34 +245,30 @@ function render_aligned(meshset, render_full=false, start=1, finish=0)
   indices = 1:length(meshset.matches)
 
   # for (k, matches) in zip(reverse(indices), reverse(meshset.matches))
-  for (k, matches) in enumerate(meshset.matches)
+  for (k, matches) in enumerate(meshset.matches[start:finish])
     src_index = matches.src_index
     dst_index = matches.dst_index
-    if start <= src_index[2] <= finish && start <= dst_index[2] <= finish
-      src_mesh = meshset.meshes[find_mesh_index(meshset, src_index)]
-      dst_mesh = meshset.meshes[find_mesh_index(meshset, dst_index)]
+    # if start <= src_index[2] <= finish && start <= dst_index[2] <= finish
+    src_mesh = meshset.meshes[find_mesh_index(meshset, src_index)]
+    dst_mesh = meshset.meshes[find_mesh_index(meshset, dst_index)]
 
-      src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences_post(meshset, k)
-      vectorsA = scale_matches(src_nodes, scale)
-      vectorsB = scale_matches(dst_nodes, scale)
+    src_img = retrieve_image(src_mesh)
+    dst_img = retrieve_image(dst_mesh)
+    offset = [GLOBAL_BB.i, GLOBAL_BB.j] * scale
+    O, O_bb = imfuse(src_img, offset, dst_img, offset)
 
-      src_img = retrieve_image(src_mesh)
-      dst_img = retrieve_image(dst_mesh)
-      offset = [GLOBAL_BB.i, GLOBAL_BB.j] * scale
-      O, O_bb = imfuse(src_img, offset, dst_img, offset)
+    indexA = (src_index[1:2]..., -4, -4)
+    indexB = (dst_index[1:2]..., -4, -4)
 
-      indexA = (src_index[1:2]..., -4, -4)
-      indexB = (dst_index[1:2]..., -4, -4)
+    path = get_review_filename("thumb_imfuse", indexB, indexA)
+    println("Writing thumbnail:\n\t", path)
+    f = h5open(path, "w")
+    @time f["img", "chunk", (1000,1000)] = O
+    f["offset"] = O_bb # same as offset
+    f["scale"] = scale
+    close(f)
 
-      path = get_review_filename("thumb_imfuse", indexB, indexA)
-      println("Writing thumbnail:\n\t", path)
-      f = h5open(path, "w")
-      @time f["img", "chunk", (1000,1000)] = O
-      f["offset"] = O_bb # same as offset
-      f["scale"] = scale
-      close(f)
-
-    end
+    # end
   end
 end
 

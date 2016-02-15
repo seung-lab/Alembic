@@ -32,92 +32,78 @@ end
 Remove points displayed on ImageView with right-click
 """
 function edit_matches(imgc, img2, matches, vectors, mask, params)
-    e = Condition()
+  e = Condition()
 
-    break_review = false
-    indices_to_remove = []
-    lines = []
-    original_lines = []
-    for annotation in values(imgc.annotations)
-      if :lines in fieldnames(annotation.data)
-        lines = annotation.data.lines
-        original_lines = copy(lines)
-      end
+  break_review = false
+  inspection_flagged = false
+  indices_to_remove = []
+  lines = []
+  original_lines = []
+  for annotation in values(imgc.annotations)
+    if :lines in fieldnames(annotation.data)
+      lines = annotation.data.lines
+      original_lines = copy(lines)
     end
+  end
 
-    update_annotations(imgc, img2, original_lines, mask)
+  update_annotations(imgc, img2, original_lines, mask)
 
-    c = canvas(imgc)
-    win = Tk.toplevel(c)
-    bind(c, "<Button-3>", (c, x, y)->inspect_match(parse(Int, x), parse(Int, y)))
-    bind(c, "<Control-Button-3>", (c, x, y)->remove_match(parse(Int, x), parse(Int, y)))
-    bind(win, "<Delete>", path->path)
-    bind(win, "<Escape>", path->exit_loop())
-    bind(win, "<Destroy>", path->end_edit())
-    bind(win, "<Return>", path->end_edit())
-    bind(win, "z", path->end_edit())
+  c = canvas(imgc)
+  win = Tk.toplevel(c)
+  bind(c, "<Button-3>", (c, x, y)->inspect_match(parse(Int, x), parse(Int, y)))
+  bind(c, "<Control-Button-3>", (c, x, y)->remove_match(parse(Int, x), parse(Int, y)))
+  bind(win, "<Delete>", path->path)
+  bind(win, "f", path->flag_inspection())
+  bind(win, "<Escape>", path->exit_loop())
+  bind(win, "<Destroy>", path->end_edit())
+  bind(win, "<Return>", path->end_edit())
+  bind(win, "z", path->end_edit())
 
-    inspect_window = Void
-    inspected_index = Void
-    inspected_index_removed = true
-
-    function remove_match(x, y)
-        xu,yu = Graphics.device_to_user(Graphics.getgc(imgc.c), x, y)
-        xi, yi = floor(Integer, 1+xu), floor(Integer, 1+yu)
-        # println(xi, ", ", yi)
-        limit = (img2.zoombb.xmax - img2.zoombb.xmin) * 0.0125 # 100/8000
-        annidx = find_idx_of_nearest_pt(lines[1:2,:], [xi, yi], limit)
-        if annidx > 0
-            pt = lines[1:2,annidx]
-            idx = find_pt_idx(original_lines[1:2,:], pt)
-            println(idx, ": ", original_lines[1:2, idx])
-            mask[idx] = false
-            update_annotations(imgc, img2, original_lines, mask)
-            push!(indices_to_remove, idx)
-        end
-    end
-
-    function inspect_match(x, y)
-        xu,yu = Graphics.device_to_user(Graphics.getgc(imgc.c), x, y)
-        xi, yi = floor(Integer, 1+xu), floor(Integer, 1+yu)
-        # println(xi, ", ", yi)
-        limit = (img2.zoombb.xmax - img2.zoombb.xmin) * 0.0125 # 100/8000
-        annidx = find_idx_of_nearest_pt(lines[1:2,:], [xi, yi], limit)
-        if annidx > 0
-          # annpt = ([lines[2,annidx], lines[1,annidx]] + offset) / scale 
-          annpt = [lines[2,annidx], lines[1,annidx]]
-          idx = find_idx_of_nearest_pt(vectors[1:2,:], annpt, 11)
-          if idx > 0
-            ptA = vectors[1:2,idx] # - params["src_offset"]
-            ptB = vectors[3:4,idx] # - params["dst_offset"]
-            println(idx, ": ", ptA, ", ", ptB)
-            # keep_point = display_blockmatch(params, ptA, ptB)
-            # if !keep_point
-            #   mask[idx] = false
-            #   update_annotations(imgc, img2, original_lines, mask)
-            #   push!(indices_to_remove, idx)
-            # end
-            inspect_window = show_blockmatch(matches, idx, params)
-            # inspect_window = display_blockmatch(params, ptA, ptB)
-            inspected_index_removed = false
-            inspected_index = idx
-          end
-        end
-    end
-
-    function remove_inspected_match()
-      if !inspected_index_removed
-        if inspected_index > 0
-          println(inspected_index, ": ", original_lines[1:2, inspected_index])
-          mask[inspected_index] = false
+  function remove_match(x, y)
+      xu,yu = Graphics.device_to_user(Graphics.getgc(imgc.c), x, y)
+      xi, yi = floor(Integer, 1+xu), floor(Integer, 1+yu)
+      # println(xi, ", ", yi)
+      limit = (img2.zoombb.xmax - img2.zoombb.xmin) * 0.0125 # 100/8000
+      annidx = find_idx_of_nearest_pt(lines[1:2,:], [xi, yi], limit)
+      if annidx > 0
+          pt = lines[1:2,annidx]
+          idx = find_pt_idx(original_lines[1:2,:], pt)
+          println(idx, ": ", original_lines[1:2, idx])
+          mask[idx] = false
           update_annotations(imgc, img2, original_lines, mask)
-          push!(indices_to_remove, inspected_index)
-          inspected_index_removed = true
-          destroy(inspect_window)
-          PyPlot.close()
+          push!(indices_to_remove, idx)
+      end
+  end
+
+  function inspect_match(x, y)
+      xu,yu = Graphics.device_to_user(Graphics.getgc(imgc.c), x, y)
+      xi, yi = floor(Integer, 1+xu), floor(Integer, 1+yu)
+      # println(xi, ", ", yi)
+      limit = (img2.zoombb.xmax - img2.zoombb.xmin) * 0.0125 # 100/8000
+      annidx = find_idx_of_nearest_pt(lines[1:2,:], [xi, yi], limit)
+      if annidx > 0
+        # annpt = ([lines[2,annidx], lines[1,annidx]] + offset) / scale 
+        annpt = [lines[2,annidx], lines[1,annidx]]
+        idx = find_idx_of_nearest_pt(vectors[1:2,:], annpt, 11)
+        if idx > 0
+          ptA = vectors[1:2,idx] # - params["src_offset"]
+          ptB = vectors[3:4,idx] # - params["dst_offset"]
+          println(idx, ": ", ptA, ", ", ptB)
+          # keep_point = display_blockmatch(params, ptA, ptB)
+          # if !keep_point
+          #   mask[idx] = false
+          #   update_annotations(imgc, img2, original_lines, mask)
+          #   push!(indices_to_remove, idx)
+          # end
+          inspect_window = show_blockmatch(matches, idx, params)
         end
       end
-    end
+  end
+
+  function flag_inspection()
+    inspection_flagged = true
+    end_edit()
+  end
 
   function exit_loop()
     break_review = true
@@ -130,6 +116,7 @@ function edit_matches(imgc, img2, matches, vectors, mask, params)
     bind(c, "<Button-3>", path->path)
     bind(c, "<Control-Button-3>", path->path)
     bind(win, "<Delete>", path->path)
+    bind(win, "f", path->path)
     bind(win, "<Destroy>", path->path)
     bind(win, "<Escape>", path->path)
     bind(win, "<Return>", path->path)
@@ -145,7 +132,7 @@ function edit_matches(imgc, img2, matches, vectors, mask, params)
     #         "3) Exit window or press Escape")
     wait(e)
 
-    return indices_to_remove, break_review
+    return indices_to_remove, break_review, inspection_flagged
 end
 
 """
@@ -171,14 +158,6 @@ function inspect_matches(meshset, k, prefix="review")
   # img = vcat(img, ones(UInt32, 400, size(img, 2)))
 
   params = meshset.properties["params"]["match"]
-  params["scale"] = scale
-  params["thumb_offset"] = offset
-  params["src_index"] = matches.src_index
-  params["dst_index"] = matches.dst_index
-  params["src_offset"] = get_offset(meshset.meshes[find_mesh_index(meshset, indexA)])
-  params["dst_offset"] = get_offset(meshset.meshes[find_mesh_index(meshset, indexB)])
-  params["src_size"] = get_image_sizes(matches.src_index)
-  params["dst_size"] = get_image_sizes(matches.dst_index)
 
   src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences(meshset, k)
   # src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences_post(meshset, k)
@@ -213,7 +192,7 @@ function inspect_montages(username, meshset_ind, match_ind)
   meshset = load(indrange[meshset_ind])
   println("\n", meshset_ind, ": ", indrange[meshset_ind], " @ ", match_ind, " / ", length(meshset.matches))
   imview, matches, vectors, lines, mask, params = inspect_matches(meshset, match_ind, "seam");
-  indices_to_remove, break_review = edit_matches(imview..., matches, vectors, mask, params);
+  indices_to_remove, break_review, inspection_flagged = edit_matches(imview..., matches, vectors, mask, params);
   if !break_review
     store_points(path, meshset, match_ind, indices_to_remove, username, "manual")
     match_ind += 1
@@ -236,7 +215,7 @@ function inspect_prealignments(username, meshset_ind)
   meshset = load(indexB, indexA)
   println("\n", meshset_ind, ": ", (indexB, indexA), " @ ", match_ind, " / ", length(meshset.matches))
   imview, matches, vectors, lines, mask, params = inspect_matches(meshset, match_ind, "thumb");
-  indices_to_remove, break_review = edit_matches(imview..., matches, vectors, mask, params);
+  indices_to_remove, break_review, inspection_flagged = edit_matches(imview..., matches, vectors, mask, params);
   if !break_review
     store_points(path, meshset, match_ind, indices_to_remove, username, "manual")
     meshset_ind += 1
@@ -256,10 +235,10 @@ function inspect_alignments(username, meshset, match_ind)
   match = meshset.matches[match_ind]
   src_dst = string(join(match.src_index[1:2], ","), "-", join(match.dst_index[1:2], ","))
   println("\n", name, ": ", src_dst, " @ ", match_ind, " / ", length(meshset.matches))
-  imview, matches, vectors, lines, mask, params = inspect_matches(meshset, match_ind, "thumb");
-  indices_to_remove, break_review = edit_matches(imview..., matches, vectors, mask, params);
+  imview, matches, vectors, lines, mask, params = inspect_matches(meshset, match_ind, "thumb_imfuse");
+  indices_to_remove, break_review, inspection_flagged = edit_matches(imview..., matches, vectors, mask, params);
   if !break_review
-    store_points(path, meshset, match_ind, indices_to_remove, username, "manual")
+    # store_points(path, meshset, match_ind, indices_to_remove, username, "manual")
     match_ind += 1
     if match_ind <= length(meshset.matches)
       inspect_alignments(username, meshset, match_ind)
@@ -389,4 +368,28 @@ function update_prealignment_meshsets(waferA, secA, waferB, secB)
     solve!(meshset, method="regularized")
     save(meshset)
   end
+end
+
+"""
+Write points to remove in a text file
+"""
+function store_points(path, meshset, k, indices_to_remove, inspection_flagged, username, comment)
+  ts = Dates.format(now(), "yymmddHHMMSS")
+  src_index = meshset.matches[k].src_index
+  dst_index = meshset.matches[k].dst_index
+  if length(indices_to_remove) == 0
+    indices_to_remove = [0]
+  end
+  pts_line = [ts, username, src_index, dst_index, k, join(indices_to_remove, ","), comment]'
+  if !isfile(path)
+    f = open(path, "w")
+    close(f)
+    pts = pts_line
+  else  
+    pts = readdlm(path)
+    pts = vcat(pts, pts_line)
+  end
+  pts = pts[sortperm(pts[:, 5]), :]
+  println("Saving pts_to_remove:\n", path)
+  writedlm(path, pts)
 end

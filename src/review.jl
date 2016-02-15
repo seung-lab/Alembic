@@ -572,30 +572,6 @@ function display_discrepant_match(params, vectors, idx)
   display_blockmatch(params, ptA, ptB)
 end
 
-"""
-Write points to remove in a text file
-"""
-function store_points(path, meshset, k, indices_to_remove, username, comment)
-  ts = Dates.format(now(), "yymmddHHMMSS")
-  src_index = meshset.matches[k].src_index
-  dst_index = meshset.matches[k].dst_index
-  if length(indices_to_remove) == 0
-    indices_to_remove = [0]
-  end
-  pts_line = [ts, username, src_index, dst_index, k, join(indices_to_remove, ","), comment]'
-  if !isfile(path)
-    f = open(path, "w")
-    close(f)
-    pts = pts_line
-  else  
-    pts = readdlm(path)
-    pts = vcat(pts, pts_line)
-  end
-  pts = pts[sortperm(pts[:, 5]), :]
-  println("Saving pts_to_remove:\n", path)
-  writedlm(path, pts)
-end
-
 function get_storage_path(meshset, ts="")
   if ts == ""
     ts = Dates.format(now(), "yyyymmddHHMMSS")
@@ -1220,7 +1196,7 @@ function get_review_filename(prefix, src_index, dst_index=(0,0,0,0))
   elseif is_montaged(src_index)
     dir = PREALIGNED_DIR
   elseif is_prealigned(src_index)
-    dir = PREALIGNED_DIR
+    dir = ALIGNED_DIR
   end
   fn = string(prefix, "_", ind, ".h5")
   return joinpath(dir, "review", fn)
