@@ -70,7 +70,7 @@ using IterativeSolvers
 using ImageRegistration
 using Optim
 using Distributions
-if ENV["USER"] != "dih" && !ON_AWS
+if ENV["USER"] != "dih" && !ON_AWS && !contains(gethostname(), "seunglab")
 using PyPlot
 end
 

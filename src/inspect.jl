@@ -4,8 +4,10 @@ function show_blockmatch(match, ind, params)
   search_r = params["search_r"]
   N=size(xc, 1)
   M=size(xc, 2)
-  surf([i for i=1:N, j=1:M], [j for i=1:N, j=1:M], xc, cmap=get_cmap("hot"), 
-                          rstride=10, cstride=10, linewidth=0, antialiased=false)
+  if !contains(gethostname(), "seunglab")
+    surf([i for i=1:N, j=1:M], [j for i=1:N, j=1:M], xc, cmap=get_cmap("hot"), 
+                            rstride=10, cstride=10, linewidth=0, antialiased=false)
+  end
   println("offset: ", offset)
   xc_image = xcorr2Image(xc)
   # xc_image = padimage(xc_image, block_r, block_r, block_r, block_r, 1)
