@@ -343,7 +343,9 @@ function filter_manual!(match::Match, inds_to_filter)
 end
 
 function undo_filter!(match::Match)
-	pop!(match.filters);
+	if length(match.filters) > 0
+		pop!(match.filters)
+	end
 end
 
 function count_filtered_correspondences(match::Match)

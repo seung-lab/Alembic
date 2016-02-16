@@ -109,32 +109,6 @@ function remove_match_dict_from_meshset!(meshset, match_dict)
   save(meshset)
 end
 
-"""
-Find index of location in array with point closest to the given point (if there
-exists such a unique point within a certain pixel limit).
-
-Args:
-
-* pts: 2xN array of coordinates
-* pt: 2-element coordinate array of point in interest
-* limit: number of pixels that nearest must be within
-
-Returns:
-
-* index of the nearest point in the pts array
-
-  idx = find_idx_of_nearest_pt(pts, pt, limit)
-"""
-function find_idx_of_nearest_pt(pts, pt, limit)
-    d = sum((pts.-pt).^2, 1).^(1/2)
-    idx = eachindex(d)'[d .< limit]
-    if length(idx) == 1
-        return idx[1]
-    else
-        return 0
-    end
-end
-
 function find_pt_idx(vectors, pt)
   i = 1
   while i <= size(vectors, 2)
@@ -394,22 +368,6 @@ end
 function filter_distance(imgc, img2, lines, disp, dist)
   mask = update_annotations(imgc, img2, lines, disp .< dist)
   return mask, "disp.<$dist"
-end
-
-"""
-Convention: mask is FALSE if point is to be REMOVED
-"""
-function update_annotations(imgc, img2, lines, mask)
-  for an in values(imgc.annotations)
-    if :pts in fieldnames(an.data)
-      an.data.pts = lines[1:2, mask]
-    elseif :lines in fieldnames(an.data)
-      an.data.lines = lines[:, mask]
-    end
-  end
-  # println("Removing ", sum(!mask), " matches from GUI")
-  ImageView.redraw(imgc)
-  return mask
 end
 
 function review_matches(meshset, indexA, indexB)
