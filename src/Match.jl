@@ -332,10 +332,10 @@ function filter_manual!(match::Match)
 end
 
 ### ADD MANUAL FILTER
-function filter_manual!(match::Match, inds_to_filter)
+function filter_manual!(match::Match, inds_to_filter; filtertype="manual")
 	push!(match.filters, Dict{Any, Any}(
 				"by"	  => ENV["USER"],
-				"type"	  => "manual",
+				"type"	  => filtertype,
 				"timestamp" => string(now()),
 				"rejected"  => inds_to_filter
 			      ));

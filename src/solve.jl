@@ -167,6 +167,7 @@ function elastic_solve!(meshset)
   end
 
   for match in meshset.matches
+  	println("match $(match.src_index)->$(match.dst_index) being collated...")
     	src_mesh = meshes[match.src_index];
     	dst_mesh = meshes[match.dst_index];
 	src_pts, dst_pts = get_filtered_correspondences(match);
