@@ -156,12 +156,12 @@ function sanitize!(meshset::MeshSet)
   for match in meshset.matches
     	src_mesh = meshes[match.src_index];
     	dst_mesh = meshes[match.dst_index];
-	src_pts, dst_pts = get_filtered_correspondences(match);
+	src_pts, dst_pts = get_correspondences(match);
 	src_pt_triangles = map(find_mesh_triangle, repeated(src_mesh), src_pts);
 	dst_pt_triangles = map(find_mesh_triangle, repeated(dst_mesh), dst_pts);
-	invalids = union(find(ind -> src_pt_triangles[ind] == NO_TRIANGLE, 1:count_filtered_correspondences(match)), find(ind -> dst_pt_triangles[ind] == NO_TRIANGLE, 1:count_filtered_correspondences(match)))
+	invalids = union(find(ind -> src_pt_triangles[ind] == NO_TRIANGLE, 1:count_correspondences(match)), find(ind -> dst_pt_triangles[ind] == NO_TRIANGLE, 1:count_correspondences(match)))
 	if length(invalids) !=0
-	filter_manual!(match, invalids; filtertype = "sanitization");
+	filter!(match; inds = invalids, filtertype = "sanitization");
 	end
   end
 end

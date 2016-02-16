@@ -161,8 +161,8 @@ function inspect_matches(meshset, k, prefix="review")
 
   params = meshset.properties["params"]["match"]
 
-  src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences(meshset, k)
-  # src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences_post(meshset, k)
+  # src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences(meshset, k)
+  src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences_post(meshset, k)
   mask = !indices_to_mask(filtered_inds, length(src_nodes))
   vectorsA = scale_matches(src_nodes, scale)
   vectorsB = scale_matches(dst_nodes, scale)

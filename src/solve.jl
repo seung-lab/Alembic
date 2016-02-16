@@ -248,9 +248,6 @@ function get_globalized_correspondences_post(meshset, ind)
 	dst_pt_triangles = map(find_mesh_triangle, repeated(dst_mesh), dst_pts);
 	dst_pt_weights = map(get_triangle_weights, repeated(dst_mesh), dst_pts, dst_pt_triangles);
 
-	invalid_src = find(ind -> src_pt_triangles[ind] == NO_TRIANGLE, 1:count_filtered_correspondences(match))
-	invalid_dst = find(ind -> dst_pt_triangles[ind] == NO_TRIANGLE, 1:count_filtered_correspondences(match))
-
 	src_pts_after = map(get_tripoint_dst, repeated(src_mesh), src_pt_triangles, src_pt_weights);
 	dst_pts_after = map(get_tripoint_dst, repeated(dst_mesh), dst_pt_triangles, dst_pt_weights);
 
@@ -260,12 +257,6 @@ function get_globalized_correspondences_post(meshset, ind)
 	else
 	g_src_pts_after = src_pts_after + fill(get_offset(match.src_index), length(src_pts));
 	g_dst_pts_after = dst_pts_after + fill(get_offset(match.dst_index), length(dst_pts));
-	end
-	for i in invalid_src
-		g_src_pts_after[i] = NO_POINT;
-	end
-	for i in invalid_dst
-		g_dst_pts_after[i] = NO_POINT;
 	end
 
 	return g_src_pts_after, g_dst_pts_after, filtered_inds;
