@@ -107,14 +107,13 @@ end
 
 function MeshSet(first_index, last_index; params=get_params(first_index), solve_method="elastic", fix_first=false)
 	ind_range = get_index_range(first_index, last_index);
-	if length(ind_range) == 0 return 0; end
+	if length(ind_range) == 0 return nothing; end
 	fixed_inds = Array{Any, 1}(0);
 	if fix_first push!(fixed_inds, first_index); end
-	meshes = map(Mesh, ind_range, repeated(params), map(in, ind_range, fixed_inds))
+	meshes = map(Mesh, ind_range, repeated(params), map(in, ind_range, repeated(fixed_inds)))
  	matches = Array{Match, 1}(0)		
-	properties = Dict{Any, Any}
-			(	"params"  => params,
-				"meta" => meta()			)
+	properties = Dict{Any, Any}(	"params"  => params,
+				"meta" => meta()		)
 	meshset = MeshSet(meshes, matches, properties);
 	match!(meshset);
 	solve!(meshset, method=solve_method);
