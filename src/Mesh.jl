@@ -98,7 +98,7 @@ function get_dims_and_dists(mesh::Mesh)
 end
 
 ### INIT
-function Mesh(index, params = get_params(index))
+function Mesh(index, params = get_params(index), fixed=false)
 	
 	# mesh lengths in each dimension
 	dists = [params["mesh"]["mesh_length"] * sin(pi / 3); params["mesh"]["mesh_length"]];
@@ -146,7 +146,8 @@ function Mesh(index, params = get_params(index))
 	edges = edges[:, 1:m];
 	dst_nodes = copy(src_nodes);
 
-	properties = Dict{Any, Any}();
+	properties = Dict{Any, Any}(
+				    "fixed" => fixed);
 
 	return Mesh(index, src_nodes, dst_nodes, edges, properties);
 end
@@ -314,4 +315,17 @@ function get_tripoint_dst(mesh::Mesh, triangle, weights)
 	dst_trinodes = mesh.dst_nodes[triangle[1]], mesh.dst_nodes[triangle[2]], mesh.dst_nodes[triangle[3]]
 	dst_point = dst_trinodes[1] * weights[1] + dst_trinodes[2] * weights[2] + dst_trinodes[3] * weights[3];
 	return dst_point;
+end
+
+function fix!(mesh::Mesh)
+	mesh.properties["fixed"] = true;
+end
+
+function unfix!(mesh::Mesh)
+	mesh.properties["fixed"] = false;
+end
+
+function is_fixed(mesh::Mesh)
+	get(mesh.properties, "fixed", false)
+		#	return mesh.properties["fixed"];
 end

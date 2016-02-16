@@ -13,7 +13,7 @@ function get_correspondence_patches(meshset::MeshSet, match_ind, corr_ind) retur
 
 function get_params(meshset::MeshSet)			return meshset.properties["params"];		end
 
-function get_fixed(meshset::MeshSet)			return meshset.properties["fixed"];		end
+#function get_fixed(meshset::MeshSet)			return meshset.properties["fixed"];		end
 
 ### counting
 function count_meshes(meshset::MeshSet)			return length(meshset.meshes);		end
@@ -50,13 +50,32 @@ function add_match!(meshset::MeshSet, match::Match)
   push!(meshset.matches, match);
 end
 
-### adding
 function filter!(meshset::MeshSet, property_name, compare, threshold)
 	total = 0;
 	for match in meshset.matches
 		total = total + filter!(match, property_name, compare, threshold)
 	end
 	println("$total / $(count_correspondences(meshset)) matches filtered")
+end
+
+### reviewing
+function set_reviewed!(meshset::MeshSet, match_ind, flag = false)
+	set_reviewed!(meshset.matches[match_ind], flag);
+end
+
+function flag!(meshset::MeshSet, match_ind)
+	flag!(meshset.matches[match_ind])
+end
+
+function unflag!(meshset::MeshSet, match_ind)
+	unflag!(meshset.matches[match_ind])
+end
+function is_flagged(meshset::MeshSet, match_ind)
+	return is_flagged(meshset.matches[match_ind])
+end
+
+function is_flagged(meshset::MeshSet)
+	return |(map(is_flagged, meshset.matches)...)
 end
 
 ### initialise
@@ -89,22 +108,21 @@ end
 function MeshSet(first_index, last_index; params=get_params(first_index), solve_method="elastic", fix_first=false)
 	ind_range = get_index_range(first_index, last_index);
 	if length(ind_range) == 0 return 0; end
-	fixed = Array{Any, 1}(0);
-	if fix_first push!(fixed, first_index); end
-	meshes = map(Mesh, ind_range, repeated(params))
+	fixed_inds = Array{Any, 1}(0);
+	if fix_first push!(fixed_inds, first_index); end
+	meshes = map(Mesh, ind_range, repeated(params), map(in, ind_range, fixed_inds))
  	matches = Array{Match, 1}(0)		
-	properties = Dict(	"params"  => params,
-				"by"	  => ENV["USER"],
-				"machine" => gethostname(),
-				"timestamp" => string(now()),
-				"fixed" => fixed
-				)
+	properties = Dict{Any, Any}
+			(	"params"  => params,
+				"meta" => meta()			)
 	meshset = MeshSet(meshes, matches, properties);
 	match!(meshset);
 	solve!(meshset, method=solve_method);
 	save(meshset);
 	return meshset;
 end
+
+
 
 
 ### match
