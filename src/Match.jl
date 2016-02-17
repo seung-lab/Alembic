@@ -10,7 +10,70 @@ type Match
   properties::Dict{Any, Any}
 end
 
+### counting
 function count_correspondences(match::Match) return size(match.src_points, 1);	end
+function count_filtered_correspondences(match::Match) return length(get_filtered_indices(match)); end
+
+function get_correspondences(match::Match; globalized=false)
+	if globalized
+	return match.src_points + fill(get_offset(match.src_index), count_correspondences(match)), match.dst_points + fill(get_offset(match.dst_index), count_correspondences(match))
+	else
+	return match.src_points, match.dst_points;
+	end
+end
+#= DEPRECATED
+function get_correspondence_properties(match::Match)
+	return match.correspondence_properties;
+end
+=#
+
+function get_filtered_correspondences(match::Match; globalized=false)
+	src_pts, dst_pts = get_correspondences(match; globalized = globalized);
+	return src_pts[get_filtered_indices(match)], dst_pts[get_filtered_indices(match)];
+end
+
+function get_filtered_correspondence_properties(match::Match)
+	return match.correspondence_properties[get_filtered_indices(match)]
+end
+
+function get_filtered_indices(match::Match)
+	return setdiff(1:count_correspondences(match), union(map(getindex, match.filters, repeated("rejected"))...));
+end
+
+function get_rejected_indices(match::Match)
+	return union(map(getindex, match.filters, repeated("rejected"))...)
+end
+
+### property handling
+function get_properties(match::Match, property_name::String)
+	return map(get, match.correspondence_properties, repeated(property_name), repeated(nothing));
+end
+
+### reviewing
+function set_reviewed!(match::Match, flag = false)
+	if !haskey(match.properties, "review") match.properties["review"] = Dict{Any, Any}(); end
+
+	match.properties["review"]["meta"] = meta();
+	match.properties["review"]["flag"] = flag;
+
+	return;
+end
+
+function is_flagged(match::Match)
+	if !haskey(match.properties, "review") match.properties["review"] = Dict{Any, Any}("flag" => true); end
+
+	return match.properties["review"]["flag"]
+end
+
+function flag!(match::Match)
+	if !haskey(match.properties, "review") match.properties["review"] = Dict{Any, Any}(); end
+	match.properties["review"]["flag"] = true;
+end
+
+function unflag!(match::Match)
+	if !haskey(match.properties, "review") match.properties["review"] = Dict{Any, Any}(); end
+	match.properties["review"]["flag"] = false;
+end
 
 function get_correspondence_patches(match::Match, ind)
 	src_path = get_path(match.src_index);
@@ -53,6 +116,7 @@ function get_correspondence_patches(match::Match, ind)
 	return src_patch, src_pt, dst_patch, dst_pt, xc, dst_pt-src_pt+dv
 end
 
+### helper methods
 function get_ranges(pt, src_mesh, dst_mesh, params)
 	get_ranges(pt, src_mesh, dst_mesh, params["match"]["block_r"], params["match"]["search_r"], params["registry"]["global_offsets"]);
 end
@@ -196,21 +260,13 @@ function get_match(pt, ranges, src_image, dst_image, params = nothing)
 	end
 end
 
-function get_property(correspondence_property, property_name::String)
-	return correspondence_property[property_name];
-end
 
-function get_properties(match::Match, property_name::String)
-	return map(get_property, match.correspondence_properties, repeated(property_name));
-end
 
 function filter!(match::Match, property_name, compare, threshold)
-	attributes = map(get_property, match.correspondence_properties, repeated(property_name));
+	attributes = get_properties(match, property_name)
 	inds_to_filter = find(i -> compare(i, threshold), attributes);
 	push!(match.filters, Dict{Any, Any}(
-				"by"	  => ENV["USER"],
-				"machine" => gethostname(),
-				"timestamp" => string(now()),
+				"meta" => meta(),
 				"type"	  => property_name,
 				"threshold" => threshold,
 				"rejected"  => inds_to_filter
@@ -220,7 +276,7 @@ function filter!(match::Match, property_name, compare, threshold)
 end
 
 function eval_filter(match::Match, property_name, compare, threshold)
-	attributes = map(get_property, match.correspondence_properties, repeated(property_name));
+	attributes = get_properties(match, property_name)
 	inds_to_filter = find(i -> compare(i, threshold), attributes);
 	rejected_inds = get_rejected_indices(match);
 
@@ -332,10 +388,10 @@ function filter_manual!(match::Match)
 end
 
 ### ADD MANUAL FILTER
-function filter_manual!(match::Match, inds_to_filter)
+function filter_manual!(match::Match, inds_to_filter; filtertype="manual")
 	push!(match.filters, Dict{Any, Any}(
 				"by"	  => ENV["USER"],
-				"type"	  => "manual",
+				"type"	  => filtertype,
 				"timestamp" => string(now()),
 				"rejected"  => inds_to_filter
 			      ));
@@ -343,43 +399,10 @@ function filter_manual!(match::Match, inds_to_filter)
 end
 
 function undo_filter!(match::Match)
-	if length(match.filters) > 0
-		pop!(match.filters)
-	end
+	pop!(match.filters);
 end
 
-function count_filtered_correspondences(match::Match)
-	return length(get_filtered_indices(match));
-end
 
-function get_correspondences(match::Match; globalized=false)
-	if globalized
-	return match.src_points + fill(get_offset(match.src_index), count_correspondences(match)), match.dst_points + fill(get_offset(match.dst_index), count_correspondences(match))
-	else
-	return match.src_points, match.dst_points;
-	end
-end
-
-function get_correspondence_properties(match::Match)
-	return match.correspondence_properties;
-end
-
-function get_filtered_correspondences(match::Match; globalized=false)
-	src_pts, dst_pts = get_correspondences(match; globalized = globalized);
-	return src_pts[get_filtered_indices(match)], dst_pts[get_filtered_indices(match)];
-end
-
-function get_filtered_correspondence_properties(match::Match)
-	return match.correspondence_properties[get_filtered_indices(match)]
-end
-
-function get_filtered_indices(match::Match)
-	return setdiff(1:count_correspondences(match), union(map(getindex, match.filters, repeated("rejected"))...));
-end
-
-function get_rejected_indices(match::Match)
-	return union(map(getindex, match.filters, repeated("rejected"))...)
-end
 
 function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); src_image=get_image(src_mesh), dst_image=get_image(dst_mesh), rotate=0)
 	println("Matching $(src_mesh.index) -> $(dst_mesh.index):")
@@ -423,10 +446,16 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); src_
 
 	dst_points = [convert(Point, dst_allpoints[ind][1:2]) for ind in matched_inds]
 	correspondence_properties = [dst_allpoints[ind][3] for ind in matched_inds]
-  	properties = Dict{Any, Any}();
+  	properties = Dict{Any, Any}(
+		"review" => Dict{Any, Any}(
+				"flag" => true) 
+			);
 
 	return Match(src_index, dst_index, src_points, dst_points, correspondence_properties, filters, properties);
 end
+
+
+
 
 function sync_images(src_image_ref, dst_image_ref)
 	src_image_local = fetch(src_image_ref);
