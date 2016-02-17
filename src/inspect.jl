@@ -333,6 +333,7 @@ function inspect_matches(meshset, k, prefix="review")
   return imgc, img2, matches, vectors, params
 end
 
+<<<<<<< HEAD
 function make_vectors(meshset, k, params)
   scale = params["scale"]
   offset = params["offset"]
@@ -342,6 +343,11 @@ function make_vectors(meshset, k, params)
   if params["post_matches"]
     src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences_post(meshset, k)
   end
+=======
+  # src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences(meshset, k)
+  src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences_post(meshset, k)
+  mask = !indices_to_mask(filtered_inds, length(src_nodes))
+>>>>>>> origin/master
   vectorsA = scale_matches(src_nodes, scale)
   vectorsB = scale_matches(dst_nodes, scale)
   vecs = offset_matches(vectorsA, vectorsB, offset)
