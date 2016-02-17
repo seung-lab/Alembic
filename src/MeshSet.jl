@@ -326,7 +326,7 @@ function count_children(parent_name)
 end
 
 function load_split(parent_name, split_index)
-    filename = joinpath(ALIGNED_DIR, parent_name, "$split_index.jls"))
+    filename = joinpath(ALIGNED_DIR, parent_name, "$split_index.jls")
     println("Loading meshset for ", parent_name, ": child ", split_index, " / ", count_children(parent_name));
     return load(filename);
 end
