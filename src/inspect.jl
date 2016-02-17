@@ -25,14 +25,15 @@ end
 """
 The only function called by tracers to inspect alignment points
 """
-function inspect_alignments(meshset, match_ind)
+function inspect_alignments(match_ind)
   firstindex = meshset.meshes[1].index
   lastindex = meshset.meshes[count_meshes(meshset)].index
-  name = string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned.jls")
-  match = meshset.matches[match_ind]
+  name = string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned")
+  meshset = load_split(name, match_ind)
+  match = meshset.matches[1]
   src_dst = string(join(match.src_index[1:2], ","), "-", join(match.dst_index[1:2], ","))
   println("\n", name, ": ", src_dst, " @ ", match_ind, " / ", length(meshset.matches))
-  imgc, img2, matches, vectors, params = inspect_matches(meshset, match_ind, "thumb_imfuse");
+  imgc, img2, matches, vectors, params = inspect_matches(meshset, 1, "thumb_imfuse");
   enable_inspection(imgc, img2, meshset, matches, vectors, params, "alignment", (1, match_ind));
 end
 
@@ -100,7 +101,7 @@ function enable_inspection(imgc::ImageView.ImageCanvas,
   bind(win, "=", path->increase_vectors(imgc, img2, meshset, matches, vectors, params))
   bind(win, "-", path->decrease_vectors(imgc, img2, meshset, matches, vectors, params))
   bind(win, "p", path->switch_pre_to_post(imgc, img2, meshset, matches, vectors, params))
-  bind(win, "s", path->save_inspection(meshset))
+  bind(win, "s", path->save_inspection(meshset, matches))
   bind(win, "<Return>", path->go_to_next_inspection(imgc, img2, meshset, stage, calls))
 end
 
@@ -124,9 +125,10 @@ function disable_inspection(imgc::ImageView.ImageCanvas, img2::ImageView.ImageSl
   destroy(win)
 end
 
-function save_inspection(meshset)
+function save_inspection(meshset, matches)
   println("meshset saved")
-  # save(meshset)
+  set_reviewed!(matches, true)
+  save(meshset)
 end
 
 function go_to_next_inspection(imgc, img2, meshset, stage, calls)
@@ -270,7 +272,7 @@ function filter_match_distance(imgc, img2, matches, vectors, dist)
 end
 
 function flag_inspection(imgc, img2, matches)
-  println("Flag the match!")
+  println("Flag inspection!")
   flag!(matches)
 end
 
@@ -473,26 +475,3 @@ function update_prealignment_meshsets(waferA, secA, waferB, secB)
   end
 end
 
-"""
-Write points to remove in a text file
-"""
-function store_points(path, meshset, k, indices_to_remove, inspection_flagged, username, comment)
-  ts = Dates.format(now(), "yymmddHHMMSS")
-  src_index = meshset.matches[k].src_index
-  dst_index = meshset.matches[k].dst_index
-  if length(indices_to_remove) == 0
-    indices_to_remove = [0]
-  end
-  pts_line = [ts, username, src_index, dst_index, k, join(indices_to_remove, ","), comment]'
-  if !isfile(path)
-    f = open(path, "w")
-    close(f)
-    pts = pts_line
-  else  
-    pts = readdlm(path)
-    pts = vcat(pts, pts_line)
-  end
-  pts = pts[sortperm(pts[:, 5]), :]
-  println("Saving pts_to_remove:\n", path)
-  writedlm(path, pts)
-end
