@@ -13,6 +13,7 @@ end
 ### counting
 function count_correspondences(match::Match) return size(match.src_points, 1);	end
 function count_filtered_correspondences(match::Match) return length(get_filtered_indices(match)); end
+function count_filters(match::Match) return length(match.filters); end
 
 function get_correspondences(match::Match; globalized=false)
 	if globalized
@@ -369,33 +370,21 @@ function eval_filters_meshsets(mses, filters)
 	println("total falsely accepted: $total_false_acc")
 end
 
+
 ### ADD MANUAL FILTER
-function filter_manual!(match::Match)
-	inds_to_filter = Points(0)
-	while(true)
-		#choose point and add
-		ind_to_remove = 0;
-		push!(inds_to_filter, ind_to_remove)
-		#undo by pop!
-	end
+function filter_manual!(match::Match, inds_to_filter; filtertype="manual")
 	push!(match.filters, Dict{Any, Any}(
-				"by"	  => ENV["USER"],
-				"type"	  => "manual",
-				"timestamp" => string(now()),
+				"author"	  => author(),
+				"type"	  => filtertype,
 				"rejected"  => inds_to_filter
 			      ));
 	return;
 end
 
-### ADD MANUAL FILTER
-function filter_manual!(match::Match, inds_to_filter; filtertype="manual")
-	push!(match.filters, Dict{Any, Any}(
-				"by"	  => ENV["USER"],
-				"type"	  => filtertype,
-				"timestamp" => string(now()),
-				"rejected"  => inds_to_filter
-			      ));
-	return;
+function clear_filters!(match::Match; filtertype=nothing)
+	match.filters = match.filters[setdiff(1:length(match.filters), find(filter -> filter["type"] == filtertype, match.filters))]
+	if filtertype == nothing	match.filters = Dict{Any, Any}(); end
+
 end
 
 function undo_filter!(match::Match)

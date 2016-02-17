@@ -216,7 +216,8 @@ function sanitize!(meshset::MeshSet)
 	dst_pt_triangles = map(find_mesh_triangle, repeated(dst_mesh), dst_pts);
 	invalids = union(find(ind -> src_pt_triangles[ind] == NO_TRIANGLE, 1:count_correspondences(match)), find(ind -> dst_pt_triangles[ind] == NO_TRIANGLE, 1:count_correspondences(match)))
 	if length(invalids) !=0
-	filter!(match; inds = invalids, filtertype = "sanitization");
+	clear_filters!(match; filtertype = "sanitization");
+	filter_manual!(match, invalids; filtertype = "sanitization");
 	end
   end
 end
