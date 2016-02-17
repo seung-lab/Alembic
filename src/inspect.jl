@@ -1,3 +1,43 @@
+"""
+The only function called by tracers to inspect montage points
+"""
+function inspect_montages(meshset_ind, match_ind)
+  indrange = get_index_range((1,1,-2,-2), (8,173,-2,-2))
+  meshset = load(indrange[meshset_ind])
+  println("\n", meshset_ind, ": ", indrange[meshset_ind], " @ ", match_ind, " / ", length(meshset.matches))
+  imgc, img2, matches, vectors, params = inspect_matches(meshset, match_ind, "seam");
+  enable_inspection(imgc, img2, meshset, matches, vectors, params, "montage", (meshset_ind, match_ind))
+end
+
+"""
+The only function called by tracers to inspect prealignment points
+"""
+function inspect_prealignments(meshset_ind)
+  match_ind = 1
+  index_pairs = collect(get_sequential_index_pairs((1,1,-2,-2), (2,149,-2,-2)))
+  indexA, indexB = index_pairs[meshset_ind]
+  meshset = load(indexB, indexA)
+  println("\n", meshset_ind, ": ", (indexB, indexA), " @ ", match_ind, " / ", length(meshset.matches))
+  imgc, img2, matches, vectors, params = inspect_matches(meshset, match_ind, "thumb")
+  enable_inspection(imgc, img2, meshset, matches, vectors, params, "prealignment", (meshset_ind, match_ind))
+end
+
+"""
+The only function called by tracers to inspect alignment points
+"""
+function inspect_alignments(meshset, match_ind)
+  firstindex = meshset.meshes[1].index
+  lastindex = meshset.meshes[count_meshes(meshset)].index
+  name = string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned.jls")
+  match = meshset.matches[match_ind]
+  src_dst = string(join(match.src_index[1:2], ","), "-", join(match.dst_index[1:2], ","))
+  println("\n", name, ": ", src_dst, " @ ", match_ind, " / ", length(meshset.matches))
+  imgc, img2, matches, vectors, params = inspect_matches(meshset, match_ind, "thumb_imfuse");
+  enable_inspection(imgc, img2, meshset, matches, vectors, params, "alignment", (1, match_ind));
+end
+
+
+
 function show_blockmatch(match, ind, params)
   src_patch, src_pt, dst_patch, dst_pt, xc, offset = get_correspondence_patches(match, ind)
   block_r = params["block_r"]
@@ -33,45 +73,115 @@ end
 """
 Extend ImageView to inspect & remove matches
 """
-function enable_edit_matches(imgc::ImageView.ImageCanvas, 
+function enable_inspection(imgc::ImageView.ImageCanvas, 
                                 img2::ImageView.ImageSlice2d, 
-                                meshset, matches, vectors, params)
-# function enable_edit_matches(imgc, img2, matches, vectors, mask, params)
+                                meshset, matches, vectors, params, stage, calls)
+  println("Enable inspection")
   c = canvas(imgc)
   win = Tk.toplevel(c)
-  bind(c, "<Button-3>", (c, x, y)->inspect_match(imgc, img2, parse(Int, x), 
-                                                              parse(Int, y), 
-                                                              matches,
-                                                              vectors, 
-                                                              params))
-  bind(c, "<Control-Button-3>", (c, x, y)->remove_match(imgc, img2, parse(Int, x), 
-                                                              parse(Int, y), 
-                                                              matches,
-                                                              vectors))
-  bind(win, "f", path->flag_inspection(imgc, img2, matches, vectors))
+  bind(c, "<Button-3>", (c, x, y)->inspect_match(imgc, img2, 
+                                                        parse(Int, x), 
+                                                        parse(Int, y), 
+                                                        matches,
+                                                        vectors, 
+                                                        params))
+  bind(c, "<Control-Button-3>", (c, x, y)->remove_match(imgc, img2, 
+                                                                parse(Int, x), 
+                                                                parse(Int, y), 
+                                                                matches,
+                                                                vectors))
+  bind(win, "f", path->flag_inspection(imgc, img2, matches))
   bind(win, "<Control-z>", path->undo_match_filter(imgc, img2, matches, vectors))
-  bind(win, "<Escape>", path->disable_edit_matches(imgc, img2))
-  bind(win, "<Destroy>", path->disable_edit_matches(imgc, img2))
-  # bind(win, "<Return>", path->end_edit())
+  bind(win, "<Escape>", path->disable_inspection(imgc, img2))
+  bind(win, "<Destroy>", path->disable_inspection(imgc, img2))
   # bind(win, "z", path->end_edit())
+  bind(win, ",", path->decrease_distance_filter(imgc, img2, matches, vectors, params))
+  bind(win, ".", path->increase_distance_filter(imgc, img2, matches, vectors, params))
   bind(win, "=", path->increase_vectors(imgc, img2, meshset, matches, vectors, params))
   bind(win, "-", path->decrease_vectors(imgc, img2, meshset, matches, vectors, params))
   bind(win, "p", path->switch_pre_to_post(imgc, img2, meshset, matches, vectors, params))
+  bind(win, "s", path->save_inspection(meshset))
+  bind(win, "<Return>", path->go_to_next_inspection(imgc, img2, meshset, stage, calls))
 end
 
-function disable_edit_matches(imgc::ImageView.ImageCanvas, img2::ImageView.ImageSlice2d)
+function disable_inspection(imgc::ImageView.ImageCanvas, img2::ImageView.ImageSlice2d)
   c = canvas(imgc)
   win = Tk.toplevel(c)
-  println("End edit\n")
+  println("Disable inspection")
   bind(c, "<Button-3>", path->path)
   bind(c, "<Control-Button-3>", path->path)
-  bind(win, "<Delete>", path->path)
   bind(win, "f", path->path)
   bind(win, "<Destroy>", path->path)
   bind(win, "<Escape>", path->path)
-  bind(win, "<Return>", path->path)
   bind(win, "<Control-z>", path->path)
+  bind(win, ",", path->path)
+  bind(win, ".", path->path)
+  bind(win, "=", path->path)
+  bind(win, "-", path->path)
+  bind(win, "p", path->path)
+  bind(win, "s", path->path)
+  bind(win, "<Return>", path->path)
   destroy(win)
+end
+
+function save_inspection(meshset)
+  println("meshset saved")
+  # save(meshset)
+end
+
+function go_to_next_inspection(imgc, img2, meshset, stage, calls)
+  disable_inspection(imgc, img2)
+
+  meshset_ind, match_ind = calls
+  match_ind += 1
+  if match_ind > length(meshset.matches)
+    meshset_ind += 1
+    match_ind = 1
+  end
+
+  if stage == "alignment"
+    inspect_alignments(meshset, match_ind)
+  elseif stage == "prealignment"
+    inspect_prealignments(meshset_ind)
+  elseif stage == "montage"
+    inspect_montages(meshset_ind, match_ind)
+  else
+    inspect_montages(meshset_ind, match_ind)
+  end
+end
+
+"""
+Convention: mask is FALSE if point is to be REMOVED
+"""
+function update_annotations(imgc, img2, matches, params)
+  mask = get_filtered_indices(matches)
+  for an in values(imgc.annotations)
+    if :pts in fieldnames(an.data)
+      an.data.pts = vectors[1:2, mask]
+    elseif :lines in fieldnames(an.data)
+      an.data.lines = vectors[:, mask]
+    end
+  end
+  ImageView.redraw(imgc)
+end
+
+function inspect_match(imgc, img2, x, y, matches, vectors, params, prox=0.0125)
+  # prox: 0.0125 = 100/8000
+  indices = get_filtered_indices(matches)
+  lines = vectors[:, indices]
+
+  xu, yu = Graphics.device_to_user(Graphics.getgc(imgc.c), x, y)
+  xi, yi = floor(Integer, 1+xu), floor(Integer, 1+yu)
+  limit = (img2.zoombb.xmax - img2.zoombb.xmin) * prox 
+  annidx = find_idx_of_nearest_pt(lines[1:2,:], [xi, yi], limit)
+  if annidx > 0
+    idx = indices[annidx]
+    ptA = vectors[1:2,idx] # - params["src_offset"]
+    ptB = vectors[3:4,idx] # - params["dst_offset"]
+    println(idx, ": ", ptA, ", ", ptB)
+    bm_win = show_blockmatch(matches, idx, params)
+    detect_blockmatch_removal(imgc, img2, bm_win, matches, idx, vectors)
+  end
 end
 
 """
@@ -100,37 +210,18 @@ function find_idx_of_nearest_pt(pts, pt, limit)
     end
 end
 
-"""
-Convention: mask is FALSE if point is to be REMOVED
-"""
-function update_annotations(imgc, img2, matches, vectors)
-  mask = get_filtered_indices(matches)
-  for an in values(imgc.annotations)
-    if :pts in fieldnames(an.data)
-      an.data.pts = vectors[1:2, mask]
-    elseif :lines in fieldnames(an.data)
-      an.data.lines = vectors[:, mask]
-    end
-  end
-  ImageView.redraw(imgc)
+function detect_blockmatch_removal(imgc::ImageView.ImageCanvas, 
+                                      img2::ImageView.ImageSlice2d, 
+                                      win, matches, idx, vectors)
+  bind(win, "<Delete>", path->remove_blockmatch_from_patch_window(win, imgc, 
+                                                  img2, matches, idx, vectors))
 end
 
-function inspect_match(imgc, img2, x, y, matches, vectors, params, prox=0.0125)
-  # prox: 0.0125 = 100/8000
-  indices = get_filtered_indices(matches)
-  lines = vectors[:, indices]
-
-  xu, yu = Graphics.device_to_user(Graphics.getgc(imgc.c), x, y)
-  xi, yi = floor(Integer, 1+xu), floor(Integer, 1+yu)
-  limit = (img2.zoombb.xmax - img2.zoombb.xmin) * prox 
-  annidx = find_idx_of_nearest_pt(lines[1:2,:], [xi, yi], limit)
-  if annidx > 0
-    idx = indices[annidx]
-    ptA = vectors[1:2,idx] # - params["src_offset"]
-    ptB = vectors[3:4,idx] # - params["dst_offset"]
-    println(idx, ": ", ptA, ", ", ptB)
-    inspect_window = show_blockmatch(matches, idx, params)
-  end
+function remove_blockmatch_from_patch_window(win, imgc, img2, matches, idx, vectors)
+  bind(win, "<Delete>", path->path)
+  destroy(win)
+  filter_manual!(matches, idx)
+  update_annotations(imgc, img2, matches, vectors)
 end
 
 function remove_match(imgc, img2, x, y, matches, vectors, prox=0.0125)
@@ -144,7 +235,7 @@ function remove_match(imgc, img2, x, y, matches, vectors, prox=0.0125)
   if annidx > 0
     idx = indices[annidx]
     pt = vectors[1:2,idx]
-    println(idx, ": ", pt)
+    println("Manually removed ", idx, ": ", pt)
     filter_manual!(matches, idx)
     update_annotations(imgc, img2, matches, vectors)
   end
@@ -156,20 +247,31 @@ function undo_match_filter(imgc, img2, matches, vectors)
   update_annotations(imgc, img2, matches, vectors)
 end
 
+function increase_distance_filter(imgc, img2, matches, vectors, params)
+  params["dist"] += 10
+  filter_match_distance(imgc, img2, matches, vectors, params["dist"])
+end
+
+function decrease_distance_filter(imgc, img2, matches, vectors, params)
+  params["dist"] = max(params["dist"]-10, 0)
+  filter_match_distance(imgc, img2, matches, vectors, params["dist"])
+end
+
 function filter_match_distance(imgc, img2, matches, vectors, dist)
   # hack to test if a match_distance filter was just implemented
-  if length(matches.filter) > 0
-    if matches.filter[end]["type"] == "norm"
+  if length(matches.filters) > 0
+    if matches.filters[end]["type"] == "norm"
       undo_filter!(matches)
     end
   end
+  println("Distance filter @ ", dist)
   filter!(matches, "norm", >, dist)
   update_annotations(imgc, img2, matches, vectors)
 end
 
-function flag_inspection(imgc, img2, matches, vectors)
-  filter!(matches, "norm", >, 0)
-  update_annotations(imgc, img2, matches, vectors)
+function flag_inspection(imgc, img2, matches)
+  println("FLAG MATCHES! (not implemented, yet)")
+  # meshset.properpties["flagged"]
 end
 
 function increase_vectors(imgc, img2, meshset, matches, vectors, params)
@@ -222,6 +324,7 @@ function inspect_matches(meshset, k, prefix="review")
   params["match_index"] = k
   params["vector_scale"] = 4
   params["post_matches"] = false
+  params["dist"] = 90
 
   imgc, img2 = view(img, pixelspacing=[1,1])
   vectors = make_vectors(meshset, k, params)
@@ -234,6 +337,7 @@ function make_vectors(meshset, k, params)
   scale = params["scale"]
   offset = params["offset"]
   factor = params["vector_scale"]
+  println("Vector scale: ", factor)
   src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences(meshset, k)
   if params["post_matches"]
     src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences_post(meshset, k)
@@ -243,73 +347,6 @@ function make_vectors(meshset, k, params)
   vecs = offset_matches(vectorsA, vectorsB, offset)
   vectors = [hcat(vecs[1]...); hcat(vecs[2]...)]
   return change_vector_lengths([hcat(vecs[1]...); hcat(vecs[2]...)], factor)
-end
-
-function get_inspection_path(username, stage_name)
-  return joinpath(INSPECTION_DIR, string(stage_name, "_inspection_", username, ".txt"))
-end
-
-"""
-The only function called by tracers to inspect montage points
-"""
-function inspect_montages(username, meshset_ind, match_ind)
-  path = get_inspection_path(username, "montage")
-  indrange = get_index_range((1,1,-2,-2), (8,173,-2,-2))
-  meshset = load(indrange[meshset_ind])
-  println("\n", meshset_ind, ": ", indrange[meshset_ind], " @ ", match_ind, " / ", length(meshset.matches))
-  imgc, img2, matches, vectors, params = inspect_matches(meshset, match_ind, "seam");
-  indices_to_remove, break_review, inspection_flagged = edit_matches(imgc, img2, matches, vectors, mask, params);
-  if !break_review
-    store_points(path, meshset, match_ind, indices_to_remove, username, "manual")
-    match_ind += 1
-    if match_ind > length(meshset.matches)
-      meshset_ind += 1
-      match_ind = 1
-    end
-    inspect_montages(username, meshset_ind, match_ind)
-  end
-end
-
-"""
-The only function called by tracers to inspect prealignment points
-"""
-function inspect_prealignments(username, meshset_ind)
-  match_ind = 1
-  path = get_inspection_path(username, "prealignment")
-  index_pairs = collect(get_sequential_index_pairs((1,1,-2,-2), (2,149,-2,-2)))
-  indexA, indexB = index_pairs[meshset_ind]
-  meshset = load(indexB, indexA)
-  println("\n", meshset_ind, ": ", (indexB, indexA), " @ ", match_ind, " / ", length(meshset.matches))
-  imgc, img2, matches, vectors, params = inspect_matches(meshset, match_ind, "thumb");
-  indices_to_remove, break_review, inspection_flagged = edit_matches(imgc, img2, matches, vectors, params);
-  if !break_review
-    store_points(path, meshset, match_ind, indices_to_remove, username, "manual")
-    meshset_ind += 1
-    inspect_prealignments(username, meshset_ind)
-  end
-end
-
-"""
-The only function called by tracers to inspect alignment points
-"""
-function inspect_alignments(username, meshset, match_ind)
-  path = get_inspection_path(username, "alignment")
-
-  firstindex = meshset.meshes[1].index
-  lastindex = meshset.meshes[count_meshes(meshset)].index
-  name = string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned.jls")
-  match = meshset.matches[match_ind]
-  src_dst = string(join(match.src_index[1:2], ","), "-", join(match.dst_index[1:2], ","))
-  println("\n", name, ": ", src_dst, " @ ", match_ind, " / ", length(meshset.matches))
-  imgc, img2, matches, vectors, params = inspect_matches(meshset, match_ind, "thumb_imfuse");
-  enable_edit_matches(imgc, img2, meshset, matches, vectors, params);
-  # if !break_review
-  #   # store_points(path, meshset, match_ind, indices_to_remove, username, "manual")
-  #   match_ind += 1
-  #   if match_ind <= length(meshset.matches)
-  #     inspect_alignments(username, meshset, match_ind)
-  #   end
-  # end
 end
 
 """
