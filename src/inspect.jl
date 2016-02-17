@@ -271,7 +271,7 @@ end
 
 function flag_inspection(imgc, img2, matches)
   println("FLAG MATCHES! (not implemented, yet)")
-  # meshset.properpties["flagged"]
+  # flag!(matches)
 end
 
 function increase_vectors(imgc, img2, meshset, matches, vectors, params)
