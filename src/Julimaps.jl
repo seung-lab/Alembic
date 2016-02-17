@@ -74,7 +74,7 @@ if ENV["USER"] != "dih" && !ON_AWS && !contains(gethostname(), "seunglab")
 using PyPlot
 end
 
-include("meta.jl")
+include("author.jl")
 include("Index.jl")
 include("registry.jl")
 if ON_AWS

@@ -78,6 +78,40 @@ function is_flagged(meshset::MeshSet)
 	return |(map(is_flagged, meshset.matches)...)
 end
 
+### splitting
+function split(meshset::MeshSet)
+	parent_name = get_name(meshset)
+
+	for i in 1:count_matches(meshset)
+		properties = deepcopy(meshset.properties);
+		properties["meta"]["parent"] = parent_name;
+		properties["meta"]["split_index"] = i;
+		matches = Array{Match, 1}();
+		push!(matches, meshset.matches[i])
+		meshes = Array{Mesh, 1}();
+		src_mesh = meshset.meshes[findfirst(mesh -> mesh.index == meshset.matches[i].src_index, meshset.meshes)]
+		dst_mesh = meshset.meshes[findfirst(mesh -> mesh.index == meshset.matches[i].dst_index, meshset.meshes)]
+		push!(meshes, src_mesh, dst_mesh)
+		save(MeshSet(meshes, matches, properties));
+		println("Child ", i, " / ", count_matches(meshset), " saved");
+	end
+end
+
+function flag!(meshset::MeshSet, match_ind)
+	flag!(meshset.matches[match_ind])
+end
+
+function unflag!(meshset::MeshSet, match_ind)
+	unflag!(meshset.matches[match_ind])
+end
+function is_flagged(meshset::MeshSet, match_ind)
+	return is_flagged(meshset.matches[match_ind])
+end
+
+function is_flagged(meshset::MeshSet)
+	return |(map(is_flagged, meshset.matches)...)
+end
+
 ### initialise
 function MeshSet()
  	meshes = Array{Mesh, 1}(0)
@@ -113,7 +147,11 @@ function MeshSet(first_index, last_index; params=get_params(first_index), solve_
 	meshes = map(Mesh, ind_range, repeated(params), map(in, ind_range, repeated(fixed_inds)))
  	matches = Array{Match, 1}(0)		
 	properties = Dict{Any, Any}(	"params"  => params,
-				"meta" => meta()		)
+				"author" => author(),
+				"meta" => Dict{Any, Any}(
+					"parent" => nothing,
+					"split_index" => 0)
+					)
 	meshset = MeshSet(meshes, matches, properties);
 	match!(meshset);
 	solve!(meshset, method=solve_method);
@@ -178,7 +216,8 @@ function sanitize!(meshset::MeshSet)
 	dst_pt_triangles = map(find_mesh_triangle, repeated(dst_mesh), dst_pts);
 	invalids = union(find(ind -> src_pt_triangles[ind] == NO_TRIANGLE, 1:count_correspondences(match)), find(ind -> dst_pt_triangles[ind] == NO_TRIANGLE, 1:count_correspondences(match)))
 	if length(invalids) !=0
-	filter!(match; inds = invalids, filtertype = "sanitization");
+	clear_filters!(match; filtertype = "sanitization");
+	filter_manual!(match, invalids; filtertype = "sanitization");
 	end
   end
 end
@@ -195,6 +234,14 @@ function save(meshset::MeshSet)
   firstindex = meshset.meshes[1].index
   lastindex = meshset.meshes[count_meshes(meshset)].index
 
+  if has_parent(meshset)
+    foldername = joinpath(ALIGNED_DIR, meshset.properties["meta"]["parent"])
+    if !isdir(foldername) mkdir(foldername) end
+    split_index = get_split_index(meshset);
+    filename = joinpath(foldername, "$split_index.jls")
+    
+  else
+
   if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex))
     filename = joinpath(PREALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned.jls"))
     #update_offset(prealigned(firstindex), [0, 0]);
@@ -205,7 +252,32 @@ function save(meshset::MeshSet)
     filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "_montaged.jls"))
     #update_offset(montaged(firstindex), [0, 0]);
   end
+
+  end
   save(filename, meshset);
+end
+
+#### ONLY AS PARENT!!!!
+function get_name(meshset::MeshSet)
+  	firstindex = meshset.meshes[1].index
+  	lastindex = meshset.meshes[count_meshes(meshset)].index
+	return string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned")
+end
+
+function load_split(parent_name, split_index)
+    filename = joinpath(ALIGNED_DIR, parent_name, join(split_index, ".jls"))
+    println("Loading meshset for ", parent_name, ": child ", split_index, " / ", count_children(parent_name));
+    return load(filename);
+end
+
+function has_parent(meshset::MeshSet)
+	if !haskey(meshset.properties, "meta") || !haskey(meshset.properties["meta"], "parent") || meshset.properties["meta"]["parent"] == nothing return false end
+	return true
+end
+
+function get_split_index(meshset::MeshSet)
+	if !haskey(meshset.properties, "meta") || !haskey(meshset.properties["meta"], "parent") || meshset.properties["meta"]["parent"] == nothing return 0 end
+	return meshset.properties["meta"]["split_index"];
 end
 
 """
@@ -245,6 +317,19 @@ function load(firstindex, lastindex)
 
   println("Loading meshset from ", filename)
   return load(filename)
+end
+
+function count_children(parent_name)
+    dirname = joinpath(ALIGNED_DIR, parent_name)
+    if !isdir(dirname) return 0 end
+    dircontents = readdir(dirname);
+    return length(find(i -> contains(dircontents[i], ".jls"), 1:length(dircontents)))
+end
+
+function load_split(parent_name, split_index)
+    filename = joinpath(ALIGNED_DIR, parent_name, "$split_index.jls")
+    println("Loading meshset for ", parent_name, ": child ", split_index, " / ", count_children(parent_name));
+    return load(filename);
 end
 
 function load(index)

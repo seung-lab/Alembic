@@ -1,4 +1,4 @@
-function meta()
+function author()
 	return Dict{Any, Any}(
 					"by"	  => ENV["USER"],
 					"machine" => gethostname(),
