@@ -153,7 +153,7 @@ end
 """
 Convention: mask is FALSE if point is to be REMOVED
 """
-function update_annotations(imgc, img2, matches, params)
+function update_annotations(imgc, img2, matches, vectors)
   mask = get_filtered_indices(matches)
   for an in values(imgc.annotations)
     if :pts in fieldnames(an.data)
