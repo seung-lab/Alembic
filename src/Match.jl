@@ -53,7 +53,7 @@ end
 function set_reviewed!(match::Match, flag = false)
 	if !haskey(match.properties, "review") match.properties["review"] = Dict{Any, Any}(); end
 
-	match.properties["review"]["meta"] = meta();
+	match.properties["review"]["author"] = author();
 	match.properties["review"]["flag"] = flag;
 
 	return;
@@ -266,7 +266,7 @@ function filter!(match::Match, property_name, compare, threshold)
 	attributes = get_properties(match, property_name)
 	inds_to_filter = find(i -> compare(i, threshold), attributes);
 	push!(match.filters, Dict{Any, Any}(
-				"meta" => meta(),
+				"author" => author(),
 				"type"	  => property_name,
 				"threshold" => threshold,
 				"rejected"  => inds_to_filter
