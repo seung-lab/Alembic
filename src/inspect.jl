@@ -25,16 +25,44 @@ end
 """
 The only function called by tracers to inspect alignment points
 """
-function inspect_alignments(match_ind)
-  firstindex = meshset.meshes[1].index
-  lastindex = meshset.meshes[count_meshes(meshset)].index
+function inspect_alignments(meshset_ind)
+  match_ind = 1
+  firstindex, lastindex = (1,167,-3,-3), (2,149,-3,-3)
   name = string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned")
-  meshset = load_split(name, match_ind)
-  match = meshset.matches[1]
+  meshset = load_split(name, meshset_ind)
+  match = meshset.matches[match_ind]
   src_dst = string(join(match.src_index[1:2], ","), "-", join(match.dst_index[1:2], ","))
   println("\n", name, ": ", src_dst, " @ ", match_ind, " / ", length(meshset.matches))
-  imgc, img2, matches, vectors, params = inspect_matches(meshset, 1, "thumb_imfuse");
-  enable_inspection(imgc, img2, meshset, matches, vectors, params, "alignment", (1, match_ind));
+  imgc, img2, matches, vectors, params = inspect_matches(meshset, match_ind, "thumb_imfuse");
+  enable_inspection(imgc, img2, meshset, matches, vectors, params, "alignment", (meshset_ind, match_ind));
+end
+
+"""
+The only function called by tracers to inspect alignment points
+"""
+function inspect_meshset(meshset, match_ind=1)
+  firstindex, lastindex = (1,167,-3,-3), (2,149,-3,-3)
+  name = string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned")
+  meshset = load_split(name, meshset_ind)
+  match = meshset.matches[match_ind]
+  src_dst = string(join(match.src_index[1:2], ","), "-", join(match.dst_index[1:2], ","))
+  println("\n", name, ": ", src_dst, " @ ", match_ind, " / ", length(meshset.matches))
+  imgc, img2, matches, vectors, params = inspect_matches(meshset, match_ind, "thumb_imfuse");
+  enable_inspection(imgc, img2, meshset, matches, vectors, params, "alignment", (meshset_ind, match_ind));
+end
+
+"""
+The only function called by tracers to inspect a pre-loaded meshset
+"""
+function inspect_meshset(meshset, match_ind)
+  firstindex = meshset.meshes[1].index
+  lastindex = meshset.meshes[count_meshes(meshset)].index
+  name = string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","))
+  match = meshset.matches[match_ind]
+  src_dst = string(join(match.src_index[1:2], ","), "-", join(match.dst_index[1:2], ","))
+  println("\n", name, ": ", src_dst, " @ ", match_ind, " / ", length(meshset.matches))
+  imgc, img2, matches, vectors, params = inspect_matches(meshset, match_ind, "thumb_imfuse");
+  enable_inspection(imgc, img2, meshset, matches, vectors, params, "meshset", (1, match_ind));
 end
 
 
@@ -49,7 +77,7 @@ function show_blockmatch(match, ind, params)
     surf([i for i=1:N, j=1:M], [j for i=1:N, j=1:M], xc, cmap=get_cmap("hot"), 
                             rstride=10, cstride=10, linewidth=0, antialiased=false)
   end
-  println("offset: ", offset)
+  # println("offset: ", offset)
   xc_image = xcorr2Image(xc)
   # xc_image = padimage(xc_image, block_r, block_r, block_r, block_r, 1)
   hot = create_hot_colormap()
@@ -142,12 +170,10 @@ function go_to_next_inspection(imgc, img2, meshset, stage, calls)
   end
 
   if stage == "alignment"
-    inspect_alignments(meshset, match_ind)
+    inspect_alignments(meshset_ind)
   elseif stage == "prealignment"
     inspect_prealignments(meshset_ind)
   elseif stage == "montage"
-    inspect_montages(meshset_ind, match_ind)
-  else
     inspect_montages(meshset_ind, match_ind)
   end
 end
@@ -310,18 +336,18 @@ function inspect_matches(meshset, k, prefix="review")
   if !isfile(path)
     path = get_review_filename(prefix, indexA, indexB)
   end
-  img = h5read(path, "img")
+  img_orig = h5read(path, "img")
   offset = h5read(path, "offset")
+  println("offset: ", offset)
   scale = h5read(path, "scale")
 
   # Add border to the image for vectors that extend
-  # pad = 200
-  # img = zeros(UInt32, size(img,1)+pad*2, size(img,2)+pad*2)
-  # img[pad:end-pad, pad:end-pad] = img_orig
-  # img = vcat(img, ones(UInt32, 400, size(img, 2)))
+  pad = 400
+  img = zeros(UInt32, size(img_orig,1)+pad*2, size(img_orig,2)+pad*2)
+  img[pad:end-pad-1, pad:end-pad-1] = img_orig
 
   params = meshset.properties["params"]["match"]
-  params["offset"] = offset
+  params["offset"] = offset - pad
   params["scale"] = scale
   params["match_index"] = k
   params["vector_scale"] = 4
