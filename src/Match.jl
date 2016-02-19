@@ -292,7 +292,7 @@ function filter!(match::Match, property_name, compare, threshold)
 	#println("$(length(inds_to_filter)) / $(count_correspondences(match)) rejected.");
 	return length(inds_to_filter);
 end
-
+#=
 function eval_filter(match::Match, property_name, compare, threshold)
 	attributes = get_properties(match, property_name)
 	inds_to_filter = find(i -> compare(i, threshold), attributes);
@@ -315,37 +315,45 @@ function eval_filter(match::Match, property_name, compare, threshold)
 	=#
 	return length(false_rejections), length(false_acceptances), length(common_rejections), count_correspondences(match), filter_reject_match, actual_reject_match;
 end
+=#
 
-function eval_filters(match::Match, filters)
+function eval_filters(match::Match, filters, conjunction=false)
 
 	inds_to_filter = Array{Any, 1}();
+	thresholds = Array{Int64, 1}();
 
 	for filter in filters
-	attributes = map(get_property, match.correspondence_properties, repeated(filter[1]));
+	attributes = get_properties(match, filter[1]);
 	push!(inds_to_filter, find(i -> filter[2](i, filter[3]), attributes));
+	push!(thresholds, filter[4]);
+	end
+
+	rejected_inds = get_rejected_indices(match);
+
+	if conjunction == false
+		if Base.|((thresholds .< map(length, inds_to_filter))...) filter_reject_match = true
+		else filter_reject_match = false; end
+	else
+		if Base.&((thresholds .< map(length, inds_to_filter))...) filter_reject_match = true
+		else filter_reject_match = false; end
 	end
 
 	inds_to_filter = union(inds_to_filter...)
 
-
-	rejected_inds = get_rejected_indices(match);
+	if length(rejected_inds) > 0 actual_reject_match = true;
+	else actual_reject_match = false; end
 
 	false_rejections = setdiff(inds_to_filter, rejected_inds)
 	false_acceptances = setdiff(rejected_inds, inds_to_filter)
 	common_rejections = intersect(rejected_inds, inds_to_filter)
 
-#=
-	println("false_rejections: $false_rejections")
-	println("false_acceptances: $false_acceptances")
-	println("common_rejections: $common_rejections")
-=#
-	return length(false_rejections), length(false_acceptances), length(common_rejections), count_correspondences(match);
+	return length(false_rejections), length(false_acceptances), length(common_rejections), count_correspondences(match), filter_reject_match, actual_reject_match;
 end
 
-function eval_filters(matches::Array{Match, 1}, filters)
-	evals = map(eval_filters, matches, repeated(filters))
+function eval_filters(matches::Array{Match, 1}, filters, conjunction=false)
+	evals = map(eval_filters, matches, repeated(filters), repeated(conjunction))
 
-	total_false_rej = 0;
+	total_false_rej= 0;
 	total_false_acc = 0;
 	total_correct = 0;
 	total_corresp = 0;
