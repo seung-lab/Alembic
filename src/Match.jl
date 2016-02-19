@@ -51,17 +51,34 @@ function get_properties(match::Match, property_name::String)
 end
 
 ### reviewing
-function set_reviewed!(match::Match, flag = false)
+function set_reviewed!(match::Match)
 	if !haskey(match.properties, "review") match.properties["review"] = Dict{Any, Any}(); end
-
 	match.properties["review"]["author"] = author();
-	match.properties["review"]["flag"] = flag;
-
 	return;
 end
 
+function is_reviewed(match::Match)
+	return haskey(match.properties, "review")
+end
+
+function get_author(match::Match)
+	author = null_author()
+	if haskey(match.properties, "review")
+		if haskey(match.properties["review"], "author")
+			author = match.properties["review"]["author"]
+		end
+	end
+	return author
+end
+
 function is_flagged(match::Match)
-	if !haskey(match.properties, "review") match.properties["review"] = Dict{Any, Any}("flag" => true); end
+	if !haskey(match.properties, "review") 
+		match.properties["review"] = Dict{Any, Any}("flag" => false)
+	else
+		if !haskey(match.properties["review"], "flag") 
+			match.properties["review"]["flag"] = false
+		end
+	end
 
 	return match.properties["review"]["flag"]
 end

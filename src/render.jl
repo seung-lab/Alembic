@@ -225,10 +225,11 @@ function render_aligned(meshset, render_full=false, start=1, finish=0)
         update_offset(index, offset, size(img))
       end
 
-      # 
+      # GLOBAL_BB = BoundingBox(-4000,-4000,38000,38000)
+      BB = BoundingBox(-4000,-4000,42000,42000)
       img = get_image(mesh)
       offset = get_offset(mesh)
-      @time img = rescopeimage(img, offset, GLOBAL_BB)
+      @time img = rescopeimage(img, offset, BB)
       img, _ = imwarp(img, s)
       # path = get_review_filename("thumb", index)
       # println("Writing thumbnail:\n\t", path)

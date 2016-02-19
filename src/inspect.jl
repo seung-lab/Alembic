@@ -38,20 +38,6 @@ function inspect_alignments(meshset_ind)
 end
 
 """
-The only function called by tracers to inspect alignment points
-"""
-function inspect_meshset(meshset, match_ind=1)
-  firstindex, lastindex = (1,167,-3,-3), (2,149,-3,-3)
-  name = string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned")
-  meshset = load_split(name, meshset_ind)
-  match = meshset.matches[match_ind]
-  src_dst = string(join(match.src_index[1:2], ","), "-", join(match.dst_index[1:2], ","))
-  println("\n", name, ": ", src_dst, " @ ", match_ind, " / ", length(meshset.matches))
-  imgc, img2, matches, vectors, params = inspect_matches(meshset, match_ind, "thumb_imfuse");
-  enable_inspection(imgc, img2, meshset, matches, vectors, params, "alignment", (meshset_ind, match_ind));
-end
-
-"""
 The only function called by tracers to inspect a pre-loaded meshset
 """
 function inspect_meshset(meshset, match_ind)
@@ -155,7 +141,7 @@ end
 
 function save_inspection(meshset, matches)
   println("meshset saved")
-  set_reviewed!(matches, true)
+  set_reviewed!(matches)
   save(meshset)
 end
 
@@ -390,6 +376,28 @@ function compile_review_logs(stage)
     end
   end
   return vcat(logs...)
+end
+
+function show_alignment_inspection_progress()
+  firstindex, lastindex = (1,167,-3,-3), (2,149,-3,-3)
+  parent_name = string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned")
+  splits_count = count_children(parent_name)
+  println(parent_name)
+  matches = 1:splits_count
+  reviewed = falses(splits_count)
+  flagged = falses(splits_count)
+  for i = 1:splits_count
+    meshset = load_split(parent_name, i)
+    reviewed[i] = is_reviewed(meshset)
+    flagged[i] = is_flagged(meshset)
+  end
+  fig = figure("$parent_name alignment_inspection_progress")
+  subplot(211)
+  title("is_reviewed")
+  plot(matches, reviewed, ".")
+  subplot(212)
+  title("is_flagged")
+  plot(matches, flagged, ".")
 end
 
 """
