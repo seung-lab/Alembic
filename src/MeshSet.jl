@@ -76,7 +76,7 @@ function is_reviewed(meshset::MeshSet, match_ind)
 end
 
 function is_reviewed(meshset::MeshSet)
-  return (&)(map(is_flagged, meshset.matches)...)
+  return (&)(map(is_reviewed, meshset.matches)...)
 end
 
 function is_flagged(meshset::MeshSet, match_ind)
