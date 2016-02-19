@@ -72,7 +72,13 @@ function get_author(match::Match)
 end
 
 function is_flagged(match::Match)
-	if !haskey(match.properties, "review") match.properties["review"] = Dict{Any, Any}("flag" => true); end
+	if !haskey(match.properties, "review") 
+		match.properties["review"] = Dict{Any, Any}("flag" => false)
+	else
+		if !haskey(match.properties["review"], "flag") 
+			match.properties["review"]["flag"] = false
+		end
+	end
 
 	return match.properties["review"]["flag"]
 end
