@@ -329,7 +329,7 @@ function stats(meshset::MeshSet)
 	g_src_pts = src_pts + fill(get_offset(match.src_index), length(src_pts));
 	g_src_pts_after = src_pts_after + fill(get_offset(match.src_index), length(src_pts));
 
-	if params["registry"]["global_offsets"]
+	if !haskey(params, "registry") || params["registry"]["global_offsets"]
 		g_dst_pts = dst_pts + fill(get_offset(match.dst_index), length(dst_pts));
 		g_dst_pts_after = dst_pts_after + fill(get_offset(match.dst_index), length(dst_pts));
 	else
