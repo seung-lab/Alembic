@@ -106,6 +106,36 @@ function split(meshset::MeshSet)
 	end
 end
 
+function concat(parent_name)
+	ms = MeshSet();
+	for i in 1:count_children(parent_name)
+		cms = load_split(parent_name, i)
+		append!(ms.matches, cms.matches)
+		for cmesh in cms.meshes
+			ind = findfirst(mesh -> mesh.index == cmesh.index, ms.meshes)
+			if ind == 0 push!(ms.meshes, cmesh) end
+		end
+
+		if i == 1
+			ms.properties = deepcopy(cms.properties);
+			ms.properties["meta"]["parent"] = nothing;
+			ms.properties["meta"]["split_index"] = 0;
+
+		end
+		println("Child ", i, " / ", count_children(parent_name), " concatanated");
+	end
+	return ms;
+end
+
+function concat!(meshset_one::MeshSet, meshset_two::MeshSet)
+		append!(meshset_one.matches, meshset_two.matches)
+		for mesh_two in meshset_two.meshes
+			ind = findfirst(mesh_one -> mesh_one.index == mesh_two.index, ms.meshes)
+			if ind == 0 push!(meshset_one.meshes, mesh_two) end
+		end
+	return meshset_one;
+end
+
 function flag!(meshset::MeshSet, match_ind)
 	flag!(meshset.matches[match_ind])
 end
