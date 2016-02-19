@@ -70,6 +70,15 @@ end
 function unflag!(meshset::MeshSet, match_ind)
 	unflag!(meshset.matches[match_ind])
 end
+
+function is_reviewed(meshset::MeshSet, match_ind)
+  return is_reviewed(meshset.matches[match_ind])
+end
+
+function is_reviewed(meshset::MeshSet)
+  return (&)(map(is_flagged, meshset.matches)...)
+end
+
 function is_flagged(meshset::MeshSet, match_ind)
 	return is_flagged(meshset.matches[match_ind])
 end

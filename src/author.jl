@@ -6,3 +6,11 @@ function author()
 		)
 end
 
+function null_author()
+	return Dict{Any, Any}(
+					"by"	  => "null",
+					"machine" => "null",
+					"timestamp" => "null"
+		)
+end
+
