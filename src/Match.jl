@@ -291,6 +291,12 @@ function eval_filter(match::Match, property_name, compare, threshold)
 	attributes = get_properties(match, property_name)
 	inds_to_filter = find(i -> compare(i, threshold), attributes);
 	rejected_inds = get_rejected_indices(match);
+	
+	if length(inds_to_filter) != 0 filter_reject_match = true;
+	else filter_reject_match = false; end
+
+	if length(rejected_inds) != 0 actual_reject_match = true;
+	else actual_reject_match = false; end
 
 	false_rejections = setdiff(inds_to_filter, rejected_inds)
 	false_acceptances = setdiff(rejected_inds, inds_to_filter)
@@ -300,8 +306,8 @@ function eval_filter(match::Match, property_name, compare, threshold)
 	println("false_rejections: $false_rejections")
 	println("false_acceptances: $false_acceptances")
 	println("common_rejections: $common_rejections")
-=#
-	return length(false_rejections), length(false_acceptances), length(common_rejections), count_correspondences(match);
+	=#
+	return length(false_rejections), length(false_acceptances), length(common_rejections), count_correspondences(match), filter_reject_match, actual_reject_match;
 end
 
 function eval_filters(match::Match, filters)
@@ -330,31 +336,46 @@ function eval_filters(match::Match, filters)
 	return length(false_rejections), length(false_acceptances), length(common_rejections), count_correspondences(match);
 end
 
-function eval_filters(ms, filters)
-	evals = map(eval_filters, ms.matches, repeated(filters))
+function eval_filters(matches::Array{Match, 1}, filters)
+	evals = map(eval_filters, matches, repeated(filters))
 
 	total_false_rej = 0;
 	total_false_acc = 0;
 	total_correct = 0;
 	total_corresp = 0;
 
+	match_false_rej = 0;
+	match_false_acc = 0;
+	match_correct = 0;
+
 	for i in evals
 	total_false_rej = total_false_rej + i[1];
 	total_false_acc = total_false_acc + i[2];
 	total_correct = total_correct + i[3];
 	total_corresp = total_corresp + i[4];
+
+	if i[5] == true && i[6] == true match_correct = match_correct + 1; end
+	if i[5] == true && i[6] == false match_false_rej = match_false_rej + 1; end
+	if i[5] == false && i[6] == true match_false_acc = match_false_acc + 1; end
+
 	end
 
 	total = total_false_acc + total_correct
 
-#	println("filtering by: $(filters...)")
+	println("filtering by: $(filters...)")
 #=
 	println("false rejections: $(total_false_rej / total)")
 	println("false non-rejections: $(total_false_acc / total)")
 	println("correct rejections: $(total_correct / total)")
 =#
-	#println("precision: $(100 * total_correct / (total_false_rej + total_correct)) %")
-	#println("recall: $(100 * total_correct / (total_correct + total_false_acc)) %")
+	println("Per seam:")
+	println("precision: $(100 * match_correct / (match_false_rej + match_correct)) %")
+	println("recall: $(100 * match_correct / (match_correct + match_false_acc)) %")
+	println();
+
+	println("Per correspondence:")
+	println("precision: $(100 * total_correct / (total_false_rej + total_correct)) %")
+	println("recall: $(100 * total_correct / (total_correct + total_false_acc)) %")
 	return total_false_rej, total_false_acc, total_correct, total_corresp
 end
 
@@ -394,7 +415,7 @@ end
 
 function clear_filters!(match::Match; filtertype=nothing)
 	match.filters = match.filters[setdiff(1:length(match.filters), find(filter -> filter["type"] == filtertype, match.filters))]
-	if filtertype == nothing	match.filters = Dict{Any, Any}(); end
+	if filtertype == nothing	match.filters = Array{Dict{Any, Any}, 1}(); end
 
 end
 
