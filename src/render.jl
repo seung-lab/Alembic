@@ -123,7 +123,7 @@ function render_prealigned(waferA, secA, waferB, secB, render_full=false)
   # return Dictionary of staged image to remove redundancy in loading
   function stage_image(mesh, cumulative_tform, tform)
     stage = Dict()
-    stage["index"] = (mesh.index[1:2]..., -3, -3)
+    stage["index"] = (mesh.index[1:2]..., -2, -2)
     img = get_image(mesh)
     println("tform:\n", tform)
     println("Warping ", get_index(mesh))
@@ -176,6 +176,7 @@ function render_prealigned(waferA, secA, waferB, secB, render_full=false)
     f["scale"] = scale
     f["tform"] = tform
     close(f)
+    println("Writing thumb:\n\t", path)
 
     # propagate for the next section
     fixed = moving
