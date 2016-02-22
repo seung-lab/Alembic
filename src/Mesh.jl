@@ -298,6 +298,10 @@ function find_mesh_triangle(mesh::Mesh, point::Point)
 	return (ind0, ind1, ind2);
 end
 
+function find_mesh_triangle(mesh::Mesh, points::Points)
+	return Triangles(map(find_mesh_triangle, repeated(mesh), points));
+end
+
 # Convert Cartesian coordinate to triple of barycentric coefficients
 function get_triangle_weights(mesh::Mesh, point::Point, triangle::Triangle)
 	if triangle == NO_TRIANGLE return NO_WEIGHTS; end
@@ -308,6 +312,12 @@ function get_triangle_weights(mesh::Mesh, point::Point, triangle::Triangle)
 	V = r' * R^-1;
 
 	return (V[1], V[2], V[3]);
+end
+
+function get_triangle_weights(mesh::Mesh, points::Points, triangles::Triangles)
+
+	return Weights(map(get_triangle_weights, repeated(mesh), points, triangles))
+
 end
 
 function get_tripoint_dst(mesh::Mesh, triangle, weights)

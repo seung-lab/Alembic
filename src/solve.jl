@@ -243,10 +243,10 @@ function get_globalized_correspondences_post(meshset, ind)
 	src_mesh = meshes[match.src_index]
 	dst_mesh = meshes[match.dst_index]
 
-	src_pt_triangles = map(find_mesh_triangle, repeated(src_mesh), src_pts);
-	src_pt_weights = map(get_triangle_weights, repeated(src_mesh), src_pts, src_pt_triangles);
-	dst_pt_triangles = map(find_mesh_triangle, repeated(dst_mesh), dst_pts);
-	dst_pt_weights = map(get_triangle_weights, repeated(dst_mesh), dst_pts, dst_pt_triangles);
+	src_pt_triangles = find_mesh_triangle(src_mesh, src_pts);
+	src_pt_weights = get_triangle_weights(src_mesh, src_pts, src_pt_triangles);
+	dst_pt_triangles = find_mesh_triangle(dst_mesh, dst_pts);
+	dst_pt_weights = get_triangle_weights(dst_mesh, dst_pts, dst_pt_triangles);
 
 	src_pts_after = map(get_tripoint_dst, repeated(src_mesh), src_pt_triangles, src_pt_weights);
 	dst_pts_after = map(get_tripoint_dst, repeated(dst_mesh), dst_pt_triangles, dst_pt_weights);
@@ -318,10 +318,10 @@ function stats(meshset::MeshSet)
 	src_pts, dst_pts = get_filtered_correspondences(match);
 	props = get_filtered_correspondence_properties(match);
 
-	src_pt_triangles = map(find_mesh_triangle, repeated(src_mesh), src_pts);
-	src_pt_weights = map(get_triangle_weights, repeated(src_mesh), src_pts, src_pt_triangles);
-	dst_pt_triangles = map(find_mesh_triangle, repeated(dst_mesh), dst_pts);
-	dst_pt_weights = map(get_triangle_weights, repeated(dst_mesh), dst_pts, dst_pt_triangles);
+	src_pt_triangles = find_mesh_triangle(src_mesh, src_pts);
+	src_pt_weights = get_triangle_weights(src_mesh, src_pts, src_pt_triangles);
+	dst_pt_triangles = find_mesh_triangle(dst_mesh, dst_pts);
+	dst_pt_weights = get_triangle_weights(dst_mesh, dst_pts, dst_pt_triangles);
 
 	src_pts_after = Points(map(get_tripoint_dst, repeated(src_mesh), src_pt_triangles, src_pt_weights));
 	dst_pts_after = Points(map(get_tripoint_dst, repeated(dst_mesh), dst_pt_triangles, dst_pt_weights));

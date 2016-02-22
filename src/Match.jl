@@ -50,6 +50,10 @@ function get_properties(match::Match, property_name::String)
 	return map(get, match.correspondence_properties, repeated(property_name), repeated(nothing));
 end
 
+function get_properties(match::Match, fn::Function, args...)
+	return fn(match, args...)
+end
+
 ### reviewing
 function set_reviewed!(match::Match)
 	if !haskey(match.properties, "review") match.properties["review"] = Dict{Any, Any}(); end
@@ -194,8 +198,8 @@ function monoblock_match(src_index, dst_index, src_image, dst_image, params=get_
 
 	dv = get_match(dst_pt_locs, ranges, src_image_scaled, dst_image_scaled)[3]["dv"]
 
-	view(src_image_scaled[range_in_src...]/255)
-	view(dst_image_scaled[range_in_src...]/255)
+	#view(src_image_scaled[range_in_src...]/255)
+	#view(dst_image_scaled[range_in_src...]/255)
 
 	if params["registry"]["global_offsets"]
 	update_offset(src_index, get_offset(dst_index) + dv / scale);
@@ -317,13 +321,17 @@ function eval_filter(match::Match, property_name, compare, threshold)
 end
 =#
 
-function eval_filters(match::Match, filters, conjunction=false)
+function eval_filters(match::Match, filters, conjunction=false, meshset=nothing)
 
 	inds_to_filter = Array{Any, 1}();
 	thresholds = Array{Int64, 1}();
 
 	for filter in filters
+	if typeof(filter[1]) == Function
+	attributes = get_properties(match, filter[1], meshset)
+	else
 	attributes = get_properties(match, filter[1]);
+	end
 	push!(inds_to_filter, find(i -> filter[2](i, filter[3]), attributes));
 	push!(thresholds, filter[4]);
 	end
@@ -350,8 +358,14 @@ function eval_filters(match::Match, filters, conjunction=false)
 	return length(false_rejections), length(false_acceptances), length(common_rejections), count_correspondences(match), filter_reject_match, actual_reject_match;
 end
 
-function eval_filters(matches::Array{Match, 1}, filters, conjunction=false)
-	evals = map(eval_filters, matches, repeated(filters), repeated(conjunction))
+#### HACKY
+function get_residual_norms_post(match, ms)
+	src_pts_after, dst_pts_after, filtered = get_globalized_correspondences_post(ms, findfirst(match_in_ms -> match_in_ms.src_index == match.src_index && match_in_ms.dst_index == match.dst_index, ms.matches));
+	return(map(norm, dst_pts_after - src_pts_after))
+end
+
+function eval_filters(ms, filters, range, conjunction=false)
+	evals = map(eval_filters, ms.matches[range], repeated(filters), repeated(conjunction), repeated(ms))
 
 	total_false_rej= 0;
 	total_false_acc = 0;
@@ -382,9 +396,13 @@ function eval_filters(matches::Array{Match, 1}, filters, conjunction=false)
 	println("false non-rejections: $(total_false_acc / total)")
 	println("correct rejections: $(total_correct / total)")
 =#
-	println("Per seam:")
+	println("Per match:")
 	println("precision: $(100 * match_correct / (match_false_rej + match_correct)) %")
 	println("recall: $(100 * match_correct / (match_correct + match_false_acc)) %")
+	println();
+
+	println("total matches with issue: $(100 * (match_correct + match_false_acc) / (count_matches(ms))) %")
+	println("workload reduced to: $(100 * (match_correct + match_false_rej) / (count_matches(ms))) %")
 	println();
 
 	println("Per correspondence:")
