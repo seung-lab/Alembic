@@ -391,7 +391,7 @@ function show_alignment_inspection_progress()
   reviewed = falses(splits_count)
   flagged = falses(splits_count)
   for i = 1:splits_count
-    meshset = load_split(parent_name, i)
+    meshset = load_split(parent_name, i) 
     reviewed[i] = is_reviewed(meshset)
     flagged[i] = is_flagged(meshset)
   end

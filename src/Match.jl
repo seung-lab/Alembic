@@ -58,7 +58,13 @@ function set_reviewed!(match::Match)
 end
 
 function is_reviewed(match::Match)
-	return haskey(match.properties, "review")
+	isreviewed = false
+	if haskey(match.properties, "review")
+		if haskey(match.properties["review"], "author")
+			isreviewed = true
+		end
+	end
+	return isreviewed
 end
 
 function get_author(match::Match)
