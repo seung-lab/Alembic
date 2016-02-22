@@ -363,6 +363,10 @@ function make_vectors(meshset, k, params)
   return change_vector_lengths([hcat(vecs[1]...); hcat(vecs[2]...)], factor)
 end
 
+function get_inspection_path(username, stage_name)
+  return joinpath(INSPECTION_DIR, string(stage_name, "_inspection_", username, ".txt"))
+end
+
 """
 Combine stack error log files of all tracers to create one log matrix
 """
@@ -387,7 +391,7 @@ function show_alignment_inspection_progress()
   reviewed = falses(splits_count)
   flagged = falses(splits_count)
   for i = 1:splits_count
-    meshset = load_split(parent_name, i)
+    meshset = load_split(parent_name, i) 
     reviewed[i] = is_reviewed(meshset)
     flagged[i] = is_flagged(meshset)
   end
