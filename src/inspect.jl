@@ -10,11 +10,22 @@ function inspect_montages(meshset_ind, match_ind)
 end
 
 """
+The only function called by tracers to inspect montage points
+"""
+function inspect_montages(meshset::MeshSet, match_ind)
+  firstindex, lastindex = meshset.meshes[1].index, meshset.meshes[end].index
+  name = join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ",")
+  println("\n", name, ": ", match_ind, " / ", length(meshset.matches))
+  imgc, img2, matches, vectors, params = inspect_matches(meshset, match_ind, "seam");
+  enable_inspection(imgc, img2, meshset, matches, vectors, params, "", (1, match_ind))
+end
+
+"""
 The only function called by tracers to inspect prealignment points
 """
 function inspect_prealignments(meshset_ind)
   match_ind = 1
-  index_pairs = collect(get_sequential_index_pairs((1,1,-2,-2), (2,149,-2,-2)))
+  index_pairs = collect(get_sequential_index_pairs((1,1,-2,-2), (8,167,-2,-2)))
   indexA, indexB = index_pairs[meshset_ind]
   meshset = load(indexB, indexA)
   println("\n", meshset_ind, ": ", (indexB, indexA), " @ ", match_ind, " / ", length(meshset.matches))
@@ -380,6 +391,48 @@ function compile_review_logs(stage)
     end
   end
   return vcat(logs...)
+end
+
+function show_montage_inspection_seam_progress(index)
+  meshset = load(index)
+  seam_count = length(meshset.matches)
+  seams = 1:seam_count
+  reviewed = falses(seam_count)
+  flagged = falses(seam_count)
+  for (i, match) in enumerate(meshset.matches)
+    reviewed[i] = is_reviewed(match)
+    flagged[i] = is_flagged(match)
+  end
+  fig = figure("montage_inspection_seam_progress $index")
+  subplot(211)
+  title("is_reviewed")
+  plot(seams, reviewed, ".")
+  subplot(212)
+  title("is_flagged")
+  plot(seams, flagged, ".")
+end
+
+function show_montage_inspection_section_progress(start=0, finish=9999999)
+  firstindex, lastindex = (2,1,-2,-2), (8,173,-2,-2)
+  montages = get_index_range(firstindex, lastindex)
+  section_count = length(montages)
+  sections = 1:section_count
+  reviewed = falses(section_count)
+  flagged = falses(section_count)
+  for (i, index) in enumerate(montages)
+    if start < i < finish
+      meshset = load(index) 
+      reviewed[i] = is_reviewed(meshset)
+      flagged[i] = is_flagged(meshset)
+    end
+  end
+  fig = figure("montage_inspection_section_progress")
+  subplot(211)
+  title("is_reviewed")
+  plot(sections, reviewed, ".")
+  subplot(212)
+  title("is_flagged")
+  plot(sections, flagged, ".")
 end
 
 function show_alignment_inspection_progress()
