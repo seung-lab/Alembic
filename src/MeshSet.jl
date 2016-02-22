@@ -88,7 +88,7 @@ function is_flagged(meshset::MeshSet)
 end
 
 ### splitting
-function split(meshset::MeshSet)
+function split_meshset(meshset::MeshSet)
 	parent_name = get_name(meshset)
 
 	for i in 1:count_matches(meshset)
@@ -106,7 +106,7 @@ function split(meshset::MeshSet)
 	end
 end
 
-function concat(parent_name)
+function concat_meshset(parent_name)
 	ms = MeshSet();
 	for i in 1:count_children(parent_name)
 		cms = load_split(parent_name, i)
