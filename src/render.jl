@@ -200,10 +200,10 @@ function render_aligned(waferA, secA, waferB, secB, start=1, finish=0; render_fu
   indexA = (waferA, secA, -3, -3)
   indexB = (waferB, secB, -3, -3)
   meshset = load(indexA, indexB)
-  render_aligned(meshset, render_full, start, finish)
+  render_aligned(meshset, start, finish; render_full=render_full, render_review=render_review)
 end
 
-function render_aligned(meshset, render_full=false, start=1, finish=0)
+function render_aligned(meshset, start=1, finish=0; render_full=true, render_review=true)
   dir = ALIGNED_DIR
   scale = 0.10
   s = [scale 0 0; 0 scale 0; 0 0 1]
