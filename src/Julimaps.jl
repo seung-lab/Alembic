@@ -109,5 +109,6 @@ include("visualize.jl")
 include("player.jl")
 include("inspect.jl")
 include("check.jl")
+include("brushtool.jl")
 
 #end

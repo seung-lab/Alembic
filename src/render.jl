@@ -194,49 +194,35 @@ function render_prealigned(waferA, secA, waferB, secB; render_full=true, render_
 end
 
 """
-Cycle through JLD files in aligned directory and render alignment
+Render aligned images
 """
-function render_aligned(waferA, secA, waferB, secB, start=1, finish=0; render_full=true, render_review=true)
+function render_aligned_review(waferA, secA, waferB, secB, start=1, finish=0)
   indexA = (waferA, secA, -3, -3)
   indexB = (waferB, secB, -3, -3)
   meshset = load(indexA, indexB)
-  render_aligned(meshset, start, finish; render_full=render_full, render_review=render_review)
+  render_aligned_review(meshset, start, finish)
 end
 
-function render_aligned(meshset, start=1, finish=0; render_full=true, render_review=true)
-  dir = ALIGNED_DIR
+function render_aligned_review(meshset, start=1, finish=0)
   scale = 0.10
   s = [scale 0 0; 0 scale 0; 0 0 1]
 
-  # Log file for image offsets
-  log_path = joinpath(dir, "aligned_offsets.txt")
   if start <= 0
     start = 1
   end
   if finish <= 0
-    finish = length(meshset.meshes)
+    finish = length(meshset.matches)
   end
   images = Dict()
+  BB = BoundingBox(-4000,-4000,42000,42000)
   
-  # Check images dict for thumbnail, otherwise render, save, & resize it
+  # Check images dict for thumbnail, otherwise render it - just moving prealigned
   function retrieve_image(mesh)
     index = (mesh.index[1:2]..., -4, -4)
     if !(index in keys(images))
-      println("Warping ", mesh.index)
-      if render_full
-        @time (img, offset), _ = meshwarp_mesh(mesh)
-        @time img = rescopeimage(img, offset, GLOBAL_BB)
-        new_fn = string(join(mesh.index[1:2], ","), "_aligned.h5")
-        println("Writing ", new_fn)
-        f = h5open(joinpath(dir, new_fn), "w")
-        @time f["img", "chunk", (1000,1000)] = img
-        close(f)
-        # Log image offsets
-        update_offset(index, offset, size(img))
-      end
-
+      println("Making review for ", mesh.index)
+      # @time (img, offset), _ = meshwarp_mesh(mesh)
       # GLOBAL_BB = BoundingBox(-4000,-4000,38000,38000)
-      BB = BoundingBox(-4000,-4000,42000,42000)
       img = get_image(mesh)
       offset = get_offset(mesh)
       @time img = rescopeimage(img, offset, BB)
@@ -246,25 +232,88 @@ function render_aligned(meshset, start=1, finish=0; render_full=true, render_rev
     return images[index]
   end
 
-  indices = 1:length(meshset.matches)
+  for (k, match) in enumerate(meshset.matches[start:finish])
+    src_index = match.src_index
+    dst_index = match.dst_index
 
-  # for (k, matches) in zip(reverse(indices), reverse(meshset.matches))
-  for (k, matches) in enumerate(meshset.matches[start:finish])
-    src_index = matches.src_index
-    dst_index = matches.dst_index
-    # if start <= src_index[2] <= finish && start <= dst_index[2] <= finish
     src_mesh = meshset.meshes[find_mesh_index(meshset, src_index)]
     dst_mesh = meshset.meshes[find_mesh_index(meshset, dst_index)]
 
     src_img = retrieve_image(src_mesh)
     dst_img = retrieve_image(dst_mesh)
-    offset = [GLOBAL_BB.i, GLOBAL_BB.j] * scale
+    offset = [BB.i, BB.j] * scale
     O, O_bb = imfuse(src_img, offset, dst_img, offset)
 
     indexA = (src_index[1:2]..., -4, -4)
     indexB = (dst_index[1:2]..., -4, -4)
 
-    if render_review
+    path = get_review_filename("thumb_imfuse", indexB, indexA)
+    println("Writing thumbnail:\n\t", path)
+    f = h5open(path, "w")
+    @time f["img", "chunk", (1000,1000)] = O
+    f["offset"] = O_bb # same as offset
+    f["scale"] = scale
+    close(f)
+  end
+end
+
+"""
+Render aligned images
+"""
+function render_aligned(waferA, secA, waferB, secB, start=1, finish=0)
+  indexA = (waferA, secA, -3, -3)
+  indexB = (waferB, secB, -3, -3)
+  meshset = load(indexA, indexB)
+  render_aligned(meshset, start, finish)
+end
+
+function render_aligned(meshset, start=1, finish=0)
+  dir = ALIGNED_DIR
+  scale = 0.10
+  s = [scale 0 0; 0 scale 0; 0 0 1]
+
+  if start <= 0
+    start = 1
+  end
+  if finish <= 0
+    finish = length(meshset.meshes)
+  end
+  images = Dict()
+  BB = BoundingBox(-4000,-4000,42000,42000)
+
+  for (k, mesh) in enumerate(meshset.meshes[start:finish])
+    index = (mesh.index[1:2]..., -4, -4)
+    println("Warping ", mesh.index)
+    @time (img, offset), _ = meshwarp_mesh(mesh)
+    @time img = rescopeimage(img, offset, BB)
+    new_fn = string(join(mesh.index[1:2], ","), "_aligned.h5")
+    println("Writing ", new_fn)
+    f = h5open(joinpath(dir, new_fn), "w")
+    @time f["img", "chunk", (1000,1000)] = img
+    close(f)
+    # Log image offsets
+    update_offset(index, offset, size(img))
+
+    img, _ = imwarp(img, s)
+    images[index] = img    
+  end
+
+  for (k, match) in enumerate(meshset.matches)
+    src_index = match.src_index
+    dst_index = match.dst_index
+
+    if start <= find_mesh_index(meshset, src_index) <= finish &&
+          start <= find_mesh_index(meshset, dst_index) <= finish
+
+      src_img = images[src_index]
+      dst_img = images[dst_index]
+
+      offset = [BB.i, BB.j] * scale
+      O, O_bb = imfuse(src_img, offset, dst_img, offset)
+
+      indexA = (src_index[1:2]..., -4, -4)
+      indexB = (dst_index[1:2]..., -4, -4)
+
       path = get_review_filename("thumb_imfuse", indexB, indexA)
       println("Writing thumbnail:\n\t", path)
       f = h5open(path, "w")
