@@ -105,6 +105,7 @@ function enable_inspection(imgc::ImageView.ImageCanvas,
   println("Enable inspection")
   c = canvas(imgc)
   win = Tk.toplevel(c)
+  c.mouse.button1press = (c, x, y) -> brushtool_start(c, x, y, (c, bb) -> remove_contained_points(imgc, img2, matches, vectors, bb))
   bind(c, "<Button-3>", (c, x, y)->inspect_match(imgc, img2, 
                                                         parse(Int, x), 
                                                         parse(Int, y), 
@@ -233,6 +234,11 @@ function find_idx_of_nearest_pt(pts, pt, limit)
     else
         return 0
     end
+end
+
+function remove_contained_points(imgc, img2, matches, vectors, bb)
+  println(bb)
+  ImageView.redraw(imgc)
 end
 
 function detect_blockmatch_removal(imgc::ImageView.ImageCanvas, 
