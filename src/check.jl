@@ -12,7 +12,7 @@ function check_montage_review_renders()
 			indices = [mesh.index for mesh in meshset.meshes]
 			overlap_tuples = find_overlaps(bbs)
 			for (k, (i,j)) in enumerate(overlap_tuples)
-				seam_path = get_review_filename("seam", indices[i], indices[j])
+				seam_path = get_review_filename(indices[i], indices[j])
 				if !(seam_path in seam_paths)
 					println("MISSED ", seam_path)
 					push!(missed_seams, seam_path)

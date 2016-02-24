@@ -44,6 +44,34 @@ function render_montaged(meshset)
 end
 
 """
+`WRITE_SEAMS` - Write out overlays of montaged seams
+""" 
+function write_seams(meshset, imgs, offsets, indices)
+    bbs = []
+    for (img, offset) in zip(imgs, offsets)
+        push!(bbs, BoundingBox(offset..., size(img)...))
+    end
+    overlap_tuples = find_overlaps(bbs)
+    for (k, (i,j)) in enumerate(overlap_tuples)
+      println("Writing seam ", k, " / ", length(overlap_tuples))
+      path = get_review_filename(indices[i], indices[j])
+      try 
+        img, fuse_offset = imfuse(imgs[i], offsets[i], imgs[j], offsets[j])
+        bb = bbs[i] - bbs[j]
+        img_cropped = imcrop(img, fuse_offset, bb)
+        f = h5open(path, "w")
+        @time f["img", "chunk", (50,50)] = img_cropped
+        f["offset"] = [bb.i, bb.j]
+        f["scale"] = 1.0
+        close(f)
+      catch e
+        idx = (indices[i], indices[j])
+        log_render_error(MONTAGED_DIR, idx, e)
+      end
+    end
+end
+
+"""
 Cycle through JLD files in montaged directory and render montage
 """
 function render_montaged(waferA, secA, waferB, secB; render_full=true, render_review=true)
@@ -85,12 +113,13 @@ Calculate prealignment transforms from first section through section_num
 function calculate_cumulative_tform(index, dir=PREALIGNED_DIR)
   cumulative_tform = eye(3)
   if index != (1,1,-2,-2)
-    index_pairs = get_sequential_index_pairs((1,167,-2,-2), index)
+    index_pairs = get_sequential_index_pairs((2,149,-2,-2), index)
     for (indexA, indexB) in index_pairs
       meshset = load(indexB, indexA)
       # reset cumulative tform is the mesh is fixed
-      if haskey(meshset.meshes[1].properties, "fixed")
-        if meshset.meshes[1].properties["fixed"]
+      if haskey(meshset.meshes[2].properties, "fixed")
+        if meshset.meshes[2].properties["fixed"]
+          println(meshset.meshes[2].index, ": fixed")
           cumulative_tform = eye(3)
         end
       end
@@ -125,7 +154,6 @@ function render_prealigned(waferA, secA, waferB, secB; render_full=true, render_
 
   cumulative_tform = calculate_cumulative_tform(indexA)
   # cumulative_tform = eye(3)
-  log_path = joinpath(dir, "prealigned_offsets.txt")
 
   # return Dictionary of staged image to remove redundancy in loading
   function stage_image(mesh, cumulative_tform, tform)
@@ -142,7 +170,7 @@ function render_prealigned(waferA, secA, waferB, secB; render_full=true, render_
     return stage
   end
 
-  function save_image(stage, dir, log_path)
+  function save_image(stage, dir)
     new_fn = string(join(stage["index"][1:2], ","), "_prealigned.h5")
     update_offset(stage["index"], stage["offset"], size(stage["img"]))
     println("Writing image:\n\t", new_fn)
@@ -159,9 +187,6 @@ function render_prealigned(waferA, secA, waferB, secB; render_full=true, render_
     meshset = load(indexB, indexA)
     if k==1
       fixed = stage_image(meshset.meshes[2], cumulative_tform, eye(3))
-      # if is_first_section(indexA)
-      #   # save_image(fixed, dir, log_path)
-      # end
     end
     offset = get_offset(indexB)
     translation = [1 0 0; 0 1 0; offset[1] offset[2] 1]
@@ -170,12 +195,12 @@ function render_prealigned(waferA, secA, waferB, secB; render_full=true, render_
     
     # save full scale image
     if render_full
-      save_image(moving, dir, log_path)
+      save_image(moving, dir)
     end
 
     if render_review
       # save thumbnail of fused images
-      path = get_review_filename("thumb", moving["index"], fixed["index"])
+      path = get_review_filename(moving["index"], fixed["index"])
       O, O_bb = imfuse(fixed["thumb_fixed"], fixed["thumb_offset_fixed"], 
                             moving["thumb_moving"], moving["thumb_offset_moving"])
       f = h5open(path, "w")
@@ -247,7 +272,7 @@ function render_aligned_review(meshset, start=1, finish=0)
     indexA = (src_index[1:2]..., -4, -4)
     indexB = (dst_index[1:2]..., -4, -4)
 
-    path = get_review_filename("thumb_imfuse", indexB, indexA)
+    path = get_review_filename(indexB, indexA)
     println("Writing thumbnail:\n\t", path)
     f = h5open(path, "w")
     @time f["img", "chunk", (1000,1000)] = O
@@ -314,7 +339,7 @@ function render_aligned(meshset, start=1, finish=0)
       indexA = (src_index[1:2]..., -4, -4)
       indexB = (dst_index[1:2]..., -4, -4)
 
-      path = get_review_filename("thumb_imfuse", indexB, indexA)
+      path = get_review_filename(indexB, indexA)
       println("Writing thumbnail:\n\t", path)
       f = h5open(path, "w")
       @time f["img", "chunk", (1000,1000)] = O

@@ -5,7 +5,7 @@ function inspect_montages(meshset_ind, match_ind)
   indrange = get_index_range((1,1,-2,-2), (8,173,-2,-2))
   meshset = load(indrange[meshset_ind])
   println("\n", meshset_ind, ": ", indrange[meshset_ind], " @ ", match_ind, " / ", length(meshset.matches))
-  imgc, img2, matches, vectors, params = inspect_matches(meshset, match_ind, "seam");
+  imgc, img2, matches, vectors, params = inspect_matches(meshset, match_ind);
   enable_inspection(imgc, img2, meshset, matches, vectors, params, "montage", (meshset_ind, match_ind))
 end
 
@@ -16,7 +16,7 @@ function inspect_montages(meshset::MeshSet, match_ind)
   firstindex, lastindex = meshset.meshes[1].index, meshset.meshes[end].index
   name = join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ",")
   println("\n", name, ": ", match_ind, " / ", length(meshset.matches))
-  imgc, img2, matches, vectors, params = inspect_matches(meshset, match_ind, "seam");
+  imgc, img2, matches, vectors, params = inspect_matches(meshset, match_ind);
   enable_inspection(imgc, img2, meshset, matches, vectors, params, "", (1, match_ind))
 end
 
@@ -29,7 +29,7 @@ function inspect_prealignments(meshset_ind)
   indexA, indexB = index_pairs[meshset_ind]
   meshset = load(indexB, indexA)
   println("\n", meshset_ind, ": ", (indexB, indexA), " @ ", match_ind, " / ", length(meshset.matches))
-  imgc, img2, matches, vectors, params = inspect_matches(meshset, match_ind, "thumb")
+  imgc, img2, matches, vectors, params = inspect_matches(meshset, match_ind)
   enable_inspection(imgc, img2, meshset, matches, vectors, params, "prealignment", (meshset_ind, match_ind))
 end
 
@@ -44,7 +44,7 @@ function inspect_alignments(meshset_ind)
   match = meshset.matches[match_ind]
   src_dst = string(join(match.src_index[1:2], ","), "-", join(match.dst_index[1:2], ","))
   println("\n", name, ": ", src_dst, " @ ", match_ind, " / ", length(meshset.matches))
-  imgc, img2, matches, vectors, params = inspect_matches(meshset, match_ind, "thumb_imfuse");
+  imgc, img2, matches, vectors, params = inspect_matches(meshset, match_ind);
   enable_inspection(imgc, img2, meshset, matches, vectors, params, "alignment", (meshset_ind, match_ind));
 end
 
@@ -58,7 +58,7 @@ function inspect_meshset(meshset, match_ind)
   match = meshset.matches[match_ind]
   src_dst = string(join(match.src_index[1:2], ","), "-", join(match.dst_index[1:2], ","))
   println("\n", name, ": ", src_dst, " @ ", match_ind, " / ", length(meshset.matches))
-  imgc, img2, matches, vectors, params = inspect_matches(meshset, match_ind, "thumb_imfuse");
+  imgc, img2, matches, vectors, params = inspect_matches(meshset, match_ind);
   enable_inspection(imgc, img2, meshset, matches, vectors, params, "meshset", (1, match_ind));
 end
 
@@ -96,6 +96,33 @@ function show_blockmatch(match, ind, params)
   return win
 end
 
+function xcorr2Image(xc)
+  b = xc' / maximum(xc)
+  println("max r-value: ", maximum(xc))
+  b[b .> 1] = 1
+  b[b .< 0] = 0
+  # b = b.*b / maximum(b.*b) * 254 + 1
+  b = b * 254 + 1
+  # b = (b + 1) ./ 2 * 254 + 1
+  b[isnan(b)] = 0
+  return round(UInt8, b)
+  # return round(UInt8, (b + 1) ./ 2 * 254 + 1)
+end
+
+function create_hot_colormap()
+  return vcat(linspace(RGB(0,0,0), RGB(1,0,0), 100), 
+              linspace(RGB(1,0,0), RGB(1,1,0), 100), 
+              linspace(RGB(1,1,0), RGB(1,1,1), 55))
+end
+
+function apply_colormap{T}(img, colormap::Array{T})
+  new_img = zeros(T, size(img)...)
+  for i in eachindex(img, new_img)
+    @inbounds new_img[i] = colormap[img[i]]
+  end
+  return new_img
+end
+
 """
 Extend ImageView to inspect & remove matches
 """
@@ -105,7 +132,7 @@ function enable_inspection(imgc::ImageView.ImageCanvas,
   println("Enable inspection")
   c = canvas(imgc)
   win = Tk.toplevel(c)
-  c.mouse.button1press = (c, x, y) -> brushtool_start(c, x, y, (c, bb) -> remove_contained_points(imgc, img2, matches, vectors, bb))
+  c.mouse.button2press = (c, x, y) -> brushtool_start(c, x, y, (c, bb) -> remove_contained_points(imgc, img2, matches, vectors, bb))
   bind(c, "<Button-3>", (c, x, y)->inspect_match(imgc, img2, 
                                                         parse(Int, x), 
                                                         parse(Int, y), 
@@ -237,7 +264,13 @@ function find_idx_of_nearest_pt(pts, pt, limit)
 end
 
 function remove_contained_points(imgc, img2, matches, vectors, bb)
-  println(bb)
+  indices = get_filtered_indices(matches)
+  pts = vectors[1:2, indices]
+  within_bb = vcat((bb.xmin .<= pts[1,:] .<= bb.xmax) & (bb.ymin .<= pts[2,:] .<= bb.ymax)...)
+  contained_indices = indices[within_bb]
+  println("Brushtool removed ", length(contained_indices), " points")
+  filter_manual!(matches, contained_indices)
+  update_annotations(imgc, img2, matches, vectors)
   ImageView.redraw(imgc)
 end
 
@@ -330,14 +363,14 @@ end
 """
 Display matches index k as overlayed images with points
 """
-function inspect_matches(meshset, k, prefix="review")
+function inspect_matches(meshset, k)
   matches = meshset.matches[k]
   indexA = matches.src_index
   indexB = matches.dst_index
 
-  path = get_review_filename(prefix, indexB, indexA)
+  path = get_review_filename(indexB, indexA)
   if !isfile(path)
-    path = get_review_filename(prefix, indexA, indexB)
+    path = get_review_filename(indexA, indexB)
   end
   img_orig = h5read(path, "img")
   offset = h5read(path, "offset")
@@ -572,3 +605,25 @@ function update_prealignment_meshsets(waferA, secA, waferB, secB)
   end
 end
 
+function get_review_filename(src_index, dst_index=(0,0,0,0))
+  prefix = "review"
+  dir = ALIGNED_DIR
+  ind = indices2string(src_index, dst_index)
+  if is_premontaged(src_index)
+    dir = MONTAGED_DIR
+    ind = string(join(src_index, ","), "-", join(dst_index, ","))
+  elseif is_montaged(src_index)
+    dir = PREALIGNED_DIR
+  elseif is_prealigned(src_index)
+    dir = ALIGNED_DIR
+  end
+  fn = string(prefix, "_", ind, ".h5")
+  return joinpath(dir, "review", fn)
+end
+
+function indices2string(indexA, indexB)
+  if indexB[1] == 0
+    return join(indexA[1:2], ",")
+  end
+  return string(join(indexA[1:2], ","), "-", join(indexB[1:2], ","))
+end

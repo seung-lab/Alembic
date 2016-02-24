@@ -29,15 +29,14 @@ end
 # in user coordinates.
 function brushtool_start(c::Tk.Canvas, x, y, callback_done::Function)
     # Copy the surface to another buffer, so we can repaint the areas obscured by the rubberband
-    println("bt start")
     r = Graphics.getgc(c)
     Graphics.save(r)
     reset_transform(r)
     ctxcopy = copy(r)
     bt = BrushTool((x,y), (x,y), false)
-    callbacks_old = (c.mouse.button1motion, c.mouse.button1release)
-    c.mouse.button1motion = (c, x, y) -> brushtool_move(c, bt, x, y, ctxcopy)
-    c.mouse.button1release = (c, x, y) -> brushtool_stop(c, bt, x, y, ctxcopy, callbacks_old, callback_done)
+    callbacks_old = (c.mouse.motion, c.mouse.button2release)
+    c.mouse.motion = (c, x, y) -> brushtool_move(c, bt, x, y, ctxcopy)
+    c.mouse.button2release = (c, x, y) -> brushtool_stop(c, bt, x, y, ctxcopy, callbacks_old, callback_done)
 end
 
 function brushtool_move(c::Tk.Canvas, bt::BrushTool, x, y, ctxcopy)
@@ -59,9 +58,8 @@ function brushtool_move(c::Tk.Canvas, bt::BrushTool, x, y, ctxcopy)
 end
 
 function brushtool_stop(c::Tk.Canvas, bt::BrushTool, x, y, ctxcopy, callbacks_old, callback_done)
-    println("bt stop")
-    c.mouse.button1motion = callbacks_old[1]
-    c.mouse.button1release = callbacks_old[2]
+    c.mouse.motion = callbacks_old[1]
+    c.mouse.button2release = callbacks_old[2]
     if !bt.moved
         return
     end
@@ -78,7 +76,6 @@ function brushtool_stop(c::Tk.Canvas, bt::BrushTool, x, y, ctxcopy, callbacks_ol
         xu, yu = Graphics.device_to_user(r, x, y)
         x1u, y1u = Graphics.device_to_user(r, x1, y1)
         bb = Graphics.BoundingBox(min(x1u,xu), max(x1u,xu), min(y1u,yu), max(y1u,yu))
-        println("moved sufficiently: ", join((x1u, y1u, xu, yu), ", "))
         callback_done(c, bb)
     end
 end
