@@ -264,7 +264,13 @@ function find_idx_of_nearest_pt(pts, pt, limit)
 end
 
 function remove_contained_points(imgc, img2, matches, vectors, bb)
-  println(bb)
+  indices = get_filtered_indices(matches)
+  pts = vectors[1:2, indices]
+  within_bb = vcat((bb.xmin .<= pts[1,:] .<= bb.xmax) & (bb.ymin .<= pts[2,:] .<= bb.ymax)...)
+  contained_indices = indices[within_bb]
+  println("Brushtool removed ", length(contained_indices), " points")
+  filter_manual!(matches, contained_indices)
+  update_annotations(imgc, img2, matches, vectors)
   ImageView.redraw(imgc)
 end
 
