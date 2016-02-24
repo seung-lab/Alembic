@@ -160,9 +160,12 @@ function MeshSet()
 	return MeshSet(meshes, matches, properties)
 end
 
-function prealign(index; params=get_params(index))
+function prealign(index; params=get_params(index), to_fixed=false)
 	src_index = index;
 	dst_index = get_preceding(src_index)
+	if to_fixed
+	dst_index = aligned(dst_index);
+	end
 	meshset = MeshSet();
 	meshset.properties["params"] = params;
 	push!(meshset.meshes, Mesh(src_index, params))
@@ -283,7 +286,7 @@ function save(meshset::MeshSet)
     
   else
 
-  if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex))
+  if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_aligned(lastindex))
     filename = joinpath(PREALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned.jls"))
     #update_offset(prealigned(firstindex), [0, 0]);
   elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex))
