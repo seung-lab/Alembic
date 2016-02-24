@@ -80,6 +80,7 @@ function update_offset(index::Index, offset, sz=[0, 0])
   elseif is_aligned(index) global REGISTRY_ALIGNED = parse_registry(registry_fp);
   else global REGISTRY_PREMONTAGED = parse_registry(registry_fp);
   end
+
 end
 
 function update_offset(name, offset, sz=[0, 0])

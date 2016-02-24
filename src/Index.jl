@@ -111,6 +111,7 @@ function get_metadata(index)
 end
 
 function get_offset(index)
+	if myid() != 1 return remotecall_fetch(1, get_offset, index) end
 	metadata = get_metadata(index);
 	return Point(metadata[3:4]);
 end

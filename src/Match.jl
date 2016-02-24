@@ -202,13 +202,16 @@ function monoblock_match(src_index, dst_index, src_image, dst_image, params=get_
 
 	ranges = src_index, range_in_src, src_pt_locs, dst_index, range_in_dst, dst_range_full, dst_pt_locs, dst_pt_locs_full
 
-	dv = get_match(dst_pt_locs, ranges, src_image_scaled, dst_image_scaled)[3]["dv"]
+	dv = get_match(src_pt_locs, ranges, src_image_scaled, dst_image_scaled)[3]["dv"]
 
-	#view(src_image_scaled[range_in_src...]/255)
-	#view(dst_image_scaled[range_in_src...]/255)
+	#=view(src_image_scaled[range_in_src...]/255)
+	view(dst_image_scaled[range_in_dst...]/255)
+	println(dst_pt_locs + dv)
+	img = normxcorr2(src_image_scaled[range_in_src...], dst_image_scaled[range_in_dst...]);
+	view(img / maximum(img)) =#
 
 	if params["registry"]["global_offsets"]
-	update_offset(src_index, get_offset(dst_index) + dv / scale);
+	update_offset(src_index, get_offset(ds:t_index) + dv / scale);
 	else
 	update_offset(src_index, dv / scale);
 	end
@@ -361,7 +364,6 @@ function eval_filters(match::Match, filters, conjunction=false, meshset=nothing)
 	false_acceptances = setdiff(rejected_inds, inds_to_filter)
 	common_rejections = intersect(rejected_inds, inds_to_filter)
 
-	j
 
 	return length(false_rejections), length(false_acceptances), length(common_rejections), count_correspondences(match), filter_reject_match, actual_reject_match;
 end

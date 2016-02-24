@@ -251,6 +251,3 @@ global GLOBAL_BB = BoundingBox(-4000,-4000,38000,38000)
 
 show_plot = false
 
-if myid() != 1
-    REGISTRY_PREMONTAGED, REGISTRY_MONTAGED, REGISTRY_PREALIGNED, REGISTRY_ALIGNED = remotecall_fetch(1, get_registries)
-end
