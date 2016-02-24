@@ -18,6 +18,7 @@ function aligned(index)
 	return (index[1], index[2], ALIGNED_INDEX, ALIGNED_INDEX);
 end
 
+###
 
 function overview(wafer, section)
 	return (wafer, section, OVERVIEW_INDEX, OVERVIEW_INDEX);
@@ -38,6 +39,8 @@ end
 function aligned(wafer, section)
 	return (wafer, section, ALIGNED_INDEX, ALIGNED_INDEX);
 end
+
+###
 
 function is_overview(index)
     if index[3:4] == (OVERVIEW_INDEX, OVERVIEW_INDEX)   return true else return false end

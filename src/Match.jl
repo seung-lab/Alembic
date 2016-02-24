@@ -361,6 +361,8 @@ function eval_filters(match::Match, filters, conjunction=false, meshset=nothing)
 	false_acceptances = setdiff(rejected_inds, inds_to_filter)
 	common_rejections = intersect(rejected_inds, inds_to_filter)
 
+	j
+
 	return length(false_rejections), length(false_acceptances), length(common_rejections), count_correspondences(match), filter_reject_match, actual_reject_match;
 end
 
@@ -390,7 +392,9 @@ function eval_filters(ms, filters, range, conjunction=false)
 
 	if i[5] == true && i[6] == true match_correct = match_correct + 1; end
 	if i[5] == true && i[6] == false match_false_rej = match_false_rej + 1; end
-	if i[5] == false && i[6] == true match_false_acc = match_false_acc + 1; end
+	if i[5] == false && i[6] == true match_false_acc = match_false_acc + 1;
+	println(findfirst(ind-> ind==i, evals), " was wrongly accepted by filters")
+	end
 
 	end
 
