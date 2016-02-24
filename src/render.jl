@@ -113,12 +113,13 @@ Calculate prealignment transforms from first section through section_num
 function calculate_cumulative_tform(index, dir=PREALIGNED_DIR)
   cumulative_tform = eye(3)
   if index != (1,1,-2,-2)
-    index_pairs = get_sequential_index_pairs((1,167,-2,-2), index)
+    index_pairs = get_sequential_index_pairs((2,149,-2,-2), index)
     for (indexA, indexB) in index_pairs
       meshset = load(indexB, indexA)
       # reset cumulative tform is the mesh is fixed
-      if haskey(meshset.meshes[1].properties, "fixed")
-        if meshset.meshes[1].properties["fixed"]
+      if haskey(meshset.meshes[2].properties, "fixed")
+        if meshset.meshes[2].properties["fixed"]
+          println(meshset.meshes[2].index, ": fixed")
           cumulative_tform = eye(3)
         end
       end
@@ -153,7 +154,6 @@ function render_prealigned(waferA, secA, waferB, secB; render_full=true, render_
 
   cumulative_tform = calculate_cumulative_tform(indexA)
   # cumulative_tform = eye(3)
-  log_path = joinpath(dir, "prealigned_offsets.txt")
 
   # return Dictionary of staged image to remove redundancy in loading
   function stage_image(mesh, cumulative_tform, tform)
@@ -170,7 +170,7 @@ function render_prealigned(waferA, secA, waferB, secB; render_full=true, render_
     return stage
   end
 
-  function save_image(stage, dir, log_path)
+  function save_image(stage, dir)
     new_fn = string(join(stage["index"][1:2], ","), "_prealigned.h5")
     update_offset(stage["index"], stage["offset"], size(stage["img"]))
     println("Writing image:\n\t", new_fn)
@@ -187,9 +187,6 @@ function render_prealigned(waferA, secA, waferB, secB; render_full=true, render_
     meshset = load(indexB, indexA)
     if k==1
       fixed = stage_image(meshset.meshes[2], cumulative_tform, eye(3))
-      # if is_first_section(indexA)
-      #   # save_image(fixed, dir, log_path)
-      # end
     end
     offset = get_offset(indexB)
     translation = [1 0 0; 0 1 0; offset[1] offset[2] 1]
@@ -198,7 +195,7 @@ function render_prealigned(waferA, secA, waferB, secB; render_full=true, render_
     
     # save full scale image
     if render_full
-      save_image(moving, dir, log_path)
+      save_image(moving, dir)
     end
 
     if render_review
