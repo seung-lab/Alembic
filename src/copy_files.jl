@@ -18,6 +18,25 @@ function move_files()
 	end
 end
 
+"""
+rename all review images to start with "review"
+"""
 function rename_review_images()
-	# rename all review images to start with "review"
+	review_names = [(MONTAGED_DIR, "seam"), (PREALIGNED_DIR, "thumb"), (ALIGNED_DIR, "thumb_imfuse")]
+	for (dir, prefix) in review_names
+		for fn in readdir(joinpath(dir, "review"))
+			print(fn)
+			if length(fn) > length(prefix)
+				if fn[1:length(prefix)] == prefix
+					new_fn = string("review", fn[length(prefix)+1:end])
+					print("\t", new_fn)
+					mv(joinpath(dir, "review", fn), 
+							joinpath(dir, "review", new_fn); 
+							remove_destination=true)
+				end
+			end
+			print("\n")
+		end
+		print("\n")
+	end
 end

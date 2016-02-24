@@ -1138,28 +1138,6 @@ function plot_matches_outline(meshset, match_no, factor=5)
   return img
 end
 
-function indices2string(indexA, indexB)
-  if indexB[1] == 0
-    return join(indexA[1:2], ",")
-  end
-  return string(join(indexA[1:2], ","), "-", join(indexB[1:2], ","))
-end
-
-function get_review_filename(prefix, src_index, dst_index=(0,0,0,0))
-  dir = ALIGNED_DIR
-  ind = indices2string(src_index, dst_index)
-  if is_premontaged(src_index)
-    dir = MONTAGED_DIR
-    ind = string(join(src_index, ","), "-", join(dst_index, ","))
-  elseif is_montaged(src_index)
-    dir = PREALIGNED_DIR
-  elseif is_prealigned(src_index)
-    dir = ALIGNED_DIR
-  end
-  fn = string(prefix, "_", ind, ".h5")
-  return joinpath(dir, "review", fn)
-end
-
 function write_meshset_match_outlines(meshset, factor=5)
   for k in 1:length(meshset.matches)
     imgc, img2 = plot_matches_outline(meshset, k, factor)

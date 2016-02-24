@@ -35,9 +35,9 @@ function brushtool_start(c::Tk.Canvas, x, y, callback_done::Function)
     reset_transform(r)
     ctxcopy = copy(r)
     bt = BrushTool((x,y), (x,y), false)
-    callbacks_old = (c.mouse.button1motion, c.mouse.button1release)
-    c.mouse.button1motion = (c, x, y) -> brushtool_move(c, bt, x, y, ctxcopy)
-    c.mouse.button1release = (c, x, y) -> brushtool_stop(c, bt, x, y, ctxcopy, callbacks_old, callback_done)
+    callbacks_old = (c.mouse.motion, c.mouse.button2release)
+    c.mouse.motion = (c, x, y) -> brushtool_move(c, bt, x, y, ctxcopy)
+    c.mouse.button2release = (c, x, y) -> brushtool_stop(c, bt, x, y, ctxcopy, callbacks_old, callback_done)
 end
 
 function brushtool_move(c::Tk.Canvas, bt::BrushTool, x, y, ctxcopy)
@@ -60,8 +60,8 @@ end
 
 function brushtool_stop(c::Tk.Canvas, bt::BrushTool, x, y, ctxcopy, callbacks_old, callback_done)
     println("bt stop")
-    c.mouse.button1motion = callbacks_old[1]
-    c.mouse.button1release = callbacks_old[2]
+    c.mouse.motion = callbacks_old[1]
+    c.mouse.button2release = callbacks_old[2]
     if !bt.moved
         return
     end
