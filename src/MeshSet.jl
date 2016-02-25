@@ -169,7 +169,7 @@ function prealign(index; params=get_params(index), to_fixed=false)
 	meshset = MeshSet();
 	meshset.properties["params"] = params;
 	push!(meshset.meshes, Mesh(src_index, params))
-	push!(meshset.meshes, Mesh(dst_index, params))
+	push!(meshset.meshes, Mesh(dst_index, params, to_fixed))
 	push!(meshset.matches, Match(meshset.meshes[1], meshset.meshes[2], params))
 	solve!(meshset, method=params["solve"]["method"]);
 	save(meshset);

@@ -53,7 +53,7 @@ function update_offset(index::Index, offset, sz=[0, 0])
 
   image_fn = string(get_name(index));
 
-  println("Updating registry for ", image_fn, " in:\n", registry_fp)
+  println("Updating registry for ", image_fn, " in:\n", registry_fp, ": offset is now ", offset)
 
   if !isfile(registry_fp)
     f = open(registry_fp, "w")
@@ -80,6 +80,7 @@ function update_offset(index::Index, offset, sz=[0, 0])
   elseif is_aligned(index) global REGISTRY_ALIGNED = parse_registry(registry_fp);
   else global REGISTRY_PREMONTAGED = parse_registry(registry_fp);
   end
+
 end
 
 function update_offset(name, offset, sz=[0, 0])

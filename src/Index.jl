@@ -95,7 +95,7 @@ function get_params(index)
   if is_premontaged(index) params = PARAMS_MONTAGE;
   elseif is_montaged(index) params = PARAMS_PREALIGNMENT;
   elseif is_prealigned(index) params = PARAMS_ALIGNMENT;
-  elseif is_aligned(index) params = Void;
+  elseif is_aligned(index) params = PARAMS_ALIGNMENT;
   else params = Void; println("Index $index does not correspond to a pipeline stage."); end
   return params;
 end
@@ -111,6 +111,7 @@ function get_metadata(index)
 end
 
 function get_offset(index)
+	if myid() != 1 return remotecall_fetch(1, get_offset, index) end
 	metadata = get_metadata(index);
 	return Point(metadata[3:4]);
 end
