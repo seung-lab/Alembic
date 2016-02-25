@@ -101,3 +101,22 @@ function imscale(img, scale_factor)
   tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
   return imwarp(img, tform);
 end
+
+
+function make_training_data(ms)
+
+       X = Array{Float64, 2}(count_correspondences(ms), 4)
+       Y = fill(1, count_correspondences(ms))
+       current = 0
+
+       for m in ms.matches
+              X[(1:count_correspondences(m)) + current, 1] = get_properties(m, "norm")[:]';
+              X[(1:count_correspondences(m)) + current, 2] = get_properties(m, "r_val")[:]';
+              X[(1:count_correspondences(m)) + current, 3] = get_properties(m, "src_normalized_dyn_range")[:]';
+       	   X[(1:count_correspondences(m)) + current, 4] = get_properties(m, "src_kurtosis")[:]';  
+       	   Y[(collect(Int64, get_rejected_indices(m))) + current] = -1
+       	   current = current + count_correspondences(m);
+       end
+       return X, Y
+       end
+
