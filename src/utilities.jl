@@ -53,7 +53,7 @@ function update_offset(index::Index, offset, sz=[0, 0])
 
   image_fn = string(get_name(index));
 
-  println("Updating registry for ", image_fn, " in:\n", registry_fp)
+  println("Updating registry for ", image_fn, " in:\n", registry_fp, ": offset is now ", offset)
 
   if !isfile(registry_fp)
     f = open(registry_fp, "w")

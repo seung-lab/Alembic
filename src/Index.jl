@@ -95,7 +95,7 @@ function get_params(index)
   if is_premontaged(index) params = PARAMS_MONTAGE;
   elseif is_montaged(index) params = PARAMS_PREALIGNMENT;
   elseif is_prealigned(index) params = PARAMS_ALIGNMENT;
-  elseif is_aligned(index) params = Void;
+  elseif is_aligned(index) params = PARAMS_ALIGNMENT;
   else params = Void; println("Index $index does not correspond to a pipeline stage."); end
   return params;
 end

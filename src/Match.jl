@@ -211,9 +211,9 @@ function monoblock_match(src_index, dst_index, src_image, dst_image, params=get_
 	view(img / maximum(img)) =#
 
 	if params["registry"]["global_offsets"]
-	update_offset(src_index, get_offset(ds:t_index) + dv / scale);
+	update_offset(src_index, get_offset(dst_index) + dv / scale);
 	else
-	update_offset(src_index, dv / scale);
+	update_offset(src_index, (dv / scale));
 	end
 	print("    ")
 	println("Monoblock matched... relative displacement calculated at $( dv / scale)")

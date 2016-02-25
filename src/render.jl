@@ -172,7 +172,7 @@ function render_prealigned(waferA, secA, waferB, secB; render_full=true, render_
 
   function save_image(stage, dir)
     new_fn = string(join(stage["index"][1:2], ","), "_prealigned.h5")
-    update_offset(stage["index"], stage["offset"], size(stage["img"]))
+    update_offset(prealigned(stage["index"]), stage["offset"], size(stage["img"]))
     println("Writing image:\n\t", new_fn)
     # @time imwrite(stage["img"], joinpath(dir, fn))
     f = h5open(joinpath(dir, new_fn), "w")
