@@ -120,20 +120,6 @@ function find_pt_idx(vectors, pt)
   return 0
 end
 
-function create_hot_colormap()
-  return vcat(linspace(RGB(0,0,0), RGB(1,0,0), 100), 
-              linspace(RGB(1,0,0), RGB(1,1,0), 100), 
-              linspace(RGB(1,1,0), RGB(1,1,1), 55))
-end
-
-function apply_colormap{T}(img, colormap::Array{T})
-  new_img = zeros(T, size(img)...)
-  for i in eachindex(img, new_img)
-    @inbounds new_img[i] = colormap[img[i]]
-  end
-  return new_img
-end
-
 function updatexylabel(xypos, imgc, img, x, y)
     w = width(imgc.c)
     xu,yu = ImageView.device_to_user(Tk.getgc(imgc.c), x, y)
@@ -152,19 +138,6 @@ function updatexylabel(xypos, imgc, img, x, y)
     else
         ImageView.set_value(xypos, "$yi, $xi")
     end
-end
-
-function xcorr2Image(xc)
-  b = xc' / maximum(xc)
-  println("max r-value: ", maximum(xc))
-  b[b .> 1] = 1
-  b[b .< 0] = 0
-  # b = b.*b / maximum(b.*b) * 254 + 1
-  b = b * 254 + 1
-  # b = (b + 1) ./ 2 * 254 + 1
-  b[isnan(b)] = 0
-  return round(UInt8, b)
-  # return round(UInt8, (b + 1) ./ 2 * 254 + 1)
 end
 
 function draw_box(img::Array{UInt32}, bounds)
@@ -375,45 +348,6 @@ function review_matches(meshset, indexA, indexB)
   println(indexA, indexB, ": ", k)
   assert(k > 0)
   return review_matches(meshset, k)
-end
-
-"""
-Display matches index k as overlayed images with points
-"""
-function review_matches(meshset, k)
-  matches = meshset.matches[k]
-  indexA = (matches.src_index[1:2]..., -4, -4)
-  indexB = (matches.dst_index[1:2]..., -4, -4)
-
-  path = get_review_filename("thumb_imfuse", indexB, indexA)
-  img = h5read(path, "img")
-  offset = h5read(path, "offset")
-  scale = h5read(path, "scale")
-
-  img = vcat(img, ones(UInt32, 400, size(img, 2)))
-
-  params = meshset.properties["params"]["match"]
-  params["scale"] = scale
-  params["thumb_offset"] = offset
-  params["src_index"] = matches.src_index
-  params["dst_index"] = matches.dst_index
-  params["src_offset"] = meshset.meshes[find_index(meshset, matches.src_index)].disp
-  params["dst_offset"] = meshset.meshes[find_index(meshset, matches.dst_index)].disp
-  params["src_size"] = get_image_size(matches.src_index)
-  params["dst_size"] = get_image_size(matches.dst_index)
-
-  src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences(meshset, k)
-  vectors = [hcat(src_nodes...); hcat(dst_nodes...)]
-  src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences_post(meshset, k)
-  vectors_t = [hcat(src_nodes...); hcat(dst_nodes...)]
-  vectorsA = scale_matches(src_nodes, scale)
-  vectorsB = scale_matches(dst_nodes, scale)
-  vecs = offset_matches(vectorsA, vectorsB, offset)
-
-  imview = view(img, pixelspacing=[1,1])
-  big_vecs = change_vector_lengths([hcat(vecs[1]...); hcat(vecs[2]...)], 10)
-  an_pts, an_vectors = show_vectors(imview..., big_vecs, RGB(0,0,1), RGB(1,0,1))
-  return imview, vectors, vectors_t, copy(an_vectors.ann.data.lines), params
 end
 
 """
@@ -1009,37 +943,9 @@ function write_thumbnail(img, path, vectors, colors, match_nums, factor=1.0)
 end
 
 """
-`WRITE_SEAMS` - Write out overlays of montaged seams
-""" 
-function write_seams(meshset, imgs, offsets, indices, fn_label="seam")
-    bbs = []
-    for (img, offset) in zip(imgs, offsets)
-        push!(bbs, BoundingBox(offset..., size(img)...))
-    end
-    overlap_tuples = find_overlaps(bbs)
-    for (k, (i,j)) in enumerate(overlap_tuples)
-      println("Writing seam ", k, " / ", length(overlap_tuples))
-      path = get_review_filename(fn_label, indices[i], indices[j])
-      try 
-        img, fuse_offset = imfuse(imgs[i], offsets[i], imgs[j], offsets[j])
-        bb = bbs[i] - bbs[j]
-        img_cropped = imcrop(img, fuse_offset, bb)
-        f = h5open(path, "w")
-        @time f["img", "chunk", (50,50)] = img_cropped
-        f["offset"] = [bb.i, bb.j]
-        f["scale"] = 1.0
-        close(f)
-      catch e
-        idx = (indices[i], indices[j])
-        log_render_error(MONTAGED_DIR, idx, e)
-      end
-    end
-end
-
-"""
 `WRITE_SEAMS_WITH_POINTS` - Write out overlays of montaged seams with points
 """ 
-function write_seams_with_points(meshset, imgs, offsets, indices, fn_label="seam_pts")
+function write_seams_with_points(meshset, imgs, offsets, indices)
     bbs = []
     for (img, offset) in zip(imgs, offsets)
         push!(bbs, BoundingBox(offset..., size(img)...))
@@ -1049,7 +955,7 @@ function write_seams_with_points(meshset, imgs, offsets, indices, fn_label="seam
       println("Writing seam ", k, " / ", length(overlap_tuples))
       img, fuse_offset = imfuse(imgs[i], offsets[i], imgs[j], offsets[j])
       bb = bbs[i] - bbs[j]
-      path = get_review_filename(fn_label, indices[i], indices[j])
+      path = get_review_filename(indices[i], indices[j])
       path = string(path[1:end-3], ".jpg")
       img_cropped = imcrop(img, fuse_offset, bb)
       # imwrite(reshape_seam(img_cropped), path)
