@@ -63,17 +63,20 @@ function is_aligned(index)
 end
 
 function is_adjacent(A_index, B_index)
+  if !(is_premontaged(A_index)) || !(is_premontaged(B_index))	return false end
   if abs(A_index[3] - B_index[3]) + abs(A_index[4] - B_index[4])  == 1 return true; end
   return false;
 end
 
 function is_diagonal(A_index, B_index)
+  if !(is_premontaged(A_index)) || !(is_premontaged(B_index))	return false end
   if abs(A_index[3] - B_index[3]) + abs(A_index[4] - B_index[4]) == 2 && A_index[3] != B_index[3] && A_index[4] != B_index[4] return true; end
   return false;
 end
 
 function is_preceding(A_index, B_index)
-	if A_index == get_preceding(B_index) && A_index[3:4] == B_index[3:4] return true; end
+  if (is_premontaged(A_index)) || (is_premontaged(B_index))	return false end
+	if A_index[1:2] == get_preceding(B_index)[1:2] return true; end
 	return false;
 end
 
@@ -110,8 +113,10 @@ function get_metadata(index)
   return registry[find_in_registry(index), :];
 end
 
-function get_offset(index)
-	if myid() != 1 return remotecall_fetch(1, get_offset, index) end
+function get_offset(index, get_from_master=false)
+	if get_from_master
+		if myid() != 1 return remotecall_fetch(1, get_offset, index) end
+	end
 	metadata = get_metadata(index);
 	return Point(metadata[3:4]);
 end
@@ -139,7 +144,9 @@ function get_succeeding(index)
 end
 
 function get_index_range(first_index, last_index)
-	return get_registry(first_index)[get_range_in_registry(first_index, last_index), 2];
+	ran = get_registry(last_index)[get_range_in_registry(first_index, last_index), 2];
+	ran[1] = first_index;
+	return ran;
 end
 
 function get_range_in_registry(indexA, indexB)
@@ -148,10 +155,9 @@ function get_range_in_registry(indexA, indexB)
 			return find(ind -> ind[1:2] == indexA[1:2], REGISTRY_PREMONTAGED[:, 2]);
 	end
 	if indexA[3] != indexB[3] || indexA[4] != indexB[4]
-		println("The indices are from different pipeline stages or from different sections for premontage. Aborting.");
-		return nothing;
+		println("The indices are from different pipeline stages or from different sections for premontage. Defaulting to the latter's stage...");
 	end
-	return find_in_registry(indexA):find_in_registry(indexB);
+	return find_in_registry((indexA[1:2]..., indexB[3:4]...)):find_in_registry(indexB);
 end
 
 """
@@ -166,12 +172,14 @@ function find_cumulative_offset(offset_file, index)
   end
 end
 
+#=
 """
 Generate list of indices between indexA and indexB
 """
 function get_index_range(indexA, indexB)
   return get_registry(indexA)[get_range_in_registry(indexA, indexB), 2]
 end
+=#
 
 """
 Return zip object of an index and the index that follows it
