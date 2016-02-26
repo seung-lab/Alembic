@@ -103,26 +103,3 @@ function imscale(img, scale_factor)
 end
 
 
-function make_training_data(ms)
-
-       X = Array{Float64, 2}(count_correspondences(ms), 4)
-       Y = fill(-1, count_correspondences(ms))
-       current = 0
-
-       for m in ms.matches
-              X[(1:count_correspondences(m)) + current, 1] = get_properties(m, "norm")[:]';
-              X[(1:count_correspondences(m)) + current, 2] = get_properties(m, "r_val")[:]';
-              X[(1:count_correspondences(m)) + current, 3] = get_properties(m, "src_normalized_dyn_range")[:]';
-       	   X[(1:count_correspondences(m)) + current, 4] = get_properties(m, "src_kurtosis")[:]';  
-       	   Y[(collect(Int64, get_rejected_indices(m))) + current] = 1
-       	   current = current + count_correspondences(m);
-       end
-       return X, Y
-end
-#=
-function make_training_data(ms)
-	if i[5] == true && i[6] == true match_correct = match_correct + 1; end
-	if i[5] == true && i[6] == false match_false_rej = match_false_rej + 1; end
-	if i[5] == false && i[6] == true match_false_acc = match_false_acc + 1;
-end
-=#
