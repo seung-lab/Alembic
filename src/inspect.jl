@@ -27,7 +27,7 @@ The only function called by tracers to inspect alignment points
 """
 function inspect_alignments(meshset_ind)
   match_ind = 1
-  firstindex, lastindex = (2,149,-3,-3), (3,167,-3,-3)
+  firstindex, lastindex = (2,149,-3,-3), (3,169,-3,-3)
   name = string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned")
   meshset = load_split(name, meshset_ind)
   match = meshset.matches[match_ind]
