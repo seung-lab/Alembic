@@ -25,9 +25,9 @@ end
 """
 The only function called by tracers to inspect alignment points
 """
-function inspect_alignments(meshset_ind)
+function inspect_alignments(firstindex, lastindex, meshset_ind)
   match_ind = 1
-  firstindex, lastindex = (1,167,-3,-3), (2,149,-3,-3)
+  # firstindex, lastindex = (1,167,-3,-3), (2,149,-3,-3)
   name = string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned")
   meshset = load_split(name, meshset_ind)
   match = meshset.matches[match_ind]
@@ -467,8 +467,8 @@ function show_montage_inspection_section_progress(start=0, finish=9999999)
   plot(sections, flagged, ".")
 end
 
-function show_alignment_inspection_progress()
-  firstindex, lastindex = (1,167,-3,-3), (2,149,-3,-3)
+function show_alignment_inspection_progress(firstindex, lastindex)
+  # firstindex, lastindex = (1,167,-3,-3), (2,149,-3,-3)
   parent_name = string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned")
   splits_count = count_children(parent_name)
   println(parent_name)
@@ -567,9 +567,9 @@ function get_meshset_with_edits(meshset, ind, logs)
     end
     if inds_to_filter[1] != 0
       filter_manual!(match, inds_to_filter)
-      set_reviewed!(match)
-      match.properties["review"]["author"]["by"] = logs[i,2]
     end
+    set_reviewed!(match)
+    match.properties["review"]["author"]["by"] = logs[i,2]
   end
   return meshset
 end
