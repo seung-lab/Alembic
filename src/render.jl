@@ -239,7 +239,7 @@ function render_aligned_review(meshset, start=1, finish=0)
     finish = length(meshset.matches)
   end
   images = Dict()
-  BB = BoundingBox(-4000,-4000,42000,42000)
+  BB = BoundingBox(-4000,-4000,46000,46000)
   
   # Check images dict for thumbnail, otherwise render it - just moving prealigned
   function retrieve_image(mesh)

@@ -10,17 +10,6 @@ function inspect_montages(meshset_ind, match_ind)
 end
 
 """
-The only function called by tracers to inspect montage points
-"""
-function inspect_montages(meshset::MeshSet, match_ind)
-  firstindex, lastindex = meshset.meshes[1].index, meshset.meshes[end].index
-  name = join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ",")
-  println("\n", name, ": ", match_ind, " / ", length(meshset.matches))
-  imgc, img2, matches, vectors, params = inspect_matches(meshset, match_ind);
-  enable_inspection(imgc, img2, meshset, matches, vectors, params, "", (1, match_ind))
-end
-
-"""
 The only function called by tracers to inspect prealignment points
 """
 function inspect_prealignments(meshset_ind)
@@ -38,7 +27,7 @@ The only function called by tracers to inspect alignment points
 """
 function inspect_alignments(meshset_ind)
   match_ind = 1
-  firstindex, lastindex = (1,167,-3,-3), (2,149,-3,-3)
+  firstindex, lastindex = (2,149,-3,-3), (3,169,-3,-3)
   name = string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned")
   meshset = load_split(name, meshset_ind)
   match = meshset.matches[match_ind]
@@ -360,6 +349,10 @@ function switch_pre_to_post(imgc, img2, meshset, matches, vectors, params)
   update_annotations(imgc, img2, matches, vectors)
 end
 
+function show_filtered_points(imgc, img2, meshset, matches, vectors, params)
+  # display filtered matches in different color/opacity
+end
+
 """
 Display matches index k as overlayed images with points
 """
@@ -474,8 +467,8 @@ function show_montage_inspection_section_progress(start=0, finish=9999999)
   plot(sections, flagged, ".")
 end
 
-function show_alignment_inspection_progress()
-  firstindex, lastindex = (1,167,-3,-3), (2,149,-3,-3)
+function show_alignment_inspection_progress(firstindex, lastindex)
+  # firstindex, lastindex = (1,167,-3,-3), (2,149,-3,-3)
   parent_name = string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned")
   splits_count = count_children(parent_name)
   println(parent_name)
@@ -575,6 +568,8 @@ function get_meshset_with_edits(meshset, ind, logs)
     if inds_to_filter[1] != 0
       filter_manual!(match, inds_to_filter)
     end
+    set_reviewed!(match)
+    match.properties["review"]["author"]["by"] = logs[i,2]
   end
   return meshset
 end
