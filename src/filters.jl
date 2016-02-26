@@ -28,7 +28,7 @@ function make_training_data(ms::MeshSet, bias=0.0)
 		X = vcat(X_f, X_uf[1:length_uf, :]);
 		Y = vcat(Y_f, Y_uf[1:length_uf]);
        		ranges = Array{UnitRange, 1}();
-		push!(1:length(Y), ranges)
+		push!(ranges, 1:length(Y))
 	end
        return X, Y, ranges
 end
