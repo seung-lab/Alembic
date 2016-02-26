@@ -1,4 +1,5 @@
-function make_training_data(ms::MeshSet)
+# if bias is a number in (0, 1) then it will fill the training data with that proportion being flagged correspondences
+function make_training_data(ms::MeshSet, bias=0.0)
 
        X = Array{Float64, 2}(count_correspondences(ms), 4)
        Y = fill(-1, count_correspondences(ms))
@@ -16,6 +17,19 @@ function make_training_data(ms::MeshSet)
 	  push!(ranges, range)
        	  current = current + count_correspondences(m);
        end
+	if bias != 0.0
+		flagged_inds = find(i -> i == 1, Y);
+		unflagged_inds = setdiff(1:length(Y), flagged_inds);
+		X_f = X[flagged_inds, :];
+		Y_f = Y[flagged_inds];
+		X_uf = X[unflagged_inds, :];
+		Y_uf = Y[unflagged_inds];
+		length_uf = round(Int64, length(flagged_inds) * ((1 / bias) - 1), RoundUp);
+		X = vcat(X_f, X_uf[1:length_uf, :]);
+		Y = vcat(Y_f, Y_uf[1:length_uf]);
+       		ranges = Array{UnitRange, 1}();
+		push!(1:length(Y), ranges)
+	end
        return X, Y, ranges
 end
 
