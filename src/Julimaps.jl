@@ -70,6 +70,7 @@ using IterativeSolvers
 using ImageRegistration
 using Optim
 using Distributions
+using RegERMs
 if ENV["USER"] != "dih" && !ON_AWS && !contains(gethostname(), "seunglab")
 using PyPlot
 end
@@ -90,9 +91,9 @@ include("Params.jl")
 include("convolve.jl")
 include("Mesh.jl")
 include("Match.jl")
-#include("filter.jl")
 include("MeshSet.jl")
 include("MeshSolve.jl")
+include("filters.jl")
 include("MeshConjGrad.jl")
 include("MeshSession.jl")
 include("TileToOverview.jl")
@@ -110,5 +111,4 @@ include("player.jl")
 include("inspect.jl")
 include("check.jl")
 include("brushtool.jl")
-
 #end
