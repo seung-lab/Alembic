@@ -354,7 +354,7 @@ end
 Write any render errors to a log file
 """
 function log_render_error(dir, idx, comment="")
-  ts = Dates.format(now(), "yymmddHHMMSS")
+  ts = parse(Dates.format(now(), "yymmddHHMMSS"))
   path = joinpath(dir, "render_error_log.txt")
   new_row = [ts, idx, comment]'
   if !isfile(path)

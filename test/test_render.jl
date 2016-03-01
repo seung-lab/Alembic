@@ -107,3 +107,10 @@ O, BB_O = imfuse(A, BB_A, B, BB_B)
 @test O.channels[1][1:5, 1:5] == A
 @test O.channels[2][3:7, 4:8] == B
 @test BB_O == BB_A
+
+# try
+# 	a = [1:10][0]
+# catch e
+# 	log_render_error(pwd(), (1,1,-2,-2), e)
+# end
+# rm(joinpath(pwd(), "render_error_log.txt"))
