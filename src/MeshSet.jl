@@ -178,7 +178,7 @@ end
 
 function MeshSet(index; params=get_params(index))
 	if is_premontaged(index) return MeshSet(index, index); end
-	if is_montaged(index) return MeshSet(index, index); end
+	if is_montaged(index) return MeshSet(premontaged(index), premontaged(index)); end
 end
 
 function MeshSet(first_index, last_index; params=get_params(first_index), solve_method="elastic", fix_first=false)

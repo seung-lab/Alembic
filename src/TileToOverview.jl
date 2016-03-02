@@ -20,10 +20,10 @@ function tile_to_overview(tile, overview, overview_scale::Real;
 
 	# Assuming strings are file paths
 	if isa(tile, String)
-		tile = get_ufixed8_image(tile)
+		tile = get_image(tile)
 	end
 	if isa(overview, String)
-		overview = get_ufixed8_image(overview)
+		overview = get_image(overview)
 	end
 	return tile_to_overview(tile, overview, overview_scale; 
 			diagnosis = diagnosis, overlay_array = overlay_array, xcorr_overlay = xcorr_overlay)
@@ -117,7 +117,7 @@ function tiles_to_overview(tile_img_file_list::Vector{ByteString},
 
                             #params=PARAMS_PREMONTAGE
   if isa(overview_img, String)
-  	overview = get_ufixed8_image(overview_img)
+  	overview = get_image(overview_img)
   elseif isa(overview_img, Array)
   	overview = overview_img
   else
@@ -142,6 +142,9 @@ function tiles_to_overview(tile_img_file_list::Vector{ByteString},
   	println(offset)
     #break
   end
+
+  overlay = overlay / 255;
+  overview = overview / 255;
 
   if save_fused_img_to != ""
 	  #fused, fused_offset = imfuse(overview, [0,0], overlay, [0,0]) # having trouble writing this to file
