@@ -1,24 +1,24 @@
-# MeshSolve - given spring mesh, solve for equilibrium positions of vertices
-# 
-# V = # mesh vertices in R^d
-# E = # of springs
-#
-# 'Vertice' - dxV matrix, columns contain vertex positions
-#
-# 'Incidence' - VxE generalized oriented incidence matrix
-#    springs <-> columns
-#    intratile spring <-> column containing 1 -1
-#    intertile spring <-> column containing w1 w2 w3 -1 where (w1, w2, w3) represents a weighted combination of vertices
-#
-#  most functions compute Springs=Vertices*Incidences, dxE matrix
-#    spring vectors <-> columns
+"""
+MeshSolve - given spring mesh, solve for equilibrium positions of vertices with gradient descent & Newton's method
 
-# 'Stiffnesses', 'RestLengths' - 1xE vectors specifying spring properties
+V = # mesh vertices in R^d
+E = # of springs
 
-# 'Moving' - integer vector containing indices of moving vertices
-# could be changed to 1xE binary vector
+'Vertice' - dxV matrix, columns contain vertex positions
 
-#import PyPlot
+'Incidence' - VxE generalized oriented incidence matrix
+   springs <-> columns
+   intratile spring <-> column containing 1 -1
+   intertile spring <-> column containing w1 w2 w3 -1 where (w1, w2, w3) represents a weighted combination of vertices
+
+ most functions compute Springs=Vertices*Incidences, dxE matrix
+   spring vectors <-> columns
+
+'Stiffnesses', 'RestLengths' - 1xE vectors specifying spring properties
+
+'Moving' - integer vector containing indices of moving vertices
+could be changed to 1xE binary vector
+"""
 
 global eps = 1E-8
 
