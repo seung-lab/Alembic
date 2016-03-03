@@ -247,7 +247,5 @@ global REGISTRY_PREALIGNED = parse_registry(prealigned_registry_path)
 aligned_registry_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, aligned_dir_path, aligned_registry_filename)
 global REGISTRY_ALIGNED = parse_registry(aligned_registry_path)
 
-global GLOBAL_BB = BoundingBox(-4000,-4000,38000,38000)
-
 show_plot = false
 
