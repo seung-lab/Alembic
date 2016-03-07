@@ -22,7 +22,7 @@ end
 #     
 # extensions:
 # Mesh.jl: get_path(mesh::Mesh)
-function get_path(index, ext = ".h5")
+function get_path(index, ext = ".tif")
     name = get_name(index)
     if is_overview(index)
         if cur_dataset == "zebrafish"
@@ -145,6 +145,9 @@ function parse_registry(path::String)
     return registry
 end
 
+bucket_dir_path = homedir()
+
+
 if contains(gethostname(), "seunglab") || contains(gethostname(), "spock") 
  bucket_dir_path = "/mnt/bucket/labs/seung/"
 end
@@ -185,8 +188,8 @@ else
 end
 =#
 
-datasets_dir_path = homedir()
-cur_dataset = "myelin"
+datasets_dir_path = "datasets"
+cur_dataset = "formyelin"
 affine_dir_path = "~"
 
 premontaged_dir_path = "1_premontaged"
@@ -235,7 +238,7 @@ global WAFER_DIR_DICT = waferpaths_to_dict(waferpath_filename)
 
 premontaged_registry_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, premontaged_dir_path, premontaged_registry_filename)
 global REGISTRY_PREMONTAGED = parse_registry(premontaged_registry_path)
-global REGISTRY_PREMONTAGED = hcat(REGISTRY_PREMONTAGED, fill(8000, size(REGISTRY_PREMONTAGED)[1], 2));
+#global REGISTRY_PREMONTAGED = hcat(REGISTRY_PREMONTAGED, fill(8000, size(REGISTRY_PREMONTAGED)[1], 2));
 
 montaged_registry_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, montaged_dir_path, montaged_registry_filename)
 global REGISTRY_MONTAGED = parse_registry(montaged_registry_path)

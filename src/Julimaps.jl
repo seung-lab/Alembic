@@ -79,10 +79,11 @@ include("author.jl")
 include("Index.jl")
 include("registry.jl")
 if ON_AWS
-  using AWS
-  using AWS.S3
-include("filesystem_aws.jl")
-include("aws_credentials.jl")
+  include("filesystem_formyelin.jl")
+#  using AWS
+#  using AWS.S3
+#include("filesystem_aws.jl")
+#include("aws_credentials.jl")
 else
 include("filesystem.jl")
 end

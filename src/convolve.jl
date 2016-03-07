@@ -82,7 +82,7 @@ function optimize_all_cores(img_d::Int64)
     return Void;
 end
     
-function normxcorr2(template,img)
+function normxcorr2(template,img; shape = "valid")
     # "normalized cross correlation": slide template across img,
     # compute Pearson correlation coefficient for each template location
     # result has same size as MATLAB-style 'valid' convolution
@@ -95,6 +95,17 @@ function normxcorr2(template,img)
     # need some argument checking
     # e.g. sizes of template should be less than those of img
     # this works for arrays.  extend to Image defined in Holy's package?
+
+    if shape == "full"
+    (n1,n2)=size(template);
+    (m01,m02)=size(img);
+
+    k1 = size(template, 1) * 2 - 2 + size(img, 1);
+    k2 = size(template, 2) * 2 - 2 + size(img, 2);
+    img_new = fill(mean(img), k1, k2);
+    img_new[n1:k1-n1+1, n2:k2-n2+1] = img;
+    img = img_new;
+    end
 
     # sufficient to subtract mean from just one variable
     dt=template-mean(template)
@@ -128,5 +139,3 @@ function normxcorr2(template,img)
 
     numerator./denominator
 end
-    
-
