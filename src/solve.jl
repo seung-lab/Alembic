@@ -104,6 +104,11 @@ function regularized_solve!(Ms::MeshSet; k=1, lambda=0.9)
 	stats(Ms);
 end
 
+function solve!(meshset)
+  method=meshset.properties["params"]["solve"]["method"]
+  solve!(meshset, method)
+end
+
 function solve!(meshset; method="elastic")
 	sanitize!(meshset);
 	if method == "elastic" return elastic_solve!(meshset); end

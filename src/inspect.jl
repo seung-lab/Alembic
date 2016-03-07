@@ -2,11 +2,10 @@
 The only function called by tracers to inspect montage points
 """
 function inspect_montages(meshset_ind, match_ind)
-#  indrange = get_index_range((1,1,-2,-2), (8,173,-2,-2))
-  indrange = get_index_range((1,1,-2,-2), (1,10,-2,-2))
+  indrange = get_index_range((1,1,-2,-2), (1,168,-2,-2))
   meshset = load(indrange[meshset_ind])
   println("\n", meshset_ind, ": ", indrange[meshset_ind], " @ ", match_ind, " / ", length(meshset.matches))
-  imgc, img2, matches, vectors, params = inspect_matches(meshset, match_ind);
+  imgc, img2, matches, vectors, params = view_matches(meshset, match_ind);
   enable_inspection(imgc, img2, meshset, matches, vectors, params, "montage", (meshset_ind, match_ind))
 end
 
@@ -15,12 +14,11 @@ The only function called by tracers to inspect prealignment points
 """
 function inspect_prealignments(meshset_ind)
   match_ind = 1
-#  index_pairs = collect(get_sequential_index_pairs((1,1,-2,-2), (8,167,-2,-2)))
-  index_pairs = collect(get_sequential_index_pairs((1,1,-2,-2), (1,10,-2,-2)))
+  index_pairs = collect(get_sequential_index_pairs((1,1,-2,-2), (1,168,-2,-2)))
   indexA, indexB = index_pairs[meshset_ind]
   meshset = load(indexB, indexA)
-  println("\n", meshset_ind, ": ", (indexB, indexA), " @ ", match_ind, " / ", length(meshset.matches))
-  imgc, img2, matches, vectors, params = inspect_matches(meshset, match_ind)
+  println("\n", meshset_ind, ": ", (meshset.matches[match_ind].src_index, meshset.matches[match_ind].dst_index), " @ ", match_ind, " / ", length(meshset.matches))
+  imgc, img2, matches, vectors, params = view_matches(meshset, match_ind)
   enable_inspection(imgc, img2, meshset, matches, vectors, params, "prealignment", (meshset_ind, match_ind))
 end
 
@@ -28,15 +26,21 @@ end
 The only function called by tracers to inspect alignment points
 """
 function inspect_alignments(meshset_ind)
+  firstindex, lastindex = prealigned(1,1), prealigned(1,168)
+  inspect_alignments(firstindex, lastindex, meshset_ind)
+end
+
+"""
+The only function called by tracers to inspect alignment points
+"""
+function inspect_alignments(firstindex, lastindex, meshset_ind)
   match_ind = 1
-  #firstindex, lastindex = (2,149,-3,-3), (3,169,-3,-3)
-  firstindex, lastindex = (1,1,-3,-3), (1,10,-3,-3)
   name = string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned")
   meshset = load_split(name, meshset_ind)
   match = meshset.matches[match_ind]
   src_dst = string(join(match.src_index[1:2], ","), "-", join(match.dst_index[1:2], ","))
   println("\n", name, ": ", src_dst, " @ ", match_ind, " / ", length(meshset.matches))
-  imgc, img2, matches, vectors, params = inspect_matches(meshset, match_ind);
+  imgc, img2, matches, vectors, params = view_matches(meshset, match_ind);
   enable_inspection(imgc, img2, meshset, matches, vectors, params, "alignment", (meshset_ind, match_ind));
 end
 
@@ -50,13 +54,66 @@ function inspect_meshset(meshset, match_ind)
   match = meshset.matches[match_ind]
   src_dst = string(join(match.src_index[1:2], ","), "-", join(match.dst_index[1:2], ","))
   println("\n", name, ": ", src_dst, " @ ", match_ind, " / ", length(meshset.matches))
-  imgc, img2, matches, vectors, params = inspect_matches(meshset, match_ind);
+  imgc, img2, matches, vectors, params = view_matches(meshset, match_ind);
   enable_inspection(imgc, img2, meshset, matches, vectors, params, "meshset", (1, match_ind));
 end
 
 
+"""
+Display matches index k as overlayed images with points
+"""
+function view_matches(meshset, k)
+  matches = meshset.matches[k]
+  indexA = matches.src_index
+  indexB = matches.dst_index
 
-function show_blockmatch(match, ind, params)
+  path = get_review_filename(indexB, indexA)
+  if !isfile(path)
+    path = get_review_filename(indexA, indexB)
+  end
+  img_orig = h5read(path, "img")
+  offset = h5read(path, "offset")
+  println("offset: ", offset)
+  scale = h5read(path, "scale")
+
+  # Add border to the image for vectors that extend
+  pad = 400
+  img = zeros(UInt32, size(img_orig,1)+pad*2, size(img_orig,2)+pad*2)
+  img[pad:end-pad-1, pad:end-pad-1] = img_orig
+
+  params = deepcopy(meshset.properties["params"]["match"])
+  params["offset"] = offset - pad
+  params["scale"] = scale
+  params["match_index"] = k
+  params["vector_scale"] = 4
+  params["post_matches"] = false
+  params["dist"] = 90
+
+  imgc, img2 = view(img, pixelspacing=[1,1])
+  vectors = make_vectors(meshset, k, params)
+  show_vectors(imgc, img2, vectors, RGB(0,0,1), RGB(1,0,1))
+  update_annotations(imgc, img2, matches, vectors)
+  return imgc, img2, matches, vectors, params
+end
+
+function make_vectors(meshset, k, params)
+  scale = params["scale"]
+  offset = params["offset"]
+  factor = params["vector_scale"]
+  println("Vector scale: ", factor)
+  src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences(meshset, k)
+  if params["post_matches"]
+    src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences_post(meshset, k)
+  end
+  vectorsA = scale_matches(src_nodes, scale)
+  vectorsB = scale_matches(dst_nodes, scale)
+  vecs = offset_matches(vectorsA, vectorsB, offset)
+  vectors = [hcat(vecs[1]...); hcat(vecs[2]...)]
+  return change_vector_lengths([hcat(vecs[1]...); hcat(vecs[2]...)], factor)
+end
+
+
+function view_blockmatch(match, ind, params)
   src_patch, src_pt, dst_patch, dst_pt, xc, offset = get_correspondence_patches(match, ind)
   block_r = params["block_r"]
   search_r = params["search_r"]
@@ -224,7 +281,7 @@ function inspect_match(imgc, img2, x, y, matches, vectors, params, prox=0.0125)
     ptA = vectors[1:2,idx] # - params["src_offset"]
     ptB = vectors[3:4,idx] # - params["dst_offset"]
     println(idx, ": ", ptA, ", ", ptB)
-    bm_win = show_blockmatch(matches, idx, params)
+    bm_win = view_blockmatch(matches, idx, params)
     detect_blockmatch_removal(imgc, img2, bm_win, matches, idx, vectors)
   end
 end
@@ -331,14 +388,14 @@ function flag_inspection(imgc, img2, matches)
 end
 
 function increase_vectors(imgc, img2, meshset, matches, vectors, params)
-  params["vector_scale"] += 1
+  params["vector_scale"] *= 1.1
   k = params["match_index"]
   vectors = make_vectors(meshset, k, params)
   update_annotations(imgc, img2, matches, vectors)
 end
 
 function decrease_vectors(imgc, img2, meshset, matches, vectors, params)
-  params["vector_scale"] = max(params["vector_scale"]-1, 1)
+  params["vector_scale"] = max(params["vector_scale"]*0.9, 0.1)
   k = params["match_index"]
   vectors = make_vectors(meshset, k, params)
   update_annotations(imgc, img2, matches, vectors)
@@ -354,59 +411,6 @@ end
 
 function show_filtered_points(imgc, img2, meshset, matches, vectors, params)
   # display filtered matches in different color/opacity
-end
-
-"""
-Display matches index k as overlayed images with points
-"""
-function inspect_matches(meshset, k)
-  matches = meshset.matches[k]
-  indexA = matches.src_index
-  indexB = matches.dst_index
-
-  path = get_review_filename(indexB, indexA)
-  if !isfile(path)
-    path = get_review_filename(indexA, indexB)
-  end
-  img_orig = h5read(path, "img")
-  offset = h5read(path, "offset")
-  println("offset: ", offset)
-  scale = h5read(path, "scale")
-
-  # Add border to the image for vectors that extend
-  pad = 400
-  img = zeros(UInt32, size(img_orig,1)+pad*2, size(img_orig,2)+pad*2)
-  img[pad:end-pad-1, pad:end-pad-1] = img_orig
-
-  params = meshset.properties["params"]["match"]
-  params["offset"] = offset - pad
-  params["scale"] = scale
-  params["match_index"] = k
-  params["vector_scale"] = 4
-  params["post_matches"] = false
-  params["dist"] = 90
-
-  imgc, img2 = view(img, pixelspacing=[1,1])
-  vectors = make_vectors(meshset, k, params)
-  show_vectors(imgc, img2, vectors, RGB(0,0,1), RGB(1,0,1))
-  update_annotations(imgc, img2, matches, vectors)
-  return imgc, img2, matches, vectors, params
-end
-
-function make_vectors(meshset, k, params)
-  scale = params["scale"]
-  offset = params["offset"]
-  factor = params["vector_scale"]
-  println("Vector scale: ", factor)
-  src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences(meshset, k)
-  if params["post_matches"]
-    src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences_post(meshset, k)
-  end
-  vectorsA = scale_matches(src_nodes, scale)
-  vectorsB = scale_matches(dst_nodes, scale)
-  vecs = offset_matches(vectorsA, vectorsB, offset)
-  vectors = [hcat(vecs[1]...); hcat(vecs[2]...)]
-  return change_vector_lengths([hcat(vecs[1]...); hcat(vecs[2]...)], factor)
 end
 
 function get_inspection_path(username, stage_name)
@@ -607,12 +611,12 @@ function get_review_filename(src_index, dst_index=(0,0,0,0))
   prefix = "review"
   dir = ALIGNED_DIR
   ind = indices2string(src_index, dst_index)
-  if is_premontaged(src_index)
+  if is_premontaged(src_index) || is_premontaged(dst_index)
     dir = MONTAGED_DIR
     ind = string(join(src_index, ","), "-", join(dst_index, ","))
-  elseif is_montaged(src_index)
+  elseif is_montaged(src_index) || is_montaged(dst_index)
     dir = PREALIGNED_DIR
-  elseif is_prealigned(src_index)
+  elseif is_prealigned(src_index) || is_prealigned(dst_index)
     dir = ALIGNED_DIR
   end
   fn = string(prefix, "_", ind, ".h5")

@@ -44,6 +44,8 @@ MESH_SPRING_COEFF_ALIGNMENT = 1.0
 MATCH_SPRING_COEFF_ALIGNMENT = 3.0 
 FTOL_CG_ALIGNMENT = 1/1000000
 
+global GLOBAL_BB = BoundingBox(0,0,42000,42000)
+
 global PARAMS_MONTAGE = Dict(
 			     "mesh" => Dict(
 					"mesh_length" => MESH_LENGTH_MONTAGE), 
