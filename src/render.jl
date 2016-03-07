@@ -176,7 +176,8 @@ function render_prealigned(waferA, secA, waferB, secB; render_full=true, render_
     println("Writing image:\n\t", new_fn)
     # @time imwrite(stage["img"], joinpath(dir, fn))
     f = h5open(joinpath(dir, new_fn), "w")
-    @time f["img", "chunk", (1000,1000)] = stage["img"]
+    chunksize = min(1000, min(size(stage["img"])...))
+    @time f["img", "chunk", (chunksize,chunksize)] = stage["img"]
     close(f)
   end
 
@@ -204,7 +205,8 @@ function render_prealigned(waferA, secA, waferB, secB; render_full=true, render_
       O, O_bb = imfuse(fixed["thumb_fixed"], fixed["thumb_offset_fixed"], 
                             moving["thumb_moving"], moving["thumb_offset_moving"])
       f = h5open(path, "w")
-      @time f["img", "chunk", (1000,1000)] = O
+      chunksize = min(1000, min(size(O)...))
+      @time f["img", "chunk", (chunksize,chunksize)] = O
       f["offset"] = O_bb
       f["scale"] = scale
       f["tform"] = tform

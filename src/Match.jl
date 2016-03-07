@@ -107,7 +107,7 @@ function get_correspondence_patches(match::Match, ind)
 	src_path = get_path(match.src_index);
 	dst_path = get_path(match.dst_index);
 	
-	assert(src_path[end-1:end] == "h5")
+	#assert(src_path[end-1:end] == "h5")
 
 	props = match.correspondence_properties[ind]
 

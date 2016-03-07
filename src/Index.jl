@@ -113,7 +113,7 @@ function get_metadata(index)
   return registry[find_in_registry(index), :];
 end
 
-function get_offset(index, get_from_master=false)
+function get_offset(index)
 #=function get_offset(index, get_from_master=false)
 	if get_from_master =#
 		if myid() != 1 return remotecall_fetch(1, get_offset, index) end

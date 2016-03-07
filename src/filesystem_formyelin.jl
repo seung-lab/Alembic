@@ -22,7 +22,7 @@ end
 #     
 # extensions:
 # Mesh.jl: get_path(mesh::Mesh)
-function get_path(index, ext = ".tif")
+function get_path(index, ext = ".h5")
     name = get_name(index)
     if is_overview(index)
         if cur_dataset == "zebrafish"
@@ -42,6 +42,7 @@ function get_path(index, ext = ".tif")
             section_folder = string("W00", index[1], "_Sec", index[2], "_Montage")
         else
             section_folder = string("S2-W00", index[1], "_Sec", index[2], "_Montage")
+	    ext = ".tif" #haaack
         end
         path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ext))
     end
