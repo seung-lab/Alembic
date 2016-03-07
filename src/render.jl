@@ -277,7 +277,7 @@ function render_aligned_review(meshset, start=1, finish=0)
     @time f["img", "chunk", (1000,1000)] = O
     f["offset"] = O_bb # same as offset
     f["scale"] = scale
-    f["bb"] = BB.i, BB.j, BB.w, BB.h
+    f["bb"] = [BB.i, BB.j, BB.w, BB.h]
     close(f)
   end
 end

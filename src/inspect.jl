@@ -26,8 +26,15 @@ end
 The only function called by tracers to inspect alignment points
 """
 function inspect_alignments(meshset_ind)
-  match_ind = 1
   firstindex, lastindex = prealigned(2,149), prealigned(3,169)
+  inspect_alignments(firstindex, lastindex, meshset_ind)
+end
+
+"""
+The only function called by tracers to inspect alignment points
+"""
+function inspect_alignments(firstindex, lastindex, meshset_ind)
+  match_ind = 1
   name = string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned")
   meshset = load_split(name, meshset_ind)
   match = meshset.matches[match_ind]
