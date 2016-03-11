@@ -2,7 +2,8 @@
 The only function called by tracers to inspect montage points
 """
 function inspect_montages(meshset_ind, match_ind)
-  indrange = get_index_range((1,1,-2,-2), (8,173,-2,-2))
+#  indrange = get_index_range((1,1,-2,-2), (8,173,-2,-2))
+  indrange = get_index_range((1,1,-2,-2), (1,10,-2,-2))
   meshset = load(indrange[meshset_ind])
   println("\n", meshset_ind, ": ", indrange[meshset_ind], " @ ", match_ind, " / ", length(meshset.matches))
   imgc, img2, matches, vectors, params = inspect_matches(meshset, match_ind);
@@ -14,7 +15,8 @@ The only function called by tracers to inspect prealignment points
 """
 function inspect_prealignments(meshset_ind)
   match_ind = 1
-  index_pairs = collect(get_sequential_index_pairs((1,1,-2,-2), (8,167,-2,-2)))
+#  index_pairs = collect(get_sequential_index_pairs((1,1,-2,-2), (8,167,-2,-2)))
+  index_pairs = collect(get_sequential_index_pairs((1,3,-2,-2), (1,268,-2,-2)))
   indexA, indexB = index_pairs[meshset_ind]
   meshset = load(indexB, indexA)
   println("\n", meshset_ind, ": ", (indexB, indexA), " @ ", match_ind, " / ", length(meshset.matches))
@@ -27,7 +29,8 @@ The only function called by tracers to inspect alignment points
 """
 function inspect_alignments(meshset_ind)
   match_ind = 1
-  firstindex, lastindex = (2,149,-3,-3), (3,169,-3,-3)
+  #firstindex, lastindex = (2,149,-3,-3), (3,169,-3,-3)
+  firstindex, lastindex = (1,3,-3,-3), (1,92,-3,-3)
   name = string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned")
   meshset = load_split(name, meshset_ind)
   match = meshset.matches[match_ind]
@@ -59,7 +62,7 @@ function show_blockmatch(match, ind, params)
   search_r = params["search_r"]
   N=size(xc, 1)
   M=size(xc, 2)
-  if !contains(gethostname(), "seunglab")
+  if !contains(gethostname(), "seunglab") && !ON_AWS
     surf([i for i=1:N, j=1:M], [j for i=1:N, j=1:M], xc, cmap=get_cmap("hot"), 
                             rstride=10, cstride=10, linewidth=0, antialiased=false)
   end
@@ -197,7 +200,7 @@ Convention: mask is FALSE if point is to be REMOVED
 """
 function update_annotations(imgc, img2, matches, vectors)
   mask = get_filtered_indices(matches)
-  for an in values(imgc.annotations)
+  for an in Base.values(imgc.annotations)
     if :pts in fieldnames(an.data)
       an.data.pts = vectors[1:2, mask]
     elseif :lines in fieldnames(an.data)

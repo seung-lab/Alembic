@@ -79,7 +79,8 @@ include("author.jl")
 include("Index.jl")
 include("registry.jl")
 if ON_AWS
-  include("filesystem_formyelin.jl")
+#include("filesystem_formyelin.jl")
+  include("filesystem_retina.jl")
 #  using AWS
 #  using AWS.S3
 #include("filesystem_aws.jl")

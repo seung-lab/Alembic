@@ -30,11 +30,11 @@ function count_filtered_correspondences(meshset::MeshSet)	return sum(map(count_f
 
 ### finding
 function find_mesh_index(meshset::MeshSet, index)
-  return findfirst(this -> index == this.index, meshset.meshes)
+  return findfirst(this -> index == get_index(this), meshset.meshes)
   end
 
 function find_match_index(meshset::MeshSet, src_index, dst_index)
-  return findfirst(this -> (src_index == this.src_index) && (dst_index == this.dst_index), meshset.matches)
+  return findfirst(this -> (src_index == get_src_index(this)) && (dst_index == get_dst_index(this)), meshset.matches)
   end
 
 function find_node(Ms, mesh_ind, node_ind)
@@ -98,8 +98,8 @@ function split_meshset(meshset::MeshSet)
 		matches = Array{Match, 1}();
 		push!(matches, meshset.matches[i])
 		meshes = Array{Mesh, 1}();
-		src_mesh = meshset.meshes[findfirst(mesh -> mesh.index == meshset.matches[i].src_index, meshset.meshes)]
-		dst_mesh = meshset.meshes[findfirst(mesh -> mesh.index == meshset.matches[i].dst_index, meshset.meshes)]
+		src_mesh = meshset.meshes[find_mesh_index(meshset, get_src_index(meshset.matches[i]))]
+		dst_mesh = meshset.meshes[find_mesh_index(meshset, get_dst_index(meshset.matches[i]))]
 		push!(meshes, src_mesh, dst_mesh)
 		save(MeshSet(meshes, matches, properties));
 		println("Child ", i, " / ", count_matches(meshset), " saved");
@@ -112,7 +112,7 @@ function concat_meshset(parent_name)
 		cms = load_split(parent_name, i)
 		append!(ms.matches, cms.matches)
 		for cmesh in cms.meshes
-			ind = findfirst(mesh -> mesh.index == cmesh.index, ms.meshes)
+			ind = find_mesh_index(ms,get_index(cmesh))
 			if ind == 0 push!(ms.meshes, cmesh) end
 		end
 
@@ -130,7 +130,7 @@ end
 function concat!(meshset_one::MeshSet, meshset_two::MeshSet)
 		append!(meshset_one.matches, meshset_two.matches)
 		for mesh_two in meshset_two.meshes
-			ind = findfirst(mesh_one -> mesh_one.index == mesh_two.index, ms.meshes)
+			ind = find_mesh_index(ds, get_index(mesh_two))
 			if ind == 0 push!(meshset_one.meshes, mesh_two) end
 		end
 	return meshset_one;
@@ -249,7 +249,7 @@ end
 function sanitize!(meshset::MeshSet)
   meshes = Dict{Any, Any}();
   for mesh in meshset.meshes
-  	meshes[mesh.index] = mesh;
+  	meshes[get_index(mesh)] = mesh;
   end
 
   for match in meshset.matches
