@@ -70,7 +70,7 @@ using IterativeSolvers
 using ImageRegistration
 using Optim
 using Distributions
-# using RegERMs
+using RegERMs
 if ENV["USER"] != "dih" && !ON_AWS && !contains(gethostname(), "seunglab")
 using PyPlot
 end
@@ -79,23 +79,25 @@ include("author.jl")
 include("Index.jl")
 include("registry.jl")
 if ON_AWS
-  include("filesystem_formyelin.jl")
+#include("filesystem_formyelin.jl")
+  include("dataset_retina.jl")
+  include("params_retina.jl")
 #  using AWS
 #  using AWS.S3
 #include("filesystem_aws.jl")
 #include("aws_credentials.jl")
 else
-include("filesystem.jl")
+include("dataset_default.jl")
+include("params_default.jl")
 end
 include("IO.jl")
-include("Params.jl")
 include("convolve.jl")
 include("Mesh.jl")
 include("Match.jl")
 include("MeshSet.jl")
 include("filters.jl")
 include("MeshConjGrad.jl")
-include("MeshGradNewton.jl")
+include("MeshSession.jl")
 include("TileToOverview.jl")
 include("imageprocessing.jl")
 include("render.jl")

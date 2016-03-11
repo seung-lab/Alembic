@@ -111,6 +111,8 @@ end
 
 function solve!(meshset; method="elastic")
 	sanitize!(meshset);
+	if count_matches(meshset) == 0 || count_filtered_correspondences(meshset) == 0 return end
+
 	if method == "elastic" return elastic_solve!(meshset); end
 	if method == "translate" return translate_solve!(meshset); end
 	if method == "rigid" return rigid_solve!(meshset); end

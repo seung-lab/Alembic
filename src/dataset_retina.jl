@@ -1,3 +1,5 @@
+global ROI_FIRST = (1,3,0,0);
+global ROI_LAST = (1,92,0,0);
 
 function get_name(index)
     if is_overview(index)
@@ -13,7 +15,8 @@ function get_name(index)
     elseif is_aligned(index)
     return string(index[1], ",", index[2], "_aligned")
     else
-    return string("Tile_r", index[3], "-c", index[4], "_S2-W00", index[1], "_sec", index[2])
+    return string("Image_", index[2])
+	#    return string("Tile_r", index[3], "-c", index[4], "_S2-W00", index[1], "_sec", index[2])
     end
 end
 
@@ -41,7 +44,9 @@ function get_path(index, ext = ".h5")
         if cur_dataset == "zebrafish"
             section_folder = string("W00", index[1], "_Sec", index[2], "_Montage")
         else
-            section_folder = string("S2-W00", index[1], "_Sec", index[2], "_Montage")
+            #section_folder = string("S2-W00", index[1], "_Sec", index[2], "_Montage")
+	    ext = ".tif" #haaack
+            return joinpath(PREMONTAGED_DIR, "HighResImages", string(name, ext))
         end
         path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ext))
     end
@@ -95,9 +100,9 @@ function parse_name(name::String)
 
     ret = (0, 0, 0, 0)
     # singleton tile
-    m = match(r"Tile_r(\d*)-c(\d*).*W(\d*)_sec(\d*)", name)
+    m = match(r"Image_(\d*)", name)
     if typeof(m) != Void
-    ret = parse(Int, m[3]), parse(Int, m[4]), parse(Int, m[1]), parse(Int, m[2])
+    ret = 1, parse(Int, m[1]), 1, 1
     end
 
     # overview image
@@ -145,6 +150,9 @@ function parse_registry(path::String)
     return registry
 end
 
+bucket_dir_path = homedir()
+
+
 if contains(gethostname(), "seunglab") || contains(gethostname(), "spock") 
  bucket_dir_path = "/mnt/bucket/labs/seung/"
 end
@@ -185,9 +193,8 @@ else
 end
 =#
 
-datasets_dir_path = "research/Julimaps/datasets"
-cur_dataset = "piriform"
-#cur_dataset = "zebrafish"
+datasets_dir_path = "datasets"
+cur_dataset = "retina"
 affine_dir_path = "~"
 
 premontaged_dir_path = "1_premontaged"
@@ -236,7 +243,6 @@ global WAFER_DIR_DICT = waferpaths_to_dict(waferpath_filename)
 
 premontaged_registry_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, premontaged_dir_path, premontaged_registry_filename)
 global REGISTRY_PREMONTAGED = parse_registry(premontaged_registry_path)
-global REGISTRY_PREMONTAGED = hcat(REGISTRY_PREMONTAGED, fill(8000, size(REGISTRY_PREMONTAGED)[1], 2));
 
 montaged_registry_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, montaged_dir_path, montaged_registry_filename)
 global REGISTRY_MONTAGED = parse_registry(montaged_registry_path)
@@ -246,6 +252,8 @@ global REGISTRY_PREALIGNED = parse_registry(prealigned_registry_path)
 
 aligned_registry_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, aligned_dir_path, aligned_registry_filename)
 global REGISTRY_ALIGNED = parse_registry(aligned_registry_path)
+
+global GLOBAL_BB = BoundingBox(-4000,-4000,38000,38000)
 
 show_plot = false
 

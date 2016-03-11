@@ -110,8 +110,8 @@ Calculate prealignment transforms from first section through section_num
 """
 function calculate_cumulative_tform(index)
   cumulative_tform = eye(3)
-  if index != montaged(1,1)
-    index_pairs = get_sequential_index_pairs((2,149,-2,-2), index)
+  if index != montaged(ROI_FIRST)
+    index_pairs = get_sequential_index_pairs(montaged(ROI_FIRST), index)
     for (indexA, indexB) in index_pairs
       meshset = load(indexB, indexA)
       # reset cumulative tform if the mesh is fixed
@@ -176,7 +176,8 @@ function render_prealigned(waferA, secA, waferB, secB; render_full=true, render_
     println("Writing image:\n\t", new_fn)
     # @time imwrite(stage["img"], joinpath(dir, fn))
     f = h5open(joinpath(dir, new_fn), "w")
-    @time f["img", "chunk", (1000,1000)] = stage["img"]
+    chunksize = min(1000, min(size(stage["img"])...))
+    @time f["img", "chunk", (chunksize,chunksize)] = stage["img"]
     close(f)
   end
 
@@ -203,7 +204,8 @@ function render_prealigned(waferA, secA, waferB, secB; render_full=true, render_
       O, O_bb = imfuse(fixed["thumb_fixed"], fixed["thumb_offset_fixed"], 
                             moving["thumb_moving"], moving["thumb_offset_moving"])
       f = h5open(path, "w")
-      @time f["img", "chunk", (1000,1000)] = O
+      chunksize = min(1000, min(size(O)...))
+      @time f["img", "chunk", (chunksize,chunksize)] = O
       f["offset"] = O_bb
       f["scale"] = scale
       f["tform"] = tform

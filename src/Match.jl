@@ -15,6 +15,14 @@ function count_correspondences(match::Match) return size(match.src_points, 1);	e
 function count_filtered_correspondences(match::Match) return length(get_filtered_indices(match)); end
 function count_filters(match::Match) return length(match.filters); end
 
+function get_src_index(match::Match)
+  return match.src_index
+end
+
+function get_dst_index(match::Match)
+  return match.dst_index
+end
+
 function get_correspondences(match::Match; globalized=false)
 	if globalized
 	return match.src_points + fill(get_offset(match.src_index), count_correspondences(match)), match.dst_points + fill(get_offset(match.dst_index), count_correspondences(match))
@@ -107,7 +115,7 @@ function get_correspondence_patches(match::Match, ind)
 	src_path = get_path(match.src_index);
 	dst_path = get_path(match.dst_index);
 	
-	assert(src_path[end-1:end] == "h5")
+	#assert(src_path[end-1:end] == "h5")
 
 	props = match.correspondence_properties[ind]
 
@@ -448,19 +456,19 @@ end
 
 
 function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); src_image=get_image(src_mesh), dst_image=get_image(dst_mesh), rotate=0)
-	println("Matching $(src_mesh.index) -> $(dst_mesh.index):")
+	println("Matching $(get_index(src_mesh)) -> $(get_index(dst_mesh)):")
 	if src_mesh == dst_mesh
 		println("nothing at")
-		println(src_mesh.index)
-		println(dst_mesh.index)
+		println(get_index(src_mesh))
+		println(get_index(dst_mesh))
 		return nothing
 	end
 
 	#load at full scale for monoblock match
 	SHARED_SRC_IMAGE[1:size(src_image, 1), 1:size(src_image, 2)] = src_image;
 	SHARED_DST_IMAGE[1:size(dst_image, 1), 1:size(dst_image, 2)] = dst_image;
-  	src_index = src_mesh.index;
-	dst_index = dst_mesh.index;
+  	src_index = get_index(src_mesh);
+	dst_index = get_index(dst_mesh);
 
 	monoblock_match(src_index, dst_index, src_image, dst_image, params);
 
