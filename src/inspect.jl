@@ -17,7 +17,6 @@ function inspect_prealignments(meshset_ind)
   match_ind = 1
   firstindex, lastindex = montaged(ROI_FIRST), montaged(ROI_LAST) 
   index_pairs = collect(get_sequential_index_pairs(firstindex, lastindex))
-=======
   indexA, indexB = index_pairs[meshset_ind]
   meshset = load(indexB, indexA)
   println("\n", meshset_ind, ": ", (meshset.matches[match_ind].src_index, meshset.matches[match_ind].dst_index), " @ ", match_ind, " / ", length(meshset.matches))
