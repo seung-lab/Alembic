@@ -112,7 +112,9 @@ function make_vectors(meshset, k, params)
   return change_vector_lengths([hcat(vecs[1]...); hcat(vecs[2]...)], factor)
 end
 
-
+"""
+Display the images involved in the blockmatching at one point in a Match object
+"""
 function view_blockmatch(match, ind, params)
   src_patch, src_pt, dst_patch, dst_pt, xc, offset = get_correspondence_patches(match, ind)
   block_r = params["block_r"]
