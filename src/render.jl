@@ -75,13 +75,12 @@ end
 Cycle through JLD files in montaged directory and render montage
 """
 function render_montaged(waferA, secA, waferB, secB; render_full=true, render_review=true)
-  indexA = (waferA, secA, -2, -2)
-  indexB = (waferB, secB, -2, -2)
+  indexA = montaged(waferA, secA)
+  indexB = montaged(waferB, secB)
   for index in get_index_range(indexA, indexB)
-    idx = (index[1:2]..., 1, 1)
-    meshset = load(idx, idx)
+    meshset = load(montaged(index))
     try
-      new_fn = string(idx[1], ",", idx[2], "_montaged.h5")
+      new_fn = string(join(index[1:2], ","), "_montaged.h5")
       println("Rendering ", new_fn)
       warps = pmap(meshwarp_mesh, meshset.meshes);
       imgs = [x[1][1] for x in warps];
@@ -98,11 +97,10 @@ function render_montaged(waferA, secA, waferB, secB; render_full=true, render_re
         f = h5open(joinpath(MONTAGED_DIR, new_fn), "w")
         @time f["img", "chunk", (1000,1000)] = img
         close(f)
-        update_offset((index[1:2]...,-2,-2), [0,0], size(img))
+        update_offset(montaged(index), [0,0], size(img))
       end
     catch e
-      idx = (meshset.meshes[1].index[1:2]..., -2, -2)
-      log_render_error(MONTAGED_DIR, idx, e)
+      log_render_error(MONTAGED_DIR, montaged(index), e)
     end
   end 
 end
@@ -110,18 +108,16 @@ end
 """
 Calculate prealignment transforms from first section through section_num
 """
-function calculate_cumulative_tform(index, dir=PREALIGNED_DIR)
+function calculate_cumulative_tform(index)
   cumulative_tform = eye(3)
-  if index != (1,3,-2,-2)
-    index_pairs = get_sequential_index_pairs((1,3,-2,-2), index)
+  if index != montaged(ROI_FIRST)
+    index_pairs = get_sequential_index_pairs(montaged(ROI_FIRST), index)
     for (indexA, indexB) in index_pairs
       meshset = load(indexB, indexA)
-      # reset cumulative tform is the mesh is fixed
-      if haskey(meshset.meshes[2].properties, "fixed")
-        if meshset.meshes[2].properties["fixed"]
-          println(meshset.meshes[2].index, ": fixed")
-          cumulative_tform = eye(3)
-        end
+      # reset cumulative tform if the mesh is fixed
+      if is_fixed(meshset.meshes[2])
+        println(meshset.meshes[2].index, ": fixed")
+        cumulative_tform = eye(3)
       end
       # tform = affine_approximate(meshset)
       offset = get_offset(indexB)
@@ -145,8 +141,8 @@ end
 Prealignment where offsets are global
 """
 function render_prealigned(waferA, secA, waferB, secB; render_full=true, render_review=true)
-  indexA = (waferA, secA, -2, -2)
-  indexB = (waferB, secB, -2, -2)
+  indexA = montaged(waferA, secA)
+  indexB = montaged(waferB, secB)
   dir = PREALIGNED_DIR
   scale = 0.05
   s = [scale 0 0; 0 scale 0; 0 0 1]
@@ -158,19 +154,23 @@ function render_prealigned(waferA, secA, waferB, secB; render_full=true, render_
   # return Dictionary of staged image to remove redundancy in loading
   function stage_image(mesh, cumulative_tform, tform)
     stage = Dict()
-    stage["index"] = (mesh.index[1:2]..., -2, -2)
+    stage["index"] = montaged(mesh.index)
     img = get_image(mesh)
     println("tform:\n", tform)
-    println("Warping ", get_index(mesh))
-    @time stage["img"], stage["offset"] = imwarp(img, cumulative_tform*tform, [0,0])
-    println("Warping thumbnail for ", get_index(mesh))
+    if cumulative_tform*tform == eye(3)
+      stage["img"], stage["offset"] = img, [0,0]
+    else
+      println("Warping ", get_index(mesh))
+      @time stage["img"], stage["offset"] = imwarp(img, cumulative_tform*tform, [0,0])
+    end
+    println("Creating thumbnail for ", get_index(mesh))
     stage["thumb_fixed"], stage["thumb_offset_fixed"] = imwarp(img, s, [0,0])
     stage["thumb_moving"], stage["thumb_offset_moving"] = imwarp(img, tform*s, [0,0])
     stage["scale"] = scale
     return stage
   end
 
-  function save_image(stage, dir)
+  function save_image(stage)
     new_fn = string(join(stage["index"][1:2], ","), "_prealigned.h5")
     update_offset(prealigned(stage["index"]), stage["offset"], size(stage["img"]))
     println("Writing image:\n\t", new_fn)
@@ -181,10 +181,9 @@ function render_prealigned(waferA, secA, waferB, secB; render_full=true, render_
     close(f)
   end
 
-  println("Cumulative tform:\n", cumulative_tform)
   index_pairs = get_sequential_index_pairs(indexA, indexB)
   for (k, (indexA, indexB)) in enumerate(index_pairs)
-    println("\nPrealigning ", indexA, " & ", indexB)
+    println("\nRendering ", indexA, " & ", indexB)
     meshset = load(indexB, indexA)
     if k==1
       fixed = stage_image(meshset.meshes[2], cumulative_tform, eye(3))
@@ -196,7 +195,7 @@ function render_prealigned(waferA, secA, waferB, secB; render_full=true, render_
     
     # save full scale image
     if render_full
-      save_image(moving, dir)
+      save_image(moving)
     end
 
     if render_review
@@ -224,8 +223,8 @@ end
 Render aligned images
 """
 function render_aligned_review(waferA, secA, waferB, secB, start=1, finish=0)
-  indexA = (waferA, secA, -3, -3)
-  indexB = (waferB, secB, -3, -3)
+  indexA = prealigned(waferA, secA)
+  indexB = prealigned(waferB, secB)
   meshset = load(indexA, indexB)
   render_aligned_review(meshset, start, finish)
 end
@@ -241,11 +240,11 @@ function render_aligned_review(meshset, start=1, finish=0)
     finish = length(meshset.matches)
   end
   images = Dict()
-  BB = BoundingBox(-4000,-4000,46000,46000)
+  BB = GLOBAL_BB
   
   # Check images dict for thumbnail, otherwise render it - just moving prealigned
   function retrieve_image(mesh)
-    index = (mesh.index[1:2]..., -4, -4)
+    index = aligned(mesh.index)
     if !(index in keys(images))
       println("Making review for ", mesh.index)
       # @time (img, offset), _ = meshwarp_mesh(mesh)
@@ -271,8 +270,8 @@ function render_aligned_review(meshset, start=1, finish=0)
     offset = [BB.i, BB.j] * scale
     O, O_bb = imfuse(src_img, offset, dst_img, offset)
 
-    indexA = (src_index[1:2]..., -4, -4)
-    indexB = (dst_index[1:2]..., -4, -4)
+    indexA = aligned(src_index)
+    indexB = aligned(dst_index)
 
     path = get_review_filename(indexB, indexA)
     println("Writing thumbnail:\n\t", path)
@@ -280,6 +279,7 @@ function render_aligned_review(meshset, start=1, finish=0)
     @time f["img", "chunk", (1000,1000)] = O
     f["offset"] = O_bb # same as offset
     f["scale"] = scale
+    f["bb"] = [BB.i, BB.j, BB.w, BB.h]
     close(f)
   end
 end
@@ -288,8 +288,8 @@ end
 Render aligned images
 """
 function render_aligned(waferA, secA, waferB, secB, start=1, finish=0)
-  indexA = (waferA, secA, -3, -3)
-  indexB = (waferB, secB, -3, -3)
+  indexA = prealigned(waferA, secA)
+  indexB = prealigned(waferB, secB)
   meshset = load(indexA, indexB)
   render_aligned(meshset, start, finish)
 end
@@ -306,10 +306,10 @@ function render_aligned(meshset, start=1, finish=0)
     finish = length(meshset.meshes)
   end
   images = Dict()
-  BB = BoundingBox(-2000,-2000,18000,18000)
+  BB = GLOBAL_BB
 
   for (k, mesh) in enumerate(meshset.meshes[start:finish])
-    index = (mesh.index[1:2]..., -4, -4)
+    index = aligned(mesh.index)
     println("Warping ", mesh.index)
     @time (img, offset), _ = meshwarp_mesh(mesh)
     @time img = rescopeimage(img, offset, BB)
@@ -319,15 +319,15 @@ function render_aligned(meshset, start=1, finish=0)
     @time f["img", "chunk", (1000,1000)] = img
     close(f)
     # Log image offsets
-    update_offset(index, offset, size(img))
+    update_offset(index, [0, 0], size(img))
 
     img, _ = imwarp(img, s)
     images[index] = img    
   end
 
   for (k, match) in enumerate(meshset.matches)
-    src_index = match.src_index
-    dst_index = match.dst_index
+    src_index = aligned(match.src_index)
+    dst_index = aligned(match.dst_index)
 
     if start <= find_mesh_index(meshset, src_index) <= finish &&
           start <= find_mesh_index(meshset, dst_index) <= finish
@@ -338,8 +338,8 @@ function render_aligned(meshset, start=1, finish=0)
       offset = [BB.i, BB.j] * scale
       O, O_bb = imfuse(src_img, offset, dst_img, offset)
 
-      indexA = (src_index[1:2]..., -4, -4)
-      indexB = (dst_index[1:2]..., -4, -4)
+      indexA = aligned(src_index)
+      indexB = aligned(dst_index)
 
       path = get_review_filename(indexB, indexA)
       println("Writing thumbnail:\n\t", path)
@@ -347,6 +347,7 @@ function render_aligned(meshset, start=1, finish=0)
       @time f["img", "chunk", (1000,1000)] = O
       f["offset"] = O_bb # same as offset
       f["scale"] = scale
+      f["bb"] = BB.i, BB.j, BB.w, BB.h
       close(f)
     end
   end

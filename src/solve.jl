@@ -104,6 +104,11 @@ function regularized_solve!(Ms::MeshSet; k=1, lambda=0.9)
 	stats(Ms);
 end
 
+function solve!(meshset)
+  method=meshset.properties["params"]["solve"]["method"]
+  solve!(meshset, method)
+end
+
 function solve!(meshset; method="elastic")
 	sanitize!(meshset);
 	if count_matches(meshset) == 0 || count_filtered_correspondences(meshset) == 0 return end

@@ -191,7 +191,9 @@ function get_ranges(pt, src_index, dst_index, block_r::Int64, search_r::Int64, g
 	return src_index, range_in_src, [src_pt_locs[1], src_pt_locs[2]], dst_index, range_in_dst, dst_range_full, [dst_pt_locs[1], dst_pt_locs[2]], [dst_pt_locs_full[1], dst_pt_locs_full[2]];
 end
 
-# includes range for this
+"""
+Template match two images & record translation for source image
+"""
 function monoblock_match(src_index, dst_index, src_image, dst_image, params=get_params(src_index))
 	if params["match"]["monoblock_match"] == false return; end
 	scale = params["match"]["monoblock_scale"];
@@ -228,7 +230,9 @@ function monoblock_match(src_index, dst_index, src_image, dst_image, params=get_
 
 end
 
-#using sharedarray
+"""
+Template match two image patches to produce point pair correspondence
+"""
 function get_match(pt, ranges, src_image, dst_image, params = nothing)
 	src_index, src_range, src_pt_loc, dst_index, dst_range, dst_range_full, dst_pt_loc, dst_pt_loc_full = ranges;
 
@@ -299,8 +303,6 @@ function get_match(pt, ranges, src_image, dst_image, params = nothing)
 	end
 end
 
-
-
 function filter!(match::Match, property_name, compare, threshold)
 	attributes = get_properties(match, property_name)
 	inds_to_filter = find(i -> compare(i, threshold), attributes);
@@ -313,30 +315,6 @@ function filter!(match::Match, property_name, compare, threshold)
 	#println("$(length(inds_to_filter)) / $(count_correspondences(match)) rejected.");
 	return length(inds_to_filter);
 end
-#=
-function eval_filter(match::Match, property_name, compare, threshold)
-	attributes = get_properties(match, property_name)
-	inds_to_filter = find(i -> compare(i, threshold), attributes);
-	rejected_inds = get_rejected_indices(match);
-	
-	if length(inds_to_filter) != 0 filter_reject_match = true;
-	else filter_reject_match = false; end
-
-	if length(rejected_inds) != 0 actual_reject_match = true;
-	else actual_reject_match = false; end
-
-	false_rejections = setdiff(inds_to_filter, rejected_inds)
-	false_acceptances = setdiff(rejected_inds, inds_to_filter)
-	common_rejections = intersect(rejected_inds, inds_to_filter)
-
-#=
-	println("false_rejections: $false_rejections")
-	println("false_acceptances: $false_acceptances")
-	println("common_rejections: $common_rejections")
-	=#
-	return length(false_rejections), length(false_acceptances), length(common_rejections), count_correspondences(match), filter_reject_match, actual_reject_match;
-end
-=#
 
 function eval_filters(match::Match, filters, conjunction=false, meshset=nothing)
 
