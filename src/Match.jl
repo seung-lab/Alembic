@@ -30,6 +30,20 @@ function get_correspondences(match::Match; globalized=false)
 	return match.src_points, match.dst_points;
 	end
 end
+
+#MIGRATION ONLY
+function update_correspondence_sigmas!(match::Match)
+	for i in 1:count_correspondences(match)
+		xc = get_correspondence_patches(match, i)[5]
+		match.correspondence_properties[i]["xcorr"] = Dict{Any, Any}();
+		match.correspondence_properties[i]["xcorr"]["max"] = maximum(xc);
+		match.correspondence_properties[i]["xcorr"]["sigma_5"] = sigma(xc, 0.5)
+		match.correspondence_properties[i]["xcorr"]["sigma_6"] = sigma(xc, 0.6)
+		match.correspondence_properties[i]["xcorr"]["sigma_7"] = sigma(xc, 0.7)
+		match.correspondence_properties[i]["xcorr"]["sigma_8"] = sigma(xc, 0.8)
+	end
+end
+
 #= DEPRECATED
 function get_correspondence_properties(match::Match)
 	return match.correspondence_properties;
@@ -290,6 +304,9 @@ function get_match(pt, ranges, src_image, dst_image, params = nothing)
 	correspondence_properties["img"] = Dict{Any, Any}();
 	correspondence_properties["img"]["src_normalized_dyn_range"] = (maximum(src_image[src_range...]) - minimum(src_image[src_range...])) / typemax(eltype(src_image));
 	correspondence_properties["img"]["src_kurtosis"] = kurtosis(src_image[src_range...]);
+	#=correspondence_properties["xcorr"] = Dict{Any, Any}();
+	correspondence_properties["xcorr"]["max"] = r_max;
+	correspondence_properties["xcorr"]["sigma"] = sigma(xc, 0.5) =#
 	correspondence_properties["scale"] = scale;
 	correspondence_properties["dv"] = [di, dj];
 	correspondence_properties["norm"] = norm([di, dj]);

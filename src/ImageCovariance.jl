@@ -1,3 +1,11 @@
+function sigma(img, beta = 0.5)
+
+	x = max(img - beta * maximum(img), 0)
+	sigma = sqrt(sum(diag(ImageCovariance(x/sum(x)))))
+	return sigma
+
+end
+
 function ImageCovariance(img)
     # covariance matrix for a 2D image 'img' regarded as
     # a probability distribution over pixel locations
@@ -23,7 +31,7 @@ function softmax(img,beta)
     prob = exp(beta*img)
     prob /= sum(prob)
 end
-
+#=
 # example 1
 img=gaussian2d(2,[21,21])
 ImageCovariance(img)   # this should be roughly 4*eye(2)
@@ -39,4 +47,4 @@ println(sqrt(C[1,1]+C[2,2]))  # rms deviation from mean. small value=>narrow
 # is the peak anisotropic?  ratio of eigenvalues. large value=>anisotropic
 lambda=eigvals(C)
 println(maximum(lambda)/minimum(lambda))
-
+=#

@@ -92,6 +92,7 @@ include("params_default.jl")
 end
 include("IO.jl")
 include("convolve.jl")
+include("ImageCovariance.jl")
 include("Mesh.jl")
 include("Match.jl")
 include("MeshSet.jl")
