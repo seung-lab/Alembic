@@ -33,7 +33,7 @@ end
 
 #MIGRATION ONLY
 function update_correspondence_sigmas!(match::Match)
-	for i in 1:count_correspondences(match)
+	@parallel for i in 1:count_correspondences(match)
 		xc = get_correspondence_patches(match, i)[5]
 		match.correspondence_properties[i]["xcorr"] = Dict{Any, Any}();
 		match.correspondence_properties[i]["xcorr"]["max"] = maximum(xc);
