@@ -403,12 +403,12 @@ end
 function filter_match_sigma(imgc, img2, matches, vectors, sigma)
   # hack to test if a match_distance filter was just implemented
   if length(matches.filters) > 0
-    if matches.filters[end]["type"] == "sigma"
+    if matches.filters[end]["type"] == "sigma_5"
       undo_filter!(matches)
     end
   end
   println("Sigma filter @ ", sigma)
-  filter!(matches, "sigma", >, sigma)
+  filter!(matches, "sigma_5", >, sigma)
   update_annotations(imgc, img2, matches, vectors)
 end
 
