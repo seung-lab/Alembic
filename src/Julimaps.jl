@@ -81,42 +81,44 @@ if ENV["USER"] != "dih" && !ON_AWS && !contains(gethostname(), "seunglab")
 using PyPlot
 end
 
+
+
 include("author.jl")
 include("Index.jl")
 include("registry.jl")
 if ON_AWS
-#include("filesystem_formyelin.jl")
-  include("filesystem_retina.jl")
-#  using AWS
-#  using AWS.S3
-#include("filesystem_aws.jl")
-#include("aws_credentials.jl")
-else
-include("filesystem.jl")
-end
-include("IO.jl")
-include("Params.jl")
-include("convolve.jl")
-include("Mesh.jl")
-include("Match.jl")
-include("MeshSet.jl")
-include("MeshSolve.jl")
-include("filters.jl")
-include("MeshConjGrad.jl")
-include("MeshSession.jl")
-include("TileToOverview.jl")
-include("prealign.jl")
-include("imageprocessing.jl")
-include("render.jl")
-include("review.jl")
-include("solve.jl")
-include("visualize.jl")
-include("utilities.jl")
-include("transforms.jl")
-include("draw.jl")
-include("visualize.jl")
-include("player.jl")
-include("inspect.jl")
-include("check.jl")
-include("brushtool.jl")
-#end
+  #include("filesystem_formyelin.jl")
+    include("dataset_retina.jl")
+      include("params_retina.jl")
+      #  using AWS
+      #  using AWS.S3
+      #include("filesystem_aws.jl")
+      #include("aws_credentials.jl")
+    else
+      include("dataset_default.jl")
+      include("params_default.jl")
+    end
+    include("IO.jl")
+    include("convolve.jl")
+    include("ImageCovariance.jl")
+    include("Mesh.jl")
+    include("Match.jl")
+    include("MeshSet.jl")
+    include("filters.jl")
+    include("MeshConjGrad.jl")
+    include("MeshSession.jl")
+    include("TileToOverview.jl")
+    include("imageprocessing.jl")
+    include("render.jl")
+    include("review.jl")
+    include("solve.jl")
+    include("visualize.jl")
+    include("utilities.jl")
+    include("transforms.jl")
+    include("draw.jl")
+    include("visualize.jl")
+    include("player.jl")
+    include("inspect.jl")
+    include("check.jl")
+    include("brushtool.jl")
+
