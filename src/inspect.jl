@@ -91,6 +91,7 @@ function view_matches(meshset, k)
   params["vector_scale"] = 4
   params["post_matches"] = false
   params["dist"] = 90
+  params["sigma"] = 3
 
   imgc, img2 = view(img, pixelspacing=[1,1])
   vectors = make_vectors(meshset, k, params)
@@ -205,6 +206,8 @@ function enable_inspection(imgc::ImageView.ImageCanvas,
   # bind(win, "z", path->end_edit())
   bind(win, ",", path->decrease_distance_filter(imgc, img2, matches, vectors, params))
   bind(win, ".", path->increase_distance_filter(imgc, img2, matches, vectors, params))
+  bind(win, "n", path->decrease_sigma_filter(imgc, img2, matches, vectors, params))
+  bind(win, "m", path->increase_sigma_filter(imgc, img2, matches, vectors, params))
   bind(win, "=", path->increase_vectors(imgc, img2, meshset, matches, vectors, params))
   bind(win, "-", path->decrease_vectors(imgc, img2, meshset, matches, vectors, params))
   bind(win, "p", path->switch_pre_to_post(imgc, img2, meshset, matches, vectors, params))
@@ -375,6 +378,16 @@ function decrease_distance_filter(imgc, img2, matches, vectors, params)
   filter_match_distance(imgc, img2, matches, vectors, params["dist"])
 end
 
+function increase_sigma_filter(imgc, img2, matches, vectors, params)
+  params["sigma"] += 0.5
+  filter_match_sigma(imgc, img2, matches, vectors, params["sigma"])
+end
+
+function decrease_sigma_filter(imgc, img2, matches, vectors, params)
+  params["sigma"] = max(params["sigma"]-0.5, 0)
+  filter_match_sigma(imgc, img2, matches, vectors, params["sigma"])
+end
+
 function filter_match_distance(imgc, img2, matches, vectors, dist)
   # hack to test if a match_distance filter was just implemented
   if length(matches.filters) > 0
@@ -384,6 +397,18 @@ function filter_match_distance(imgc, img2, matches, vectors, dist)
   end
   println("Distance filter @ ", dist)
   filter!(matches, "norm", >, dist)
+  update_annotations(imgc, img2, matches, vectors)
+end
+
+function filter_match_sigma(imgc, img2, matches, vectors, sigma)
+  # hack to test if a match_distance filter was just implemented
+  if length(matches.filters) > 0
+    if matches.filters[end]["type"] == "sigma"
+      undo_filter!(matches)
+    end
+  end
+  println("Sigma filter @ ", sigma)
+  filter!(matches, "sigma", >, sigma)
   update_annotations(imgc, img2, matches, vectors)
 end
 

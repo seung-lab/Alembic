@@ -44,6 +44,12 @@ global const MONTAGED_INDEX = -2;
 global const PREALIGNED_INDEX = -3;
 global const ALIGNED_INDEX = -4;
 
+
+if !haskey(ENV, "USER")
+  ENV["USER"] = "ubuntu"
+end
+
+
 if ENV["USER"] != "ubuntu"
 global const ON_AWS = false;
 else
@@ -75,42 +81,44 @@ if ENV["USER"] != "dih" && !ON_AWS && !contains(gethostname(), "seunglab")
 using PyPlot
 end
 
+
+
 include("author.jl")
 include("Index.jl")
 include("registry.jl")
 if ON_AWS
-#include("filesystem_formyelin.jl")
-  include("dataset_retina.jl")
-  include("params_retina.jl")
-#  using AWS
-#  using AWS.S3
-#include("filesystem_aws.jl")
-#include("aws_credentials.jl")
-else
-include("dataset_default.jl")
-include("params_default.jl")
-end
-include("IO.jl")
-include("convolve.jl")
-include("ImageCovariance.jl")
-include("Mesh.jl")
-include("Match.jl")
-include("MeshSet.jl")
-include("filters.jl")
-include("MeshConjGrad.jl")
-include("MeshSession.jl")
-include("TileToOverview.jl")
-include("imageprocessing.jl")
-include("render.jl")
-include("review.jl")
-include("solve.jl")
-include("visualize.jl")
-include("utilities.jl")
-include("transforms.jl")
-include("draw.jl")
-include("visualize.jl")
-include("player.jl")
-include("inspect.jl")
-include("check.jl")
-include("brushtool.jl")
-#end
+  #include("filesystem_formyelin.jl")
+    include("dataset_retina.jl")
+      include("params_retina.jl")
+      #  using AWS
+      #  using AWS.S3
+      #include("filesystem_aws.jl")
+      #include("aws_credentials.jl")
+    else
+      include("dataset_default.jl")
+      include("params_default.jl")
+    end
+    include("IO.jl")
+    include("convolve.jl")
+    include("ImageCovariance.jl")
+    include("Mesh.jl")
+    include("Match.jl")
+    include("MeshSet.jl")
+    include("filters.jl")
+    include("MeshConjGrad.jl")
+    include("MeshSession.jl")
+    include("TileToOverview.jl")
+    include("imageprocessing.jl")
+    include("render.jl")
+    include("review.jl")
+    include("solve.jl")
+    include("visualize.jl")
+    include("utilities.jl")
+    include("transforms.jl")
+    include("draw.jl")
+    include("visualize.jl")
+    include("player.jl")
+    include("inspect.jl")
+    include("check.jl")
+    include("brushtool.jl")
+
