@@ -31,18 +31,7 @@ function get_correspondences(match::Match; globalized=false)
 	end
 end
 
-#MIGRATION ONLY
-function update_correspondence_sigmas!(match::Match)
-	@parallel for i in 1:count_correspondences(match)
-		xc = get_correspondence_patches(match, i)[5]
-		match.correspondence_properties[i]["xcorr"] = Dict{Any, Any}();
-		match.correspondence_properties[i]["xcorr"]["max"] = maximum(xc);
-		match.correspondence_properties[i]["xcorr"]["sigma_5"] = sigma(xc, 0.5)
-		match.correspondence_properties[i]["xcorr"]["sigma_6"] = sigma(xc, 0.6)
-		match.correspondence_properties[i]["xcorr"]["sigma_7"] = sigma(xc, 0.7)
-		match.correspondence_properties[i]["xcorr"]["sigma_8"] = sigma(xc, 0.8)
-	end
-end
+
 
 #= DEPRECATED
 function get_correspondence_properties(match::Match)
