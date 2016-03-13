@@ -138,6 +138,7 @@ function get_correspondence_patches(match::Match, ind)
 	else
 	scale = 1
 	end
+	println(props["full"]);
 
 	# hack to support old properties
 	if !haskey(props, "full")
@@ -307,6 +308,11 @@ function get_match(pt, ranges, src_image, dst_image, params = nothing)
 	#=correspondence_properties["xcorr"] = Dict{Any, Any}();
 	correspondence_properties["xcorr"]["max"] = r_max;
 	correspondence_properties["xcorr"]["sigma"] = sigma(xc, 0.5) =#
+		correspondence_properties["sigma_5"] = sigma(xc, 0.5)
+		correspondence_properties["sigma_6"] = sigma(xc, 0.6)
+		correspondence_properties["sigma_7"] = sigma(xc, 0.7)
+		correspondence_properties["sigma_8"] = sigma(xc, 0.8)
+	
 	correspondence_properties["scale"] = scale;
 	correspondence_properties["dv"] = [di, dj];
 	correspondence_properties["norm"] = norm([di, dj]);
