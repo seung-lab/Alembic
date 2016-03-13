@@ -501,6 +501,6 @@ end
 
 #MIGRATION ONLY
 function update_correspondence_sigmas!(ms::MeshSet)
-	pmap(update_correspondence_sigmas!, ms.matches)
+	ms.matches = pmap(update_correspondence_sigmas!, ms.matches)
 	save(ms)
 end
