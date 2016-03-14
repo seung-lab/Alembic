@@ -18,6 +18,9 @@ function aligned(index)
 	return (index[1], index[2], ALIGNED_INDEX, ALIGNED_INDEX);
 end
 
+function finished(index)
+  return (index[1], index[2], FINISHED_INDEX, FINISHED_INDEX);
+end
 ###
 
 function overview(wafer, section)
@@ -40,6 +43,10 @@ function aligned(wafer, section)
 	return (wafer, section, ALIGNED_INDEX, ALIGNED_INDEX);
 end
 
+function finished(wafer, section)
+  return (wafer, section, FINISHED_INDEX, FINISHED_INDEX);
+end
+
 ###
 
 function is_overview(index)
@@ -60,6 +67,10 @@ end
 
 function is_aligned(index)
     if index[3:4] == (ALIGNED_INDEX, ALIGNED_INDEX) return true else return false end
+end
+
+function is_finished(index)
+    if index[3:4] == (FINISHED_INDEX, FINISHED_INDEX) return true else return false end
 end
 
 function is_adjacent(A_index, B_index)
@@ -90,6 +101,7 @@ function get_registry(index)
   elseif is_montaged(index) registry = REGISTRY_MONTAGED;
   elseif is_prealigned(index) registry = REGISTRY_PREALIGNED;
   elseif is_aligned(index) registry = REGISTRY_ALIGNED;
+  elseif is_registered(index) registry = REGISTRY_ALIGNED;
   else registry = Void; println("Index $index does not correspond to a pipeline stage."); end
   return registry; 
 end
@@ -145,6 +157,9 @@ function get_succeeding(index)
 end
 
 function get_index_range(first_index, last_index)
+  if is_finished(first_index) || is_finished(last_index)
+    first_index, last_index = aligned(first_index), aligned(last_index)
+  end
 	ran = get_registry(last_index)[get_range_in_registry(first_index, last_index), 2];
 	ran[1] = first_index;
 	return ran;
@@ -172,15 +187,6 @@ function find_cumulative_offset(offset_file, index)
     return [0,0]
   end
 end
-
-#=
-"""
-Generate list of indices between indexA and indexB
-"""
-function get_index_range(indexA, indexB)
-  return get_registry(indexA)[get_range_in_registry(indexA, indexB), 2]
-end
-=#
 
 """
 Return zip object of an index and the index that follows it

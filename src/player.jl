@@ -399,16 +399,18 @@ function view_stack(indexA, indexB, slice=(1:200,1:200);
                                         include_reverse=false, perm=[1,2,3])
   imgs = []
   for index in get_index_range(indexA, indexB)
+    if is_finished(indexA)
+      index = finished(index)
+    end
     print(string(join(index[1:2], ",") ,"|"))
     img = reinterpret(UFixed8, get_h5_slice(get_path(index), slice))
     push!(imgs, img)
   end
+  img_stack = permutedims(cat(3, imgs...), perm)
   if include_reverse
-    img_stack = cat(3, imgs..., reverse(imgs[2:end-1])...)
-  else
-    img_stack = cat(3, imgs...)
+    img_stack = cat(3, img_stack, img_stack[:,:,end:-1:1])
   end
-  imgc, img2 = view(Image(permutedims(img_stack, perm), timedim=3))
+  imgc, img2 = view(Image(img_stack, timedim=3))
 
   c = canvas(imgc)
   win = Tk.toplevel(c)
