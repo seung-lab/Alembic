@@ -181,7 +181,7 @@ function MeshSet(index; params=get_params(index))
 	if is_montaged(index) return MeshSet(premontaged(index), premontaged(index)); end
 end
 
-function MeshSet(first_index, last_index; params=get_params(first_index), solve_method="elastic", fix_first=false)
+function MeshSet(first_index, last_index; params=get_params(first_index), solve=true, solve_method="elastic", fix_first=false)
 	ind_range = get_index_range(first_index, last_index);
 	if length(ind_range) == 0 return nothing; end
 	fixed_inds = Array{Any, 1}(0);
@@ -197,8 +197,10 @@ function MeshSet(first_index, last_index; params=get_params(first_index), solve_
 					"split_index" => 0)
 					)
 	meshset = MeshSet(meshes, matches, properties);
-	match!(meshset, 2);
+	match!(meshset, params["match"]["depth"]);
+	if solve == true
 	solve!(meshset, method=solve_method);
+	end
 	save(meshset);
 	return meshset;
 end
