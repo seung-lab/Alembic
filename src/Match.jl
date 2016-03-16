@@ -72,6 +72,14 @@ function get_properties(match::Match, property_name::String)
 	return map(get, match.correspondence_properties, repeated(property_name), repeated(nothing));
 end
 
+function get_properties(match::Match, property_name::String, subproperty_names...)
+	props = map(get, match.correspondence_properties, repeated(property_name), repeated(nothing));
+	for property in subproperty_names
+	  props = map(getindex, props, repeated(property));
+	end
+	return props
+end
+
 function get_properties(match::Match, fn::Function, args...)
 	return fn(match, args...)
 end
@@ -327,7 +335,7 @@ function get_match(pt, ranges, src_image, dst_image, params = nothing)
 end
 
 function filter!(match::Match, property_name, compare, threshold)
-	attributes = get_properties(match, property_name)
+	attributes = get_properties(match, property_name...)
 	inds_to_filter = find(i -> compare(i, threshold), attributes);
 	push!(match.filters, Dict{Any, Any}(
 				"author" => author(),
@@ -338,6 +346,20 @@ function filter!(match::Match, property_name, compare, threshold)
 	#println("$(length(inds_to_filter)) / $(count_correspondences(match)) rejected.");
 	return length(inds_to_filter);
 end
+#=
+function filter!(match::Match, property_names::Array{String}, compare, threshold)
+	attributes = get_properties(match, property_names...)
+	inds_to_filter = find(i -> compare(i, threshold), attributes);
+	push!(match.filters, Dict{Any, Any}(
+				"author" => author(),
+				"type"	  => property_names,
+				"threshold" => threshold,
+				"rejected"  => inds_to_filter
+			      ));
+	#println("$(length(inds_to_filter)) / $(count_correspondences(match)) rejected.");
+	return length(inds_to_filter);
+end
+=#
 
 function eval_filters(match::Match, filters, conjunction=false, meshset=nothing)
 

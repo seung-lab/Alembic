@@ -1,5 +1,5 @@
 global ROI_FIRST = (1,3,0,0);
-global ROI_LAST = (1,92,0,0);
+global ROI_LAST = (1,93,0,0);
 
 function get_name(index)
     if is_overview(index)
