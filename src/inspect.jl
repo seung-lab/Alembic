@@ -73,12 +73,12 @@ end
 
 
 """
-Display matches index k as overlayed images with points
+Display match index k as overlayed images with points
 """
 function view_matches(meshset, k)
-  matches = meshset.matches[k]
-  indexA = matches.src_index
-  indexB = matches.dst_index
+  match = meshset.matches[k]
+  indexA = match.src_index
+  indexB = match.dst_index
 
   path = get_review_path(indexB, indexA)
   if !isfile(path)
@@ -88,6 +88,9 @@ function view_matches(meshset, k)
   offset = h5read(path, "offset")
   println("offset: ", offset)
   scale = h5read(path, "scale")
+
+  view_property_histogram(match, "r_val")
+  view_property_scatter(match, "dv")
 
   # Add border to the image for vectors that extend
   pad = 400
@@ -106,8 +109,8 @@ function view_matches(meshset, k)
   imgc, img2 = view(img, pixelspacing=[1,1])
   vectors = make_vectors(meshset, k, params)
   show_vectors(imgc, img2, vectors, RGB(0,0,1), RGB(1,0,1))
-  update_annotations(imgc, img2, matches, vectors)
-  return imgc, img2, matches, vectors, params
+  update_annotations(imgc, img2, match, vectors)
+  return imgc, img2, match, vectors, params
 end
 
 function make_vectors(meshset, k, params)
@@ -672,4 +675,28 @@ function indices_to_string(indexA, indexB)
     return join(indexA[1:2], ",")
   end
   return string(join(indexA[1:2], ","), "-", join(indexB[1:2], ","))
+end
+
+function view_property_histogram(match, property_name, nbins=20)
+  attr = get_properties(match, property_name)
+  fig = figure("histogram")
+  p = plt[:hist](attr, nbins)
+  grid("on")
+  title(property_name)
+  return p
+end
+
+function view_property_scatter(match, property_name)
+  attr = get_properties(match, property_name)
+  xy = Array{Int, 2}()
+  if length(attr[1]) == 2
+    xy = hcat(attr...)
+  else
+    xy = hcat(1:length(attr), attr)'
+  end
+  fig = figure("scatter")
+  p = plt[:scatter](xy[1,:], xy[2,:])
+  grid("on")
+  title(property_name)
+  return p
 end
