@@ -138,7 +138,7 @@ function get_correspondence_patches(match::Match, ind)
 	else
 	scale = 1
 	end
-	println(props["full"]);
+	# println(props["full"]);
 
 	# hack to support old properties
 	if !haskey(props, "full")
