@@ -133,29 +133,34 @@ function view_blockmatch(match, ind, params)
   src_patch, src_pt, dst_patch, dst_pt, xc, offset = get_correspondence_patches(match, ind)
   block_r = params["block_r"]
   search_r = params["search_r"]
+  beta = 0.5
   N=size(xc, 1)
   M=size(xc, 2)
   if !contains(gethostname(), "seunglab") && !ON_AWS
     surf([i for i=1:N, j=1:M], [j for i=1:N, j=1:M], xc, cmap=get_cmap("hot"), 
                             rstride=10, cstride=10, linewidth=0, antialiased=false)
   end
-  # println("offset: ", offset)
+  println("max r-value: ", maximum(xc))
   xc_image = xcorr2Image(xc)
+  xc_beta_mask = xc .> beta*maximum(xc)
+  xc_beta = xcorr2Image(xc .* xc_beta_mask)
   # xc_image = padimage(xc_image, block_r, block_r, block_r, block_r, 1)
   hot = create_hot_colormap()
   xc_color = apply_colormap(xc_image, hot)
+  xc_beta_color = apply_colormap(xc_beta, hot)
   fused_img, _ = imfuse(dst_patch, [0,0], src_patch, offset)
 
   src = convert(Array{UInt32,2}, src_patch).<< 8
   dst = convert(Array{UInt32,2}, dst_patch).<< 16
 
-  cgrid = canvasgrid(2,2; pad=10)
+  cgrid = canvasgrid(2,3; pad=10)
   opts = Dict(:pixelspacing => [1,1])
 
   imgc, img2 = view(cgrid[1,1], src; opts...)
   imgc, img2 = view(cgrid[2,1], dst; opts...)
   imgc, img2 = view(cgrid[2,2], fused_img; opts...)
   imgc, img2 = view(cgrid[1,2], xc_color'; opts...)
+  imgc, img2 = view(cgrid[1,3], xc_beta_color'; opts...)
   c = canvas(imgc)
   win = Tk.toplevel(c)
   return win
@@ -163,7 +168,6 @@ end
 
 function xcorr2Image(xc)
   b = xc' / maximum(xc)
-  println("max r-value: ", maximum(xc))
   b[b .> 1] = 1
   b[b .< 0] = 0
   # b = b.*b / maximum(b.*b) * 254 + 1
