@@ -5,7 +5,7 @@ function inspect_montages(meshset_ind, match_ind)
   firstindex, lastindex = montaged(ROI_FIRST), montaged(ROI_LAST) 
   indrange = get_index_range(firstindex, lastindex)
   meshset = load(indrange[meshset_ind])
-  println("\n", meshset_ind, ": ", indrange[meshset_ind], " @ ", match_ind, " / ", length(meshset.matches))
+  println(meshset_ind, ": ", indrange[meshset_ind], " @ ", match_ind, " / ", length(meshset.matches))
   imgc, img2, matches, vectors, params = view_matches(meshset, match_ind);
   enable_inspection(imgc, img2, meshset, matches, vectors, params, "montage", (meshset_ind, match_ind))
 end
@@ -19,6 +19,17 @@ function inspect_prealignments(meshset_ind)
   index_pairs = collect(get_sequential_index_pairs(firstindex, lastindex))
   indexA, indexB = index_pairs[meshset_ind]
   meshset = load(indexB, indexA)
+  println(meshset_ind, ": ", (meshset.matches[match_ind].src_index, meshset.matches[match_ind].dst_index), " @ ", match_ind, " / ", length(meshset.matches))
+  imgc, img2, matches, vectors, params = view_matches(meshset, match_ind)
+  enable_inspection(imgc, img2, meshset, matches, vectors, params, "prealignment", (meshset_ind, match_ind))
+end
+
+"""
+The only function called by tracers to inspect prealignment points
+"""
+function inspect_prealignments(firstindex, lastindex)
+  match_ind, meshset_ind = 1, 1
+  meshset = load(lastindex, firstindex)
   println("\n", meshset_ind, ": ", (meshset.matches[match_ind].src_index, meshset.matches[match_ind].dst_index), " @ ", match_ind, " / ", length(meshset.matches))
   imgc, img2, matches, vectors, params = view_matches(meshset, match_ind)
   enable_inspection(imgc, img2, meshset, matches, vectors, params, "prealignment", (meshset_ind, match_ind))
@@ -28,7 +39,7 @@ end
 The only function called by tracers to inspect alignment points
 """
 function inspect_alignments(meshset_ind)
-  firstindex, lastindex = prealigned(1,1), prealigned(1,168)
+  firstindex, lastindex = prealigned(ROI_FIRST), prealigned(ROI_LAST)
   inspect_alignments(firstindex, lastindex, meshset_ind)
 end
 
@@ -37,12 +48,11 @@ The only function called by tracers to inspect alignment points
 """
 function inspect_alignments(firstindex, lastindex, meshset_ind)
   match_ind = 1
-  firstindex, lastindex = prealigned(ROI_FIRST), prealigned(ROI_LAST) 
   name = string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned")
   meshset = load_split(name, meshset_ind)
   match = meshset.matches[match_ind]
   src_dst = string(join(match.src_index[1:2], ","), "-", join(match.dst_index[1:2], ","))
-  println("\n", name, ": ", src_dst, " @ ", match_ind, " / ", length(meshset.matches))
+  println(name, ": ", src_dst, " @ ", match_ind, " / ", length(meshset.matches))
   imgc, img2, matches, vectors, params = view_matches(meshset, match_ind);
   enable_inspection(imgc, img2, meshset, matches, vectors, params, "alignment", (meshset_ind, match_ind));
 end
@@ -70,9 +80,9 @@ function view_matches(meshset, k)
   indexA = matches.src_index
   indexB = matches.dst_index
 
-  path = get_review_filename(indexB, indexA)
+  path = get_review_path(indexB, indexA)
   if !isfile(path)
-    path = get_review_filename(indexA, indexB)
+    path = get_review_path(indexA, indexB)
   end
   img_orig = h5read(path, "img")
   offset = h5read(path, "offset")
@@ -637,10 +647,10 @@ function update_prealignment_meshsets(waferA, secA, waferB, secB)
   end
 end
 
-function get_review_filename(src_index, dst_index=(0,0,0,0))
+function get_review_path(src_index, dst_index=(0,0,0,0))
   prefix = "review"
   dir = ALIGNED_DIR
-  ind = indices2string(src_index, dst_index)
+  ind = indices_to_string(src_index, dst_index)
   if is_premontaged(src_index) || is_premontaged(dst_index)
     dir = MONTAGED_DIR
     ind = string(join(src_index, ","), "-", join(dst_index, ","))
@@ -653,7 +663,7 @@ function get_review_filename(src_index, dst_index=(0,0,0,0))
   return joinpath(dir, "review", fn)
 end
 
-function indices2string(indexA, indexB)
+function indices_to_string(indexA, indexB)
   if indexB[1] == 0
     return join(indexA[1:2], ",")
   end

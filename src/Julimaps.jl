@@ -43,6 +43,7 @@ global const PREMONTAGED_INDEX = 1;
 global const MONTAGED_INDEX = -2;
 global const PREALIGNED_INDEX = -3;
 global const ALIGNED_INDEX = -4;
+global const FINISHED_INDEX = -5;
 
 
 if !haskey(ENV, "USER")

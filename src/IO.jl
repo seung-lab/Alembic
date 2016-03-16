@@ -103,10 +103,3 @@ function load_section_images(session, section_num)
 
   return imageArray
 end
-
-function load_overview(session, section_num)
-  """
-  Load overview image
-  """
-end
-
