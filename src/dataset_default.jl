@@ -1,4 +1,4 @@
-global ROI_FIRST = (3,1,0,0);
+global ROI_FIRST = (2,149,0,0);
 global ROI_LAST = (3,169,0,0);
 
 function get_name(index)
@@ -9,11 +9,13 @@ function get_name(index)
             return string("MontageOverviewImage_S2-W00", index[1], "_sec", index[2])
         end
     elseif is_montaged(index)
-    return string(index[1], ",", index[2], "_montaged")
+        return string(index[1], ",", index[2], "_montaged")
     elseif is_prealigned(index)
-    return string(index[1], ",", index[2], "_prealigned")
+        return string(index[1], ",", index[2], "_prealigned")
     elseif is_aligned(index)
-    return string(index[1], ",", index[2], "_aligned")
+        return string(index[1], ",", index[2], "_aligned")
+    elseif is_finished(index)
+        return string(index[1], ",", index[2], "_finished")
     else
     return string("Tile_r", index[3], "-c", index[4], "_S2-W00", index[1], "_sec", index[2])
     end
@@ -39,6 +41,8 @@ function get_path(index, ext = ".h5")
         path = joinpath(PREALIGNED_DIR, string(name, ext))
     elseif is_aligned(index)
         path = joinpath(ALIGNED_DIR, string(name, ext))
+    elseif is_finished(index)
+        path = joinpath(FINISHED_DIR, string(name, ext))
     else
         if cur_dataset == "zebrafish"
             section_folder = string("W00", index[1], "_Sec", index[2], "_Montage")
@@ -196,6 +200,7 @@ premontaged_dir_path = "1_premontaged"
 montaged_dir_path = "2_montaged"
 prealigned_dir_path = "3_prealigned"
 aligned_dir_path = "4_aligned"
+finished_dir_path = "5_finished"
 
 if isdefined(:review_round)
     aligned_dir_path = joinpath(aligned_dir_path, review_round)
@@ -231,6 +236,7 @@ global PREMONTAGED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_datase
 global MONTAGED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, montaged_dir_path)
 global PREALIGNED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, prealigned_dir_path)
 global ALIGNED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, aligned_dir_path)
+global FINISHED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, finished_dir_path)
 global INSPECTION_DIR = inspection_storage_path
 
 waferpath_filename = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, wafer_filename)
@@ -238,7 +244,7 @@ global WAFER_DIR_DICT = waferpaths_to_dict(waferpath_filename)
 
 premontaged_registry_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, premontaged_dir_path, premontaged_registry_filename)
 global REGISTRY_PREMONTAGED = parse_registry(premontaged_registry_path)
-global REGISTRY_PREMONTAGED = hcat(REGISTRY_PREMONTAGED, fill(8000, size(REGISTRY_PREMONTAGED)[1], 2));
+REGISTRY_PREMONTAGED = hcat(REGISTRY_PREMONTAGED, fill(8000, size(REGISTRY_PREMONTAGED)[1], 2));
 
 montaged_registry_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, montaged_dir_path, montaged_registry_filename)
 global REGISTRY_MONTAGED = parse_registry(montaged_registry_path)

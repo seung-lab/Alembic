@@ -1,9 +1,11 @@
-function sigma(img, beta = 0.5)
+function subtract_beta(img, beta = 0.5)
+	return max(img - beta * maximum(img), 0)
+end
 
-	x = max(img - beta * maximum(img), 0)
+function sigma(img, beta = 0.5)
+	x = subtract_beta(img, beta)
 	sigma = sqrt(sum(diag(ImageCovariance(x/sum(x)))))
 	return sigma
-
 end
 
 function ImageCovariance(img)

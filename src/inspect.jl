@@ -5,7 +5,7 @@ function inspect_montages(meshset_ind, match_ind)
   firstindex, lastindex = montaged(ROI_FIRST), montaged(ROI_LAST) 
   indrange = get_index_range(firstindex, lastindex)
   meshset = load(indrange[meshset_ind])
-  println("\n", meshset_ind, ": ", indrange[meshset_ind], " @ ", match_ind, " / ", length(meshset.matches))
+  println(meshset_ind, ": ", indrange[meshset_ind], " @ ", match_ind, " / ", length(meshset.matches))
   imgc, img2, matches, vectors, params = view_matches(meshset, match_ind);
   enable_inspection(imgc, img2, meshset, matches, vectors, params, "montage", (meshset_ind, match_ind))
 end
@@ -19,6 +19,17 @@ function inspect_prealignments(meshset_ind)
   index_pairs = collect(get_sequential_index_pairs(firstindex, lastindex))
   indexA, indexB = index_pairs[meshset_ind]
   meshset = load(indexB, indexA)
+  println(meshset_ind, ": ", (meshset.matches[match_ind].src_index, meshset.matches[match_ind].dst_index), " @ ", match_ind, " / ", length(meshset.matches))
+  imgc, img2, matches, vectors, params = view_matches(meshset, match_ind)
+  enable_inspection(imgc, img2, meshset, matches, vectors, params, "prealignment", (meshset_ind, match_ind))
+end
+
+"""
+The only function called by tracers to inspect prealignment points
+"""
+function inspect_prealignments(firstindex, lastindex)
+  match_ind, meshset_ind = 1, 1
+  meshset = load(lastindex, firstindex)
   println("\n", meshset_ind, ": ", (meshset.matches[match_ind].src_index, meshset.matches[match_ind].dst_index), " @ ", match_ind, " / ", length(meshset.matches))
   imgc, img2, matches, vectors, params = view_matches(meshset, match_ind)
   enable_inspection(imgc, img2, meshset, matches, vectors, params, "prealignment", (meshset_ind, match_ind))
@@ -28,7 +39,7 @@ end
 The only function called by tracers to inspect alignment points
 """
 function inspect_alignments(meshset_ind)
-  firstindex, lastindex = prealigned(1,1), prealigned(1,168)
+  firstindex, lastindex = prealigned(ROI_FIRST), prealigned(ROI_LAST)
   inspect_alignments(firstindex, lastindex, meshset_ind)
 end
 
@@ -37,12 +48,11 @@ The only function called by tracers to inspect alignment points
 """
 function inspect_alignments(firstindex, lastindex, meshset_ind)
   match_ind = 1
-  firstindex, lastindex = prealigned(ROI_FIRST), prealigned(ROI_LAST) 
   name = string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned")
   meshset = load_split(name, meshset_ind)
   match = meshset.matches[match_ind]
   src_dst = string(join(match.src_index[1:2], ","), "-", join(match.dst_index[1:2], ","))
-  println("\n", name, ": ", src_dst, " @ ", match_ind, " / ", length(meshset.matches))
+  println(name, ": ", src_dst, " @ ", match_ind, " / ", length(meshset.matches))
   imgc, img2, matches, vectors, params = view_matches(meshset, match_ind);
   enable_inspection(imgc, img2, meshset, matches, vectors, params, "alignment", (meshset_ind, match_ind));
 end
@@ -63,21 +73,24 @@ end
 
 
 """
-Display matches index k as overlayed images with points
+Display match index k as overlayed images with points
 """
 function view_matches(meshset, k)
-  matches = meshset.matches[k]
-  indexA = matches.src_index
-  indexB = matches.dst_index
+  match = meshset.matches[k]
+  indexA = match.src_index
+  indexB = match.dst_index
 
-  path = get_review_filename(indexB, indexA)
+  path = get_review_path(indexB, indexA)
   if !isfile(path)
-    path = get_review_filename(indexA, indexB)
+    path = get_review_path(indexA, indexB)
   end
   img_orig = h5read(path, "img")
   offset = h5read(path, "offset")
   println("offset: ", offset)
   scale = h5read(path, "scale")
+
+  view_property_histogram(match, "r_val")
+  view_property_scatter(match, "dv")
 
   # Add border to the image for vectors that extend
   pad = 400
@@ -96,8 +109,8 @@ function view_matches(meshset, k)
   imgc, img2 = view(img, pixelspacing=[1,1])
   vectors = make_vectors(meshset, k, params)
   show_vectors(imgc, img2, vectors, RGB(0,0,1), RGB(1,0,1))
-  update_annotations(imgc, img2, matches, vectors)
-  return imgc, img2, matches, vectors, params
+  update_annotations(imgc, img2, match, vectors)
+  return imgc, img2, match, vectors, params
 end
 
 function make_vectors(meshset, k, params)
@@ -123,29 +136,34 @@ function view_blockmatch(match, ind, params)
   src_patch, src_pt, dst_patch, dst_pt, xc, offset = get_correspondence_patches(match, ind)
   block_r = params["block_r"]
   search_r = params["search_r"]
+  beta = 0.5
   N=size(xc, 1)
   M=size(xc, 2)
   if !contains(gethostname(), "seunglab") && !ON_AWS
     surf([i for i=1:N, j=1:M], [j for i=1:N, j=1:M], xc, cmap=get_cmap("hot"), 
                             rstride=10, cstride=10, linewidth=0, antialiased=false)
   end
-  # println("offset: ", offset)
+  println("max r-value: ", maximum(xc))
   xc_image = xcorr2Image(xc)
+  xc_beta_mask = xc .> beta*maximum(xc)
+  xc_beta = xcorr2Image(xc .* xc_beta_mask)
   # xc_image = padimage(xc_image, block_r, block_r, block_r, block_r, 1)
   hot = create_hot_colormap()
   xc_color = apply_colormap(xc_image, hot)
+  xc_beta_color = apply_colormap(xc_beta, hot)
   fused_img, _ = imfuse(dst_patch, [0,0], src_patch, offset)
 
   src = convert(Array{UInt32,2}, src_patch).<< 8
   dst = convert(Array{UInt32,2}, dst_patch).<< 16
 
-  cgrid = canvasgrid(2,2; pad=10)
+  cgrid = canvasgrid(2,3; pad=10)
   opts = Dict(:pixelspacing => [1,1])
 
   imgc, img2 = view(cgrid[1,1], src; opts...)
   imgc, img2 = view(cgrid[2,1], dst; opts...)
   imgc, img2 = view(cgrid[2,2], fused_img; opts...)
   imgc, img2 = view(cgrid[1,2], xc_color'; opts...)
+  imgc, img2 = view(cgrid[1,3], xc_beta_color'; opts...)
   c = canvas(imgc)
   win = Tk.toplevel(c)
   return win
@@ -153,7 +171,6 @@ end
 
 function xcorr2Image(xc)
   b = xc' / maximum(xc)
-  println("max r-value: ", maximum(xc))
   b[b .> 1] = 1
   b[b .< 0] = 0
   # b = b.*b / maximum(b.*b) * 254 + 1
@@ -637,10 +654,10 @@ function update_prealignment_meshsets(waferA, secA, waferB, secB)
   end
 end
 
-function get_review_filename(src_index, dst_index=(0,0,0,0))
+function get_review_path(src_index, dst_index=(0,0,0,0))
   prefix = "review"
   dir = ALIGNED_DIR
-  ind = indices2string(src_index, dst_index)
+  ind = indices_to_string(src_index, dst_index)
   if is_premontaged(src_index) || is_premontaged(dst_index)
     dir = MONTAGED_DIR
     ind = string(join(src_index, ","), "-", join(dst_index, ","))
@@ -653,9 +670,33 @@ function get_review_filename(src_index, dst_index=(0,0,0,0))
   return joinpath(dir, "review", fn)
 end
 
-function indices2string(indexA, indexB)
+function indices_to_string(indexA, indexB)
   if indexB[1] == 0
     return join(indexA[1:2], ",")
   end
   return string(join(indexA[1:2], ","), "-", join(indexB[1:2], ","))
+end
+
+function view_property_histogram(match, property_name, nbins=20)
+  attr = get_properties(match, property_name)
+  fig = figure("histogram")
+  p = plt[:hist](attr, nbins)
+  grid("on")
+  title(property_name)
+  return p
+end
+
+function view_property_scatter(match, property_name)
+  attr = get_properties(match, property_name)
+  xy = Array{Int, 2}()
+  if length(attr[1]) == 2
+    xy = hcat(attr...)
+  else
+    xy = hcat(1:length(attr), attr)'
+  end
+  fig = figure("scatter")
+  p = plt[:scatter](xy[1,:], xy[2,:])
+  grid("on")
+  title(property_name)
+  return p
 end

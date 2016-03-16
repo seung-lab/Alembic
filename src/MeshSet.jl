@@ -246,6 +246,18 @@ function match!(meshset::MeshSet, within = 1; prefetch_all = false)
 	end
 end
 
+function rematch!(meshset::MeshSet, match_ind, params)
+  src_index = get_src_index(meshset.matches[match_ind])
+  dst_index = get_dst_index(meshset.matches[match_ind])
+  src_mesh = meshset.meshes[find_mesh_index(meshset, src_index)]
+  dst_mesh = meshset.meshes[find_mesh_index(meshset, dst_index)]
+  deleteat!(meshset.matches, match_ind)
+  add_match!(meshset, Match(src_mesh, dst_mesh, params))
+  meshset.properties["params"] = params
+  meshset.properties["author"] = author()
+  save(meshset)
+end
+
 function sanitize!(meshset::MeshSet)
   meshes = Dict{Any, Any}();
   for mesh in meshset.meshes

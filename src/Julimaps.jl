@@ -43,6 +43,7 @@ global const PREMONTAGED_INDEX = 1;
 global const MONTAGED_INDEX = -2;
 global const PREALIGNED_INDEX = -3;
 global const ALIGNED_INDEX = -4;
+global const FINISHED_INDEX = -5;
 
 
 if !haskey(ENV, "USER")
@@ -100,14 +101,14 @@ if ON_AWS
     end
     include("IO.jl")
     include("convolve.jl")
-    include("ImageCovariance.jl")
+    include("imagecovariance.jl")
     include("Mesh.jl")
     include("Match.jl")
     include("MeshSet.jl")
     include("filters.jl")
-    include("MeshConjGrad.jl")
-    include("MeshSession.jl")
-    include("TileToOverview.jl")
+    include("meshconjgrad.jl")
+    include("meshSession.jl")
+    include("tiletooverview.jl")
     include("imageprocessing.jl")
     include("render.jl")
     include("review.jl")

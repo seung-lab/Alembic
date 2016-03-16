@@ -146,7 +146,7 @@ function get_correspondence_patches(match::Match, ind)
 	else
 	scale = 1
 	end
-	println(props["full"]);
+	# println(props["full"]);
 
 	# hack to support old properties
 	if !haskey(props, "full")
@@ -495,7 +495,9 @@ function clear_filters!(match::Match; filtertype=nothing)
 end
 
 function undo_filter!(match::Match)
-	pop!(match.filters);
+	if length(match.filters) > 0
+		pop!(match.filters);
+	end
 end
 
 
@@ -544,7 +546,7 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); src_
 	correspondence_properties = [dst_allpoints[ind][3] for ind in matched_inds]
   	properties = Dict{Any, Any}(
 		"review" => Dict{Any, Any}(
-				"flag" => true) 
+				"flag" => false) 
 			);
 
 	return Match(src_index, dst_index, src_points, dst_points, correspondence_properties, filters, properties);
