@@ -107,7 +107,7 @@ if ON_AWS
     include("MeshSet.jl")
     include("filters.jl")
     include("meshconjgrad.jl")
-    include("meshSession.jl")
+    include("meshsession.jl")
     include("tiletooverview.jl")
     include("imageprocessing.jl")
     include("render.jl")
