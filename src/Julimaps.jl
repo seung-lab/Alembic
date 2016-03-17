@@ -63,6 +63,26 @@ global const SUP_SIZE = (50000, 50000)
 global const SHARED_SRC_IMAGE = SharedArray(IMG_ELTYPE, SUP_SIZE)
 global const SHARED_DST_IMAGE = SharedArray(IMG_ELTYPE, SUP_SIZE)
 
+PKGS_USED = ["HDF5", "JLD", "Images", "ImageView", "Colors", "FixedPointNumbers", "Cairo", "IterativeSolvers", "Optim", "Distributions", "RegERMs", "PyPlot"]
+
+PKGS_USED_CLONABLE = ["https://github.com/JuliaSparse/MKLSparse.jl.git", "https://github.com/seung-lab/ImageRegistration.jl.git"]
+
+
+using HDF5
+using JLD
+using Images
+using ImageView
+using Colors
+using FixedPointNumbers
+using Base.Test
+using Cairo
+using IterativeSolvers
+using ImageRegistration
+using Optim
+using Distributions
+using RegERMs
+if ENV["USER"] != "dih" && !ON_AWS && !contains(gethostname(), "seunglab")
+using PyPlot
 
 # dependencies
 using HDF5
