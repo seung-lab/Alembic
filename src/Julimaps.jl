@@ -105,6 +105,7 @@ if ON_AWS
     include("imagecovariance.jl")
     include("Mesh.jl")
     include("Match.jl")
+    include("migrate.jl")
     include("MeshSet.jl")
     include("filters.jl")
     include("meshconjgrad.jl")

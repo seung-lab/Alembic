@@ -128,6 +128,7 @@ function elastic_solve!(meshset)
   #fixed = get_fixed(meshset)
   match_spring_coeff = params["solve"]["match_spring_coeff"]
   mesh_spring_coeff = params["solve"]["mesh_spring_coeff"]
+  max_iters = params["solve"]["max_iters"]
   ftol_cg = params["solve"]["ftol_cg"]
 
   println("Solving meshset: $(count_nodes(meshset)) nodes, $(count_edges(meshset)) edges, $(count_filtered_correspondences(meshset)) correspondences");
@@ -218,6 +219,7 @@ function elastic_solve!(meshset)
   num_entries = length(edges_to_add);
   println("populating sparse matrix: $(num_entries) entries")
 
+  @time begin
   node_inds = Array{Int64, 1}(num_entries);
   edge_inds = Array{Int64, 1}(num_entries);
   tri_weights = Array{Float64, 1}(num_entries);
@@ -225,8 +227,7 @@ function elastic_solve!(meshset)
   for (index, edge) in enumerate(edges_to_add)
     node_inds[index], edge_inds[index], tri_weights[index] = edge
   end
-
-  @time edges = sparse(node_inds, edge_inds, tri_weights, count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset));
+    edges = sparse(node_inds, edge_inds, tri_weights, count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset));
   #edges = spzeros(Float64, count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset));
 
   for mesh in meshset.meshes
@@ -235,7 +236,10 @@ function elastic_solve!(meshset)
 
   println("matches collated: $(count_matches(meshset)) matches")
 
-  SolveMesh2!(nodes, nodes_fixed, edges, edge_spring_coeffs, edge_lengths, ftol_cg)
+	end #time
+#  return nodes, nodes_fixed, edges, edge_spring_coeffs, edge_lengths, ftol_cg;
+
+  @time SolveMesh!(nodes, nodes_fixed, edges, edge_spring_coeffs, edge_lengths, max_iters, ftol_cg)
   dst_nodes = Points(0)
   for i in 1:size(nodes, 2)
           push!(dst_nodes, vec(nodes[:, i]))

@@ -374,7 +374,7 @@ function load(firstindex, lastindex)
   end
 
   println("Loading meshset from ", filename)
-  return load(filename)
+  return migrate!(load(filename))
 end
 
 function count_children(parent_name)

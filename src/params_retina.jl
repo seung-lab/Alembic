@@ -9,6 +9,7 @@ MONOBLOCK_RATIO_MONTAGE = 0.4
 MONOBLOCK_PADDING_MONTAGE = 0.0
 MESH_SPRING_COEFF_MONTAGE = 1.0
 MATCH_SPRING_COEFF_MONTAGE = 3.0 
+MAX_ITERS_MONTAGE = 1000
 FTOL_CG_MONTAGE = 1/100000
 
 MESH_LENGTH_PREALIGNMENT = 4000
@@ -22,6 +23,7 @@ MONOBLOCK_RATIO_PREALIGNMENT = 0.4
 MONOBLOCK_PADDING_PREALIGNMENT = 0.0
 MESH_SPRING_COEFF_PREALIGNMENT = 1.0
 MATCH_SPRING_COEFF_PREALIGNMENT = 3.0 
+MAX_ITERS_PREALIGNMENT = 1000
 FTOL_CG_PREALIGNMENT = 1/1000
 
 MESH_LENGTH_ALIGNMENT = 1000
@@ -35,6 +37,7 @@ MONOBLOCK_RATIO_ALIGNMENT = 0.4
 MONOBLOCK_PADDING_ALIGNMENT = 0.0
 MESH_SPRING_COEFF_ALIGNMENT = 1.0
 MATCH_SPRING_COEFF_ALIGNMENT = 3.0 
+MAX_ITERS_ALIGNMENT = 1000
 FTOL_CG_ALIGNMENT = 1/1000000
 
 global GLOBAL_BB = BoundingBox(0,0,16000,16000)
@@ -54,6 +57,7 @@ global PARAMS_MONTAGE = Dict(
 			     "solve" => Dict(
 					"mesh_spring_coeff" => MESH_SPRING_COEFF_MONTAGE,
 					"match_spring_coeff" => MATCH_SPRING_COEFF_MONTAGE,
+					"max_iters" => MAX_ITERS_MONTAGE,
 					"ftol_cg" => FTOL_CG_MONTAGE),
 			     "filter" => Dict(
 					      ),
@@ -87,6 +91,7 @@ global PARAMS_PREALIGNMENT = Dict(
 					"lambda" => 0.9,
 					"mesh_spring_coeff" => MESH_SPRING_COEFF_PREALIGNMENT,
 					"match_spring_coeff" => MATCH_SPRING_COEFF_PREALIGNMENT,
+					"max_iters" => MAX_ITERS_PREALIGNMENT,
 					"ftol_cg" => FTOL_CG_PREALIGNMENT),
 			     "filter" => Dict(
 					      ),
@@ -113,6 +118,7 @@ global PARAMS_ALIGNMENT = Dict(
 			     "solve" => Dict(
 					"mesh_spring_coeff" => MESH_SPRING_COEFF_ALIGNMENT,
 					"match_spring_coeff" => MATCH_SPRING_COEFF_ALIGNMENT,
+					"max_iters" => MAX_ITERS_ALIGNMENT,
 					"ftol_cg" => FTOL_CG_ALIGNMENT),
 			     "filter" => Dict(
 					      ),
