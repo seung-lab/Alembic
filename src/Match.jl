@@ -44,11 +44,6 @@ function update_correspondence_sigmas!(match::Match)
 	return match
 end
 
-#= DEPRECATED
-function get_correspondence_properties(match::Match)
-	return match.correspondence_properties;
-end
-=#
 
 function get_filtered_correspondences(match::Match; globalized=false)
 	src_pts, dst_pts = get_correspondences(match; globalized = globalized);
@@ -72,15 +67,21 @@ function get_properties(match::Match, property_name::String)
 	return map(get, match.correspondence_properties, repeated(property_name), repeated(nothing));
 end
 
-### property handling
-function get_filtered_properties(match::Match, property_name::String)
-	cp = get_filtered_correspondence_properties(match)
-	return map(get, cp, repeated(property_name), repeated(nothing));
+function get_properties(match::Match, property_name::Array)
+	props = map(get, match.correspondence_properties, repeated(property_name[1]), repeated(nothing));
+	for property in property_names[2:end]
+	  props = map(getindex, props, repeated(property));
+	end
+	return props
 end
 
 function get_properties(match::Match, fn::Function, args...)
 	return fn(match, args...)
 end
+
+function get_filtered_properties(match::Match, property_name::String)
+	cp = get_filtered_correspondence_properties(match)
+	return map(get, cp, repeated(property_name), repeated(nothing));
 
 ### reviewing
 function set_reviewed!(match::Match)
@@ -344,6 +345,20 @@ function filter!(match::Match, property_name, compare, threshold)
 	#println("$(length(inds_to_filter)) / $(count_correspondences(match)) rejected.");
 	return length(inds_to_filter);
 end
+#=
+function filter!(match::Match, property_names::Array{String}, compare, threshold)
+	attributes = get_properties(match, property_names...)
+	inds_to_filter = find(i -> compare(i, threshold), attributes);
+	push!(match.filters, Dict{Any, Any}(
+				"author" => author(),
+				"type"	  => property_names,
+				"threshold" => threshold,
+				"rejected"  => inds_to_filter
+			      ));
+	#println("$(length(inds_to_filter)) / $(count_correspondences(match)) rejected.");
+	return length(inds_to_filter);
+end
+=#
 
 function eval_filters(match::Match, filters, conjunction=false, meshset=nothing)
 

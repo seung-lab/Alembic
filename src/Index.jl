@@ -85,9 +85,11 @@ function is_diagonal(A_index, B_index)
   return false;
 end
 
-function is_preceding(A_index, B_index)
+function is_preceding(A_index, B_index, within = 1)
   if (is_premontaged(A_index)) || (is_premontaged(B_index))	return false end
-	if A_index[1:2] == get_preceding(B_index)[1:2] return true; end
+  	for i in 1:within
+	if A_index[1:2] == get_preceding(B_index, i)[1:2] return true; end
+      end
 	return false;
 end
 
@@ -139,21 +141,19 @@ function get_image_sizes(index)
 	return metadata[5:6];
 end
 
-function get_preceding(index)
+function get_preceding(index, num = 1)
   registry = get_registry(index);
   loc_in_reg = find_in_registry(index);
-  if loc_in_reg == 0 return NO_INDEX; end
-  #if loc_in_reg == 1 return index; end
-  if loc_in_reg == 1 return NO_INDEX; end
-  return registry[loc_in_reg - 1, 2];
+  if loc_in_reg <= num return NO_INDEX; end
+  return registry[loc_in_reg - num, 2];
 end
 
-function get_succeeding(index)
+function get_succeeding(index, num = 1)
   registry = get_registry(index);
   loc_in_reg = find_in_registry(index);
   if loc_in_reg == 0 return NO_INDEX; end
-  if loc_in_reg == 1 return NO_INDEX; end
-  return registry[loc_in_reg + 1, 2];
+  if loc_in_reg > size(registry, 1) - num return NO_INDEX; end
+  return registry[loc_in_reg + num, 2];
 end
 
 function get_index_range(first_index, last_index)

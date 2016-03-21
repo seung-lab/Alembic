@@ -63,8 +63,11 @@ global const SUP_SIZE = (50000, 50000)
 global const SHARED_SRC_IMAGE = SharedArray(IMG_ELTYPE, SUP_SIZE)
 global const SHARED_DST_IMAGE = SharedArray(IMG_ELTYPE, SUP_SIZE)
 
+PKGS_USED = ["HDF5", "JLD", "Images", "ImageView", "Colors", "FixedPointNumbers", "Cairo", "IterativeSolvers", "Optim", "Distributions", "RegERMs", "PyPlot"]
 
-# dependencies
+PKGS_USED_CLONABLE = ["https://github.com/JuliaSparse/MKLSparse.jl.git", ""]
+
+
 using HDF5
 using JLD
 using Images
@@ -78,11 +81,9 @@ using ImageRegistration
 using Optim
 using Distributions
 using RegERMs
-if ENV["USER"] != "dih" && !ON_AWS && !contains(gethostname(), "seunglab")
+#if ENV["USER"] != "dih" && !ON_AWS && !contains(gethostname(), "seunglab")
 using PyPlot
-end
-
-
+using MKLSparse
 
 include("author.jl")
 include("Index.jl")
@@ -104,10 +105,11 @@ if ON_AWS
     include("imagecovariance.jl")
     include("Mesh.jl")
     include("Match.jl")
+    include("migrate.jl")
     include("MeshSet.jl")
     include("filters.jl")
     include("meshconjgrad.jl")
-    include("meshSession.jl")
+    include("meshsession.jl")
     include("tiletooverview.jl")
     include("imageprocessing.jl")
     include("render.jl")

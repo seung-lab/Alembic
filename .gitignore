@@ -1,5 +1,6 @@
 _archive/
 EM_images/
+src/juliarc.jl
 src/filesystem.jl
 src/filesystem.jl~
 *.pyc

@@ -128,32 +128,46 @@ function elastic_solve!(meshset)
   #fixed = get_fixed(meshset)
   match_spring_coeff = params["solve"]["match_spring_coeff"]
   mesh_spring_coeff = params["solve"]["mesh_spring_coeff"]
+  max_iters = params["solve"]["max_iters"]
   ftol_cg = params["solve"]["ftol_cg"]
 
   println("Solving meshset: $(count_nodes(meshset)) nodes, $(count_edges(meshset)) edges, $(count_filtered_correspondences(meshset)) correspondences");
 
   nodes = Array{Float64, 2}(2, count_nodes(meshset));
   nodes_fixed = BinaryProperty(count_nodes(meshset))
-  edges = spzeros(Float64, count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset));
+
   edge_lengths = FloatProperty(count_edges(meshset) + count_filtered_correspondences(meshset))
   edge_spring_coeffs = FloatProperty(count_edges(meshset) + count_filtered_correspondences(meshset))
 
   noderanges = Dict{Any, Any}();
   edgeranges = Dict{Any, Any}();
   meshes = Dict{Any, Any}();
+  meshes_order = Dict{Any, Int64}();
   cum_nodes = 0; cum_edges = 0;
 
-  for mesh in meshset.meshes
+  meshes_ref = Array{RemoteRef, 1}()
+  matches_ref = Array{RemoteRef, 1}()
+  src_indices = Array{Any, 1}();
+  dst_indices = Array{Any, 1}();
+
+  for (index, mesh) in enumerate(meshset.meshes)
   	noderanges[mesh.index] = cum_nodes + (1:count_nodes(mesh))
 	edgeranges[mesh.index] = cum_edges + (1:count_edges(mesh))
 	meshes[mesh.index] = mesh
+	meshes_order[mesh.index] = index;
 	cum_nodes = cum_nodes + count_nodes(mesh);
 	cum_edges = cum_edges + count_edges(mesh);
+	mesh_ref = RemoteRef(); 
+	put!(mesh_ref, mesh); push!(meshes_ref, mesh_ref);
   end
 
   for match in meshset.matches
 	edgeranges[match] = cum_edges + (1:count_filtered_correspondences(match));
 	cum_edges = cum_edges + count_filtered_correspondences(match);
+	match_ref = RemoteRef(); 
+	put!(match_ref, match); push!(matches_ref, match_ref);
+	push!(src_indices, get_src_index(match))
+	push!(dst_indices, get_dst_index(match))
   end
 
   for mesh in meshset.meshes
@@ -169,41 +183,63 @@ function elastic_solve!(meshset)
 
   println("meshes collated: $(count_meshes(meshset)) meshes")
 
-  for mesh in meshset.meshes
-    edges[noderanges[mesh.index], edgeranges[mesh.index]] = mesh.edges;
+  for match in meshset.matches
+    	edge_lengths[edgeranges[match]] = fill(0, count_filtered_correspondences(match));
+    	edge_spring_coeffs[edgeranges[match]] = fill(match_spring_coeff, count_filtered_correspondences(match));
   end
 
-  for match in meshset.matches
+  function compute_sparse_entries(match_ref, src_mesh_ref, dst_mesh_ref, noderange_src, noderange_dst, edgerange)
+
+  	match = fetch(match_ref)
   	println("match $(match.src_index)->$(match.dst_index) being collated...")
-    	src_mesh = meshes[match.src_index];
-    	dst_mesh = meshes[match.dst_index];
+  	src_mesh = fetch(src_mesh_ref)
+  	dst_mesh = fetch(dst_mesh_ref)
+
 	src_pts, dst_pts = get_filtered_correspondences(match);
 	src_pt_triangles = map(find_mesh_triangle, repeated(src_mesh), src_pts);
 	src_pt_weights = map(get_triangle_weights, repeated(src_mesh), src_pts, src_pt_triangles);
 	dst_pt_triangles = map(find_mesh_triangle, repeated(dst_mesh), dst_pts);
 	dst_pt_weights = map(get_triangle_weights, repeated(dst_mesh), dst_pts, dst_pt_triangles);
 
-	noderange_src = noderanges[match.src_index];
-	noderange_dst = noderanges[match.dst_index];
-	edgerange = edgeranges[match];
 
+	edges_to_add = Array{Tuple{Int64, Int64, Float64}, 1}();
 	for ind in 1:count_filtered_correspondences(match)
 		if src_pt_triangles[ind] == NO_TRIANGLE || dst_pt_triangles[ind] == NO_TRIANGLE continue; end
-		edges[noderange_src[src_pt_triangles[ind][1]], edgerange[ind]] = -src_pt_weights[ind][1];
-		edges[noderange_src[src_pt_triangles[ind][2]], edgerange[ind]] = -src_pt_weights[ind][2];
-		edges[noderange_src[src_pt_triangles[ind][3]], edgerange[ind]] = -src_pt_weights[ind][3];
-		edges[noderange_dst[dst_pt_triangles[ind][1]], edgerange[ind]] = dst_pt_weights[ind][1];
-		edges[noderange_dst[dst_pt_triangles[ind][2]], edgerange[ind]] = dst_pt_weights[ind][2];
-		edges[noderange_dst[dst_pt_triangles[ind][3]], edgerange[ind]] = dst_pt_weights[ind][3];
+	        for i in 1:3
+			push!(edges_to_add, (noderange_src[src_pt_triangles[ind][i]], edgerange[ind], -src_pt_weights[ind][i]))
+			push!(edges_to_add, (noderange_dst[dst_pt_triangles[ind][i]], edgerange[ind], dst_pt_weights[ind][i]))
+		end
 	end
+	return edges_to_add;
+  end
 
-    	edge_lengths[edgeranges[match]] = fill(0, count_filtered_correspondences(match));
-    	edge_spring_coeffs[edgeranges[match]] = fill(match_spring_coeff, count_filtered_correspondences(match));
+  edges_to_add = pmap(compute_sparse_entries, matches_ref, meshes_ref[map(getindex, repeated(meshes_order), src_indices)], meshes_ref[map(getindex, repeated(meshes_order), dst_indices)], map(getindex, repeated(noderanges), src_indices), map(getindex, repeated(noderanges), dst_indices), map(getindex, repeated(edgeranges), meshset.matches));
+  
+  edges_to_add = vcat(edges_to_add...)
+  num_entries = length(edges_to_add);
+  println("populating sparse matrix: $(num_entries) entries")
+
+  @time begin
+  node_inds = Array{Int64, 1}(num_entries);
+  edge_inds = Array{Int64, 1}(num_entries);
+  tri_weights = Array{Float64, 1}(num_entries);
+
+  for (index, edge) in enumerate(edges_to_add)
+    node_inds[index], edge_inds[index], tri_weights[index] = edge
+  end
+    edges = sparse(node_inds, edge_inds, tri_weights, count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset));
+  #edges = spzeros(Float64, count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset));
+
+  for mesh in meshset.meshes
+    edges[noderanges[mesh.index], edgeranges[mesh.index]] = mesh.edges;
   end
 
   println("matches collated: $(count_matches(meshset)) matches")
 
-  SolveMesh2!(nodes, nodes_fixed, edges, edge_spring_coeffs, edge_lengths, ftol_cg)
+	end #time
+#  return nodes, nodes_fixed, edges, edge_spring_coeffs, edge_lengths, ftol_cg;
+
+  @time SolveMesh!(nodes, nodes_fixed, edges, edge_spring_coeffs, edge_lengths, max_iters, ftol_cg)
   dst_nodes = Points(0)
   for i in 1:size(nodes, 2)
           push!(dst_nodes, vec(nodes[:, i]))

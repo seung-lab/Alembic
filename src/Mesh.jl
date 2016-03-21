@@ -12,7 +12,7 @@ end
 ### INDEX.jl EXTENSIONS
 function is_adjacent(Am::Mesh, Bm::Mesh)	return is_adjacent(Am.index, Bm.index);		end
 function is_diagonal(Am::Mesh, Bm::Mesh)	return is_diagonal(Am.index, Bm.index);		end
-function is_preceding(Am::Mesh, Bm::Mesh)	return is_preceding(Am.index, Bm.index);	end
+function is_preceding(Am::Mesh, Bm::Mesh, within = 1)	return is_preceding(Am.index, Bm.index, within);	end
 
 ### PARAMS.jl EXTENSIONS
 function get_params(mesh::Mesh)			return get_params(mesh.index);		end
