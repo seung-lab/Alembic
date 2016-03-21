@@ -516,3 +516,15 @@ function update_correspondence_sigmas!(ms::MeshSet)
 	ms.matches = pmap(update_correspondence_sigmas!, ms.matches)
 	save(ms)
 end
+
+function get_param(meshset::MeshSet, property_name)
+  property = None
+  if haskey(meshset.properties, "params")
+    if haskey(meshset.properties["params"], "match")
+      if haskey(meshset.properties["params"]["match"], property_name)
+        property = meshset.properties[property_name]
+      end
+    end
+  end
+  return property
+end
