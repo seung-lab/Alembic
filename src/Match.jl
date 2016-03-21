@@ -44,11 +44,6 @@ function update_correspondence_sigmas!(match::Match)
 	return match
 end
 
-#= DEPRECATED
-function get_correspondence_properties(match::Match)
-	return match.correspondence_properties;
-end
-=#
 
 function get_filtered_correspondences(match::Match; globalized=false)
 	src_pts, dst_pts = get_correspondences(match; globalized = globalized);
@@ -72,9 +67,9 @@ function get_properties(match::Match, property_name::String)
 	return map(get, match.correspondence_properties, repeated(property_name), repeated(nothing));
 end
 
-function get_properties(match::Match, property_name::String, subproperty_names...)
-	props = map(get, match.correspondence_properties, repeated(property_name), repeated(nothing));
-	for property in subproperty_names
+function get_properties(match::Match, property_name::Array)
+	props = map(get, match.correspondence_properties, repeated(property_name[1]), repeated(nothing));
+	for property in property_names[2:end]
 	  props = map(getindex, props, repeated(property));
 	end
 	return props
@@ -335,7 +330,7 @@ function get_match(pt, ranges, src_image, dst_image, params = nothing)
 end
 
 function filter!(match::Match, property_name, compare, threshold)
-	attributes = get_properties(match, property_name...)
+	attributes = get_properties(match, property_name)
 	inds_to_filter = find(i -> compare(i, threshold), attributes);
 	push!(match.filters, Dict{Any, Any}(
 				"author" => author(),
