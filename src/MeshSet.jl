@@ -191,8 +191,8 @@ function MeshSet(first_index, last_index; params=get_params(first_index), solve=
 	meshes = map(Mesh, ind_range, repeated(params), map(in, ind_range, repeated(fixed_inds)))
  	matches = Array{Match, 1}(0)		
 	properties = Dict{Any, Any}(	"params"  => params,
-				"author" => author(),
-				"meta" => Dict{Any, Any}(
+					"author" => author(),
+					"meta" => Dict{Any, Any}(
 					"parent" => nothing,
 					"split_index" => 0)
 					)
@@ -374,7 +374,7 @@ function load(firstindex, lastindex)
   end
 
   println("Loading meshset from ", filename)
-  return migrate!(load(filename))
+  return load(filename)
 end
 
 function count_children(parent_name)
@@ -513,8 +513,4 @@ function get_global_bb(meshset)
   return global_bb
 end  
 
-#MIGRATION ONLY
-function update_correspondence_sigmas!(ms::MeshSet)
-	ms.matches = pmap(update_correspondence_sigmas!, ms.matches)
-	save(ms)
-end
+

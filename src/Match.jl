@@ -31,19 +31,6 @@ function get_correspondences(match::Match; globalized=false)
 	end
 end
 
-#MIGRATION ONLY
-function update_correspondence_sigmas!(match::Match)
-	for i in 1:count_correspondences(match)
-		xc = get_correspondence_patches(match, i)[5]
-#		match.correspondence_properties[i]["xcorr"] = Dict{Any, Any}();
-		match.correspondence_properties[i]["sigma_5"] = sigma(xc, 0.5)
-		match.correspondence_properties[i]["sigma_6"] = sigma(xc, 0.6)
-		match.correspondence_properties[i]["sigma_7"] = sigma(xc, 0.7)
-		match.correspondence_properties[i]["sigma_8"] = sigma(xc, 0.8)
-	end
-	return match
-end
-
 
 function get_filtered_correspondences(match::Match; globalized=false)
 	src_pts, dst_pts = get_correspondences(match; globalized = globalized);
@@ -67,7 +54,7 @@ function get_properties(match::Match, property_name::String)
 	return map(get, match.correspondence_properties, repeated(property_name), repeated(nothing));
 end
 
-function get_properties(match::Match, property_name::Array)
+function get_properties(match::Match, property_name::String)
 	props = map(get, match.correspondence_properties, repeated(property_name[1]), repeated(nothing));
 	for property in property_names[2:end]
 	  props = map(getindex, props, repeated(property));
@@ -81,51 +68,29 @@ end
 
 ### reviewing
 function set_reviewed!(match::Match)
-	if !haskey(match.properties, "review") match.properties["review"] = Dict{Any, Any}(); end
 	match.properties["review"]["author"] = author();
 	return;
 end
 
 function is_reviewed(match::Match)
-	isreviewed = false
-	if haskey(match.properties, "review")
-		if haskey(match.properties["review"], "author")
-			isreviewed = true
-		end
-	end
-	return isreviewed
+  	return match.properties["review"]["author"] == null_author()
 end
 
 function get_author(match::Match)
-	author = null_author()
-	if haskey(match.properties, "review")
-		if haskey(match.properties["review"], "author")
-			author = match.properties["review"]["author"]
-		end
-	end
+	author = match.properties["review"]["author"]
 	return author
 end
 
 function is_flagged(match::Match)
-	if !haskey(match.properties, "review") 
-		match.properties["review"] = Dict{Any, Any}("flag" => false)
-	else
-		if !haskey(match.properties["review"], "flag") 
-			match.properties["review"]["flag"] = false
-		end
-	end
-
-	return match.properties["review"]["flag"]
+	return match.properties["review"]["flagged"]
 end
 
 function flag!(match::Match)
-	if !haskey(match.properties, "review") match.properties["review"] = Dict{Any, Any}(); end
-	match.properties["review"]["flag"] = true;
+	match.properties["review"]["flagged"] = true;
 end
 
 function unflag!(match::Match)
-	if !haskey(match.properties, "review") match.properties["review"] = Dict{Any, Any}(); end
-	match.properties["review"]["flag"] = false;
+	match.properties["review"]["flagged"] = false;
 end
 
 function get_correspondence_patches(match::Match, ind)
@@ -136,25 +101,12 @@ function get_correspondence_patches(match::Match, ind)
 
 	props = match.correspondence_properties[ind]
 
-	if haskey(props, "scale")
-	scale = props["scale"];
-	else
-	scale = 1
-	end
-	# println(props["full"]);
-
-	# hack to support old properties
-	if !haskey(props, "full")
-		src_patch = h5read(src_path, "img", props["src_range"])
-		src_pt = props["src_pt_loc"]
-		dst_patch = h5read(dst_path, "img", props["dst_range"])
-		dst_pt = props["dst_pt_loc"]
-	else
-		src_patch = h5read(src_path, "img", props["full"]["src_range"])
-		src_pt_loc = props["full"]["src_pt_loc"];
-		dst_patch = h5read(dst_path, "img", props["full"]["dst_range"])
-		dst_pt_loc = props["full"]["dst_pt_loc"];
-		if props["scale"] != 1
+		scale = props["ranges"]["scale"];
+		src_patch = h5read(src_path, "img", props["ranges"]["src_range"])
+		src_pt_loc = props["ranges"]["src_pt_loc"];
+		dst_patch = h5read(dst_path, "img", props["ranges"]["dst_range"])
+		dst_pt_loc = props["ranges"]["dst_pt_loc"];
+		if scale != 1
 			src_pt_loc = ceil(Int64, scale * src_pt_loc);
 			dst_pt_loc = ceil(Int64, scale * dst_pt_loc);
 			src_patch = imscale(src_patch, scale)[1]
@@ -162,10 +114,9 @@ function get_correspondence_patches(match::Match, ind)
 		end
 		src_pt = src_pt_loc
 		dst_pt = dst_pt_loc
-	end
 
 	xc = normxcorr2(src_patch, dst_patch);
-	dv = ceil(Int64, props["dv"] * scale)
+	dv = ceil(Int64, props["vects"]["dv"] * scale)
 
 	return src_patch, src_pt, dst_patch, dst_pt, xc, dst_pt-src_pt+dv
 end
@@ -251,21 +202,18 @@ end
 """
 Template match two image patches to produce point pair correspondence
 """
-function get_match(pt, ranges, src_image, dst_image, params = nothing)
+function get_match(pt, ranges, src_image, dst_image, params)
 	src_index, src_range, src_pt_loc, dst_index, dst_range, dst_range_full, dst_pt_loc, dst_pt_loc_full = ranges;
 
-	if params == nothing
-		scale = 1;
-	else
-		scale = params["match"]["blockmatch_scale"]
-	end
+	scale = params["match"]["blockmatch_scale"]
 
 	correspondence_properties = Dict{Any, Any}();
-	correspondence_properties["full"] = Dict{Any, Any}();
-	correspondence_properties["full"]["src_pt_loc"] = src_pt_loc;
-	correspondence_properties["full"]["src_range"] = src_range;
-	correspondence_properties["full"]["dst_pt_loc"] = dst_pt_loc;
-	correspondence_properties["full"]["dst_range"] = dst_range;
+	correspondence_properties["ranges"] = Dict{Any, Any}();
+	correspondence_properties["ranges"]["src_pt_loc"] = src_pt_loc;
+	correspondence_properties["ranges"]["src_range"] = src_range;
+	correspondence_properties["ranges"]["dst_pt_loc"] = dst_pt_loc;
+	correspondence_properties["ranges"]["dst_range"] = dst_range;
+	correspondence_properties["ranges"]["scale"] = scale;
 
 
 	src_range = ceil(Int64, scale * first(src_range[1])) : ceil(Int64, scale * last(src_range[1])), ceil(Int64, scale * first(src_range[2])) : ceil(Int64, scale * last(src_range[2]))
@@ -275,6 +223,7 @@ function get_match(pt, ranges, src_image, dst_image, params = nothing)
 	dst_pt_loc = ceil(Int64, scale * dst_pt_loc);
 	dst_pt_loc_full = ceil(Int64, scale * dst_pt_loc_full);
 
+	# padding
 	if dst_range != dst_range_full
 		indices_within_range = findin(dst_range_full[1], dst_range[1]), findin(dst_range_full[2], dst_range[2])
 		intersect_img = dst_image[dst_range...];
@@ -305,24 +254,22 @@ function get_match(pt, ranges, src_image, dst_image, params = nothing)
 	#println("di: $di, dj: $dj, scale = $scale")
 
 
-	correspondence_properties["img"] = Dict{Any, Any}();
-	correspondence_properties["img"]["src_normalized_dyn_range"] = (maximum(src_image[src_range...]) - minimum(src_image[src_range...])) / typemax(eltype(src_image));
-	correspondence_properties["img"]["src_kurtosis"] = kurtosis(src_image[src_range...]);
-	#=correspondence_properties["xcorr"] = Dict{Any, Any}();
-	correspondence_properties["xcorr"]["max"] = r_max;
-	correspondence_properties["xcorr"]["sigma"] = sigma(xc, 0.5) =#
-		correspondence_properties["sigma_5"] = sigma(xc, 0.5)
-		correspondence_properties["sigma_6"] = sigma(xc, 0.6)
-		correspondence_properties["sigma_7"] = sigma(xc, 0.7)
-		correspondence_properties["sigma_8"] = sigma(xc, 0.8)
-	
-	correspondence_properties["scale"] = scale;
-	correspondence_properties["dv"] = [di, dj];
-	correspondence_properties["norm"] = norm([di, dj]);
-	correspondence_properties["r_val"] = r_max;
+	correspondence_properties["patches"] = Dict{Any, Any}();
+	correspondence_properties["patches"]["src_normalized_dyn_range"] = (maximum(src_image[src_range...]) - minimum(src_image[src_range...])) / typemax(eltype(src_image));
+	correspondence_properties["patches"]["src_kurtosis"] = kurtosis(src_image[src_range...]);
+	correspondence_properties["xcorr"] = Dict{Any, Any}();
+	correspondence_properties["xcorr"]["r_max"] = r_max;
+	correspondence_properties["xcorr"]["sigmas"] = Dict{Any, Any}();
+	correspondence_properties["xcorr"]["sigmas"][.5] = sigma(xc, .5);
+	correspondence_properties["xcorr"]["sigmas"][.6] = sigma(xc, .6);
+	correspondence_properties["xcorr"]["sigmas"][.7] = sigma(xc, .7);
+	correspondence_properties["xcorr"]["sigmas"][.8] = sigma(xc, .8);
+	correspondence_properties["vects"] = Dict{Any, Any}();
+	correspondence_properties["vects"]["dv"] = [di, dj];
+	correspondence_properties["vects"]["norm"] = norm([di, dj]);
 
 
-	if params == nothing || !params["registry"]["global_offsets"]
+	if !params["registry"]["global_offsets"]
 		return vcat(pt + get_offset(src_index) + [di, dj], correspondence_properties);
 	else
 		return vcat(pt + get_offset(src_index) - get_offset(dst_index) + [di, dj], correspondence_properties);
@@ -341,137 +288,15 @@ function filter!(match::Match, property_name, compare, threshold)
 	#println("$(length(inds_to_filter)) / $(count_correspondences(match)) rejected.");
 	return length(inds_to_filter);
 end
-#=
-function filter!(match::Match, property_names::Array{String}, compare, threshold)
-	attributes = get_properties(match, property_names...)
-	inds_to_filter = find(i -> compare(i, threshold), attributes);
-	push!(match.filters, Dict{Any, Any}(
-				"author" => author(),
-				"type"	  => property_names,
-				"threshold" => threshold,
-				"rejected"  => inds_to_filter
-			      ));
-	#println("$(length(inds_to_filter)) / $(count_correspondences(match)) rejected.");
-	return length(inds_to_filter);
-end
-=#
-
-function eval_filters(match::Match, filters, conjunction=false, meshset=nothing)
-
-	inds_to_filter = Array{Any, 1}();
-	thresholds = Array{Int64, 1}();
-
-	for filter in filters
-	if typeof(filter[1]) == Function
-	attributes = get_properties(match, filter[1], meshset)
-	else
-	attributes = get_properties(match, filter[1]);
-	end
-	push!(inds_to_filter, find(i -> filter[2](i, filter[3]), attributes));
-	push!(thresholds, filter[4]);
-	end
-
-	rejected_inds = get_rejected_indices(match);
-
-	if conjunction == false
-		if Base.|((thresholds .< map(length, inds_to_filter))...) filter_reject_match = true
-		else filter_reject_match = false; end
-	else
-		if Base.&((thresholds .< map(length, inds_to_filter))...) filter_reject_match = true
-		else filter_reject_match = false; end
-	end
-
-	inds_to_filter = union(inds_to_filter...)
-
-	if length(rejected_inds) > 0 actual_reject_match = true;
-	else actual_reject_match = false; end
-
-	false_rejections = setdiff(inds_to_filter, rejected_inds)
-	false_acceptances = setdiff(rejected_inds, inds_to_filter)
-	common_rejections = intersect(rejected_inds, inds_to_filter)
 
 
-	return length(false_rejections), length(false_acceptances), length(common_rejections), count_correspondences(match), filter_reject_match, actual_reject_match;
-end
+
 
 #### HACKY
 function get_residual_norms_post(match, ms)
 	src_pts_after, dst_pts_after, filtered = get_globalized_correspondences_post(ms, findfirst(match_in_ms -> match_in_ms.src_index == match.src_index && match_in_ms.dst_index == match.dst_index, ms.matches));
 	return(map(norm, dst_pts_after - src_pts_after))
 end
-
-function eval_filters(ms, filters, range, conjunction=false)
-	evals = map(eval_filters, ms.matches[range], repeated(filters), repeated(conjunction), repeated(ms))
-
-	total_false_rej= 0;
-	total_false_acc = 0;
-	total_correct = 0;
-	total_corresp = 0;
-
-	match_false_rej = 0;
-	match_false_acc = 0;
-	match_correct = 0;
-
-	for i in evals
-	total_false_rej = total_false_rej + i[1];
-	total_false_acc = total_false_acc + i[2];
-	total_correct = total_correct + i[3];
-	total_corresp = total_corresp + i[4];
-
-	if i[5] == true && i[6] == true match_correct = match_correct + 1; end
-	if i[5] == true && i[6] == false match_false_rej = match_false_rej + 1; end
-	if i[5] == false && i[6] == true match_false_acc = match_false_acc + 1;
-	println(findfirst(ind-> ind==i, evals), " was wrongly accepted by filters")
-	end
-
-	end
-
-	total = total_false_acc + total_correct
-
-	println("filtering by: $(filters...)")
-#=
-	println("false rejections: $(total_false_rej / total)")
-	println("false non-rejections: $(total_false_acc / total)")
-	println("correct rejections: $(total_correct / total)")
-=#
-	println("Per match:")
-	println("precision: $(100 * match_correct / (match_false_rej + match_correct)) %")
-	println("recall: $(100 * match_correct / (match_correct + match_false_acc)) %")
-	println();
-
-	println("total matches with issue: $(100 * (match_correct + match_false_acc) / (count_matches(ms))) %")
-	println("workload reduced to: $(100 * (match_correct + match_false_rej) / (count_matches(ms))) %")
-	println();
-
-	println("Per correspondence:")
-	println("precision: $(100 * total_correct / (total_false_rej + total_correct)) %")
-	println("recall: $(100 * total_correct / (total_correct + total_false_acc)) %")
-	return total_false_rej, total_false_acc, total_correct, total_corresp
-end
-
-function eval_filters_meshsets(mses, filters)
-	evals = pmap(eval_filters, mses, repeated(filters))
-
-	total_false_rej = 0;
-	total_false_acc = 0;
-	total_correct = 0;
-
-	for i in evals
-	total_false_rej = total_false_rej + i[1];
-	total_false_acc = total_false_acc + i[2];
-	total_correct = total_correct + i[3];
-	total_corresp = total_corresp + i[4];
-	end
-
-	println("filtering by: $(filters...)")
-	println("precision: $(100 * total_correct / (total_false_rej + total_correct)) %")
-	println("recall: $(100 * total_correct / (total_correct + total_false_acc)) %")
-	println("total correspondences: $total_corresp")
-	println("total correct: $total_correct")
-	println("total falsely rejected: $total_false_rej")
-	println("total falsely accepted: $total_false_acc")
-end
-
 
 ### ADD MANUAL FILTER
 function filter_manual!(match::Match, inds_to_filter; filtertype="manual")
@@ -494,8 +319,6 @@ function undo_filter!(match::Match)
 		pop!(match.filters);
 	end
 end
-
-
 
 function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); src_image=get_image(src_mesh), dst_image=get_image(dst_mesh), rotate=0)
 	println("Matching $(get_index(src_mesh)) -> $(get_index(dst_mesh)):")
@@ -541,66 +364,12 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); src_
 	correspondence_properties = [dst_allpoints[ind][3] for ind in matched_inds]
   	properties = Dict{Any, Any}(
 		"review" => Dict{Any, Any}(
-				"flag" => false) 
+				"flagged" => false,
+				"flags" => Dict{Any, Any},
+				"author" => null_author()
+				) 
 			);
 
 	return Match(src_index, dst_index, src_points, dst_points, correspondence_properties, filters, properties);
 end
 
-
-
-
-function sync_images(src_image_ref, dst_image_ref)
-	src_image_local = fetch(src_image_ref);
-	dst_image_local = fetch(dst_image_ref);
-	global SHARED_SRC_IMAGE = SharedArray(eltype(src_image_local), size(src_image_local), pids=local_procs());
-	global SHARED_DST_IMAGE = SharedArray(eltype(dst_image_local), size(dst_image_local), pids=local_procs());
-	SHARED_SRC_IMAGE[:, :] = src_image_local[:, :];
-	SHARED_DST_IMAGE[:, :] = dst_image_local[:, :];
-
-	for pid in local_procs()
-	remotecall(pid, sync_images_subroutine, SHARED_SRC_IMAGE, SHARED_DST_IMAGE);
-      end
-#=	tofetch = Array{RemoteRef}(0);
-	for pid in local_procs()
-		push!(tofetch, remotecall(pid, sync_images_subroutine, SHARED_SRC_IMAGE, SHARED_DST_IMAGE));
-	end
-      	for ref in tofetch
-		fetch(ref);
-	end
-=#
-end
-
-function sync_images_subroutine(local_src_image, local_dst_image)
-	global SHARED_SRC_IMAGE = local_src_image;
-	global SHARED_DST_IMAGE = local_dst_image;
-end
-
-function my_host_addr()
-	return Base.Worker(myid()).bind_addr;
-end
-
-function get_local_host_addr(id)
-	return remotecall_fetch(id, my_host_addr);
-end
-
-function local_procs()
-	localhost = Base.Worker(myid()).bind_addr;
-	remotehosts = map(get_local_host_addr, procs());
-	local_procs_indices = find(p -> p == localhost, remotehosts);
-	return procs()[local_procs_indices];
-end
-
-function Base.size(r::RemoteRef, args...)
-      if r.where == myid()
-	return size(fetch(r), args...)
-		    end
-	return remotecall_fetch(r.where, size, r, args...)
-end
-
-function Base.eltype(r::RemoteRef, args...)
-      if r.where == myid()
-	return eltype(fetch(r), args...)
-		    end
-	return remotecall_fetch(r.where, eltype, r, args...)
-end
