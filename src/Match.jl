@@ -66,6 +66,11 @@ function get_properties(match::Match, fn::Function, args...)
 	return fn(match, args...)
 end
 
+function get_filtered_properties(match::Match, property_name::String)
+	cp = get_filtered_correspondence_properties(match)
+	return map(get, cp, repeated(property_name), repeated(nothing));
+end
+
 ### reviewing
 function set_reviewed!(match::Match)
 	match.properties["review"]["author"] = author();

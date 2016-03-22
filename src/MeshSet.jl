@@ -513,4 +513,11 @@ function get_global_bb(meshset)
   return global_bb
 end  
 
-
+function get_params(meshset::MeshSet, property_name)
+  property = None
+  if haskey(meshset.properties, "params")
+    if haskey(meshset.properties["params"], "match")
+      if haskey(meshset.properties["params"]["match"], property_name)
+        property = meshset.properties[property_name]
+  return property
+end

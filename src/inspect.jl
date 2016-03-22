@@ -1,60 +1,45 @@
 """
 The only function called by tracers to inspect montage points
 """
-function inspect_montages(meshset_ind, match_ind)
-  firstindex, lastindex = montaged(ROI_FIRST), montaged(ROI_LAST) 
-  indrange = get_index_range(firstindex, lastindex)
-  meshset = load(indrange[meshset_ind])
-  println(meshset_ind, ": ", indrange[meshset_ind], " @ ", match_ind, " / ", length(meshset.matches))
+function inspect_montages(index::Index, match_ind)
+  meshset = load(index)
+  println(index, " @ ", match_ind, " / ", length(meshset.matches))
   imgc, img2, matches, vectors, params = view_matches(meshset, match_ind);
-  enable_inspection(imgc, img2, meshset, matches, vectors, params, "montage", (meshset_ind, match_ind))
+  enable_inspection(imgc, img2, meshset, matches, vectors, params, "montage", (index, match_ind))
 end
 
 """
 The only function called by tracers to inspect prealignment points
 """
-function inspect_prealignments(meshset_ind)
+function inspect_prealignments(src_index::Index, dst_index::Index)
   match_ind = 1
-  firstindex, lastindex = montaged(ROI_FIRST), montaged(ROI_LAST) 
-  index_pairs = collect(get_sequential_index_pairs(firstindex, lastindex))
-  indexA, indexB = index_pairs[meshset_ind]
-  meshset = load(indexB, indexA)
-  println(meshset_ind, ": ", (meshset.matches[match_ind].src_index, meshset.matches[match_ind].dst_index), " @ ", match_ind, " / ", length(meshset.matches))
-  imgc, img2, matches, vectors, params = view_matches(meshset, match_ind)
-  enable_inspection(imgc, img2, meshset, matches, vectors, params, "prealignment", (meshset_ind, match_ind))
-end
-
-"""
-The only function called by tracers to inspect prealignment points
-"""
-function inspect_prealignments(firstindex, lastindex)
-  match_ind, meshset_ind = 1, 1
-  meshset = load(lastindex, firstindex)
+  meshset = load(src_index, dst_index)
   println("\n", meshset_ind, ": ", (meshset.matches[match_ind].src_index, meshset.matches[match_ind].dst_index), " @ ", match_ind, " / ", length(meshset.matches))
   imgc, img2, matches, vectors, params = view_matches(meshset, match_ind)
-  enable_inspection(imgc, img2, meshset, matches, vectors, params, "prealignment", (meshset_ind, match_ind))
+  enable_inspection(imgc, img2, meshset, matches, vectors, params, "prealignment", (src_index, dst_index))
 end
 
 """
 The only function called by tracers to inspect alignment points
 """
-function inspect_alignments(meshset_ind)
-  firstindex, lastindex = prealigned(ROI_FIRST), prealigned(ROI_LAST)
-  inspect_alignments(firstindex, lastindex, meshset_ind)
+function inspect_alignments(src_index::Index, dst_index::Index)
+  firstindex, lastindex = find_containing_meshset(src_index, dst_index)
+  return inspect_alignments(firstindex, lastindex, src_index, dst_index)
 end
 
 """
 The only function called by tracers to inspect alignment points
 """
-function inspect_alignments(firstindex, lastindex, meshset_ind)
+function inspect_alignments(firstindex::Index, lastindex::Index, src_index::Index, dst_index::Index)
   match_ind = 1
   name = string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned")
+  meshset_ind = find_match_index(meshset, src_index, dst_index)
   meshset = load_split(name, meshset_ind)
   match = meshset.matches[match_ind]
   src_dst = string(join(match.src_index[1:2], ","), "-", join(match.dst_index[1:2], ","))
   println(name, ": ", src_dst, " @ ", match_ind, " / ", length(meshset.matches))
   imgc, img2, matches, vectors, params = view_matches(meshset, match_ind);
-  enable_inspection(imgc, img2, meshset, matches, vectors, params, "alignment", (meshset_ind, match_ind));
+  enable_inspection(imgc, img2, meshset, matches, vectors, params, "alignment", (firstindex, lastindex, src_index, dst_index));
 end
 
 """
@@ -68,7 +53,7 @@ function inspect_meshset(meshset, match_ind)
   src_dst = string(join(match.src_index[1:2], ","), "-", join(match.dst_index[1:2], ","))
   println("\n", name, ": ", src_dst, " @ ", match_ind, " / ", length(meshset.matches))
   imgc, img2, matches, vectors, params = view_matches(meshset, match_ind);
-  enable_inspection(imgc, img2, meshset, matches, vectors, params, "meshset", (1, match_ind));
+  enable_inspection(imgc, img2, meshset, matches, vectors, params, "meshset", (match_ind));
 end
 
 
@@ -89,9 +74,6 @@ function view_matches(meshset, k)
   println("offset: ", offset)
   scale = h5read(path, "scale")
 
-  view_property_histogram(match, "r_val")
-  view_property_scatter(match, "dv")
-
   # Add border to the image for vectors that extend
   pad = 400
   img = zeros(UInt32, size(img_orig,1)+pad*2, size(img_orig,2)+pad*2)
@@ -105,6 +87,65 @@ function view_matches(meshset, k)
   params["post_matches"] = false
   params["dist"] = 90
   params["sigma"] = 3
+  sr = params["search_r"]
+
+  factor = 10
+  pts_all = hcat(get_correspondences(match)[1]...)
+  pts = hcat(get_filtered_correspondences(match)[1]...)
+  sigma_all = get_properties(match, "sigma_5")*factor
+  sigma = get_filtered_properties(match, "sigma_5")*factor
+  r_val_all = get_properties(match, "r_val")
+  r_val = get_filtered_properties(match, "r_val")
+  dv_all = hcat(get_properties(match, "dv")...)
+  dv = hcat(get_filtered_properties(match, "dv")...)
+  dv_bounds = vcat([[i -sr] for i=-sr:5:sr]...,
+                    [[i sr] for i=-sr:5:sr]...,
+                    [[sr i] for i=-sr:5:sr]...,
+                    [[-sr i] for i=-sr:5:sr]...)
+
+  fig = figure("image pair statistics", figsize=(20,20))
+  PyPlot.clf()
+  if length(r_val_all) > 1 && length(dv_all) > 1
+    subplot(221)
+    plt[:hist](r_val_all, 20, color="#990000")
+    grid("on")
+    title("r_val")
+    subplot(222)
+    plt[:scatter](dv_all[2,:], -dv_all[1,:], color="#990000")
+    plt[:scatter](dv_bounds[:,1], dv_bounds[:,2], color="#0f0f0f", marker="+")
+    grid("on")
+    title("dv")
+    subplot(223)
+    plt[:scatter](pts_all[2,:], -pts_all[1,:], s=r_val_all*1000, color="#990000")
+    grid("on")
+    title("r_val size")
+    subplot(224)
+    plt[:scatter](pts_all[2,:], -pts_all[1,:], s=sigma_all, color="#990000")
+    grid("on")
+    title("sigma size")
+    fig[:canvas][:draw]()
+  else
+    println("No image pair statistics to show")
+  end
+  if length(r_val) > 1 && length(dv) > 1
+    subplot(221)
+    plt[:hist](r_val, 20, color="#009900")
+    grid("on")
+    title("r_val")
+    subplot(222)
+    plt[:scatter](dv[2,:], -dv[1,:], color="#009900")
+    grid("on")
+    title("dv")
+    subplot(223)
+    plt[:scatter](pts[2,:], -pts[1,:], s=r_val*1000, color="#009900")
+    grid("on")
+    title("r_val size")
+    subplot(224)
+    plt[:scatter](pts[2,:], -pts[1,:], s=sigma, color="#009900")
+    grid("on")
+    title("sigma size")
+    fig[:canvas][:draw]()
+  end
 
   imgc, img2 = view(img, pixelspacing=[1,1])
   vectors = make_vectors(meshset, k, params)
@@ -140,8 +181,11 @@ function view_blockmatch(match, ind, params)
   N=size(xc, 1)
   M=size(xc, 2)
   if !contains(gethostname(), "seunglab") && !ON_AWS
+    fig = figure("correlogram")
     surf([i for i=1:N, j=1:M], [j for i=1:N, j=1:M], xc, cmap=get_cmap("hot"), 
                             rstride=10, cstride=10, linewidth=0, antialiased=false)
+    grid("on")
+    title("match $ind")
   end
   println("max r-value: ", maximum(xc))
   xc_image = xcorr2Image(xc)
@@ -261,19 +305,28 @@ end
 function go_to_next_inspection(imgc, img2, meshset, stage, calls)
   disable_inspection(imgc, img2)
 
-  meshset_ind, match_ind = calls
-  match_ind += 1
-  if match_ind > length(meshset.matches)
-    meshset_ind += 1
-    match_ind = 1
-  end
-
-  if stage == "alignment"
-    inspect_alignments(meshset_ind)
+  if stage == "montage"
+    index, match_ind = calls
+    match_ind += 1
+    if match_ind > length(meshset.matches)
+      index = get_succeeding(index)
+      match_ind = 1
+    end
+    inspect_montages(index, match_ind)
   elseif stage == "prealignment"
-    inspect_prealignments(meshset_ind)
-  elseif stage == "montage"
-    inspect_montages(meshset_ind, match_ind)
+    src_index, dst_index = calls
+    src_index, dst_index = dst_index, get_succeeding(dst_index)
+    inspect_prealignments(src_index, dst_index)
+  elseif stage == "alignment"
+    firstindex, lastindex, src_index, dst_index = calls
+    src_index, dst_index = dst_index, get_succeeding(dst_index)
+    inspect_alignments(firstindex, lastindex, src_index, dst_index)
+  elseif stage == "meshset"
+    match_ind = calls
+    match_ind += 1
+    if match_ind <= length(meshset.matches)
+      inspect_meshset(meshset, match_ind)
+    end
   end
 end
 
@@ -677,7 +730,100 @@ function indices_to_string(indexA, indexB)
   return string(join(indexA[1:2], ","), "-", join(indexB[1:2], ","))
 end
 
-function view_property_histogram(match, property_name, nbins=20)
+function is_dv_near_search_r(match::Match, sr, factor=0.05)
+  dv = hcat(get_filtered_properties(match, "dv")...)
+  return sum(abs(dv) .> (1-factor)*sr) > 0
+end
+
+function view_dvs(index::Index)
+  meshset = load(index)
+  sr = get_param(meshset, "search_r")
+  k = 1
+  n = 0
+  fig = figure("dv $index $n", figsize=(20,20))
+  for (i, match) in enumerate(meshset.matches)
+    if rem(i,9) == 0
+      n += 1
+      fig = figure("dv $index $n", figsize=(20,20))
+      k = 1
+    end
+    dv_all = hcat(get_properties(match, "dv")...)
+    dv = hcat(get_filtered_properties(match, "dv")...)
+    dv_bounds = vcat([[i -sr] for i=-sr:5:sr]...,
+                      [[i sr] for i=-sr:5:sr]...,
+                      [[sr i] for i=-sr:5:sr]...,
+                      [[-sr i] for i=-sr:5:sr]...)
+    subplot(330+k)
+    if length(dv_all) > 1
+      plt[:scatter](dv_all[2,:], -dv_all[1,:], color="#990000")
+      plt[:scatter](dv_bounds[:,1], dv_bounds[:,2], color="#0f0f0f", marker="+")
+    end
+    if length(dv) > 1
+      plt[:scatter](dv[2,:], -dv[1,:], color="#009900")
+    end
+    grid("on")
+    title("dv $i")
+    k += 1
+  end
+end
+
+function view_dv_dispersion(index::Index)
+  meshset = load(index)
+  fig = figure("dv $index", figsize=(20,20))
+  for (i, match) in enumerate(meshset.matches)
+    dv_all = hcat(get_properties(match, "dv")...)
+    dv_all_ind = ones(size(dv_all, 2))*i
+    dv = hcat(get_filtered_properties(match, "dv")...)
+    dv_ind = ones(size(dv, 2))*i
+    # println(i, " ", size(dv_all, 2), " ", size(dv, 2)) 
+    if size(dv_all, 2) > 1
+      subplot(211)
+      plt[:scatter](dv_all_ind, dv_all[1,:], color="#bb0000", alpha=0.5)
+      plt[:scatter](dv_ind, dv[1,:], color="#00bb00", alpha=0.5)
+      grid("on")
+      title("x")
+    end
+    if size(dv, 2) > 1
+      subplot(212)
+      plt[:scatter](dv_all_ind, dv_all[2,:], color="#bb0000", alpha=0.5)
+      plt[:scatter](dv_ind, dv[2,:], color="#00bb00", alpha=0.5)
+      grid("on")
+      title("y")
+    end
+  end
+end
+
+function view_property_histogram(firstindex::Index, lastindex::Index, property_name, nbins=20)
+  attr = []
+  indrange = get_index_range(firstindex, lastindex)
+  for index in indrange
+    meshset = load(index)
+    for match in meshset.matches
+      attr = vcat(attr, get_properties(match, property_name))
+    end
+  end
+  masknan = map(!, map(isnan, attr))
+  attr = attr .* masknan
+  fig = figure("histogram")
+  p = plt[:hist](attr, nbins)
+  grid("on")
+  title(property_name)
+  return p
+end
+
+function view_property_histogram(meshset::MeshSet, property_name, nbins=20)
+  attr = []
+  for match in meshset.matches
+    attr = vcat(attr, get_properties(match, property_name))
+  end
+  fig = figure("histogram")
+  p = plt[:hist](attr, nbins)
+  grid("on")
+  title(property_name)
+  return p
+end
+
+function view_property_histogram(match::Match, property_name, nbins=20)
   attr = get_properties(match, property_name)
   fig = figure("histogram")
   p = plt[:hist](attr, nbins)
