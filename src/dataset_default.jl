@@ -93,7 +93,7 @@ function waferpaths_to_dict(waferpath_filename)
 end
 
 function parse_index(s::String)
-    m = match(r"(\d*),(\d*),(\-\d+|\d+),(\-\d+|\d+)", s)
+    m = Base.match(r"(\d*),(\d*),(\-\d+|\d+),(\-\d+|\d+)", s)
     return (parse(Int, m[1]), parse(Int, m[2]), parse(Int, m[3]), parse(Int, m[4]))
 end
 
@@ -101,31 +101,31 @@ function parse_name(name::String)
 
     ret = (0, 0, 0, 0)
     # singleton tile
-    m = match(r"Tile_r(\d*)-c(\d*).*W(\d*)_sec(\d*)", name)
+    m = Base.match(r"Tile_r(\d*)-c(\d*).*W(\d*)_sec(\d*)", name)
     if typeof(m) != Void
     ret = parse(Int, m[3]), parse(Int, m[4]), parse(Int, m[1]), parse(Int, m[2])
     end
 
     # overview image
-    m = match(r"MontageOverviewImage_S2-W00(\d*)_sec(\d*)", name)
+    m = Base.match(r"MontageOverviewImage_S2-W00(\d*)_sec(\d*)", name)
     if typeof(m) != Void
     ret = parse(Int, m[1]), parse(Int, m[2]), OVERVIEW_INDEX, OVERVIEW_INDEX   
     end
 
     # montaged section
-    m = match(r"(\d*),(\d*)_montaged", name)
+    m = Base.match(r"(\d*),(\d*)_montaged", name)
     if typeof(m) != Void
     ret = parse(Int, m[1]), parse(Int, m[2]), MONTAGED_INDEX, MONTAGED_INDEX   
     end
 
     # prealigned section
-    m = match(r"(\d*),(\d*)_prealigned", name)
+    m = Base.match(r"(\d*),(\d*)_prealigned", name)
     if typeof(m) != Void
     ret = parse(Int, m[1]), parse(Int, m[2]), PREALIGNED_INDEX, PREALIGNED_INDEX 
     end
 
     # aligned-section
-    m = match(r"(\d*),(\d*)_aligned", name)
+    m = Base.match(r"(\d*),(\d*)_aligned", name)
     if typeof(m) != Void
     ret = parse(Int, m[1]), parse(Int, m[2]), ALIGNED_INDEX, ALIGNED_INDEX 
     end
