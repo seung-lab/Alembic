@@ -44,7 +44,6 @@ function update_correspondence_sigmas!(match::Match)
 	return match
 end
 
-
 function get_filtered_correspondences(match::Match; globalized=false)
 	src_pts, dst_pts = get_correspondences(match; globalized = globalized);
 	return src_pts[get_filtered_indices(match)], dst_pts[get_filtered_indices(match)];
@@ -391,9 +390,9 @@ function eval_filters(match::Match, filters, conjunction=false, meshset=nothing)
 	if length(rejected_inds) > 0 actual_reject_match = true;
 	else actual_reject_match = false; end
 
-	false_rejections = setdiff(inds_to_filter, rejected_inds)
-	false_acceptances = setdiff(rejected_inds, inds_to_filter)
-	common_rejections = intersect(rejected_inds, inds_to_filter)
+	false_rejections = setdiff(inds_to_filter, rejected_inds) # matches the proposed filter removes that were not removed
+	false_acceptances = setdiff(rejected_inds, inds_to_filter) # matches removed that the proposed filter does not remove
+	common_rejections = intersect(rejected_inds, inds_to_filter) # matches that were removed and that the proposed filter removes
 
 
 	return length(false_rejections), length(false_acceptances), length(common_rejections), count_correspondences(match), filter_reject_match, actual_reject_match;
@@ -499,8 +498,6 @@ function undo_filter!(match::Match)
 		pop!(match.filters);
 	end
 end
-
-
 
 function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); src_image=get_image(src_mesh), dst_image=get_image(dst_mesh), rotate=0)
 	println("Matching $(get_index(src_mesh)) -> $(get_index(dst_mesh)):")
