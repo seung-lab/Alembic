@@ -84,3 +84,14 @@ function evaluate_filter(model, X, Y, ranges)
 	println("workload reduced to: $(100 * (total_correct_flagged + total_false_flagged) / (total_corresp)) %")
 	println();
 end
+
+function clear_all_filters!(indexA, indexB)
+	indices = get_index_range(indexA, indexB)
+	for ind in indices
+		meshset = load(ind) 
+		for match in meshset.matches
+			clear_filters!(match) 
+		end 
+		save(meshset) 
+	end
+end
