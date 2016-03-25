@@ -1,3 +1,29 @@
+function clear_all_filters!(indexA, indexB)
+        indices = get_index_range(indexA, indexB)
+        for ind in indices
+                meshset = load(ind)
+                for match in meshset.matches
+                        clear_filters!(match)
+                end
+                save(meshset)
+        end
+end
+
+function print_filter_eval(indexA, indexB)
+        indices = get_index_range(indexA, indexB)
+        for ind in indices
+                meshset = load(ind)
+                for (i, match) in enumerate(meshset.matches);
+            fp, fn, tp, total = eval_filters(match, [("sigma_5", >, 5, 0)] ,:)
+            p = (100 * tp / (fp + tp))
+            r = (100 * tp / (fn + tp))
+            if !isnan(r) && r < 100.0
+                    println(ind, " #", i, " ", p, " / ", r)
+            end
+       end
+   end
+end
+
 """
 Remove matches from meshset corresponding to the indices provided.
 

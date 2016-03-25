@@ -48,6 +48,17 @@ function migrate!(meshset)
   return meshset
 end
 
+function clean_correspondence_sigmas!(match::Match)
+	for i in 1:count_correspondences(match)
+		for (k, v) in match.correspondence_properties[i]
+			if contains(k, "sigma")
+				if isnan(v)
+					match.correspondence_properties[i][k] = Inf
+				end
+			end
+		end
+	end
+end
 
 #MIGRATION ONLY
 function migrate_correspondence_sigmas!(match::Match)
@@ -145,3 +156,4 @@ end
 function migrate_to_review_dict!(ms::MeshSet)
 	ms.matches = map(migrate_to_review_dict!, ms.matches)
 end
+>>>>>>> c040222920318306fdcbff60b4fa6027b4965f8c

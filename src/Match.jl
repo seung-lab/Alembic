@@ -31,7 +31,6 @@ function get_correspondences(match::Match; globalized=false)
 	end
 end
 
-
 function get_filtered_correspondences(match::Match; globalized=false)
 	src_pts, dst_pts = get_correspondences(match; globalized = globalized);
 	return src_pts[get_filtered_indices(match)], dst_pts[get_filtered_indices(match)];

@@ -4,8 +4,11 @@ end
 
 function sigma(img, beta = 0.5)
 	x = subtract_beta(img, beta)
-	sigma = sqrt(sum(diag(ImageCovariance(x/sum(x)))))
-	return sigma
+    if sum(x) == 0
+        return Inf
+    else
+        return sqrt(sum(diag(ImageCovariance(x/sum(x)))))
+	end
 end
 
 function ImageCovariance(img)
