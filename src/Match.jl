@@ -294,18 +294,6 @@ function filter!(match::Match, property_name, compare, threshold)
 end
 
 
-
-<<<<<<< HEAD
-	false_rejections = setdiff(inds_to_filter, rejected_inds) # matches the proposed filter removes that were not removed
-	false_acceptances = setdiff(rejected_inds, inds_to_filter) # matches removed that the proposed filter does not remove
-	common_rejections = intersect(rejected_inds, inds_to_filter) # matches that were removed and that the proposed filter removes
-
-
-	return length(false_rejections), length(false_acceptances), length(common_rejections), count_correspondences(match), filter_reject_match, actual_reject_match;
-end
-=======
->>>>>>> c040222920318306fdcbff60b4fa6027b4965f8c
-
 #### HACKY
 function get_residual_norms_post(match, ms)
 	src_pts_after, dst_pts_after, filtered = get_globalized_correspondences_post(ms, findfirst(match_in_ms -> match_in_ms.src_index == match.src_index && match_in_ms.dst_index == match.dst_index, ms.matches));

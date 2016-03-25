@@ -519,5 +519,8 @@ function get_params(meshset::MeshSet, property_name)
     if haskey(meshset.properties["params"], "match")
       if haskey(meshset.properties["params"]["match"], property_name)
         property = meshset.properties[property_name]
+      end
+    end
+  end  
   return property
 end
