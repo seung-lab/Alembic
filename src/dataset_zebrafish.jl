@@ -3,11 +3,7 @@ global ROI_LAST = (8,173,0,0);
 
 function get_name(index)
     if is_overview(index)
-        if cur_dataset == "zebrafish"
-            return string("MontageOverviewImage_W00", index[1], "_sec", index[2])
-        else
-            return string("MontageOverviewImage_S2-W00", index[1], "_sec", index[2])
-        end
+        return string("MontageOverviewImage_W00", index[1], "_sec", index[2])
     elseif is_montaged(index)
         return string(index[1], ",", index[2], "_montaged")
     elseif is_prealigned(index)
@@ -29,11 +25,7 @@ end
 function get_path(index, ext = ".h5")
     name = get_name(index)
     if is_overview(index)
-        if cur_dataset == "zebrafish"
-            section_folder = string("W00", index[1], "_Sec", index[2], "_Montage")
-        else
-            section_folder = string("S2-W00", index[1], "_Sec", index[2], "_Montage")
-        end
+        section_folder = string("W00", index[1], "_Sec", index[2], "_Montage")
         path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ext))
     elseif is_montaged(index)
         path = joinpath(MONTAGED_DIR, string(name, ext))
@@ -44,14 +36,9 @@ function get_path(index, ext = ".h5")
     elseif is_finished(index)
         path = joinpath(FINISHED_DIR, string(name, ext))
     else
-        if cur_dataset == "zebrafish"
-            section_folder = string("W00", index[1], "_Sec", index[2], "_Montage")
-        else
-            section_folder = string("S2-W00", index[1], "_Sec", index[2], "_Montage")
-        end
+        section_folder = string("S2-W00", index[1], "_Sec", index[2], "_Montage")
         path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ext))
     end
-    # println(path)
     return path
 end
 
@@ -78,18 +65,6 @@ function get_thumbnail_path(indexA::Index, indexB::Index)
   else
     return joinpath(ALIGNED_DIR, "review", fn) 
   end
-end
-
-
-function waferpaths_to_dict(waferpath_filename)
-    wdict = Dict()
-    if isfile(waferpath_filename)
-        warray = readdlm(waferpath_filename)
-        for (idx, path) in zip(warray[:,1], warray[:,2])
-            wdict[idx] = path
-        end
-    end
-    return wdict
 end
 
 function parse_index(s::String)
@@ -151,6 +126,8 @@ function parse_registry(path::String)
     return registry
 end
 
+bucket_dir_path = ""
+
 if contains(gethostname(), "seunglab") || contains(gethostname(), "spock") 
  bucket_dir_path = "/mnt/bucket/labs/seung/"
 end
@@ -191,9 +168,9 @@ else
 end
 =#
 
-datasets_dir_path = "research/Julimaps/datasets"
-cur_dataset = "piriform"
-#cur_dataset = "zebrafish"
+datasets_dir_path = joinpath(homedir(), "datasets")
+#datasets_dir_path = joinpath(homedir(), "seungmount", "research", "Julimaps", "datasets")
+cur_dataset = "zebrafish"
 affine_dir_path = "~"
 
 premontaged_dir_path = "1_premontaged"
@@ -206,7 +183,6 @@ if isdefined(:review_round)
     aligned_dir_path = joinpath(aligned_dir_path, review_round)
 end    
 
-wafer_filename = "wafer_paths.txt"
 premontaged_registry_filename = "registry_premontaged.txt"
 montaged_registry_filename = "registry_montaged.txt"
 prealigned_registry_filename = "registry_prealigned.txt"
@@ -227,7 +203,7 @@ else
     end
 end
 
-export BUCKET, DATASET_DIR, AFFINE_DIR, WAFER_DIR_DICT, PREMONTAGED_OFFSETS, PREMONTAGE_DIR, ALIGNMENT_DIR, INSPECTION_DIR
+export BUCKET, DATASET_DIR, AFFINE_DIR, PREMONTAGED_OFFSETS, PREMONTAGE_DIR, ALIGNMENT_DIR, INSPECTION_DIR
 
 global BUCKET = bucket_dir_path
 global AFFINE_DIR = affine_dir_path
@@ -238,9 +214,6 @@ global PREALIGNED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset
 global ALIGNED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, aligned_dir_path)
 global FINISHED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, finished_dir_path)
 global INSPECTION_DIR = inspection_storage_path
-
-waferpath_filename = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, wafer_filename)
-global WAFER_DIR_DICT = waferpaths_to_dict(waferpath_filename)
 
 premontaged_registry_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, premontaged_dir_path, premontaged_registry_filename)
 global REGISTRY_PREMONTAGED = parse_registry(premontaged_registry_path)
@@ -255,5 +228,4 @@ global REGISTRY_PREALIGNED = parse_registry(prealigned_registry_path)
 aligned_registry_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, aligned_dir_path, aligned_registry_filename)
 global REGISTRY_ALIGNED = parse_registry(aligned_registry_path)
 
-show_plot = false
 

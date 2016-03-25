@@ -198,6 +198,9 @@ function MeshSet(first_index, last_index; params=get_params(first_index), solve=
 					)
 	meshset = MeshSet(meshes, matches, properties);
 	match!(meshset, params["match"]["depth"]);
+	for filter in values(params["filter"])
+		filter!(meshset, filter...)
+	end
 	if solve == true
 	solve!(meshset, method=solve_method);
 	end
@@ -513,11 +516,12 @@ function get_global_bb(meshset)
   return global_bb
 end  
 
-function get_params(meshset::MeshSet, property_name)
-  property = None
+#=
+function get_param(meshset::MeshSet, property_name)
+  property = nothing;
   if haskey(meshset.properties, "params")
     if haskey(meshset.properties["params"], "match")
       if haskey(meshset.properties["params"]["match"], property_name)
         property = meshset.properties[property_name]
   return property
-end
+end =#
