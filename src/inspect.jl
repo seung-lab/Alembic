@@ -30,6 +30,20 @@ end
 """
 The only function called by tracers to inspect alignment points
 """
+function inspect_alignments(firstindex::Index, lastindex::Index, meshset_ind)
+  match_ind = 1
+  name = string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned")
+  meshset = load_split(name, meshset_ind)
+  match = meshset.matches[match_ind]
+  src_dst = string(join(match.src_index[1:2], ","), "-", join(match.dst_index[1:2], ","))
+  println(name, ": ", src_dst, " @ ", match_ind, " / ", length(meshset.matches))
+  imgc, img2, matches, vectors, params = view_matches(meshset, match_ind);
+  enable_inspection(imgc, img2, meshset, matches, vectors, params, "alignment", (firstindex, lastindex, match.src_index, match.dst_index));
+end
+
+"""
+The only function called by tracers to inspect alignment points
+"""
 function inspect_alignments(firstindex::Index, lastindex::Index, src_index::Index, dst_index::Index)
   match_ind = 1
   name = string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned")
@@ -89,11 +103,10 @@ function view_matches(meshset, k)
   params["sigma"] = 3
   sr = params["search_r"]
 
-  factor = 10
   pts_all = hcat(get_correspondences(match)[1]...)
   pts = hcat(get_filtered_correspondences(match)[1]...)
-  sigma_all = get_properties(match, "sigma_5")*factor
-  sigma = get_filtered_properties(match, "sigma_5")*factor
+  sigma_all = get_properties(match, "sigma_5")
+  sigma = get_filtered_properties(match, "sigma_5")
   r_val_all = get_properties(match, "r_val")
   r_val = get_filtered_properties(match, "r_val")
   dv_all = hcat(get_properties(match, "dv")...)
@@ -111,16 +124,19 @@ function view_matches(meshset, k)
     grid("on")
     title("r_val")
     subplot(222)
-    plt[:scatter](dv_all[2,:], -dv_all[1,:], color="#990000")
-    plt[:scatter](dv_bounds[:,1], dv_bounds[:,2], color="#0f0f0f", marker="+")
+    plt[:scatter](dv_all[2,:], -dv_all[1,:], s=sigma_all, color="#990000", alpha=0.5)
+    plt[:scatter](dv_bounds[:,1], dv_bounds[:,2], color="#0f0f0f", marker="+", alpha=0.5)
     grid("on")
     title("dv")
     subplot(223)
-    plt[:scatter](pts_all[2,:], -pts_all[1,:], s=r_val_all*1000, color="#990000")
+    # plt[:hist](sigma_all, 20, color="#990000")
+    # grid("on")
+    # title("sigma")
+    plt[:scatter](pts_all[2,:], -pts_all[1,:], s=r_val_all*100, color="#990000", alpha=0.5)
     grid("on")
     title("r_val size")
     subplot(224)
-    plt[:scatter](pts_all[2,:], -pts_all[1,:], s=sigma_all, color="#990000")
+    plt[:scatter](pts_all[2,:], -pts_all[1,:], s=sigma_all, color="#990000", alpha=0.5)
     grid("on")
     title("sigma size")
     fig[:canvas][:draw]()
@@ -133,15 +149,18 @@ function view_matches(meshset, k)
     grid("on")
     title("r_val")
     subplot(222)
-    plt[:scatter](dv[2,:], -dv[1,:], color="#009900")
+    plt[:scatter](dv[2,:], -dv[1,:], s=sigma, color="#009900", alpha=0.5)
     grid("on")
     title("dv")
     subplot(223)
-    plt[:scatter](pts[2,:], -pts[1,:], s=r_val*1000, color="#009900")
+    # plt[:hist](sigma, 20, color="#009900")
+    # grid("on")
+    # title("sigma")
+    plt[:scatter](pts[2,:], -pts[1,:], s=r_val*100, color="#009900", alpha=0.5)
     grid("on")
     title("r_val size")
     subplot(224)
-    plt[:scatter](pts[2,:], -pts[1,:], s=sigma, color="#009900")
+    plt[:scatter](pts[2,:], -pts[1,:], s=sigma, color="#009900", alpha=0.5)
     grid("on")
     title("sigma size")
     fig[:canvas][:draw]()
@@ -265,6 +284,7 @@ function enable_inspection(imgc::ImageView.ImageCanvas,
   bind(win, "<Escape>", path->disable_inspection(imgc, img2))
   bind(win, "<Destroy>", path->disable_inspection(imgc, img2))
   # bind(win, "z", path->end_edit())
+  bind(win, "c", path->compare_filter(imgc, img2, matches, vectors))
   bind(win, ",", path->decrease_distance_filter(imgc, img2, matches, vectors, params))
   bind(win, ".", path->increase_distance_filter(imgc, img2, matches, vectors, params))
   bind(win, "n", path->decrease_sigma_filter(imgc, img2, matches, vectors, params))
@@ -286,6 +306,7 @@ function disable_inspection(imgc::ImageView.ImageCanvas, img2::ImageView.ImageSl
   bind(win, "<Destroy>", path->path)
   bind(win, "<Escape>", path->path)
   bind(win, "<Control-z>", path->path)
+  bind(win, "c", path->path)
   bind(win, ",", path->path)
   bind(win, ".", path->path)
   bind(win, "=", path->path)
@@ -331,10 +352,40 @@ function go_to_next_inspection(imgc, img2, meshset, stage, calls)
 end
 
 """
-Convention: mask is FALSE if point is to be REMOVED
+Preliminary method to test filters in the GUI
 """
-function update_annotations(imgc, img2, matches, vectors)
-  mask = get_filtered_indices(matches)
+function compare_filter(imgc, img2, match, vectors)
+  filter = ("sigma_5", >, 5)
+  inds_to_filter = Array{Any, 1}()
+  attributes = get_properties(match, filter[1])
+  push!(inds_to_filter, find(i -> filter[2](i, filter[3]), attributes))
+  inds_to_filter = union(inds_to_filter...)
+  rejected_inds = get_rejected_indices(match)
+
+  manual_removed_sigma_did_not = setdiff(rejected_inds, inds_to_filter)
+  reverse_mask = collect(setdiff(Set(1:length(attributes)), manual_removed_sigma_did_not))
+
+  clear_filters!(match)
+  filter_manual!(match, reverse_mask)
+  update_annotations(imgc, img2, match, vectors)
+end
+
+"""
+Invert to just the bad matches
+"""
+function show_removed(imgc, img2, match, vectors)
+  all_inds = Set(1:length(match.src_points))
+  rejected_inds = get_rejected_indices(match)
+
+  accepted_inds = collect(setdiff(all_inds, rejected_inds))
+
+  clear_filters!(match)
+  filter_manual!(match, accepted_inds)
+  update_annotations(imgc, img2, match, vectors)
+end
+
+function update_annotations(imgc, img2, match, vectors)
+  mask = get_filtered_indices(match)
   for an in Base.values(imgc.annotations)
     if :pts in fieldnames(an.data)
       an.data.pts = vectors[1:2, mask]
@@ -398,7 +449,6 @@ function remove_contained_points(imgc, img2, matches, vectors, bb)
   println("Brushtool removed ", length(contained_indices), " points")
   filter_manual!(matches, contained_indices)
   update_annotations(imgc, img2, matches, vectors)
-  ImageView.redraw(imgc)
 end
 
 function detect_blockmatch_removal(imgc::ImageView.ImageCanvas, 
@@ -682,15 +732,15 @@ function get_meshset_with_edits(meshset, ind, logs)
 end
 
 function update_montage_meshsets(waferA, secA, waferB, secB)
-  indices = get_index_range((waferA,secA,-2,-2), (waferB,secB,-2,-2))
+  indices = get_index_range(montaged(waferA,secA), montaged(waferB,secB))
   logs = compile_review_logs("montage")
   logs = get_most_recent_logs(logs)
   for index in indices
     meshset = load(index)
     meshset = get_meshset_with_edits(meshset, index, logs)
     save(meshset)
-    solve!(meshset, method="elastic")
-    save(meshset)
+    # solve!(meshset, method="elastic")
+    # save(meshset)
   end
 end
 
@@ -735,6 +785,10 @@ function is_dv_near_search_r(match::Match, sr, factor=0.05)
   return sum(abs(dv) .> (1-factor)*sr) > 0
 end
 
+function test_match_for_inspection(meshset)
+  # run through matches & flag those that need inspection
+end
+
 function view_dvs(index::Index)
   meshset = load(index)
   sr = get_param(meshset, "search_r")
@@ -766,6 +820,28 @@ function view_dvs(index::Index)
     k += 1
   end
 end
+
+function view_sigma_plots(meshset::MeshSet, range=0:5:100)
+  props = sort(collect(keys(meshset.matches[1].correspondence_properties[1])))
+  colors = ["#000055", "#005500", "#550000", "#0000dd", "#00dd00", "#dd0000"]
+  c_ind = 0
+  for k in props
+    if contains(k, "sigma")
+      c_ind += 1
+      precision = []
+      recall = []
+      for r in range
+        fp, fn, tp, total = eval_filters(meshset, [(k, >, r, 0)] ,:);
+        push!(precision, (100 * tp / (fp + tp)))
+        push!(recall, (100 * tp / (fn + tp)))
+      end
+      plt[:scatter](precision, recall, label=k, color=colors[c_ind], alpha=0.5)
+    end
+  end
+  legend(loc="upper right",fancybox="true")
+  grid("on")
+end
+
 
 function view_dv_dispersion(index::Index)
   meshset = load(index)
