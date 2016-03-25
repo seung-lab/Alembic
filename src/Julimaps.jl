@@ -65,7 +65,7 @@ global const SHARED_DST_IMAGE = SharedArray(IMG_ELTYPE, SUP_SIZE)
 
 PKGS_USED = ["HDF5", "JLD", "Images", "ImageView", "Colors", "FixedPointNumbers", "Cairo", "IterativeSolvers", "Optim", "Distributions", "RegERMs", "PyPlot"]
 
-PKGS_USED_CLONABLE = ["https://github.com/JuliaSparse/MKLSparse.jl.git", ""]
+PKGS_USED_CLONABLE = ["https://github.com/JuliaSparse/MKLSparse.jl.git", "https://github.com/seung-lab/ImageRegistration.git"]
 
 
 using HDF5
@@ -90,8 +90,8 @@ include("Index.jl")
 include("registry.jl")
 if ON_AWS
   #include("filesystem_formyelin.jl")
-    include("dataset_retina.jl")
-      include("params_retina.jl")
+    include("dataset_zebrafish.jl")
+      include("params_default.jl")
       #  using AWS
       #  using AWS.S3
       #include("filesystem_aws.jl")
