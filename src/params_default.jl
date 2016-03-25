@@ -60,6 +60,8 @@ global PARAMS_MONTAGE = Dict(
 					"ftol_cg" => FTOL_CG_MONTAGE,
 					"max_iters" => MAX_ITERS_MONTAGE),
 			     "filter" => Dict(
+			     		"sigma_filter" => (0.5, >, 5),
+			     		"r_filter" => ("r_max", <, 0.2)
 					      ),
 			     "render" => Dict(
 					      ),
