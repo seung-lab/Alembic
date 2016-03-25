@@ -31,7 +31,6 @@ function get_correspondences(match::Match; globalized=false)
 	end
 end
 
-
 function get_filtered_correspondences(match::Match; globalized=false)
 	src_pts, dst_pts = get_correspondences(match; globalized = globalized);
 	return src_pts[get_filtered_indices(match)], dst_pts[get_filtered_indices(match)];
@@ -50,20 +49,23 @@ function get_rejected_indices(match::Match)
 end
 
 ### property handling
-function get_properties(match::Match, property_name::String)
-	return map(get, match.correspondence_properties, repeated(property_name), repeated(nothing));
-end
-
-function get_properties(match::Match, property_name::String)
-	props = map(get, match.correspondence_properties, repeated(property_name[1]), repeated(nothing));
-	for property in property_names[2:end]
-	  props = map(getindex, props, repeated(property));
-	end
-	return props
+function get_properties(match::Match, property_name)
+	return map(get_dfs, match.correspondence_properties, repeated(property_name));
 end
 
 function get_properties(match::Match, fn::Function, args...)
 	return fn(match, args...)
+end
+
+function get_dfs(dict::Dict, keytofetch)
+	for key in keys(dict)
+		if key == keytofetch
+		  return get(dict, key, nothing)
+		elseif typeof(get(dict, key, nothing)) <: Dict
+		  if get_dfs(get(dict, key, nothing), keytofetch) != nothing return get_dfs(get(dict, key, nothing), keytofetch) end
+		end
+	end	
+	return nothing;
 end
 
 function get_filtered_properties(match::Match, property_name::String)
@@ -293,9 +295,6 @@ function filter!(match::Match, property_name, compare, threshold)
 	#println("$(length(inds_to_filter)) / $(count_correspondences(match)) rejected.");
 	return length(inds_to_filter);
 end
-
-
-
 
 #### HACKY
 function get_residual_norms_post(match, ms)
