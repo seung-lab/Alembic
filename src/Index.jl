@@ -161,7 +161,7 @@ function get_index_range(first_index, last_index)
     first_index, last_index = aligned(first_index), aligned(last_index)
   end
 	ran = get_registry(last_index)[get_range_in_registry(first_index, last_index), 2];
-	ran[1] = first_index;
+	#ran[1] = first_index;
 	return ran;
 end
 

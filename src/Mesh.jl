@@ -337,5 +337,4 @@ end
 
 function is_fixed(mesh::Mesh)
 	get(mesh.properties, "fixed", false)
-		#	return mesh.properties["fixed"];
 end

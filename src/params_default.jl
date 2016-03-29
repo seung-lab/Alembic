@@ -1,16 +1,16 @@
-MESH_LENGTH_MONTAGE = 175
+MESH_LENGTH_MONTAGE = 300
 GLOBAL_OFFSETS_MONTAGE = true
 BLOCKMATCH_SCALE_MONTAGE = 1.0
-BLOCK_R_MONTAGE = 60
-SEARCH_R_MONTAGE = 88
+BLOCK_R_MONTAGE = 45
+SEARCH_R_MONTAGE = 102
 MONOBLOCK_SCALE_MONTAGE = 1
 MONOBLOCK_MATCH_MONTAGE = false
 MONOBLOCK_RATIO_MONTAGE = 0.4
 MONOBLOCK_PADDING_MONTAGE = 0.0
 MESH_SPRING_COEFF_MONTAGE = 1.0
-MATCH_SPRING_COEFF_MONTAGE = 3.0 
+MATCH_SPRING_COEFF_MONTAGE = 5.0 
 FTOL_CG_MONTAGE = 1/100000
-MAX_ITERS_MONTAGE = 1000
+MAX_ITERS_MONTAGE = 2000
 
 MESH_LENGTH_PREALIGNMENT = 4000
 GLOBAL_OFFSETS_PREALIGNMENT = false
@@ -60,8 +60,8 @@ global PARAMS_MONTAGE = Dict(
 					"ftol_cg" => FTOL_CG_MONTAGE,
 					"max_iters" => MAX_ITERS_MONTAGE),
 			     "filter" => Dict(
-			     		"sigma_filter" => (0.5, >, 5),
-			     		"r_filter" => ("r_max", <, 0.2)
+			     		"sigma_filter" => (0.5, >, 7.5),
+			     		"r_filter" => ("r_max", <, 0.25)
 					      ),
 			     "render" => Dict(
 					      ),
