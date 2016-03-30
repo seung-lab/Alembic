@@ -55,7 +55,8 @@ function write_seams(meshset, imgs, offsets, indices)
         bb = bbs[i] - bbs[j]
         img_cropped = imcrop(img, fuse_offset, bb)
         f = h5open(path, "w")
-        @time f["img", "chunk", (50,50)] = img_cropped
+    	chunksize = min(50, min(size(img_cropped)...))
+    	@time f["img", "chunk", (chunksize,chunksize)] = img_cropped
         f["offset"] = [bb.i, bb.j]
         f["scale"] = 1.0
         close(f)
@@ -90,7 +91,8 @@ function render_montaged(waferA, secA, waferB, secB; render_full=true, render_re
         img, offset = merge_images(imgs, offsets)
         println("Writing ", new_fn)
         f = h5open(joinpath(MONTAGED_DIR, new_fn), "w")
-        @time f["img", "chunk", (1000,1000)] = img
+    	chunksize = min(1000, min(size(img)...))
+    	@time f["img", "chunk", (chunksize,chunksize)] = img
         close(f)
         update_offset(montaged(index), [0,0], size(img))
       end

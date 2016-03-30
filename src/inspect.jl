@@ -105,10 +105,17 @@ function view_matches(meshset, k)
 
   pts_all = hcat(get_correspondences(match)[1]...)
   pts = hcat(get_filtered_correspondences(match)[1]...)
+  if !ON_AWS
   sigma_all = get_properties(match, "sigma_5")
   sigma = get_filtered_properties(match, "sigma_5")
   r_val_all = get_properties(match, "r_val")
-  r_val = get_filtered_properties(match, "r_val")
+  r_val = get_filtered_properties(match, "r_val")=#
+  else
+  sigma_all = get_properties(match, .5)
+  sigma = get_filtered_properties(match, .5)
+  r_val_all = get_properties(match, "r_max")
+  r_val = get_filtered_properties(match, "r_max")
+  end
   dv_all = hcat(get_properties(match, "dv")...)
   dv = hcat(get_filtered_properties(match, "dv")...)
   dv_bounds = vcat([[i -sr] for i=-sr:5:sr]...,
@@ -145,6 +152,7 @@ function view_matches(meshset, k)
   end
   if length(r_val) > 1 && length(dv) > 1
     subplot(221)
+    println(r_val);
     plt[:hist](r_val, 20, color="#009900")
     grid("on")
     title("r_val")
@@ -521,6 +529,7 @@ function filter_match_distance(imgc, img2, matches, vectors, dist)
 end
 
 function filter_match_sigma(imgc, img2, matches, vectors, sigma)
+  if !ON_AWS
   # hack to test if a match_distance filter was just implemented
   if length(matches.filters) > 0
     if matches.filters[end]["type"] == "sigma_5"
@@ -529,6 +538,15 @@ function filter_match_sigma(imgc, img2, matches, vectors, sigma)
   end
   println("Sigma filter @ ", sigma)
   filter!(matches, "sigma_5", >, sigma)
+  else
+  if length(matches.filters) > 0
+    if matches.filters[end]["type"] == .5
+      undo_filter!(matches)
+    end
+  end
+  println("Sigma filter @ ", sigma)
+  filter!(matches, .5, >, sigma)
+  end
   update_annotations(imgc, img2, matches, vectors)
 end
 

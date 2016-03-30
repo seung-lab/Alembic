@@ -50,7 +50,11 @@ end
 
 ### property handling
 function get_properties(match::Match, property_name)
-	return map(get_dfs, match.correspondence_properties, repeated(property_name));
+	ret = map(get_dfs, match.correspondence_properties, repeated(property_name));
+	if length(ret) != 0
+	ret = Array{typeof(ret[1])}(ret);
+      	end
+
 end
 
 function get_properties(match::Match, fn::Function, args...)
@@ -68,9 +72,8 @@ function get_dfs(dict::Dict, keytofetch)
 	return nothing;
 end
 
-function get_filtered_properties(match::Match, property_name::String)
-	cp = get_filtered_correspondence_properties(match)
-	return map(get, cp, repeated(property_name), repeated(nothing));
+function get_filtered_properties(match::Match, property_name)
+  	return get_properties(match, property_name)[get_filtered_indices(match)]
 end
 
 ### reviewing
