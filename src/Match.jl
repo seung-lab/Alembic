@@ -296,6 +296,7 @@ end
 
 function filter!(match::Match, property_name, compare, threshold)
 	attributes = get_properties(match, property_name)
+	if attributes == nothing return 0; end
 	inds_to_filter = find(i -> compare(i, threshold), attributes);
 	push!(match.filters, Dict{Any, Any}(
 				"author" => author(),
