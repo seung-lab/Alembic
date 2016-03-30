@@ -313,7 +313,7 @@ function stats(meshset::MeshSet)
 
   residuals_pre = Points(0)
   residuals_post = Points(0)
-  r_vals = Array{Float64}(0)
+  r_maxs = Array{Float64}(0)
   matches_to_review = Array{Match, 1}(0)
 
   meshes = Dict{Any, Any}();
@@ -328,172 +328,171 @@ function stats(meshset::MeshSet)
 	print("    ")
 	print("rms_pre   ")
 	print("avg_pre   ")
-	print("sig_pre   ")
+	print("std_pre   ")
 	print("max_pre   ")
 	print("    ")
 	print("rms_post  ")
 	print("avg_post  ")
-	print("sig_post  ")
+	print("std_post  ")
 	print("max_post  ")
 	print("     ")
 	print("rms_r     ")
 	print("avg_r     ")
-	print("sig_r     ")
+	print("std_r     ")
 	print("min_r     ")
 	print("flags")
 	println();
 
   for match in meshset.matches
-	src_mesh = meshes[match.src_index]
-	dst_mesh = meshes[match.dst_index]
+  	src_mesh = meshes[match.src_index]
+  	dst_mesh = meshes[match.dst_index]
 
-	# handle for empty match
+  	# handle for empty match
   	if count_filtered_correspondences(match) == 0
-		print(@sprintf("%4i", findfirst(this -> meshset.matches[this] == match, 1:count_matches(meshset))));
-		print(@sprintf("%14s", string(src_mesh.index)))
-		print("->")
-		print(@sprintf("%14s", string(dst_mesh.index)))
-		print(@sprintf("%6i", count_filtered_correspondences(match)))
-		println()
-		continue;
-	end
+  		print(@sprintf("%4i", findfirst(this -> meshset.matches[this] == match, 1:count_matches(meshset))));
+  		print(@sprintf("%14s", string(src_mesh.index)))
+  		print("->")
+  		print(@sprintf("%14s", string(dst_mesh.index)))
+  		print(@sprintf("%6i", count_filtered_correspondences(match)))
+  		println()
+  		continue;
+  	end
 
-	src_pts, dst_pts = get_filtered_correspondences(match);
-	props = get_filtered_correspondence_properties(match);
+  	src_pts, dst_pts = get_filtered_correspondences(match);
+  	props = get_filtered_correspondence_properties(match);
 
-	src_pt_triangles = find_mesh_triangle(src_mesh, src_pts);
-	src_pt_weights = get_triangle_weights(src_mesh, src_pts, src_pt_triangles);
-	dst_pt_triangles = find_mesh_triangle(dst_mesh, dst_pts);
-	dst_pt_weights = get_triangle_weights(dst_mesh, dst_pts, dst_pt_triangles);
+  	src_pt_triangles = find_mesh_triangle(src_mesh, src_pts);
+  	src_pt_weights = get_triangle_weights(src_mesh, src_pts, src_pt_triangles);
+  	dst_pt_triangles = find_mesh_triangle(dst_mesh, dst_pts);
+  	dst_pt_weights = get_triangle_weights(dst_mesh, dst_pts, dst_pt_triangles);
 
-	src_pts_after = Points(map(get_tripoint_dst, repeated(src_mesh), src_pt_triangles, src_pt_weights));
-	dst_pts_after = Points(map(get_tripoint_dst, repeated(dst_mesh), dst_pt_triangles, dst_pt_weights));
+  	src_pts_after = Points(map(get_tripoint_dst, repeated(src_mesh), src_pt_triangles, src_pt_weights));
+  	dst_pts_after = Points(map(get_tripoint_dst, repeated(dst_mesh), dst_pt_triangles, dst_pt_weights));
 
-	g_src_pts = src_pts + fill(get_offset(match.src_index), length(src_pts));
-	g_src_pts_after = src_pts_after + fill(get_offset(match.src_index), length(src_pts));
+  	g_src_pts = src_pts + fill(get_offset(match.src_index), length(src_pts));
+  	g_src_pts_after = src_pts_after + fill(get_offset(match.src_index), length(src_pts));
 
-	if !haskey(params, "registry") || params["registry"]["global_offsets"]
-		g_dst_pts = dst_pts + fill(get_offset(match.dst_index), length(dst_pts));
-		g_dst_pts_after = dst_pts_after + fill(get_offset(match.dst_index), length(dst_pts));
-	else
-		g_dst_pts = dst_pts;
-		g_dst_pts_after = dst_pts_after;
+  	if !haskey(params, "registry") || params["registry"]["global_offsets"]
+  		g_dst_pts = dst_pts + fill(get_offset(match.dst_index), length(dst_pts));
+  		g_dst_pts_after = dst_pts_after + fill(get_offset(match.dst_index), length(dst_pts));
+  	else
+  		g_dst_pts = dst_pts;
+  		g_dst_pts_after = dst_pts_after;
 
-	end
+  	end
 
-	residuals_match_pre = g_dst_pts - g_src_pts;
-	residuals_match_post = g_dst_pts_after - g_src_pts_after;
-	r_vals_match = Array{Float64}(map(getindex, props, repeated("r_val")));
+  	residuals_match_pre = g_dst_pts - g_src_pts;
+  	residuals_match_post = g_dst_pts_after - g_src_pts_after;
+  	r_maxs_match = Array{Float64}(map(get_dfs, props, repeated("r_max")));
 
    	res_norm = map(norm, residuals_match_pre)
    	rms_pre = sqrt(mean(res_norm.^2))
    	avg_pre = mean(res_norm)
-   	sig_pre = std(res_norm)
+   	std_pre = std(res_norm)
    	max_pre = maximum(res_norm)
 
    	res_norm_post = map(norm, residuals_match_post)
    	rms_post = sqrt(mean(res_norm_post.^2))
    	avg_post = mean(res_norm_post)
-   	sig_post = std(res_norm_post)
+   	std_post = std(res_norm_post)
    	max_post = maximum(res_norm_post)
 
-   	rms_r = sqrt(mean(r_vals_match.^2))
-   	avg_r = mean(r_vals_match)
-   	sig_r = std(r_vals_match)
-   	min_r = minimum(r_vals_match)
+   	rms_r = sqrt(mean(r_maxs_match.^2))
+   	avg_r = mean(r_maxs_match)
+   	std_r = std(r_maxs_match)
+   	min_r = minimum(r_maxs_match)
 
    	rms_pre_s = @sprintf("%10.2f", rms_pre)
    	avg_pre_s = @sprintf("%10.2f", avg_pre) 
-   	sig_pre_s = @sprintf("%10.2f", sig_pre)
+   	std_pre_s = @sprintf("%10.2f", std_pre)
    	max_pre_s = @sprintf("%10.2f", max_pre)
 
    	rms_post_s = @sprintf("%10.2f", rms_post)
    	avg_post_s = @sprintf("%10.2f", avg_post) 
-   	sig_post_s = @sprintf("%10.2f", sig_post)
+   	std_post_s = @sprintf("%10.2f", std_post)
    	max_post_s = @sprintf("%10.2f", max_post)
 
    	rms_r_s = @sprintf("%10.3f", rms_r) 
    	avg_r_s = @sprintf("%10.3f", avg_r)
-   	sig_r_s = @sprintf("%10.3f", sig_r)
+   	std_r_s = @sprintf("%10.3f", std_r)
    	min_r_s = @sprintf("%10.3f", min_r)
 
 
-	print(@sprintf("%4i", findfirst(this -> meshset.matches[this] == match, 1:count_matches(meshset))));
-	print(@sprintf("%14s", string(src_mesh.index)))
-	print("->")
-	print(@sprintf("%14s", string(dst_mesh.index)))
-	print(@sprintf("%6i", count_filtered_correspondences(match)))
-	print("    ")
-	print(rms_pre_s)
-	print(avg_pre_s)
-	print(sig_pre_s)
-	print(max_pre_s)
-	print("    ")
-	print(rms_post_s)
-	print(avg_post_s)
-	print(sig_post_s)
-	print(max_post_s)
-	print("    ")
-	print(rms_r_s)
-	print(avg_r_s)
-	print(sig_r_s)
-	print(min_r_s)
-	print("       ")
+  	print(@sprintf("%4i", findfirst(this -> meshset.matches[this] == match, 1:count_matches(meshset))));
+  	print(@sprintf("%14s", string(src_mesh.index)))
+  	print("->")
+  	print(@sprintf("%14s", string(dst_mesh.index)))
+  	print(@sprintf("%6i", count_filtered_correspondences(match)))
+  	print("    ")
+  	print(rms_pre_s)
+  	print(avg_pre_s)
+  	print(std_pre_s)
+  	print(max_pre_s)
+  	print("    ")
+  	print(rms_post_s)
+  	print(avg_post_s)
+  	print(std_post_s)
+  	print(max_post_s)
+  	print("    ")
+  	print(rms_r_s)
+  	print(avg_r_s)
+  	print(std_r_s)
+  	print(min_r_s)
+  	print("       ")
 
-	# FLAG PARAMETERS
-	if rms_post > 10 || avg_post > 5 || max_post > 25 || min_r < .5
-		print("*")
-		push!(matches_to_review, match)
-	end
-	println()
-	      
-	append!(residuals_pre, residuals_match_pre)
-	append!(residuals_post, residuals_match_post)
-	append!(r_vals, r_vals_match)
+  	# FLAG PARAMETERS
+  	if is_flagged(match)
+  		print("*")
+  		push!(matches_to_review, match)
+  	end
+  	println()
+  	      
+  	append!(residuals_pre, residuals_match_pre)
+  	append!(residuals_post, residuals_match_post)
+  	append!(r_maxs, r_maxs_match)
   end
 
+ 	res_norm = map(norm, residuals_pre)
+ 	rms_pre = sqrt(mean(res_norm.^2))
+ 	avg_pre = mean(res_norm)
+ 	std_pre = std(res_norm)
+ 	max_pre = maximum(res_norm)
 
-   	res_norm = map(norm, residuals_pre)
-   	rms_pre = sqrt(mean(res_norm.^2))
-   	avg_pre = mean(res_norm)
-   	sig_pre = std(res_norm)
-   	max_pre = maximum(res_norm)
+ 	res_norm_post = map(norm, residuals_post)
+ 	rms_post = sqrt(mean(res_norm_post.^2))
+ 	avg_post = mean(res_norm_post)
+ 	std_post = std(res_norm_post)
+ 	max_post = maximum(res_norm_post)
 
-   	res_norm_post = map(norm, residuals_post)
-   	rms_post = sqrt(mean(res_norm_post.^2))
-   	avg_post = mean(res_norm_post)
-   	sig_post = std(res_norm_post)
-   	max_post = maximum(res_norm_post)
+ 	rms_r = sqrt(mean(r_maxs.^2))
+ 	avg_r = mean(r_maxs)
+ 	std_r = std(r_maxs)
+ 	min_r = minimum(r_maxs)
 
-   	rms_r = sqrt(mean(r_vals.^2))
-   	avg_r = mean(r_vals)
-   	sig_r = std(r_vals)
-   	min_r = minimum(r_vals)
+ 	rms_pre_s = @sprintf("%10.2f", rms_pre)
+ 	avg_pre_s = @sprintf("%10.2f", avg_pre) 
+ 	std_pre_s = @sprintf("%10.2f", std_pre)
+ 	max_pre_s = @sprintf("%10.2f", max_pre)
 
-   	rms_pre_s = @sprintf("%10.2f", rms_pre)
-   	avg_pre_s = @sprintf("%10.2f", avg_pre) 
-   	sig_pre_s = @sprintf("%10.2f", sig_pre)
-   	max_pre_s = @sprintf("%10.2f", max_pre)
+ 	rms_post_s = @sprintf("%10.2f", rms_post)
+ 	avg_post_s = @sprintf("%10.2f", avg_post) 
+ 	std_post_s = @sprintf("%10.2f", std_post)
+ 	max_post_s = @sprintf("%10.2f", max_post)
 
-   	rms_post_s = @sprintf("%10.2f", rms_post)
-   	avg_post_s = @sprintf("%10.2f", avg_post) 
-   	sig_post_s = @sprintf("%10.2f", sig_post)
-   	max_post_s = @sprintf("%10.2f", max_post)
+ 	rms_r_s = @sprintf("%10.3f", rms_r) 
+ 	avg_r_s = @sprintf("%10.3f", avg_r)
+ 	std_r_s = @sprintf("%10.3f", std_r)
+ 	min_r_s = @sprintf("%10.3f", min_r)
 
-   	rms_r_s = @sprintf("%10.3f", rms_r) 
-   	avg_r_s = @sprintf("%10.3f", avg_r)
-   	sig_r_s = @sprintf("%10.3f", sig_r)
-   	min_r_s = @sprintf("%10.3f", min_r)
+  println("==============")
+  println("Statistics across all matches")
+  println("Residuals before solving: rms: $rms_pre_s,  mean: $avg_pre_s,  std: $std_pre_s,  max: $max_pre_s")
+  println("Residuals after solving:  rms: $rms_post_s,  mean: $avg_post_s,  std: $std_post_s,  max: $max_post_s")
+  println("r-values:                 rms: $rms_r_s,  mean: $avg_r_s,  std: $std_r_s,  min: $min_r_s")
 
-   println("==============")
-   println("Statistics across all matches")
-   println("Residuals before solving: rms: $rms_pre_s,  mean: $avg_pre_s,  sigma = $sig_pre_s,  max = $max_pre_s")
-   println("Residuals after solving:  rms: $rms_post_s,  mean: $avg_post_s,  sigma = $sig_post_s,  max = $max_post_s")
-   println("r-values:                 rms: $rms_r_s,  mean: $avg_r_s,  sigma = $sig_r_s,  min = $min_r_s")
-
-   println("==============")
-   println("$(length(matches_to_review)) matches flagged for review")
-   println() 
+  println("==============")
+  println("$(length(matches_to_review)) matches flagged for review")
+  println() 
 end
 
 function decomp_affine(tform::Array{Float64, 2})
