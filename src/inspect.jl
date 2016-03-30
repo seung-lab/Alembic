@@ -109,7 +109,7 @@ function view_matches(meshset, k)
   sigma_all = get_properties(match, "sigma_5")
   sigma = get_filtered_properties(match, "sigma_5")
   r_val_all = get_properties(match, "r_val")
-  r_val = get_filtered_properties(match, "r_val")=#
+  r_val = get_filtered_properties(match, "r_val")
   else
   sigma_all = get_properties(match, .5)
   sigma = get_filtered_properties(match, .5)
