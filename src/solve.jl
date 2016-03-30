@@ -443,7 +443,7 @@ function stats(meshset::MeshSet)
 	print("       ")
 
 	# FLAG PARAMETERS
-	if rms_post > 10 || avg_post > 5 || max_post > 25 || min_r < .5
+	if is_flagged(match)
 		print("*")
 		push!(matches_to_review, match)
 	end

@@ -307,6 +307,12 @@ function filter!(match::Match, property_name, compare, threshold)
 	return length(inds_to_filter);
 end
 
+function filter!(match::Match, filters) 
+     for filter in filters
+        filter!(match, filter...);
+     end
+end
+
 #### HACKY
 function get_residual_norms_post(match, ms)
 	src_pts_after, dst_pts_after, filtered = get_globalized_correspondences_post(ms, findfirst(match_in_ms -> match_in_ms.src_index == match.src_index && match_in_ms.dst_index == match.dst_index, ms.matches));

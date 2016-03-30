@@ -75,6 +75,7 @@ function render_montaged(waferA, secA, waferB, secB; render_full=true, render_re
   indexB = montaged(waferB, secB)
   for index in get_index_range(indexA, indexB)
     meshset = load(montaged(index))
+    if is_flagged(meshset) println("The meshset has a flag. Continuing anyway....") end;
     try
       new_fn = string(join(index[1:2], ","), "_montaged.h5")
       println("Rendering ", new_fn)

@@ -80,7 +80,7 @@ using IterativeSolvers
 using ImageRegistration
 using Optim
 using Distributions
-using RegERMs
+#using RegERMs
 #if ENV["USER"] != "dih" && !ON_AWS && !contains(gethostname(), "seunglab")
 using PyPlot
 using MKLSparse
