@@ -50,7 +50,11 @@ end
 
 ### property handling
 function get_properties(match::Match, property_name)
-	return map(get_dfs, match.correspondence_properties, repeated(property_name));
+	ret = map(get_dfs, match.correspondence_properties, repeated(property_name));
+	if length(ret) != 0
+	ret = Array{typeof(ret[1])}(ret);
+      	end
+
 end
 
 function get_properties(match::Match, fn::Function, args...)

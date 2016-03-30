@@ -20,7 +20,7 @@ MeshConjGrad- given spring mesh, solve for equilibrium positions of vertices wit
  could be changed to 1xE binary vector
 """
 
-global eps = 1E-8
+global eps = 1E-16
 
 function Energy(Springs, Stiffnesses, RestLengths)
     # potential energy per spring (normalized)
@@ -36,7 +36,7 @@ function get_lengths(Springs)
     halflen = div(length(Springs), 2);
     r1 = 1:halflen
     r2 = halflen + 1:halflen * 2
-    return sqrt(Springs[r1] .* Springs[r1] .+ Springs[r2] .* Springs[r2])
+    return sqrt(Springs[r1] .* Springs[r1] .+ Springs[r2] .* Springs[r2]) + eps
 end
 
 function Energy_given_lengths(Lengths, Stiffnesses, RestLengths)
@@ -62,7 +62,9 @@ end
 
 function Gradient_given_lengths(Springs, Lengths, Incidence_d, Stiffnesses_d, RestLengths_d)
     Directions = Springs ./ vcat(Lengths, Lengths);
-    Directions[isnan(Directions)] *= 0
+    #if |(isnan(Directions)...)
+    #	Directions[isnan(Directions)] = zeros(Float64, length(Directions[isnan(Directions)]))
+    #end
 
     Forces= (Springs-(Directions .* RestLengths_d)) .* Stiffnesses_d
     (Incidence_d * Forces)

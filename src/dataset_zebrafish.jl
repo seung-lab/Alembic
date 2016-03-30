@@ -1,5 +1,5 @@
-global ROI_FIRST = (1,1,0,0);
-global ROI_LAST = (8,173,0,0);
+global ROI_FIRST = (2,31,0,0);
+global ROI_LAST = (9,173,0,0);
 
 function get_name(index)
     if is_overview(index)
@@ -13,7 +13,7 @@ function get_name(index)
     elseif is_finished(index)
         return string(index[1], ",", index[2], "_finished")
     else
-    return string("Tile_r", index[3], "-c", index[4], "_S2-W00", index[1], "_sec", index[2])
+    return string("Tile_r", index[3], "-c", index[4], "_W00", index[1], "_sec", index[2])
     end
 end
 
@@ -36,8 +36,9 @@ function get_path(index, ext = ".h5")
     elseif is_finished(index)
         path = joinpath(FINISHED_DIR, string(name, ext))
     else
-        section_folder = string("S2-W00", index[1], "_Sec", index[2], "_Montage")
-        path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ext))
+#        section_folder = string("S2-W00", index[1], "_Sec", index[2], "_Montage")
+        #path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ext))
+        path = joinpath(BUCKET, PREMONTAGED_DIR, string(name, ext))
     end
     return path
 end
@@ -217,7 +218,7 @@ global INSPECTION_DIR = inspection_storage_path
 
 premontaged_registry_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, premontaged_dir_path, premontaged_registry_filename)
 global REGISTRY_PREMONTAGED = parse_registry(premontaged_registry_path)
-REGISTRY_PREMONTAGED = hcat(REGISTRY_PREMONTAGED, fill(8000, size(REGISTRY_PREMONTAGED)[1], 2));
+#REGISTRY_PREMONTAGED = hcat(REGISTRY_PREMONTAGED, fill(8000, size(REGISTRY_PREMONTAGED)[1], 2));
 
 montaged_registry_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, montaged_dir_path, montaged_registry_filename)
 global REGISTRY_MONTAGED = parse_registry(montaged_registry_path)

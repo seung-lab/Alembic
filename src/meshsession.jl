@@ -48,28 +48,44 @@ function prealign_stack(first_wafer_num, first_sec_num, last_wafer_num, last_sec
 end
 
 #### ASSUMES HOMOGENEOUS TILE SIZE
-function premontage(wafer::Int, section_range::UnitRange{Int64})
-  for sec in section_range
-    overview_path = get_path(overview(wafer, sec))
-    dir,name = splitdir(overview_path)
-    println(dir)
-    tiles = sort_dir(dir, "tif");
+#function premontage(wafer_range::UnitRange{Int64})
+function premontage(wafer, start)
+#  for wafer in wafer_range
+    premontaged_path = get_path(premontaged(wafer, 1))
+    dir,name = splitdir(premontaged_path)
+    tiles = sort_dir(dir, ".h5");
     tiles = filter(x->contains(x,"Tile"), tiles)
-
     tile_indices = sort(map(parse_name, tiles))
+    tile_indices = filter(x->x[1] == wafer, tile_indices)
+    section_range = start:tile_indices[end][2]
+  for sec in section_range
+    premontaged_path = get_path(premontaged(wafer, sec))
+    dir,name = splitdir(premontaged_path)
+    println("$wafer, $sec")
+    tiles = sort_dir(dir, ".h5");
+    tiles = filter(x->contains(x,"Tile"), tiles)
+    tile_indices = sort(map(parse_name, tiles))
+    tile_indices = filter(x->x[1:2] == (wafer,sec), tile_indices)
+
+    if length(tile_indices) == 0 continue; end
+
     fixed_indices = similar(tile_indices, 0)
     images = map(get_image, tile_indices)
+    images = map(Images.restrict, images);
+    images = map(Images.restrict, images);
 
     #fix the first one
-    update_offset(tile_indices[1], [0, 0], [size(images[1])...]);
+    update_offset(tile_indices[1], [0, 0], [8000,8000]);
     push!(fixed_indices, tile_indices[1])
+    oset = Points(length(tile_indices))
+    oset[1] = [0,0];
 
-    sigma = [2,2]
+    sigma = [1,1]
 
     for index in tile_indices[2:end]
 	target_index = fixed_indices[findfirst(this -> is_adjacent(index, this), fixed_indices)]
 
-	xc = normxcorr2(Images.restrict(Images.restrict(images[findfirst(ind -> ind == index, tile_indices)])), Images.restrict(Images.restrict(images[findfirst(ind -> ind == target_index, tile_indices)])); shape="full")
+	xc = normxcorr2(images[findfirst(ind -> ind == index, tile_indices)], images[findfirst(ind -> ind == target_index, tile_indices)]; shape="full")
 	xcd = xc - Images.imfilter_gaussian(xc, sigma);
 
 	rm, ind = findmax(xcd)
@@ -77,9 +93,12 @@ function premontage(wafer::Int, section_range::UnitRange{Int64})
 	i_diff = 4 * (i_max - median(1:size(xcd, 1)))
 	j_diff = 4 * (j_max - median(1:size(xcd, 2)))
 
-    	update_offset(index, [i_diff, j_diff] + get_offset(target_index), [size(images[findfirst(ind -> ind == index, tile_indices)])...]);
+#    	update_offset(index, [i_diff, j_diff] + get_offset(target_index), [size(images[findfirst(ind -> ind == index, tile_indices)])...]);
+    	update_offset(index, [i_diff, j_diff] + oset[findfirst(ind -> ind == target_index, tile_indices)], [8000,8000]);
+    	oset[findfirst(ind -> ind == index, tile_indices)] = [i_diff, j_diff] + oset[findfirst(ind -> ind == target_index, tile_indices)]
     	push!(fixed_indices, index)
     end
+# end
  end
 end
 #=

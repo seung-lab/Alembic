@@ -446,6 +446,7 @@ function filter_match_distance(imgc, img2, matches, vectors, dist)
 end
 
 function filter_match_sigma(imgc, img2, matches, vectors, sigma)
+  if !ON_AWS
   # hack to test if a match_distance filter was just implemented
   if length(matches.filters) > 0
     if matches.filters[end]["type"] == "sigma_5"
@@ -454,6 +455,15 @@ function filter_match_sigma(imgc, img2, matches, vectors, sigma)
   end
   println("Sigma filter @ ", sigma)
   filter!(matches, "sigma_5", >, sigma)
+  else
+  if length(matches.filters) > 0
+    if matches.filters[end]["type"] == .5
+      undo_filter!(matches)
+    end
+  end
+  println("Sigma filter @ ", sigma)
+  filter!(matches, .5, >, sigma)
+  end
   update_annotations(imgc, img2, matches, vectors)
 end
 

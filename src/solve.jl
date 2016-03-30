@@ -134,7 +134,7 @@ function elastic_solve!(meshset)
   println("Solving meshset: $(count_nodes(meshset)) nodes, $(count_edges(meshset)) edges, $(count_filtered_correspondences(meshset)) correspondences");
 
   nodes = Array{Float64, 2}(2, count_nodes(meshset));
-  nodes_fixed = BinaryProperty(count_nodes(meshset))
+  nodes_fixed = BinaryProperty(falses(count_nodes(meshset)));
 
   edge_lengths = FloatProperty(count_edges(meshset) + count_filtered_correspondences(meshset))
   edge_spring_coeffs = FloatProperty(count_edges(meshset) + count_filtered_correspondences(meshset))
@@ -173,9 +173,9 @@ function elastic_solve!(meshset)
   for mesh in meshset.meshes
     nodes[:, noderanges[mesh.index]] = get_globalized_nodes_h(mesh)[1];
     if is_fixed(mesh)
-    nodes_fixed[noderanges[mesh.index]] = fill(true, count_nodes(mesh));
-    else
-    nodes_fixed[noderanges[mesh.index]] = fill(false, count_nodes(mesh));
+    nodes_fixed[noderanges[mesh.index]][:] = fill(true, count_nodes(mesh))[:];
+   # else
+    #nodes_fixed[noderanges[mesh.index]] = fill(false, count_nodes(mesh));
     end
     edge_lengths[edgeranges[mesh.index]] = get_edge_lengths(mesh);
     edge_spring_coeffs[edgeranges[mesh.index]] = fill(mesh_spring_coeff, count_edges(mesh));
@@ -237,7 +237,9 @@ function elastic_solve!(meshset)
   println("matches collated: $(count_matches(meshset)) matches")
 
 	end #time
-#  return nodes, nodes_fixed, edges, edge_spring_coeffs, edge_lengths, ftol_cg;
+#return nodes, nodes_fixed, edges, edge_spring_coeffs, edge_lengths, max_iters, ftol_cg;
+
+ #println(find(this -> this == true, nodes_fixed));
 
   @time SolveMesh!(nodes, nodes_fixed, edges, edge_spring_coeffs, edge_lengths, max_iters, ftol_cg)
   dst_nodes = Points(0)

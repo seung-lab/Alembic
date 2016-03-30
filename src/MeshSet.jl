@@ -55,7 +55,7 @@ function filter!(meshset::MeshSet, property_name, compare, threshold)
 	for match in meshset.matches
 		total = total + filter!(match, property_name, compare, threshold)
 	end
-	println("$total / $(count_correspondences(meshset)) matches filtered")
+	println("$total / $(count_correspondences(meshset)) correspondences filtered")
 end
 
 ### reviewing
@@ -181,7 +181,7 @@ function MeshSet(index; params=get_params(index))
 	if is_montaged(index) return MeshSet(premontaged(index), premontaged(index)); end
 end
 
-function MeshSet(first_index, last_index; params=get_params(first_index), solve=true, solve_method="elastic", fix_first=false)
+function MeshSet(first_index, last_index; params=get_params(first_index), solve=true, solve_method="elastic", fix_first=false, prefetch_all = false)
 	ind_range = get_index_range(first_index, last_index);
 	if length(ind_range) == 0 return nothing; end
 	fixed_inds = Array{Any, 1}(0);
@@ -197,10 +197,11 @@ function MeshSet(first_index, last_index; params=get_params(first_index), solve=
 					"split_index" => 0)
 					)
 	meshset = MeshSet(meshes, matches, properties);
-	match!(meshset, params["match"]["depth"]);
-	for filter in values(params["filter"])
+	match!(meshset, params["match"]["depth"]; prefetch_all=prefetch_all);
+	for filter in Base.values(params["filter"])
 		filter!(meshset, filter...)
 	end
+	#save(meshset);
 	if solve == true
 	solve!(meshset, method=solve_method);
 	end
@@ -533,6 +534,7 @@ function get_param(meshset::MeshSet, property_name)
         property = meshset.properties[property_name]
       end
     end
+  end
   end  
   return property
 end =#
