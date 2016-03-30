@@ -60,8 +60,15 @@ function migrate!(meshset)
 	end
   end
 
+  if length(meshset.properties["params"]["review"]) == 0
+  	println("MIGRATION: 2016-03-30 MeshSet: adding review criteria"); 
+	meshset.properties["params"]["review"]["filtered_ratio"] = (:get_ratio_filtered, <, 0.2, 20);
+  end
+
   return meshset
 end
+
+
 
 function clean_correspondence_sigmas!(match::Match)
 	for i in 1:count_correspondences(match)

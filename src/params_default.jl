@@ -67,7 +67,7 @@ global PARAMS_MONTAGE = Dict(
 					      ),
 			     "review" => Dict(
 					#	"too_few_corresps" => (:count_correspondences, <, 10),
-						"filtered_ratio" => (:get_ratio_filtered, <, 0.2, 20),
+						"filtered_ratio" => (:get_ratio_filtered, <, 0.2, 20)
 					#	"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.95)
 					      ),
 			     "registry" => Dict(
