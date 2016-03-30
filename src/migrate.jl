@@ -1,6 +1,11 @@
 function migrate!(meshset)
+  match_ind = 0;
+  mesh_ind = 1;
+  for (ind, match) in enumerate(meshset.matches)
+    if count_filtered_correspondences(match) != 0 match_ind = ind end
+  end
   # migrate matches with sigmas at .5,.6,.7,.8
-  if !haskey(meshset.matches[1].correspondence_properties[1], "sigma_5") && !haskey(meshset.matches[1].correspondence_properties[1], "xcorr")
+  if !haskey(meshset.matches[match_ind].correspondence_properties[1], "sigma_5") && !haskey(meshset.matches[match_ind].correspondence_properties[1], "xcorr")
   	println("MIGRATION: 2016-03-20 Match: computing sigmas for correspondences"); 
 	migrate_correspondence_sigmas!(meshset);
   end
@@ -11,27 +16,27 @@ function migrate!(meshset)
         meshset.properties["params"]["solve"]["max_iters"] = 500;
   end
 
-  if !haskey(meshset.matches[1].correspondence_properties[1], "xcorr")
+  if !haskey(meshset.matches[match_ind].correspondence_properties[1], "xcorr")
   	println("MIGRATION: 2016-03-22 Match: move sigmas / r_max to xcorr dict"); 
 	migrate_to_xcorr_dict!(meshset);
   end
 
-  if !haskey(meshset.matches[1].correspondence_properties[1], "ranges")
+  if !haskey(meshset.matches[match_ind].correspondence_properties[1], "ranges")
   	println("MIGRATION: 2016-03-22 Match: move full / scale to ranges dict"); 
 	migrate_to_ranges_dict!(meshset);
   end
 
-  if !haskey(meshset.matches[1].correspondence_properties[1], "vects")
+  if !haskey(meshset.matches[match_ind].correspondence_properties[1], "vects")
   	println("MIGRATION: 2016-03-22 Match: move dv / norm to vects"); 
 	migrate_to_vects_dict!(meshset);
   end
 
-  if !haskey(meshset.matches[1].correspondence_properties[1], "patches")
+  if !haskey(meshset.matches[match_ind].correspondence_properties[1], "patches")
   	println("MIGRATION: 2016-03-22 Match: move img to patches"); 
 	migrate_to_patches_dict!(meshset);
   end
 
-  if !haskey(meshset.matches[1].properties, "review") || !haskey(meshset.matches[1].properties["review"], "author") || !haskey(meshset.matches[1].properties["review"], "flags")
+  if !haskey(meshset.matches[match_ind].properties, "review") || !haskey(meshset.matches[match_ind].properties["review"], "author") || !haskey(meshset.matches[match_ind].properties["review"], "flags")
   	println("MIGRATION: 2016-03-22 Match: making review / flags dict"); 
 	migrate_to_review_dict!(meshset);
   end
@@ -43,6 +48,16 @@ function migrate!(meshset)
 					"parent" => nothing,
 					"split_index" => 0
 					)
+  end
+
+  if !haskey(meshset.meshes[mesh_ind].properties, "params") || !haskey(meshset.matches[match_ind].properties, "params")
+  	println("MIGRATION: 2016-03-30 MeshSet: adding params to matches / meshes"); 
+	for mesh in meshset.meshes
+	  mesh.properties["params"] = meshset.properties["params"]
+	end
+	for match in meshset.matches
+	  match.properties["params"] = meshset.properties["params"]
+	end
   end
 
   return meshset

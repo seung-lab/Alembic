@@ -87,6 +87,10 @@ function is_flagged(meshset::MeshSet)
 	return |(map(is_flagged, meshset.matches)...)
 end
 
+function check!(meshset::MeshSet, crits = values(meshset.properties["params"]["review"])) 
+  return |(map(check!, meshset.matches, repeated(crits))...)
+end
+
 ### splitting
 function split_meshset(meshset::MeshSet)
 	parent_name = get_name(meshset)
@@ -201,10 +205,16 @@ function MeshSet(first_index, last_index; params=get_params(first_index), solve=
 	for filter in Base.values(params["filter"])
 		filter!(meshset, filter...)
 	end
-	#save(meshset);
+	check!(meshset);
+#=	
+	if check!(meshset)
+		save(meshset); return meshset;
+	end =#
+
 	if solve == true
 	solve!(meshset, method=solve_method);
 	end
+
 	save(meshset);
 	return meshset;
 end

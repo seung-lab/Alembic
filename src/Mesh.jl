@@ -147,6 +147,7 @@ function Mesh(index, params = get_params(index), fixed=false)
 	dst_nodes = copy(src_nodes);
 
 	properties = Dict{Any, Any}(
+				    "params" => params,
 				    "fixed" => fixed);
 
 	return Mesh(index, src_nodes, dst_nodes, edges, properties);

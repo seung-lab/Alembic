@@ -60,12 +60,15 @@ global PARAMS_MONTAGE = Dict(
 					"ftol_cg" => FTOL_CG_MONTAGE,
 					"max_iters" => MAX_ITERS_MONTAGE),
 			     "filter" => Dict(
-			     		"sigma_filter" => (0.5, >, 7.5),
-			     		"r_filter" => ("r_max", <, 0.25)
-					      ),
+			     			"sigma_filter" => (0.5, >, 7.5),
+			     			"r_filter" => ("r_max", <, 0.25),
+					),
 			     "render" => Dict(
 					      ),
 			     "review" => Dict(
+					#	"too_few_corresps" => (:count_correspondences, <, 10),
+						"filtered_ratio" => (:get_ratio_filtered, <, 0.2, 20),
+					#	"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.95)
 					      ),
 			     "registry" => Dict(
 					"global_offsets" => GLOBAL_OFFSETS_MONTAGE
