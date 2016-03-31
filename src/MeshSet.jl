@@ -229,7 +229,7 @@ function MeshSet(first_index, last_index; params=get_params(first_index), solve=
 	match!(meshset, params["match"]["depth"]; prefetch_all=prefetch_all);
 
 	filter!(meshset);
-	check!(meshset);
+	check_and_resolve!(meshset);
 #=	
 	if check!(meshset)
 		save(meshset); return meshset;
