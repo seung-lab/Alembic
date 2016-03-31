@@ -50,11 +50,16 @@ if !haskey(ENV, "USER")
   ENV["USER"] = "ubuntu"
 end
 
-
 if ENV["USER"] != "ubuntu"
 global const ON_AWS = false;
 else
 global const ON_AWS = true;
+end
+
+if ON_AWS || contains(gethostname(), "seunglab")
+  global const USE_PYPLOT = false;
+else
+  global const USE_PYPLOT = true;
 end
 
 global const IMG_ELTYPE = UInt8
@@ -70,8 +75,6 @@ PKGS_USED_CLONABLE = ["https://github.com/JuliaSparse/MKLSparse.jl.git", "https:
 
 using HDF5
 using JLD
-using Images
-using ImageView
 using Colors
 using FixedPointNumbers
 using Base.Test
@@ -81,9 +84,14 @@ using ImageRegistration
 using Optim
 using Distributions
 using RegERMs
-#if ENV["USER"] != "dih" && !ON_AWS && !contains(gethostname(), "seunglab")
-using PyPlot
-using MKLSparse
+if USE_PYPLOT
+  using PyPlot
+end
+if !contains(gethostname(), "seunglab")
+  using Images
+  using ImageView
+  using MKLSparse
+end
 
 include("author.jl")
 include("Index.jl")
@@ -121,9 +129,11 @@ if ON_AWS
     include("transforms.jl")
     include("draw.jl")
     include("visualize.jl")
+if !contains(gethostname(), "seunglab")
     include("player.jl")
     include("inspect.jl")
     include("check.jl")
     include("brushtool.jl")
+end
 
 
