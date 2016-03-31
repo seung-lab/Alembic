@@ -178,7 +178,7 @@ end
 
 function MeshSet(index; params=get_params(index))
 	if is_premontaged(index) return MeshSet(index, index); end
-	if is_montaged(index) return MeshSet(premontaged(index), premontaged(index)); end
+	if is_montaged(index) return MeshSet(premontaged(index), premontaged(index); prefetch_all=true); end
 end
 
 function MeshSet(first_index, last_index; params=get_params(first_index), solve=true, solve_method="elastic", fix_first=false, prefetch_all = false)
@@ -298,15 +298,13 @@ function save(meshset::MeshSet)
 end
 
 function get_filename(meshset::MeshSet)
-  filepath = ""
-  filename = string(get_name(meshset), ".jls")
-
   firstindex = meshset.meshes[1].index
   lastindex = meshset.meshes[count_meshes(meshset)].index
   return get_filename(firstindex, lastindex)
 end
 
 function get_filename(firstindex::Index, lastindex::Index)
+  filename = string(get_name(firstindex, lastindex), ".jls")
   if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_aligned(lastindex))
     filepath = PREALIGNED_DIR
   elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex))
@@ -403,7 +401,7 @@ function load_split(parent_name, split_index)
 end
 
 function load(index)
-  	if is_montaged(index)
+  if is_montaged(index)
 	  return load_montaged(index[1:2]...)
 	end
 end
