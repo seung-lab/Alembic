@@ -207,7 +207,7 @@ end
 
 function MeshSet(index; params=get_params(index))
 	if is_premontaged(index) return MeshSet(index, index); end
-	if is_montaged(index) return MeshSet(premontaged(index), premontaged(index)); end
+	if is_montaged(index) return MeshSet(premontaged(index), premontaged(index); prefetch_all=true); end
 end
 
 function MeshSet(first_index, last_index; params=get_params(first_index), solve=true, solve_method="elastic", fix_first=false, prefetch_all = false)
@@ -327,37 +327,50 @@ function save(filename::String, meshset::MeshSet)
 end
 
 function save(meshset::MeshSet)
+  filename = get_filename(meshset)
+  save(filename, meshset);
+end
+
+function get_filename(meshset::MeshSet)
   firstindex = meshset.meshes[1].index
   lastindex = meshset.meshes[count_meshes(meshset)].index
+  return get_filename(firstindex, lastindex)
+end
 
-  if has_parent(meshset)
-    foldername = joinpath(ALIGNED_DIR, meshset.properties["meta"]["parent"])
-    if !isdir(foldername) mkdir(foldername) end
-    split_index = get_split_index(meshset);
-    filename = joinpath(foldername, "$split_index.jls")
-    
-  else
-
+function get_filename(firstindex::Index, lastindex::Index)
+  filename = string(get_name(firstindex, lastindex), ".jls")
   if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_aligned(lastindex))
-    filename = joinpath(PREALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned.jls"))
-    #update_offset(prealigned(firstindex), [0, 0]);
+    filepath = PREALIGNED_DIR
   elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex))
-    filename = joinpath(ALIGNED_DIR, string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned.jls"))
-    #update_offset(aligned(firstindex), [0, 0]);
+    filepath = ALIGNED_DIR
   else 
-    filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "_montaged.jls"))
-    #update_offset(montaged(firstindex), [0, 0]);
+    filepath = MONTAGED_DIR
   end
 
-  end
-  save(filename, meshset);
+  return joinpath(filepath, filename)
 end
 
 #### ONLY AS PARENT!!!!
 function get_name(meshset::MeshSet)
-  	firstindex = meshset.meshes[1].index
-  	lastindex = meshset.meshes[count_meshes(meshset)].index
-	return string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned")
+  if has_parent(meshset)
+    return get_split_index(meshset);
+  else
+    firstindex = meshset.meshes[1].index
+    lastindex = meshset.meshes[count_meshes(meshset)].index
+    return get_name(firstindex, lastindex)
+  end
+end
+
+function get_name(firstindex::Index, lastindex::Index)
+  name = ""
+  if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_aligned(lastindex))
+    name = string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned")
+  elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex))
+    name = string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned")
+  else 
+    name = string(join(firstindex[1:2], ","), "_montaged")
+  end
+	return name
 end
 
 function load_split(parent_name, split_index)
@@ -403,14 +416,7 @@ function load_prealigned(wafer_num, sec_num)
 end
 
 function load(firstindex, lastindex)
-  if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_aligned(lastindex))
-    filename = joinpath(PREALIGNED_DIR, string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned.jls"))
-  elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex))
-    filename = joinpath(ALIGNED_DIR, string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned.jls"))
-  else 
-    filename = joinpath(MONTAGED_DIR, string(join(firstindex[1:2], ","), "_montaged.jls"))
-  end
-
+  filename = get_filename(firstindex, lastindex)
   println("Loading meshset from ", filename)
   return load(filename)
 end
@@ -429,7 +435,7 @@ function load_split(parent_name, split_index)
 end
 
 function load(index)
-  	if is_montaged(index)
+  if is_montaged(index)
 	  return load_montaged(index[1:2]...)
 	end
 end

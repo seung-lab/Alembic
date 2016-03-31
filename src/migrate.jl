@@ -124,15 +124,28 @@ end
 
 function migrate_to_ranges_dict!(match::Match)
 	for props in match.correspondence_properties
-	  	props["ranges"] = props["full"];
-		delete!(props, "full");
-		if haskey(props, "scale")
-	  	props["ranges"]["scale"] = props["scale"];
-		delete!(props, "scale")
+	  	if haskey(props, "full")  	
+		  	props["ranges"] = props["full"];
+			delete!(props, "full");
+			if haskey(props, "scale")
+			  	props["ranges"]["scale"] = props["scale"];
+				delete!(props, "scale")
 	        else
-	  	props["ranges"]["scale"] = 1.0;
+			  	props["ranges"]["scale"] = 1.0;
+			end
+		else
+			props["ranges"] = Dict()
+			props["ranges"]["scale"] = 1.0
+			props["ranges"]["src_range"] = props["src_range"]
+			props["ranges"]["src_pt_loc"] = props["src_pt_loc"]
+			props["ranges"]["dst_range"] = props["dst_range"]
+			props["ranges"]["dst_pt_loc"] = props["dst_pt_loc"]
+			delete!(props, "src_range")
+			delete!(props, "src_pt_loc")
+			delete!(props, "dst_range")
+			delete!(props, "dst_pt_loc")
+		end
 	end
-      end
 	return match
 end
 
@@ -157,8 +170,16 @@ end
 
 function migrate_to_patches_dict!(match::Match)
 	for props in match.correspondence_properties
-	  	props["patches"] = props["img"]
-		delete!(props, "img")
+		if haskey(props, "img")
+		  	props["patches"] = props["img"]
+			delete!(props, "img")
+		else
+			props["patches"] = Dict()
+			props["patches"]["src_normalized_dyn_range"] = props["src_normalized_dyn_range"]
+			props["patches"]["src_kurtosis"] = props["src_kurtosis"]
+			delete!(props, "src_normalized_dyn_range")
+			delete!(props, "src_kurtosis")
+		end
 	end
 	return match
 end

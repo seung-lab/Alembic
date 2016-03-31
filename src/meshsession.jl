@@ -1,18 +1,18 @@
 
-function montage_section(wafer_num, n)
-  @time Ms, images = load_section(PREMONTAGED_OFFSETS, wafer_num, n);
-  @time add_all_matches!(Ms, images);
-  @time solve_meshset!(Ms);
-  save(Ms);
-  images = 0;
-end
+# function montage_section(wafer_num, n)
+#   @time Ms, images = load_section(PREMONTAGED_OFFSETS, wafer_num, n);
+#   @time add_all_matches!(Ms, images);
+#   @time solve_meshset!(Ms);
+#   save(Ms);
+#   images = 0;
+# end
 
-function montage_sections(wafer_num, k::UnitRange{Int64})
-  optimize_all_cores(PARAMS_MONTAGE);
-  for n in k
-    @time montage_section(wafer_num, n);
-  end
-end
+# function montage_sections(wafer_num, k::UnitRange{Int64})
+#   optimize_all_cores(PARAMS_MONTAGE);
+#   for n in k
+#     @time montage_section(wafer_num, n);
+#   end
+# end
 
 function align_stack(first_wafer_num, first_sec_num, last_wafer_num, last_sec_num)
   println("Elastically aligning $first_wafer_num, $first_sec_num -> ... -> $last_wafer_num, $last_sec_num:")

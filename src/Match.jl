@@ -61,9 +61,8 @@ end
 function get_properties(match::Match, property_name)
 	ret = map(get_dfs, match.correspondence_properties, repeated(property_name));
 	if length(ret) != 0
-	ret = Array{typeof(ret[1])}(ret);
-      	end
-
+		ret = Array{typeof(ret[1])}(ret);
+	end
 end
 
 function get_properties(match::Match, fn::Function, args...)
@@ -75,14 +74,17 @@ function get_dfs(dict::Dict, keytofetch)
 		if key == keytofetch
 		  return get(dict, key, nothing)
 		elseif typeof(get(dict, key, nothing)) <: Dict
-		  if get_dfs(get(dict, key, nothing), keytofetch) != nothing return get_dfs(get(dict, key, nothing), keytofetch) end
+		  if get_dfs(get(dict, key, nothing), keytofetch) != nothing 
+		  	return get_dfs(get(dict, key, nothing), keytofetch) 
+		  end
 		end
-	end	
-	return nothing;
+	end
+	return nothing
 end
 
 function get_filtered_properties(match::Match, property_name)
-  	return get_properties(match, property_name)[get_filtered_indices(match)]
+	cp = get_filtered_correspondence_properties(match)
+	return map(get_dfs, cp, repeated(property_name));
 end
 
 ### reviewing
@@ -101,11 +103,26 @@ function get_author(match::Match)
 end
 
 function is_flagged(match::Match)
-	return match.properties["review"]["flagged"]
+	flagged = false
+	if haskey(match.properties["review"], "flagged")
+		flagged = match.properties["review"]["flagged"]
+	end
+	return flagged
 end
 
 function flag!(match::Match)
 	match.properties["review"]["flagged"] = true;
+end
+
+"""
+Flag a match based on property criteria
+"""
+function flag!(match::Match, property_name, compare, threshold)
+	attributes = get_filtered_properties(match, property_name)
+	inds_to_filter = find(i -> compare(i, threshold), attributes)
+	if length(inds_to_filter) > 0
+		flag!(match)
+	end
 end
 
 function unflag!(match::Match)
@@ -409,4 +426,3 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); src_
 
 	return Match(src_index, dst_index, src_points, dst_points, correspondence_properties, filters, properties);
 end
-
