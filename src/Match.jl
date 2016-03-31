@@ -15,6 +15,15 @@ function count_correspondences(match::Match) return size(match.src_points, 1);	e
 function count_filtered_correspondences(match::Match) return length(get_filtered_indices(match)); end
 function count_filters(match::Match) return length(match.filters); end
 
+function get_ratio_filtered(match::Match, min_corresps = 0) 
+  if count_correspondences(match) < min_corresps return 1.0 end
+return count_filtered_correspondences(match) / max(count_correspondences(match), 1); end
+
+function get_ratio_edge_proximity(match::Match)
+     if count_filtered_correspondences(match) == 0 return 0.0 end
+     norms = map(norm, get_filtered_properties(match, "dv"))
+return maximum(norms) / match.properties["params"]["match"]["search_r"]; end
+
 function get_src_index(match::Match)
   return match.src_index
 end
@@ -317,10 +326,28 @@ function filter!(match::Match, property_name, compare, threshold)
 	return length(inds_to_filter);
 end
 
+function filter!(match::Match, filters) 
+     for filter in filters
+        filter!(match, filter...);
+     end
+end
+
 #### HACKY
 function get_residual_norms_post(match, ms)
 	src_pts_after, dst_pts_after, filtered = get_globalized_correspondences_post(ms, findfirst(match_in_ms -> match_in_ms.src_index == match.src_index && match_in_ms.dst_index == match.dst_index, ms.matches));
 	return(map(norm, dst_pts_after - src_pts_after))
+end
+
+function check(match::Match, function_name, compare, threshold, vars...)
+     return compare(eval(function_name)(match, vars...), threshold)
+end
+
+function check!(match::Match, crits) 
+     for crit in crits
+       if check(match, crit...) flag!(match); return true; end
+     end
+     unflag!(match);
+     return false
 end
 
 ### ADD MANUAL FILTER
@@ -388,6 +415,7 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); src_
 	dst_points = [convert(Point, dst_allpoints[ind][1:2]) for ind in matched_inds]
 	correspondence_properties = [dst_allpoints[ind][3] for ind in matched_inds]
   	properties = Dict{Any, Any}(
+		"params" => params,
 		"review" => Dict{Any, Any}(
 				"flagged" => false,
 				"flags" => Dict{Any, Any},

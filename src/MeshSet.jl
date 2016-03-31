@@ -50,13 +50,7 @@ function add_match!(meshset::MeshSet, match::Match)
   push!(meshset.matches, match);
 end
 
-function filter!(meshset::MeshSet, property_name, compare, threshold)
-	total = 0;
-	for match in meshset.matches
-		total = total + filter!(match, property_name, compare, threshold)
-	end
-	println("$total / $(count_correspondences(meshset)) correspondences filtered")
-end
+
 
 ### reviewing
 function set_reviewed!(meshset::MeshSet, match_ind, flag = false)
@@ -85,6 +79,41 @@ end
 
 function is_flagged(meshset::MeshSet)
 	return |(map(is_flagged, meshset.matches)...)
+end
+
+function filter!(meshset::MeshSet, filters = values(meshset.properties["params"]["filter"]))
+  	for filter in filters
+		filter!(meshset, filter...)
+	end
+end
+
+function filter!(meshset::MeshSet, property_name, compare, threshold)
+	total = 0;
+	for match in meshset.matches
+		total = total + filter!(match, property_name, compare, threshold)
+	end
+	println("$total / $(count_correspondences(meshset)) correspondences filtered on $property_name")
+end
+
+function check!(meshset::MeshSet, crits = values(meshset.properties["params"]["review"])) 
+  return |(map(check!, meshset.matches, repeated(crits))...)
+end
+
+function check_and_resolve!(meshset::MeshSet, crits = values(meshset.properties["params"]["review"]), filters = values(meshset.properties["params"]["filter"])) 
+  if |(map(check!, meshset.matches, repeated(crits))...)
+    for match in meshset.matches
+      if is_flagged(match)
+	clear_filters!(match);
+	filter!(match, filters)
+      end
+    end
+    resolved = !check!(meshset, crits);
+    if resolved 
+      println("resolved successfully");
+      solve!(meshset);
+    else println("failed to resolve meshset")
+    end
+  end
 end
 
 ### splitting
@@ -198,13 +227,18 @@ function MeshSet(first_index, last_index; params=get_params(first_index), solve=
 					)
 	meshset = MeshSet(meshes, matches, properties);
 	match!(meshset, params["match"]["depth"]; prefetch_all=prefetch_all);
-	for filter in Base.values(params["filter"])
-		filter!(meshset, filter...)
-	end
-	#save(meshset);
+
+	filter!(meshset);
+	check!(meshset);
+#=	
+	if check!(meshset)
+		save(meshset); return meshset;
+	end =#
+
 	if solve == true
 	solve!(meshset, method=solve_method);
 	end
+
 	save(meshset);
 	return meshset;
 end

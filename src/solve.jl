@@ -323,9 +323,9 @@ function stats(meshset::MeshSet)
 	meshes[mesh.index] = mesh;
   end
 
-  	print("index    ")
-  	print("src_index       ")
-  	print("dst_index   ")
+	print("index    ")
+	print("src_index       ")
+	print("dst_index   ")
 	print("corrs  ")
 	print("    ")
 	print("rms_pre   ")
@@ -418,7 +418,6 @@ function stats(meshset::MeshSet)
    	avg_r_s = @sprintf("%10.3f", avg_r)
    	std_r_s = @sprintf("%10.3f", std_r)
    	min_r_s = @sprintf("%10.3f", min_r)
-
 
   	print(@sprintf("%4i", findfirst(this -> meshset.matches[this] == match, 1:count_matches(meshset))));
   	print(@sprintf("%14s", string(src_mesh.index)))
