@@ -107,7 +107,7 @@ function check_and_resolve!(meshset::MeshSet, crits = values(meshset.properties[
 	filter!(match, filters)
       end
     end
-    resolved = !check!(meshset);
+    resolved = !check!(meshset, crits);
     if resolved 
       println("resolved successfully");
       solve!(meshset);

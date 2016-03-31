@@ -20,6 +20,7 @@ function get_ratio_filtered(match::Match, min_corresps = 0)
 return count_filtered_correspondences(match) / max(count_correspondences(match), 1); end
 
 function get_ratio_edge_proximity(match::Match)
+     if count_filtered_correspondences(match) == 0 return 0.0 end
      norms = map(norm, get_filtered_properties(match, "dv"))
 return maximum(norms) / match.properties["params"]["match"]["search_r"]; end
 
