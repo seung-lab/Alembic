@@ -12,51 +12,94 @@ function inspect(meshset::MeshSet, match_ind=1)
   src_index = meshset.matches[match_ind].src_index
   dst_index = meshset.matches[match_ind].dst_index
   println("\n", get_name(meshset), ": ", (src_index, dst_index), " @ ", match_ind, " / ", length(meshset.matches))
-  imgc, img2, vectors, params = view_matches(meshset, match_ind)
+  imgc, img2, vectors, params = view_match(meshset, match_ind)
   enable_inspection(imgc, img2, meshset, match_ind, vectors, params)
 end
 
-function get_next(meshset::MeshSet, match_ind=1)
+function get_next_match(meshset::MeshSet, match_ind=1)
+  matches = meshset.matches
+  if 1 <= match_ind < length(matches)
+    return meshset, match_ind+1
+  elseif match_ind == length(matches)
+    index = meshset.meshes[end].index
+    firstindex, lastindex = index, index
+    if is_premontaged(index)
+      firstindex = premontaged(get_succeeding(montaged(index)))
+      lastindex = firstindex
+    elseif is_montaged(index)
+      lastindex = get_succeeding(index)
+    else
+      return nothing, nothing
+    end
+    meshset = load(firstindex, lastindex)
+    match_ind = 1
+    return meshset, match_ind
+  else
+    return nothing, nothing
+  end
 end
 
-function get_previous(meshset::MeshSet, match_ind=1)
+function get_previous_match(meshset::MeshSet, match_ind=1)
+  matches = meshset.matches
+  if 1 < match_ind <= length(matches)
+    return meshset, match_ind-1
+  elseif match_ind == 1
+    index = meshset.meshes[1].index
+    firstindex, lastindex = index, index
+    if is_premontaged(index)
+      firstindex = premontaged(get_preceding(montaged(index)))
+      lastindex = firstindex
+    elseif is_montaged(index)
+      firstindex = get_preceding(index)
+    else
+      return nothing, nothing
+    end
+    if firstindex[1:2] == (0,0) || lastindex[1:2] == (0,0)
+      return nothing, nothing
+    else
+      meshset = load(firstindex, lastindex)
+      match_ind = length(meshset.matches)
+      return meshset, match_ind
+    end
+  else
+    return nothing, nothing
+  end
 end
 
 """
 Return next match in the matches list that's flagged
 """
-function get_next_flag(meshset::MeshSet, match_ind=1)
-  matches = meshset.matches
-  if match_ind > length(matches) & match_ind > 0
-    return nothing
+function get_next_flagged_match(meshset::MeshSet, match_ind=1)
+  meshset, match_ind = get_next_match(meshset, match_ind)
+  if meshset == nothing && match_ind == nothing
+    return nothing, nothing
   end
-  if is_flagged(matches[match_ind])
+  if is_flagged(meshset.matches[match_ind])
     return meshset, match_ind
   else
-    return get_next_flag(meshset, match_ind+1)
+    return get_next_flagged_match(meshset, match_ind)
   end
 end
 
 """
 Return previous meshset & match index in the matches list that's flagged
 """
-function get_previous_flag(meshset::MeshSet, match_ind)
-  matches = meshset.matches
-  if match_ind > length(matches) & match_ind > 0
-    if 
-    return nothing
+function get_previous_flagged_match(meshset::MeshSet, match_ind)
+  meshset, match_ind = get_previous_match(meshset, match_ind)
+  if meshset == nothing && match_ind == nothing
+    return nothing, nothing
   end
-  if is_flagged(matches[match_ind])
+  if is_flagged(meshset.matches[match_ind])
     return meshset, match_ind
   else
-    return get_previous_flag(meshset, match_ind-1)
+    return get_previous_flagged_match(meshset, match_ind)
   end
 end
 
 """
 Display match index match_ind as overlayed images with points
 """
-function view_matches(meshset::MeshSet, match_ind)
+function view_match(meshset::MeshSet, match_ind)
   match = meshset.matches[match_ind]
   indexA = match.src_index
   indexB = match.dst_index
@@ -84,7 +127,9 @@ function view_matches(meshset::MeshSet, match_ind)
   params["dist"] = 90
   params["sigma"] = 3
 
-  view_inspection_statistics(match, params["search_r"])
+  if USE_PYPLOT
+    view_inspection_statistics(match, params["search_r"])
+  end
 
   imgc, img2 = view(img, pixelspacing=[1,1])
   vectors = make_vectors(meshset, match_ind, params)
@@ -112,20 +157,20 @@ end
 """
 Display the images involved in the blockmatching at one point in a Match object
 """
-function view_blockmatch(match, ind, params)
-  println(match.correspondence_properties[ind])
-  src_patch, src_pt, dst_patch, dst_pt, xc, offset = get_correspondence_patches(match, ind)
+function view_blockmatch(match, match_ind, params)
+  println(match.correspondence_properties[match_ind])
+  src_patch, src_pt, dst_patch, dst_pt, xc, offset = get_correspondence_patches(match, match_ind)
   block_r = params["block_r"]
   search_r = params["search_r"]
   beta = 0.5
   N=size(xc, 1)
   M=size(xc, 2)
-  if !contains(gethostname(), "seunglab") && !ON_AWS
+  if USE_PYPLOT
     fig = figure("correlogram")
     surf([i for i=1:N, j=1:M], [j for i=1:N, j=1:M], xc, cmap=get_cmap("hot"), 
                             rstride=10, cstride=10, linewidth=0, antialiased=false)
     grid("on")
-    title("match $ind")
+    title("match $match_ind")
   end
   println("max r-value: ", maximum(xc))
   xc_image = xcorr2Image(xc)
@@ -186,7 +231,7 @@ function enable_inspection(imgc::ImageView.ImageCanvas,
                                 img2::ImageView.ImageSlice2d, 
                                 meshset, match_ind, vectors, params)
   println("Enable inspection")
-  matches = meshset[match_ind]
+  matches = meshset.matches[match_ind]
   c = canvas(imgc)
   win = Tk.toplevel(c)
   c.mouse.button2press = (c, x, y) -> brushtool_start(c, x, y, (c, bb) -> remove_contained_points(imgc, img2, matches, vectors, bb))
@@ -206,7 +251,8 @@ function enable_inspection(imgc::ImageView.ImageCanvas,
   bind(win, "<Escape>", path->disable_inspection(imgc, img2))
   bind(win, "<Destroy>", path->disable_inspection(imgc, img2))
   # bind(win, "z", path->end_edit())
-  bind(win, "c", path->compare_filter(imgc, img2, matches, vectors))
+  # bind(win, "c", path->compare_filter(imgc, img2, matches, vectors))
+  bind(win, "i", path->show_removed(imgc, img2, matches, vectors))
   bind(win, ",", path->decrease_distance_filter(imgc, img2, matches, vectors, params))
   bind(win, ".", path->increase_distance_filter(imgc, img2, matches, vectors, params))
   bind(win, "n", path->decrease_sigma_filter(imgc, img2, matches, vectors, params))
@@ -214,11 +260,12 @@ function enable_inspection(imgc::ImageView.ImageCanvas,
   bind(win, "=", path->increase_vectors(imgc, img2, meshset, matches, vectors, params))
   bind(win, "-", path->decrease_vectors(imgc, img2, meshset, matches, vectors, params))
   bind(win, "p", path->switch_pre_to_post(imgc, img2, meshset, matches, vectors, params))
-  bind(win, "s", path->save_inspection(meshset, matches))
-  bind(win, "<Return>", path->go_to_next_inspection(imgc, img2, meshset, match_ind; forward=true, flag=false))
-  # bind(win, "<Return>", path->go_to_next_inspection(imgc, img2, meshset, match_ind; forward=false, flag=false))
-  # bind(win, "<Return>", path->go_to_next_flag(imgc, img2, meshset, match_ind; forward=true, flag=true))
-  # bind(win, "<Return>", path->go_to_previous_flag(imgc, img2, meshset, match_ind; forward=false, flag=true))
+  bind(win, "s", path->save_inspection(meshset, match_ind))
+  bind(win, "<Return>", path->go_to_next_inspection(imgc, img2, meshset, match_ind; forward=true, flag=true, save=true))
+  bind(win, "<Control-Shift-Right>", path->go_to_next_inspection(imgc, img2, meshset, match_ind; forward=true, flag=true))
+  bind(win, "<Control-Right>", path->go_to_next_inspection(imgc, img2, meshset, match_ind; forward=true, flag=false))
+  bind(win, "<Control-Shift-Left>", path->go_to_next_inspection(imgc, img2, meshset, match_ind; forward=false, flag=true))
+  bind(win, "<Control-Left>", path->go_to_next_inspection(imgc, img2, meshset, match_ind; forward=false, flag=false))
 end
 
 function disable_inspection(imgc::ImageView.ImageCanvas, img2::ImageView.ImageSlice2d)
@@ -232,6 +279,7 @@ function disable_inspection(imgc::ImageView.ImageCanvas, img2::ImageView.ImageSl
   bind(win, "<Escape>", path->path)
   bind(win, "<Control-z>", path->path)
   bind(win, "c", path->path)
+  bind(win, "i", path->path)
   bind(win, ",", path->path)
   bind(win, ".", path->path)
   bind(win, "=", path->path)
@@ -239,40 +287,42 @@ function disable_inspection(imgc::ImageView.ImageCanvas, img2::ImageView.ImageSl
   bind(win, "p", path->path)
   bind(win, "s", path->path)
   bind(win, "<Return>", path->path)
+  bind(win, "<Control-Shift-Right>", path->path)
+  bind(win, "<Control-Right>", path->path)
+  bind(win, "<Control-Shift-Left>", path->path)
+  bind(win, "<Control-Left>", path->path)
   destroy(win)
 end
 
-function save_inspection(meshset, matches)
+function save_inspection(meshset, match_ind)
   println("meshset saved")
-  set_reviewed!(matches)
+  set_reviewed!(meshset.matches[match_ind])
   save(meshset)
 end
 
-function go_to_next_inspection(imgc, img2, meshset, match_ind)
-  disable_inspection(imgc, img2)
-
-  if stage == "montage"
-    index, match_ind = calls
-    match_ind += 1
-    if match_ind > length(meshset.matches)
-      index = get_succeeding(index)
-      match_ind = 1
-    end
-    inspect_montages(index, match_ind)
-  elseif stage == "prealignment"
-    src_index, dst_index = calls
-    src_index, dst_index = dst_index, get_succeeding(dst_index)
-    inspect_prealignments(src_index, dst_index)
-  elseif stage == "alignment"
-    firstindex, lastindex, src_index, dst_index = calls
-    src_index, dst_index = dst_index, get_succeeding(dst_index)
-    inspect_alignments(firstindex, lastindex, src_index, dst_index)
-  elseif stage == "meshset"
-    match_ind = calls
-    match_ind += 1
-    if match_ind <= length(meshset.matches)
-      inspect_meshset(meshset, match_ind)
-    end
+function go_to_next_inspection(imgc, img2, meshset, match_ind; forward=true, flag=true, save=false)
+  if save
+    save_inspection(meshset, match_ind)
+  end
+  next_ms, next_match_ind = nothing, nothing
+  if forward && flag
+    println("Go to next flagged match")
+    next_ms, next_match_ind = get_next_flagged_match(meshset, match_ind)
+  elseif forward && !flag
+    println("Go to next match")
+    next_ms, next_match_ind = get_next_match(meshset, match_ind)
+  elseif !forward && flag
+    println("Go to previous flagged match")
+    next_ms, next_match_ind = get_previous_flagged_match(meshset, match_ind)
+  elseif !forward && !flag
+    println("Go to previous match")
+    next_ms, next_match_ind = get_previous_match(meshset, match_ind)
+  end
+  if next_ms == nothing && next_match_ind == nothing
+    println("End of the inspection sequence")
+  else
+    disable_inspection(imgc, img2)
+    inspect(next_ms, next_match_ind)
   end
 end
 
@@ -747,7 +797,7 @@ function mark_suspicious(meshset::MeshSet)
         else
           print("\t   ")
         end
-        if (num_filtered / num_matches < 0.2) & (num_matches > 30)
+        if (num_filtered / num_matches < 0.2) && (num_matches > 30)
           print("\tpts")
           flag!(match)
         else
