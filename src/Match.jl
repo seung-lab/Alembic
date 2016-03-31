@@ -52,9 +52,8 @@ end
 function get_properties(match::Match, property_name)
 	ret = map(get_dfs, match.correspondence_properties, repeated(property_name));
 	if length(ret) != 0
-	ret = Array{typeof(ret[1])}(ret);
-      	end
-
+		ret = Array{typeof(ret[1])}(ret);
+	end
 end
 
 function get_properties(match::Match, fn::Function, args...)
@@ -70,7 +69,8 @@ function get_dfs(dict::Dict, keytofetch)
 		  	return get_dfs(get(dict, key, nothing), keytofetch) 
 		  end
 		end
-	end	
+	end
+	return nothing
 end
 
 function get_filtered_properties(match::Match, property_name)
@@ -305,6 +305,7 @@ end
 
 function filter!(match::Match, property_name, compare, threshold)
 	attributes = get_properties(match, property_name)
+	if attributes == nothing return 0; end
 	inds_to_filter = find(i -> compare(i, threshold), attributes);
 	push!(match.filters, Dict{Any, Any}(
 				"author" => author(),
@@ -371,7 +372,7 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); src_
 	SHARED_DST_IMAGE[1:size(dst_image, 1), 1:size(dst_image, 2)] = dst_image;
 	end
 
-	ranges = pmap(get_ranges, src_mesh.src_nodes, repeated(src_index), repeated(dst_index), repeated(params));
+	ranges = map(get_ranges, src_mesh.src_nodes, repeated(src_index), repeated(dst_index), repeated(params));
 	ranged_inds = find(i -> i != nothing, ranges);
 	src_nodes = copy(src_mesh.src_nodes[ranged_inds]);
 	ranges = copy(ranges[ranged_inds]);
