@@ -99,8 +99,8 @@ function SolveMesh!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, max_it
     function cost_and_gradient!(x,storage)
         Vertices_t[Moving]=x;
         Springs=Incidence_t * Vertices_t;
-	Lengths = get_lengths(Springs);
-	g = Gradient_given_lengths(Springs, Lengths, Incidence_d, Stiffnesses_d, RestLengths_d)
+    	Lengths = get_lengths(Springs);
+    	g = Gradient_given_lengths(Springs, Lengths, Incidence_d, Stiffnesses_d, RestLengths_d)
         storage[:] = g[Moving]
         return Energy_given_lengths(Lengths,Stiffnesses,RestLengths)
     end
