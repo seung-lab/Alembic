@@ -16,7 +16,7 @@ MESH_LENGTH_PREALIGNMENT = 4000
 GLOBAL_OFFSETS_PREALIGNMENT = false
 BLOCKMATCH_SCALE_PREALIGNMENT = 0.5
 BLOCK_R_PREALIGNMENT = 500
-SEARCH_R_PREALIGNMENT = 1000
+SEARCH_R_PREALIGNMENT = 1500
 MONOBLOCK_SCALE_PREALIGNMENT = 0.15
 MONOBLOCK_MATCH_PREALIGNMENT = true
 MONOBLOCK_RATIO_PREALIGNMENT = 0.4
@@ -99,10 +99,13 @@ global PARAMS_PREALIGNMENT = Dict(
 					"ftol_cg" => FTOL_CG_PREALIGNMENT,
 					"max_iters" => MAX_ITERS_PREALIGNMENT),
 			     "filter" => Dict(
+			     		"sigma_filter" => (0.5, >, 80),
+			     		"r_filter" => ("r_max", <, 0.35)
 					      ),
 			     "render" => Dict(
 					      ),
 			     "review" => Dict(
+						"filtered_ratio" => (:get_ratio_filtered, <, 0.4, 0)
 					      ),
 			     "registry" => Dict(
 					"global_offsets" => GLOBAL_OFFSETS_PREALIGNMENT

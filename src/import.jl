@@ -1,11 +1,13 @@
 NORMALIZER = Array{Float64, 2}(readdlm("calib"))
-MIN_VAL = 0.72; MAX_VAL = 0.95;
+using StatsBase
 
 function import_AIBS_dir_tifs(folder, wafer_num, sec_num, to)
 	for tif in sort_dir(folder, "tif")
 	  img = Array{Float64, 2}(Images.load(joinpath(folder, tif)).data')
 	  img = img ./ NORMALIZER;
-	  img = min(1, max(0, (img - MIN_VAL) / (MAX_VAL - MIN_VAL)))
+	  distr = nquantile(img[:], 16)
+	  minval = distr[2]; maxval = distr[16];
+	  img = min(1, max(0, (img - minval) / (maxval-minval)))
 	  img = Array{UInt8, 2}(round(UInt8, img * 255));
         f = h5open(joinpath(to, import_frame_tif_to_wafer_section_h5(tif, wafer_num, sec_num)), "w")
     	chunksize = div(min(size(img)...), 4);
