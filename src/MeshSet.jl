@@ -85,7 +85,7 @@ function count_flags(meshset::MeshSet)
   return sum(map(is_flagged, meshset.matches))
 end
 
-function filter!(meshset::MeshSet, filters = values(meshset.properties["params"]["filter"]))
+function filter!(meshset::MeshSet, filters = Base.values(meshset.properties["params"]["filter"]))
   	for filter in filters
 		filter!(meshset, filter...)
 	end
@@ -103,12 +103,12 @@ function check!(meshset::MeshSet, crits = Base.values(meshset.properties["params
   return |(map(check!, meshset.matches, repeated(crits))...)
 end
 
-function check_and_resolve!(meshset::MeshSet, crits = Base.values(meshset.properties["params"]["review"]), filters = values(meshset.properties["params"]["filter"])) 
+function check_and_resolve!(meshset::MeshSet, crits = Base.values(meshset.properties["params"]["review"]), filters = Base.values(meshset.properties["params"]["filter"])) 
   if |(map(check!, meshset.matches, repeated(crits))...)
     for match in meshset.matches
       if is_flagged(match)
-	clear_filters!(match);
-	filter!(match, filters)
+      	clear_filters!(match);
+      	filter!(match, filters)
       end
     end
     resolved = !check!(meshset, crits);
