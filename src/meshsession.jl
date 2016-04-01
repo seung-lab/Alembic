@@ -1,3 +1,14 @@
+function montage(firstindex::Index, lastindex::Index)
+  for index in get_index_range(montaged(firstindex[1:2]...), montaged(lastindex[1:2]...))
+    ms = MeshSet(index)
+    if is_flagged(ms)
+      render_montaged(ms; render_full=true, render_review=true, flagged_only=true)
+    else
+      render_montaged(ms; render_full=true, render_review=false)
+    end
+  end
+end
+
 
 # function montage_section(wafer_num, n)
 #   @time Ms, images = load_section(PREMONTAGED_OFFSETS, wafer_num, n);
