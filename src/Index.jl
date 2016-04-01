@@ -54,7 +54,7 @@ function is_overview(index)
 end
 
 function is_premontaged(index)
-    if index[3] > 0 && index[4] > 0 return true else return false end
+    if index[3] >= 0 && index[4] >= 0 return true else return false end
 end
 
 function is_montaged(index)
