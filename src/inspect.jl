@@ -154,11 +154,17 @@ function make_vectors(meshset, match_ind, params)
   return change_vector_lengths([hcat(vecs[1]...); hcat(vecs[2]...)], factor)
 end
 
+function scale_matches(pts, scale)
+  return [x*scale for x in pts]
+end
+
 """
 Display the images involved in the blockmatching at one point in a Match object
 """
 function view_blockmatch(match, match_ind, params)
-  println(match.correspondence_properties[match_ind])
+  for (k, v) in match.correspondence_properties[match_ind]
+    println(k, ":\t", v)
+  end
   src_patch, src_pt, dst_patch, dst_pt, xc, offset = get_correspondence_patches(match, match_ind)
   block_r = params["block_r"]
   search_r = params["search_r"]
@@ -740,29 +746,6 @@ function update_prealignment_meshsets(waferA, secA, waferB, secB)
     solve!(meshset, method="regularized")
     save(meshset)
   end
-end
-
-function get_review_path(src_index, dst_index=(0,0,0,0))
-  prefix = "review"
-  dir = ALIGNED_DIR
-  ind = indices_to_string(src_index, dst_index)
-  if is_premontaged(src_index) || is_premontaged(dst_index)
-    dir = MONTAGED_DIR
-    ind = string(join(src_index, ","), "-", join(dst_index, ","))
-  elseif is_montaged(src_index) || is_montaged(dst_index)
-    dir = PREALIGNED_DIR
-  elseif is_prealigned(src_index) || is_prealigned(dst_index)
-    dir = ALIGNED_DIR
-  end
-  fn = string(prefix, "_", ind, ".h5")
-  return joinpath(dir, "review", fn)
-end
-
-function indices_to_string(indexA, indexB)
-  if indexB[1] == 0
-    return join(indexA[1:2], ",")
-  end
-  return string(join(indexA[1:2], ","), "-", join(indexB[1:2], ","))
 end
 
 function is_dv_near_search_r(match::Match, sr, factor=0.05)
