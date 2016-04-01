@@ -83,7 +83,7 @@ using IterativeSolvers
 using ImageRegistration
 using Optim
 using Distributions
-using RegERMs
+#using RegERMs
 if USE_PYPLOT
   using PyPlot
 end
@@ -98,7 +98,8 @@ include("Index.jl")
 include("registry.jl")
 if ON_AWS
   #include("filesystem_formyelin.jl")
-    include("dataset_zebrafish.jl")
+  #include("dataset_zebrafish.jl")
+  include("dataset_aibs.jl")
       include("params_default.jl")
       #  using AWS
       #  using AWS.S3
