@@ -156,6 +156,28 @@ function get_succeeding(index, num = 1)
   return registry[loc_in_reg + num, 2];
 end
 
+function in_same_wafer(indexA::Index, indexB::Index)
+  return indexB[1] == indexA[1]
+end
+
+function get_succeeding_in_wafer(index::Index)
+  new_index = get_succeeding(index)
+  if in_same_wafer(new_index, index)
+    return new_index
+  else
+    return NO_INDEX  
+  end
+end
+
+function get_preceding_in_wafer(index::Index)
+  new_index = get_preceding(index)
+  if in_same_wafer(new_index, index)
+    return new_index
+  else
+    return NO_INDEX  
+  end
+end
+
 function get_index_range(first_index, last_index)
   if is_finished(first_index) || is_finished(last_index)
     first_index, last_index = aligned(first_index), aligned(last_index)
