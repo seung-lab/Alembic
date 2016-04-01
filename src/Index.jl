@@ -130,7 +130,7 @@ end
 function get_offset(index)
 #=function get_offset(index, get_from_master=false)
 	if get_from_master =#
-		if myid() != 1 return remotecall_fetch(1, get_offset, index) end
+	#	if myid() != 1 return remotecall_fetch(1, get_offset, index) end
 	#end
 	metadata = get_metadata(index);
 	return Point(metadata[3:4]);
@@ -138,7 +138,7 @@ end
 
 function get_image_sizes(index)
 	metadata = get_metadata(index);
-	return metadata[5:6];
+	return Array{Int64, 1}(metadata[5:6]);
 end
 
 function get_preceding(index, num = 1)

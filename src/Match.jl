@@ -158,17 +158,17 @@ function get_correspondence_patches(match::Match, ind)
 end
 
 ### helper methods
-function get_ranges(pt, src_mesh, dst_mesh, params)
-	get_ranges(pt, src_mesh, dst_mesh, params["match"]["block_r"], params["match"]["search_r"], params["registry"]["global_offsets"]);
+function get_ranges(pt, src_index, src_offset, src_img_size, dst_index, dst_offset, dst_img_size, params)
+	get_ranges(pt, src_index, dst_index, params["match"]["block_r"], params["match"]["search_r"], params["registry"]["global_offsets"]);
 end
 
-function get_ranges(pt, src_index, dst_index, block_r::Int64, search_r::Int64, global_offsets = true)
+function get_ranges(pt, src_index, src_offset, src_img_size, dst_index, dst_offset, dst_img_size, block_r::Int64, search_r::Int64, global_offsets = true)
 	# convert to local coordinates in both src / dst images, and then round up to an integer
 	src_pt = ceil(Int64, pt);
 	if global_offsets
-	dst_pt = pt + get_offset(src_index) - get_offset(dst_index);
+	dst_pt = pt + src_offset - dst_offset
 	else
-	dst_pt = pt + get_offset(src_index)
+	dst_pt = pt + src_offset
 	end
 	dst_pt = ceil(Int64, dst_pt);
 
@@ -178,8 +178,6 @@ function get_ranges(pt, src_index, dst_index, block_r::Int64, search_r::Int64, g
 	src_range_full = src_pt[1] + block_range, src_pt[2] + block_range;
 	dst_range_full = dst_pt[1] + search_range, dst_pt[2] + search_range;
 
-	src_img_size = get_image_sizes(src_index);
-	dst_img_size = get_image_sizes(dst_index);
 	
 	range_in_src = intersect(src_range_full[1], 1:src_img_size[1]), intersect(src_range_full[2], 1:src_img_size[2]);
 	range_in_dst = intersect(dst_range_full[1], 1:dst_img_size[1]), intersect(dst_range_full[2], 1:dst_img_size[2]);
@@ -399,17 +397,20 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); src_
 	SHARED_DST_IMAGE[1:size(dst_image, 1), 1:size(dst_image, 2)] = dst_image;
 	end
 
-	ranges = map(get_ranges, src_mesh.src_nodes, repeated(src_index), repeated(dst_index), repeated(params));
+	ranges = pmap(get_ranges, src_mesh.src_nodes, repeated(src_index), repeated(get_offset(src_index)), repeated(get_image_sizes(src_index)), repeated(dst_index), repeated(get_offset(dst_index)), repeated(get_image_sizes(dst_index)), repeated(params["match"]["block_r"]), repeated(params["match"]["search_r"]), repeated(params["registry"]["global_offsets"]));
 	ranged_inds = find(i -> i != nothing, ranges);
-	src_nodes = copy(src_mesh.src_nodes[ranged_inds]);
-	ranges = copy(ranges[ranged_inds]);
+	#src_nodes = copy(src_mesh.src_nodes[ranged_inds]);
+	ranges = ranges[ranged_inds];
 	print("    ")
-	println("$(length(src_nodes)) / $(length(src_mesh.src_nodes)) nodes to check.")
+	println("$(length(ranged_inds)) / $(length(src_mesh.src_nodes)) nodes to check.")
+	if length(ranged_inds) != 0
+		ranges = Array{typeof(ranges[1]), 1}(ranges);
+	end
 
-	dst_allpoints = pmap(get_match, src_nodes, ranges, repeated(SHARED_SRC_IMAGE), repeated(SHARED_DST_IMAGE), repeated(params));
+	dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(SHARED_SRC_IMAGE), repeated(SHARED_DST_IMAGE), repeated(params));
 	#dst_allpoints = map(get_match, src_nodes, ranges, repeated(SHARED_SRC_IMAGE), repeated(SHARED_DST_IMAGE), repeated(params));
 	matched_inds = find(i -> i != nothing, dst_allpoints);
-	src_points = copy(src_nodes[matched_inds]);
+	src_points = copy(src_mesh.src_nodes[ranged_inds][matched_inds]);
 	filters = Array{Dict{Any, Any}}(0);
 
 	dst_points = [convert(Point, dst_allpoints[ind][1:2]) for ind in matched_inds]
