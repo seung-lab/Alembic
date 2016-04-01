@@ -32,8 +32,8 @@ function render_montaged(waferA, secA, waferB, secB; render_full=true, render_re
 end
 
 function render_montaged(meshset::MeshSet; render_full=true, render_review=true, flagged_only=true)
-  assert(is_premontaged(meshset.meshes[1]))
-  index = montaged(meshset.meshes[1])
+  assert(is_premontaged(meshset.meshes[1].index))
+  index = montaged(meshset.meshes[1].index)
   if is_flagged(meshset) 
     println("The meshset has a flag. Continuing anyway....")
   end

@@ -165,7 +165,7 @@ function write_seams(meshset, imgs, offsets, indices, flagged_only=true)
     src_index, dst_index = indices[i], indices[j]
     k = find_match_index(meshset::MeshSet, src_index, dst_index)
     if !flagged_only || is_flagged(meshset.matches[k])
-      println("Writing seam ", k, " / ", total_seams)
+      println("Writing match #", k, " of ", total_seams, " seams")
       path = get_review_path(src_index, dst_index)
       try 
         img, fuse_offset = imfuse(imgs[i], offsets[i], imgs[j], offsets[j])
