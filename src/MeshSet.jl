@@ -81,7 +81,11 @@ function is_flagged(meshset::MeshSet)
 	return |(map(is_flagged, meshset.matches)...)
 end
 
-function filter!(meshset::MeshSet, filters = values(meshset.properties["params"]["filter"]))
+function count_flags(meshset::MeshSet)
+  return sum(map(is_flagged, meshset.matches))
+end
+
+function filter!(meshset::MeshSet, filters = Base.values(meshset.properties["params"]["filter"]))
   	for filter in filters
 		filter!(meshset, filter...)
 	end
@@ -95,16 +99,16 @@ function filter!(meshset::MeshSet, property_name, compare, threshold)
 	println("$total / $(count_correspondences(meshset)) correspondences filtered on $property_name")
 end
 
-function check!(meshset::MeshSet, crits = values(meshset.properties["params"]["review"])) 
+function check!(meshset::MeshSet, crits = Base.values(meshset.properties["params"]["review"])) 
   return |(map(check!, meshset.matches, repeated(crits))...)
 end
 
-function check_and_resolve!(meshset::MeshSet, crits = values(meshset.properties["params"]["review"]), filters = values(meshset.properties["params"]["filter"])) 
+function check_and_resolve!(meshset::MeshSet, crits = Base.values(meshset.properties["params"]["review"]), filters = Base.values(meshset.properties["params"]["filter"])) 
   if |(map(check!, meshset.matches, repeated(crits))...)
     for match in meshset.matches
       if is_flagged(match)
-	clear_filters!(match);
-	filter!(match, filters)
+      	clear_filters!(match);
+      	filter!(match, filters)
       end
     end
     resolved = !check!(meshset, crits);
@@ -572,3 +576,28 @@ function get_param(meshset::MeshSet, property_name)
   end  
   return property
 end =#
+
+"""
+Cycle through index range and return list of flagged meshset indices
+"""
+function view_flags(firstindex::Index, lastindex::Index)
+  flagged_indices = []
+  indexB = firstindex
+  if is_montaged(indexB)
+    indexB = premontaged(indexB)
+  end
+
+  for indexA in get_index_range(firstindex, lastindex)
+    if is_montaged(indexA)
+      indexA = premontaged(indexA)
+      indexB = indexA
+    end
+    meshset = load(indexA, indexB)
+    if is_flagged(meshset)
+      push!(flagged_indices, (indexA, indexB))
+    end
+    indexB = indexA
+  end
+
+  return flagged_indices
+end

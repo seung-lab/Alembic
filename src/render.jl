@@ -19,88 +19,50 @@ function render_montaged(wafer_no, section_no; render_full=true, render_review=t
   render_montaged(wafer_no, section_no, wafer_no, section_no, render_full=render_full, render_review=render_review)
 end
 
-function render_montaged_review(fn)
-  meshset = load(joinpath(MONTAGED_DIR, fn))
-  render_montaged_review(meshset)
-end
-
-function render_montaged_review(meshset::MeshSet)
-  try
-    warps = pmap(meshwarp_mesh, meshset.meshes);
-    imgs = [x[1][1] for x in warps];
-    offsets = [x[1][2] for x in warps];
-    indices = [x[2] for x in warps];
-    # review images
-    write_seams(meshset, imgs, offsets, indices)
-  catch
-    idx = (meshset.meshes[1].index[1:2]..., -2, -2)
-    log_render_error(MONTAGED_DIR, idx, comment="")
-  end
-end
-
 """
-`WRITE_SEAMS` - Write out overlays of montaged seams
-""" 
-function write_seams(meshset, imgs, offsets, indices)
-    bbs = []
-    for (img, offset) in zip(imgs, offsets)
-        push!(bbs, BoundingBox(offset..., size(img)...))
-    end
-    overlap_tuples = find_overlaps(bbs)
-    for (k, (i,j)) in enumerate(overlap_tuples)
-      println("Writing seam ", k, " / ", length(overlap_tuples))
-      path = get_review_path(indices[i], indices[j])
-      try 
-        img, fuse_offset = imfuse(imgs[i], offsets[i], imgs[j], offsets[j])
-        bb = bbs[i] - bbs[j]
-        img_cropped = imcrop(img, fuse_offset, bb)
-        f = h5open(path, "w")
-    	chunksize = min(50, min(size(img_cropped)...))
-    	@time f["img", "chunk", (chunksize,chunksize)] = img_cropped
-        f["offset"] = [bb.i, bb.j]
-        f["scale"] = 1.0
-        close(f)
-      catch e
-        idx = (indices[i], indices[j])
-        log_render_error(MONTAGED_DIR, idx, e)
-      end
-    end
-end
-
-"""
-Cycle through JLD files in montaged directory and render montage
+Cycle through indices and render montages
 """
 function render_montaged(waferA, secA, waferB, secB; render_full=true, render_review=true)
   indexA = montaged(waferA, secA)
   indexB = montaged(waferB, secB)
   for index in get_index_range(indexA, indexB)
     meshset = load(montaged(index))
-    if is_flagged(meshset) println("The meshset has a flag. Continuing anyway....") end;
-    try
-      new_fn = string(join(index[1:2], ","), "_montaged.h5")
-      println("Rendering ", new_fn)
-      warps = pmap(meshwarp_mesh, meshset.meshes);
-      imgs = [x[1][1] for x in warps];
-      offsets = [x[1][2] for x in warps];
-      indices = [x[2] for x in warps];
-      # review images
-      if render_review
-        write_seams(meshset, imgs, offsets, indices)
-      end
-      if render_full
-        println(typeof(imgs))
-        img, offset = merge_images(imgs, offsets)
-        println("Writing ", new_fn)
-        f = h5open(joinpath(MONTAGED_DIR, new_fn), "w")
-    	chunksize = min(1000, min(size(img)...))
-    	@time f["img", "chunk", (chunksize,chunksize)] = img
-        close(f)
-        update_offset(montaged(index), [0,0], size(img))
-      end
-    catch e
-      log_render_error(MONTAGED_DIR, montaged(index), e)
-    end
+    render_montaged(meshset; render_full=true, render_review=true)
   end 
+end
+
+function render_montaged(meshset::MeshSet; render_full=true, render_review=true, flagged_only=true)
+  assert(is_premontaged(meshset.meshes[1].index))
+  index = montaged(meshset.meshes[1].index)
+  if is_flagged(meshset) 
+    println("The meshset has a flag. Continuing anyway....")
+  end
+
+  try
+    new_fn = string(indices_to_string(index), "_montaged.h5")
+    println("Rendering ", new_fn)
+    warps = pmap(meshwarp_mesh, meshset.meshes);
+    imgs = [x[1][1] for x in warps];
+    offsets = [x[1][2] for x in warps];
+    indices = [x[2] for x in warps];
+    # review images
+    if render_review
+      write_seams(meshset, imgs, offsets, indices, flagged_only)
+    end
+    if render_full
+      println(typeof(imgs))
+      img, offset = merge_images(imgs, offsets)
+      println("Writing ", new_fn)
+      f = h5open(joinpath(MONTAGED_DIR, new_fn), "w")
+      chunksize = min(1000, min(size(img)...))
+      @time f["img", "chunk", (chunksize,chunksize)] = img
+      close(f)
+      update_offset(montaged(index), [0,0], size(img))
+    end
+  catch e
+    log_render_error(MONTAGED_DIR, montaged(index), e)
+  end
+
 end
 
 """
