@@ -1,14 +1,17 @@
-function inspect(index::Index, match_ind=1)
+function inspect(index::Index, match_ind=0)
   meshset = load(index)
   inspect(meshset, match_ind)
 end
 
-function inspect(firstindex::Index, lastindex::Index, match_ind=1)
+function inspect(firstindex::Index, lastindex::Index, match_ind=0)
   meshset = load(firstindex, lastindex)
   inspect(meshset, match_ind)
 end
 
-function inspect(meshset::MeshSet, match_ind=1)
+function inspect(meshset::MeshSet, match_ind=0)
+  if match_ind == 0
+    meshset, match_ind = get_next_flagged_match(meshset, 0)
+  end
   src_index = meshset.matches[match_ind].src_index
   dst_index = meshset.matches[match_ind].dst_index
   println("\n", get_name(meshset), ": ", (src_index, dst_index), " @ ", match_ind, " / ", length(meshset.matches))
@@ -16,6 +19,9 @@ function inspect(meshset::MeshSet, match_ind=1)
   enable_inspection(imgc, img2, meshset, match_ind, vectors, params)
 end
 
+"""
+Get next match in the wafer (could span meshsets)
+"""
 function get_next_match(meshset::MeshSet, match_ind=1)
   matches = meshset.matches
   if 1 <= match_ind < length(matches)
@@ -24,21 +30,28 @@ function get_next_match(meshset::MeshSet, match_ind=1)
     index = meshset.meshes[end].index
     firstindex, lastindex = index, index
     if is_premontaged(index)
-      firstindex = premontaged(get_succeeding(montaged(index)))
+      firstindex = premontaged(get_succeeding_in_wafer(montaged(index)))
       lastindex = firstindex
     elseif is_montaged(index)
       lastindex = get_succeeding(index)
     else
       return nothing, nothing
     end
-    meshset = load(firstindex, lastindex)
-    match_ind = 1
-    return meshset, match_ind
+    if firstindex[1:2] == (0,0) || lastindex[1:2] == (0,0)
+      return nothing, nothing
+    else
+      meshset = load(firstindex, lastindex)
+      match_ind = length(meshset.matches)
+      return meshset, match_ind
+    end
   else
-    return nothing, nothing
+    return meshset, 1
   end
 end
 
+"""
+Get previous match in the wafer (could span meshsets)
+"""
 function get_previous_match(meshset::MeshSet, match_ind=1)
   matches = meshset.matches
   if 1 < match_ind <= length(matches)
@@ -47,7 +60,7 @@ function get_previous_match(meshset::MeshSet, match_ind=1)
     index = meshset.meshes[1].index
     firstindex, lastindex = index, index
     if is_premontaged(index)
-      firstindex = premontaged(get_preceding(montaged(index)))
+      firstindex = premontaged(get_preceding_in_wafer(montaged(index)))
       lastindex = firstindex
     elseif is_montaged(index)
       firstindex = get_preceding(index)
@@ -62,7 +75,7 @@ function get_previous_match(meshset::MeshSet, match_ind=1)
       return meshset, match_ind
     end
   else
-    return nothing, nothing
+    return meshset, 1
   end
 end
 
@@ -138,6 +151,9 @@ function view_match(meshset::MeshSet, match_ind)
   return imgc, img2, vectors, params
 end
 
+"""
+Make vectors for display, scaling and offsetting appropriately
+"""
 function make_vectors(meshset, match_ind, params)
   scale = params["scale"]
   offset = params["offset"]
@@ -154,8 +170,31 @@ function make_vectors(meshset, match_ind, params)
   return change_vector_lengths([hcat(vecs[1]...); hcat(vecs[2]...)], factor)
 end
 
+"""
+Scale a list of 2-element points
+"""
 function scale_matches(pts, scale)
   return [x*scale for x in pts]
+end
+
+"""
+Maintain vector start point, but adjust end point for more prominent visual
+"""
+function change_vector_lengths(vectors, k)
+  v = []
+  if length(vectors) > 0
+    v = [vectors[2,:]; 
+          vectors[1,:]; 
+          (vectors[4,:]-vectors[2,:])*k + vectors[2,:]; 
+          (vectors[3,:]-vectors[1,:])*k + vectors[1,:]]
+  end
+  return v
+end
+
+function offset_matches(src_pts, dst_pts, offset)
+  src_pts = [x - offset for x in src_pts]
+  dst_pts = [x - offset for x in dst_pts]
+  return src_pts, dst_pts
 end
 
 """
