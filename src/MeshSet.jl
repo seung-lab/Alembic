@@ -574,28 +574,3 @@ function get_param(meshset::MeshSet, property_name)
   end  
   return property
 end =#
-
-"""
-Cycle through index range and return list of flagged meshset indices
-"""
-function view_flags(firstindex::Index, lastindex::Index)
-  flagged_indices = []
-  indexB = firstindex
-  if is_montaged(indexB)
-    indexB = premontaged(indexB)
-  end
-
-  for indexA in get_index_range(firstindex, lastindex)
-    if is_montaged(indexA)
-      indexA = premontaged(indexA)
-      indexB = indexA
-    end
-    meshset = load(indexA, indexB)
-    if is_flagged(meshset)
-      push!(flagged_indices, (indexA, indexB))
-    end
-    indexB = indexA
-  end
-
-  return flagged_indices
-end

@@ -16,28 +16,53 @@ function montage_migrate(firstindex::Index, lastindex::Index)
     check!(ms)
     save(ms)
     if is_flagged(ms)
-      render_montaged(ms; render_full=true, render_review=true, flagged_only=true)
+      render_montaged(ms; render_full=false, render_review=true, flagged_only=true)
     else
       render_montaged(ms; render_full=true, render_review=false)
     end
   end
 end
 
+function remontage(firstindex::Index, lastindex::Index, params)
+  for index in get_index_range(montaged(firstindex[1:2]...), montaged(lastindex[1:2]...))
+    ms = load(index)
+    check!(ms)
+    if is_flagged(ms)
+      ms = MeshSet(index; params=params)
+      if is_flagged(ms)
+        render_montaged(ms; render_full=false, render_review=true, flagged_only=true)
+      else
+        render_montaged(ms; render_full=true, render_review=false)
+      end
+    end
+  end
+end
 
-# function montage_section(wafer_num, n)
-#   @time Ms, images = load_section(PREMONTAGED_OFFSETS, wafer_num, n);
-#   @time add_all_matches!(Ms, images);
-#   @time solve_meshset!(Ms);
-#   save(Ms);
-#   images = 0;
-# end
+"""
+Cycle through index range and return list of flagged meshset indices
+"""
+function view_flags(firstindex::Index, lastindex::Index)
+  flagged_indices = []
+  indexB = firstindex
+  if is_montaged(indexB)
+    indexB = premontaged(indexB)
+  end
 
-# function montage_sections(wafer_num, k::UnitRange{Int64})
-#   optimize_all_cores(PARAMS_MONTAGE);
-#   for n in k
-#     @time montage_section(wafer_num, n);
-#   end
-# end
+  for indexA in get_index_range(firstindex, lastindex)
+    if is_montaged(indexA)
+      indexA = premontaged(indexA)
+      indexB = indexA
+    end
+    meshset = load(indexA, indexB)
+    check!(meshset)
+    if is_flagged(meshset)
+      push!(flagged_indices, (indexA, indexB))
+    end
+    indexB = indexA
+  end
+
+  return flagged_indices
+end
 
 function align_stack(first_wafer_num, first_sec_num, last_wafer_num, last_sec_num)
   println("Elastically aligning $first_wafer_num, $first_sec_num -> ... -> $last_wafer_num, $last_sec_num:")
