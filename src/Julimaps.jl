@@ -63,7 +63,7 @@ else
 end
 
 global const IMG_ELTYPE = UInt8
-global const SUP_SIZE = (50000, 50000)
+global const SUP_SIZE = (80000, 80000)
 
 global const SHARED_SRC_IMAGE = SharedArray(IMG_ELTYPE, SUP_SIZE)
 global const SHARED_DST_IMAGE = SharedArray(IMG_ELTYPE, SUP_SIZE)
@@ -98,8 +98,8 @@ include("Index.jl")
 include("registry.jl")
 if ON_AWS
   #include("filesystem_formyelin.jl")
-  #include("dataset_zebrafish.jl")
-  include("dataset_aibs.jl")
+  include("dataset_zebrafish.jl")
+#  include("dataset_aibs.jl")
       include("params_default.jl")
       #  using AWS
       #  using AWS.S3

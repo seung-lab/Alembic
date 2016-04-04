@@ -204,6 +204,8 @@ function prealign(index; params=get_params(index), to_fixed=false)
 	push!(meshset.meshes, Mesh(src_index, params))
 	push!(meshset.meshes, Mesh(dst_index, params, to_fixed))
 	push!(meshset.matches, Match(meshset.meshes[1], meshset.meshes[2], params))
+	filter!(meshset);
+	check_and_resolve!(meshset);
 	solve!(meshset, method=params["solve"]["method"]);
 	save(meshset);
 	return meshset;
@@ -441,10 +443,13 @@ end
 function load(index)
   if is_montaged(index)
 	  return load_montaged(index[1:2]...)
-	end
+  elseif is_prealigned(index)
+	  return load(montaged(index), (get_preceding(montaged(index)))) 
+  end
 end
 
 function load(filename::String)
+  if !isfile(filename) return nothing end
   return open(deserialize, filename)
 end
 

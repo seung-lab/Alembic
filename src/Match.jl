@@ -166,10 +166,11 @@ function get_ranges(pt, src_index, src_offset, src_img_size, dst_index, dst_offs
 	# convert to local coordinates in both src / dst images, and then round up to an integer
 	src_pt = ceil(Int64, pt);
 	if global_offsets
-	dst_pt = pt + src_offset - dst_offset
+	  rel_offset = src_offset - dst_offset;
 	else
-	dst_pt = pt + src_offset
+	  rel_offset = src_offset
 	end
+	dst_pt = src_pt + rel_offset
 	dst_pt = ceil(Int64, dst_pt);
 
 	block_range = -block_r:block_r;
@@ -191,7 +192,7 @@ function get_ranges(pt, src_index, src_offset, src_img_size, dst_index, dst_offs
 	end
 
 
-	return src_index, range_in_src, [src_pt_locs[1], src_pt_locs[2]], dst_index, range_in_dst, dst_range_full, [dst_pt_locs[1], dst_pt_locs[2]], [dst_pt_locs_full[1], dst_pt_locs_full[2]];
+	return src_index, range_in_src, [src_pt_locs[1], src_pt_locs[2]], dst_index, range_in_dst, dst_range_full, [dst_pt_locs[1], dst_pt_locs[2]], [dst_pt_locs_full[1], dst_pt_locs_full[2]], rel_offset;
 end
 
 """
@@ -215,7 +216,7 @@ function monoblock_match(src_index, dst_index, src_image, dst_image, params=get_
 
 	ranges = src_index, range_in_src, src_pt_locs, dst_index, range_in_dst, dst_range_full, dst_pt_locs, dst_pt_locs_full
 
-	dv = get_match(src_pt_locs, ranges, src_image_scaled, dst_image_scaled)[3]["dv"]
+	dv = get_match(src_pt_locs, ranges, src_image_scaled, dst_image_scaled, 1, true)[3]["vects"]["dv"]
 
 	#=view(src_image_scaled[range_in_src...]/255)
 	view(dst_image_scaled[range_in_dst...]/255)
@@ -233,13 +234,14 @@ function monoblock_match(src_index, dst_index, src_image, dst_image, params=get_
 
 end
 
+function get_match(pt, ranges, src_image, dst_image, params)
+	return get_match(pt, ranges, src_image, dst_image, params["match"]["blockmatch_scale"]);
+end
 """
 Template match two image patches to produce point pair correspondence
 """
-function get_match(pt, ranges, src_image, dst_image, params)
-	src_index, src_range, src_pt_loc, dst_index, dst_range, dst_range_full, dst_pt_loc, dst_pt_loc_full = ranges;
-
-	scale = params["match"]["blockmatch_scale"]
+function get_match(pt, ranges, src_image, dst_image, scale = 1.0)
+	src_index, src_range, src_pt_loc, dst_index, dst_range, dst_range_full, dst_pt_loc, dst_pt_loc_full, rel_offset = ranges;
 
 	correspondence_properties = Dict{Any, Any}();
 	correspondence_properties["ranges"] = Dict{Any, Any}();
@@ -294,20 +296,16 @@ function get_match(pt, ranges, src_image, dst_image, params)
 	correspondence_properties["xcorr"] = Dict{Any, Any}();
 	correspondence_properties["xcorr"]["r_max"] = r_max;
 	correspondence_properties["xcorr"]["sigmas"] = Dict{Any, Any}();
-	correspondence_properties["xcorr"]["sigmas"][.5] = sigma(xc, .5);
-	correspondence_properties["xcorr"]["sigmas"][.6] = sigma(xc, .6);
-	correspondence_properties["xcorr"]["sigmas"][.7] = sigma(xc, .7);
-	correspondence_properties["xcorr"]["sigmas"][.8] = sigma(xc, .8);
+	correspondence_properties["xcorr"]["sigmas"][.5] = sigma(xc, .5) / scale;
+	correspondence_properties["xcorr"]["sigmas"][.6] = sigma(xc, .6) / scale;
+	correspondence_properties["xcorr"]["sigmas"][.7] = sigma(xc, .7) / scale;
+	correspondence_properties["xcorr"]["sigmas"][.8] = sigma(xc, .8) / scale;
 	correspondence_properties["vects"] = Dict{Any, Any}();
 	correspondence_properties["vects"]["dv"] = [di, dj];
 	correspondence_properties["vects"]["norm"] = norm([di, dj]);
 
 
-	if !params["registry"]["global_offsets"]
-		return vcat(pt + get_offset(src_index) + [di, dj], correspondence_properties);
-	else
-		return vcat(pt + get_offset(src_index) - get_offset(dst_index) + [di, dj], correspondence_properties);
-	end
+	return vcat(pt + rel_offset + [di, dj], correspondence_properties);
 end
 
 function filter!(match::Match, property_name, compare, threshold)
@@ -407,7 +405,7 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); src_
 		ranges = Array{typeof(ranges[1]), 1}(ranges);
 	end
 
-	dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(SHARED_SRC_IMAGE), repeated(SHARED_DST_IMAGE), repeated(params));
+	dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(SHARED_SRC_IMAGE), repeated(SHARED_DST_IMAGE), repeated(params["match"]["blockmatch_scale"])) 
 	#dst_allpoints = map(get_match, src_nodes, ranges, repeated(SHARED_SRC_IMAGE), repeated(SHARED_DST_IMAGE), repeated(params));
 	matched_inds = find(i -> i != nothing, dst_allpoints);
 	src_points = copy(src_mesh.src_nodes[ranged_inds][matched_inds]);
