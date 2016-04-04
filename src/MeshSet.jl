@@ -443,10 +443,13 @@ end
 function load(index)
   if is_montaged(index)
 	  return load_montaged(index[1:2]...)
-	end
+  elseif is_prealigned(index)
+	  return load(montaged(index), (get_preceding(montaged(index)))) 
+  end
 end
 
 function load(filename::String)
+  if !isfile(filename) return nothing end
   return open(deserialize, filename)
 end
 

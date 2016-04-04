@@ -63,7 +63,7 @@ else
 end
 
 global const IMG_ELTYPE = UInt8
-global const SUP_SIZE = (65000, 65000)
+global const SUP_SIZE = (80000, 80000)
 
 global const SHARED_SRC_IMAGE = SharedArray(IMG_ELTYPE, SUP_SIZE)
 global const SHARED_DST_IMAGE = SharedArray(IMG_ELTYPE, SUP_SIZE)
