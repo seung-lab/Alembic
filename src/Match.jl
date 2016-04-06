@@ -213,25 +213,30 @@ function monoblock_match(src_index, dst_index, src_image, dst_image, params=get_
 	src_pt_locs = [1, 1]; 
 	dst_pt_locs = [first(range_in_src[1]), first(range_in_src[2])];
 	dst_pt_locs_full = dst_pt_locs;
+	rel_offset = [0,0]
 
-	ranges = src_index, range_in_src, src_pt_locs, dst_index, range_in_dst, dst_range_full, dst_pt_locs, dst_pt_locs_full, [0,0]
+	ranges = src_index, range_in_src, src_pt_locs, dst_index, range_in_dst, dst_range_full, dst_pt_locs, dst_pt_locs_full, rel_offset
 
-	dv = get_match(src_pt_locs, ranges, src_image_scaled, dst_image_scaled, 1)[3]["vects"]["dv"]
-
-	#=view(src_image_scaled[range_in_src...]/255)
-	view(dst_image_scaled[range_in_dst...]/255)
-	println(dst_pt_locs + dv)
-	img = normxcorr2(src_image_scaled[range_in_src...], dst_image_scaled[range_in_dst...]);
-	view(img / maximum(img)) =#
-
-	if params["registry"]["global_offsets"]
-	update_offset(src_index, get_offset(dst_index) + dv / scale);
+	match = get_match(src_pt_locs, ranges, src_image_scaled, dst_image_scaled, 1)
+	if match == nothing
+		error("MONOBLOCK_MATCH FAILED: Cross correlogram maximum is NaN. Check that images have variance.")
 	else
-	update_offset(src_index, (dv / scale));
-	end
-	print("    ")
-	println("Monoblock matched... relative displacement calculated at $( dv / scale)")
+		dv = match[3]["vects"]["dv"]
 
+		#=view(src_image_scaled[range_in_src...]/255)
+		view(dst_image_scaled[range_in_dst...]/255)
+		println(dst_pt_locs + dv)
+		img = normxcorr2(src_image_scaled[range_in_src...], dst_image_scaled[range_in_dst...]);
+		view(img / maximum(img)) =#
+
+		if params["registry"]["global_offsets"]
+		update_offset(src_index, get_offset(dst_index) + dv / scale);
+		else
+		update_offset(src_index, (dv / scale));
+		end
+		print("    ")
+		println("Monoblock matched... relative displacement calculated at $( dv / scale)")
+	end
 end
 
 function get_match(pt, ranges, src_image, dst_image, params)
