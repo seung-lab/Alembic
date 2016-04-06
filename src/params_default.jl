@@ -99,12 +99,13 @@ global PARAMS_PREALIGNMENT = Dict(
 					"ftol_cg" => FTOL_CG_PREALIGNMENT,
 					"max_iters" => MAX_ITERS_PREALIGNMENT),
 			     "filter" => Dict(
-			     		"sigma_filter" => (0.5, >, 200),
+			     		"sigma_filter" => (0.5, >, 50),
 			     		"r_filter" => ("r_max", <, 0.2)
 					      ),
 			     "render" => Dict(
 					      ),
 			     "review" => Dict(
+			     		"too_few_corresps" => (:count_correspondences, <, 3),
 						"filtered_ratio" => (:get_ratio_filtered, <, 0.25, 0)
 					      ),
 			     "registry" => Dict(
