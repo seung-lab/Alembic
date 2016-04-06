@@ -37,6 +37,10 @@ function homogenize_points(pts)
   return pts_new;
 end
 
+function reset_offset(index::Index)
+  update_offset(index, [0,0])
+end
+
 """
 Edit the offset_log text file associated with an index
 
