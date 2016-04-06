@@ -214,9 +214,9 @@ function monoblock_match(src_index, dst_index, src_image, dst_image, params=get_
 	dst_pt_locs = [first(range_in_src[1]), first(range_in_src[2])];
 	dst_pt_locs_full = dst_pt_locs;
 
-	ranges = src_index, range_in_src, src_pt_locs, dst_index, range_in_dst, dst_range_full, dst_pt_locs, dst_pt_locs_full
+	ranges = src_index, range_in_src, src_pt_locs, dst_index, range_in_dst, dst_range_full, dst_pt_locs, dst_pt_locs_full, [0,0]
 
-	dv = get_match(src_pt_locs, ranges, src_image_scaled, dst_image_scaled, 1, true)[3]["vects"]["dv"]
+	dv = get_match(src_pt_locs, ranges, src_image_scaled, dst_image_scaled, 1)[3]["vects"]["dv"]
 
 	#=view(src_image_scaled[range_in_src...]/255)
 	view(dst_image_scaled[range_in_dst...]/255)
