@@ -28,12 +28,12 @@ function get_next_match(meshset::MeshSet, match_ind=1)
     return meshset, match_ind+1
   elseif match_ind == length(matches)
     index = meshset.meshes[end].index
-    firstindex, lastindex = index, index
     if is_premontaged(index)
       firstindex = premontaged(get_succeeding_in_wafer(montaged(index)))
       lastindex = firstindex
     elseif is_montaged(index)
-      lastindex = get_succeeding(index)
+      firstindex = get_succeeding_in_wafer(meshset.meshes[1].index)
+      lastindex = meshset.meshes[1].index
     else
       return nothing, nothing
     end
@@ -58,12 +58,12 @@ function get_previous_match(meshset::MeshSet, match_ind=1)
     return meshset, match_ind-1
   elseif match_ind == 1
     index = meshset.meshes[1].index
-    firstindex, lastindex = index, index
     if is_premontaged(index)
       firstindex = premontaged(get_preceding_in_wafer(montaged(index)))
       lastindex = firstindex
     elseif is_montaged(index)
-      firstindex = get_preceding(index)
+      firstindex = meshset.meshes[end].index
+      lastindex = get_preceding_in_wafer(meshset.meshes[end].index)
     else
       return nothing, nothing
     end
@@ -120,6 +120,9 @@ function view_match(meshset::MeshSet, match_ind)
   path = get_review_path(indexB, indexA)
   if !isfile(path)
     path = get_review_path(indexA, indexB)
+    if !isfile(path)
+      error("NO REVIEW IMAGE CREATED")
+    end
   end
   img_orig = h5read(path, "img")
   offset = h5read(path, "offset")
@@ -138,7 +141,7 @@ function view_match(meshset::MeshSet, match_ind)
   params["vector_scale"] = 4
   params["post_matches"] = false
   params["dist"] = 90
-  params["sigma"] = 3
+  params["sigma"] = 7
 
   if USE_PYPLOT
     view_inspection_statistics(match, params["search_r"])
@@ -291,8 +294,9 @@ function enable_inspection(imgc::ImageView.ImageCanvas,
                                                                 parse(Int, y), 
                                                                 matches,
                                                                 vectors))
-  bind(win, "f", path->flag_inspection(imgc, img2, matches))
+  bind(win, "f", path->toggle_flag(imgc, img2, matches))
   bind(win, "<Control-z>", path->undo_match_filter(imgc, img2, matches, vectors))
+  bind(win, "<Control-r>", path->refresh(imgc, img2, meshset, match_ind))
   bind(win, "<Escape>", path->disable_inspection(imgc, img2))
   bind(win, "<Destroy>", path->disable_inspection(imgc, img2))
   # bind(win, "z", path->end_edit())
@@ -369,6 +373,11 @@ function go_to_next_inspection(imgc, img2, meshset, match_ind; forward=true, fla
     disable_inspection(imgc, img2)
     inspect(next_ms, next_match_ind)
   end
+end
+
+function refresh(imgc, img2, meshset, match_ind)
+  disable_inspection(imgc, img2)
+  inspect(meshset, match_ind)
 end
 
 """
@@ -518,16 +527,6 @@ function decrease_distance_filter(imgc, img2, matches, vectors, params)
   filter_match_distance(imgc, img2, matches, vectors, params["dist"])
 end
 
-function increase_sigma_filter(imgc, img2, matches, vectors, params)
-  params["sigma"] += 0.5
-  filter_match_sigma(imgc, img2, matches, vectors, params["sigma"])
-end
-
-function decrease_sigma_filter(imgc, img2, matches, vectors, params)
-  params["sigma"] = max(params["sigma"]-0.5, 0)
-  filter_match_sigma(imgc, img2, matches, vectors, params["sigma"])
-end
-
 function filter_match_distance(imgc, img2, matches, vectors, dist)
   # hack to test if a match_distance filter was just implemented
   if length(matches.filters) > 0
@@ -540,31 +539,35 @@ function filter_match_distance(imgc, img2, matches, vectors, dist)
   update_annotations(imgc, img2, matches, vectors)
 end
 
+function increase_sigma_filter(imgc, img2, matches, vectors, params)
+  params["sigma"] += 1
+  filter_match_sigma(imgc, img2, matches, vectors, params["sigma"])
+end
+
+function decrease_sigma_filter(imgc, img2, matches, vectors, params)
+  params["sigma"] = max(params["sigma"]-1, 0)
+  filter_match_sigma(imgc, img2, matches, vectors, params["sigma"])
+end
+
 function filter_match_sigma(imgc, img2, matches, vectors, sigma)
-  if !ON_AWS
-  # hack to test if a match_distance filter was just implemented
   if length(matches.filters) > 0
-    if matches.filters[end]["type"] == "sigma_5"
+    if matches.filters[end]["type"] == 0.5
       undo_filter!(matches)
     end
   end
   println("Sigma filter @ ", sigma)
-  filter!(matches, "sigma_5", >, sigma)
-  else
-  if length(matches.filters) > 0
-    if matches.filters[end]["type"] == .5
-      undo_filter!(matches)
-    end
-  end
-  println("Sigma filter @ ", sigma)
-  filter!(matches, .5, >, sigma)
-  end
+  filter!(matches, 0.5, >, sigma)
   update_annotations(imgc, img2, matches, vectors)
 end
 
-function flag_inspection(imgc, img2, matches)
-  println("Flag inspection!")
-  flag!(matches)
+function toggle_flag(imgc, img2, match)
+  if is_flagged(match)
+    println("Unflag match!")
+    unflag!(match)
+  else
+    println("Flag match!")
+    flag!(match)
+  end
 end
 
 function increase_vectors(imgc, img2, meshset, matches, vectors, params)
@@ -691,7 +694,7 @@ function show_montage_inspection_progress(show_stats=false)
   for tracer in tracers
     log = logs[logs[:,2] .== tracer, :]
     log_time = round(Int64, (log[:,1] % 10^6) / 100)
-    meshset_indices = [(parse_index(l)[1:2]..., -2, -2) for l in log[:,3]]
+    meshset_indices = [montaged(parse_index(l)) for l in log[:,3]]
     log_k = map(x -> findfirst(montages, x)*factor, meshset_indices)
     log_k += log[:,5]
     y[log_k] = log_time
