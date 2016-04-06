@@ -123,35 +123,6 @@ function imcrop(img, offset, bb)
 end
 
 """
-Generate filepath for the review image of given indices
-"""
-function get_review_path(src_index, dst_index=(0,0,0,0))
-  prefix = "review"
-  dir = ALIGNED_DIR
-  ind = indices_to_string(src_index, dst_index)
-  if is_premontaged(src_index) || is_premontaged(dst_index)
-    dir = MONTAGED_DIR
-    ind = string(join(src_index, ","), "-", join(dst_index, ","))
-  elseif is_montaged(src_index) || is_montaged(dst_index)
-    dir = PREALIGNED_DIR
-  elseif is_prealigned(src_index) || is_prealigned(dst_index)
-    dir = ALIGNED_DIR
-  end
-  fn = string(prefix, "_", ind, ".h5")
-  return joinpath(dir, "review", fn)
-end
-
-"""
-Convert two indices into a name
-"""
-function indices_to_string(indexA, indexB=(0,0,0,0))
-  if indexB[1] == 0
-    return join(indexA[1:2], ",")
-  end
-  return string(join(indexA[1:2], ","), "-", join(indexB[1:2], ","))
-end
-
-"""
 `WRITE_SEAMS` - Write out overlays of montaged seams
 """ 
 function write_seams(meshset, imgs, offsets, indices, flagged_only=true)
