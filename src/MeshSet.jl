@@ -57,7 +57,7 @@ function set_reviewed!(meshset::MeshSet, match_ind, flag = false)
 	set_reviewed!(meshset.matches[match_ind], flag);
 end
 
-function flag!(meshset::MeshSet, match_ind)
+function flag!(meshset::MeshSet, match_ind=1)
 	flag!(meshset.matches[match_ind])
 end
 
@@ -115,8 +115,17 @@ function check_and_resolve!(meshset::MeshSet, crits = Base.values(meshset.proper
     if resolved 
       println("resolved successfully");
       solve!(meshset);
-    else println("failed to resolve meshset")
+    else 
+      clear_filters!(meshset)
+      flag!(meshset)
+      println("failed to resolve meshset; cleared filters & flagged")
     end
+  end
+end
+
+function clear_filters!(meshset::MeshSet)
+  for match in meshset.matches
+    clear_filters!(match)
   end
 end
 
@@ -193,7 +202,7 @@ function MeshSet()
 	return MeshSet(meshes, matches, properties)
 end
 
-function prealign(index; params=get_params(index), to_fixed=false)
+function prealign(index::Index; params=get_params(index), to_fixed=false)
 	src_index = index;
 	dst_index = get_preceding(src_index)
 	if to_fixed
