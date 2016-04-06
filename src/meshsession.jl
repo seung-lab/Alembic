@@ -1,5 +1,5 @@
 function montage(firstindex::Index, lastindex::Index)
-  for index in get_index_range(montaged(firstindex[1:2]...), montaged(lastindex[1:2]...))
+  for index in get_index_range(montaged(firstindex), montaged(lastindex))
     ms = MeshSet(index)
     if is_flagged(ms)
       render_montaged(ms; render_full=false, render_review=true, flagged_only=true)
@@ -10,7 +10,7 @@ function montage(firstindex::Index, lastindex::Index)
 end
 
 function montage_migrate(firstindex::Index, lastindex::Index)
-  for index in get_index_range(montaged(firstindex[1:2]...), montaged(lastindex[1:2]...))
+  for index in get_index_range(montaged(firstindex), montaged(lastindex))
     ms = load(index)
     migrate!(ms)
     check!(ms)
@@ -24,7 +24,7 @@ function montage_migrate(firstindex::Index, lastindex::Index)
 end
 
 function remontage(firstindex::Index, lastindex::Index, params)
-  for index in get_index_range(montaged(firstindex[1:2]...), montaged(lastindex[1:2]...))
+  for index in get_index_range(montaged(firstindex), montaged(lastindex))
     ms = load(index)
     check!(ms)
     if is_flagged(ms)
@@ -38,27 +38,76 @@ function remontage(firstindex::Index, lastindex::Index, params)
   end
 end
 
+function prealign(firstindex::Index, lastindex::Index)
+  for index in get_index_range(montaged(firstindex), montaged(lastindex))
+    ms = MeshSet()
+    try
+      ms = prealign(montaged(index))
+      if is_flagged(ms)
+        render_prealigned(index; render_full=false, render_review=true)
+      end
+    catch e
+      log_error(prealigned(index); fn="match_error_log", comment=e)
+    end
+  end
+end
+
+function reprealign(firstindex::Index, lastindex::Index, params)
+  for index in get_index_range(montaged(firstindex), montaged(lastindex))
+    ms = load(prealigned(index))
+    if is_flagged(ms)
+      try
+        reset_offset(index)
+        ms = prealign(montaged(index); params=params)
+        if is_flagged(ms)
+          render_prealigned(index; render_full=false, render_review=true)
+        end
+      catch e
+        log_error(prealigned(index); fn="match_error_log", comment=e)
+      end
+    end
+  end
+end
+
+function copy_through_first_section(index::Index)
+  img = get_image(montaged(index))
+
+  function write_image(index, img)
+    fn = string(get_name(index), ".h5")
+    dir = get_dir(index)
+
+    update_offset(index, [0,0], size(img))
+    println("Writing image:\n\t", fn)
+    # @time imwrite(stage["img"], joinpath(dir, fn))
+    f = h5open(joinpath(dir, fn), "w")
+    chunksize = min(1000, min(size(img)...))
+    @time f["img", "chunk", (chunksize,chunksize)] = img
+    f["offset"] = [0,0]
+    f["scale"] = 1.0
+    close(f)
+  end
+
+  write_image(prealigned(index), img)
+  write_image(aligned(index), img)
+end
+
 """
 Cycle through index range and return list of flagged meshset indices
 """
 function view_flags(firstindex::Index, lastindex::Index)
   flagged_indices = []
-  indexB = firstindex
-  if is_montaged(indexB)
-    indexB = premontaged(indexB)
-  end
 
-  for indexA in get_index_range(firstindex, lastindex)
-    if is_montaged(indexA)
-      indexA = premontaged(indexA)
-      indexB = indexA
-    end
-    meshset = load(indexA, indexB)
-    check!(meshset)
+  if is_montaged(firstindex)
+    func = montaged
+  elseif is_prealigned(firstindex)
+    func = prealigned
+  end
+  for index in get_index_range(montaged(firstindex), montaged(lastindex))
+    meshset = load(func(index))
+    # check!(meshset)
     if is_flagged(meshset)
-      push!(flagged_indices, (indexA, indexB))
+      push!(flagged_indices, index)
     end
-    indexB = indexA
   end
 
   return flagged_indices
@@ -184,3 +233,24 @@ function premontage(wafer::Int, section_range::UnitRange{Int64})
   end
 end
 =#
+
+"""
+Write any errors to a log file
+"""
+function log_error(index::Index; fn="render_error_log", comment="")
+  ts = parse(Dates.format(now(), "yymmddHHMMSS"))
+  dir = get_dir(index)
+  path = joinpath(dir, string(fn, ".txt"))
+  new_row = [ts, index, comment]'
+  if !isfile(path)
+    f = open(path, "w")
+    close(f)
+    log = new_row
+  else  
+    log = readdlm(path)
+    log = vcat(log, new_row)
+  end
+  log = log[sortperm(log[:, 1]), :]
+  println("Logging error:\n", path)
+  writedlm(path, log)
+end
