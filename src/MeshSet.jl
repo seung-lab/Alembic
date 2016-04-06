@@ -103,7 +103,7 @@ function check!(meshset::MeshSet, crits = Base.values(meshset.properties["params
   return |(map(check!, meshset.matches, repeated(crits))...)
 end
 
-function check_and_resolve!(meshset::MeshSet, crits = Base.values(meshset.properties["params"]["review"]), filters = Base.values(meshset.properties["params"]["filter"])) 
+function check_and_fix!(meshset::MeshSet, crits = Base.values(meshset.properties["params"]["review"]), filters = Base.values(meshset.properties["params"]["filter"])) 
   if |(map(check!, meshset.matches, repeated(crits))...)
     for match in meshset.matches
       if is_flagged(match)
@@ -111,11 +111,15 @@ function check_and_resolve!(meshset::MeshSet, crits = Base.values(meshset.proper
       	filter!(match, filters)
       end
     end
-    resolved = !check!(meshset, crits);
-    if resolved 
-      println("resolved successfully");
-      solve!(meshset);
-    else println("failed to resolve meshset")
+    fixed = !check!(meshset, crits);
+    if fixed
+      println("fixed successfully");
+    else println("failed to fix meshset")
+    for match in meshset.matches
+      if is_flagged(match)
+      	clear_filters!(match);
+      end
+    end
     end
   end
 end
@@ -205,7 +209,7 @@ function prealign(index; params=get_params(index), to_fixed=false)
 	push!(meshset.meshes, Mesh(dst_index, params, to_fixed))
 	push!(meshset.matches, Match(meshset.meshes[1], meshset.meshes[2], params))
 	filter!(meshset);
-	check_and_resolve!(meshset);
+	check_and_fix!(meshset);
 	solve!(meshset, method=params["solve"]["method"]);
 	save(meshset);
 	return meshset;
@@ -235,7 +239,7 @@ function MeshSet(first_index, last_index; params=get_params(first_index), solve=
 	match!(meshset, params["match"]["depth"]; prefetch_all=prefetch_all);
 
 	filter!(meshset);
-	check_and_resolve!(meshset);
+	check_and_fix!(meshset);
 #=	
 	if check!(meshset)
 		save(meshset); return meshset;
