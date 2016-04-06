@@ -224,3 +224,107 @@ Boolean if an index is the first section in the stack
 function is_first_section(index)
   return get_registry(index)[1,2] == index
 end
+
+"""
+Convert two indices into a name
+"""
+function indices_to_string(indexA, indexB=(0,0,0,0))
+  if indexB[1] == 0
+    return join(indexA[1:2], ",")
+  end
+  return string(join(indexA[1:2], ","), "-", join(indexB[1:2], ","))
+end
+
+# function get_name(index::Index)
+#   ind_str = indices_to_string(index)
+#   name = ""
+#   if is_montaged(index)
+#     name = string(ind_str, "_montaged")
+#   elseif is_prealigned(index)
+#     name = string(ind_str, "_prealigned")
+#   elseif is_aligned(index)
+#     name = string(ind_str, "_aligned")
+#   else
+#     name = string(ind_str, "_premontaged")
+#   end
+#   return name
+# end
+
+function get_filename(index::Index, ext="h5")
+  return string(get_name(index), ".", ext)
+end
+
+function get_dir(index::Index, )
+  dir = ""
+  if is_premontaged(index)
+    dir = PREMONTAGED_DIR
+  elseif is_montaged(index)
+    dir = MONTAGED_DIR
+  elseif is_prealigned(index)
+    dir = PREALIGNED_DIR
+  elseif is_aligned(index)
+    dir = ALIGNED_DIR
+  elseif is_finished(index)
+    dir = FINISHED_DIR
+  else
+    dir = PREMONTAGED_DIR
+  end
+  return dir
+end
+
+# function get_path(index::Index, ext="h5")
+#   return joinpath(get_dir(index), get_filename(index, ext))
+# end
+
+function get_review_name(src_index::Index, dst_index::Index)
+  prefix = "review"
+  ind = indices_to_string(src_index, dst_index)
+  return string(prefix, "_", ind)
+end
+
+function get_review_filename(src_index::Index, dst_index::Index, ext="h5")
+  return string(get_review_name(src_index, dst_index), ".", ext)
+end
+
+function get_review_dir(index::Index, )
+  dir = ""
+  if is_premontaged(index)
+    dir = MONTAGED_DIR
+  elseif is_montaged(index)
+    dir = PREALIGNED_DIR
+  elseif is_prealigned(index)
+    dir = ALIGNED_DIR
+  elseif is_aligned(index)
+    dir = FINISHED_DIR
+  elseif is_finished(index)
+    dir = FINISHED_DIR
+  else
+    dir = PREMONTAGED_DIR
+  end
+  return joinpath(dir, "review")
+end
+
+function get_review_path(src_index::Index, dst_index::Index, ext="h5")
+  dir = get_review_dir(src_index)
+  fn = get_review_filename(src_index, dst_index, ext)
+  return joinpath(dir, fn)
+end
+
+# """
+# Generate filepath for the review image of given indices
+# """
+# function get_review_path(src_index, dst_index=(0,0,0,0))
+#   prefix = "review"
+#   dir = ALIGNED_DIR
+#   ind = indices_to_string(src_index, dst_index)
+#   if is_premontaged(src_index) || is_premontaged(dst_index)
+#     dir = MONTAGED_DIR
+#     ind = string(join(src_index, ","), "-", join(dst_index, ","))
+#   elseif is_montaged(src_index) || is_montaged(dst_index)
+#     dir = PREALIGNED_DIR
+#   elseif is_prealigned(src_index) || is_prealigned(dst_index)
+#     dir = ALIGNED_DIR
+#   end
+#   fn = string(prefix, "_", ind, ".h5")
+#   return joinpath(dir, "review", fn)
+# end

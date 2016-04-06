@@ -395,12 +395,15 @@ end
 """
 Cycle through sections of the stack stack, with images staged for easier viewing
 """
-function view_stack(indexA, indexB, slice=(1:200,1:200);
+function view_stack(indexA::Index, indexB::Index, slice=(1:200,1:200);
                                         include_reverse=false, perm=[1,2,3])
   imgs = []
   for index in get_index_range(indexA, indexB)
     if is_finished(indexA)
       index = finished(index)
+    end
+    if is_montaged(indexA)
+      index = prealigned(index)
     end
     print(string(join(index[1:2], ",") ,"|"))
     img = reinterpret(UFixed8, get_h5_slice(get_path(index), slice))
