@@ -56,7 +56,7 @@ else
 global const ON_AWS = true;
 end
 
-if ON_AWS || contains(gethostname(), "seunglab")
+if ON_AWS || contains(gethostname(), "seunglab") || contains(gethostname(), "seungom")
   global const USE_PYPLOT = false;
 else
   global const USE_PYPLOT = true;
@@ -87,7 +87,7 @@ using Distributions
 if USE_PYPLOT
   using PyPlot
 end
-if !contains(gethostname(), "seunglab")
+if !(contains(gethostname(), "seunglab") || contains(gethostname(), "seungom"))
   using Images
   using ImageView
   using MKLSparse
@@ -130,7 +130,7 @@ if ON_AWS
     include("transforms.jl")
     include("draw.jl")
     include("visualize.jl")
-if !contains(gethostname(), "seunglab")
+if !(contains(gethostname(), "seunglab") || contains(gethostname(), "seungom"))
     include("player.jl")
     include("inspect.jl")
     include("check.jl")

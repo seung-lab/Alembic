@@ -1,4 +1,4 @@
-global ROI_FIRST = (1,1,0,0);
+global ROI_FIRST = (1,2,0,0);
 global ROI_LAST = (8,173,0,0);
 
 function get_name(index)
@@ -151,7 +151,7 @@ function parse_registry(path::String)
     return registry
 end
 
-if contains(gethostname(), "seunglab") || contains(gethostname(), "spock") 
+if contains(gethostname(), "seunglab") || contains(gethostname(), "seungom") || contains(gethostname(), "spock") 
  bucket_dir_path = "/mnt/bucket/labs/seung/"
 end
 
