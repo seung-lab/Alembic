@@ -84,7 +84,7 @@ function intersects(bbA::BoundingBox, bbB::BoundingBox)
 end
 
 """
-Given list of bounding boxes, calculate pairs of indices with overlaps
+Given list of bounding boxes, calculate pairs of indices with overlaps, symmetric
 """
 function find_overlaps(boundingboxes)
   bbs = copy(boundingboxes)
@@ -95,6 +95,7 @@ function find_overlaps(boundingboxes)
     for (j, bbj)  in enumerate(bbs)
       if intersects(bbi, bbj)
         push!(overlap_tuples, (i,j))
+        push!(overlap_tuples, (j,i))
       end
     end
     i -= 1
@@ -130,28 +131,23 @@ function write_seams(meshset, imgs, offsets, indices, flagged_only=true)
   for (img, offset) in zip(imgs, offsets)
       push!(bbs, BoundingBox(offset..., size(img)...))
   end
-  overlap_tuples = find_overlaps(bbs)
+  overlap_tuples = find_overlaps(bbs) # could include tag for asymmetric list
   total_seams = flagged_only ? count_flags(meshset) : length(overlap_tuples)
   for (i,j) in overlap_tuples
     src_index, dst_index = indices[i], indices[j]
-    k = find_match_index(meshset::MeshSet, src_index, dst_index)
+    k = find_match_index(meshset, src_index, dst_index)
     if !flagged_only || is_flagged(meshset.matches[k])
       println("Writing match #", k, " of ", total_seams, " seams")
       path = get_review_path(src_index, dst_index)
-      try 
-        img, fuse_offset = imfuse(imgs[i], offsets[i], imgs[j], offsets[j])
-        bb = bbs[i] - bbs[j]
-        img_cropped = imcrop(img, fuse_offset, bb)
-        f = h5open(path, "w")
-        chunksize = min(50, min(size(img_cropped)...))
-        @time f["img", "chunk", (chunksize,chunksize)] = img_cropped
-        f["offset"] = [bb.i, bb.j]
-        f["scale"] = 1.0
-        close(f)
-      catch e
-        idx = (indices[i], indices[j])
-        log_render_error(MONTAGED_DIR, idx, e)
-      end
+      img, fuse_offset = imfuse(imgs[i], offsets[i], imgs[j], offsets[j])
+      bb = bbs[i] - bbs[j]
+      img_cropped = imcrop(img, fuse_offset, bb)
+      f = h5open(path, "w")
+      chunksize = min(50, min(size(img_cropped)...))
+      @time f["img", "chunk", (chunksize,chunksize)] = img_cropped
+      f["offset"] = [bb.i, bb.j]
+      f["scale"] = 1.0
+      close(f)
     end
   end
 end
