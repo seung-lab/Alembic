@@ -32,7 +32,7 @@ function render_montaged(firstindex::Index, lastindex::Index;
   end 
 end
 
-function render_montaged(meshset::MeshSet; render_full=true, render_review=true, flagged_only=true)
+function render_montaged(meshset::MeshSet; render_full=false, render_review=true, flagged_only=true)
   assert(is_premontaged(meshset.meshes[1].index))
   index = montaged(meshset.meshes[1].index)
   if is_flagged(meshset) 
@@ -61,6 +61,7 @@ function render_montaged(meshset::MeshSet; render_full=true, render_review=true,
       update_offset(index, [0,0], size(img))
     end
   catch e
+    println(e)
     log_error(index; comment=e)
   end
 
@@ -180,29 +181,22 @@ end
 """
 Render aligned images
 """
-function render_aligned_review(waferA, secA, waferB, secB, start=1, finish=0)
-  indexA = prealigned(waferA, secA)
-  indexB = prealigned(waferB, secB)
-  meshset = load(indexA, indexB)
+function render_aligned_review(firstindex::Index, lastindex::Index, start=1, finish=0)
+  firstindex = prealigned(firstindex)
+  lastindex = prealigned(lastindex)
+  meshset = load(firstindex, lastindex)
   render_aligned_review(meshset, start, finish)
 end
 
-function render_aligned_review(meshset, start=1, finish=0)
+function render_aligned_review(meshset, start=1, finish=length(meshset.matches))
   scale = 0.10
   s = [scale 0 0; 0 scale 0; 0 0 1]
-
-  if start <= 0
-    start = 1
-  end
-  if finish <= 0
-    finish = length(meshset.matches)
-  end
   images = Dict()
   BB = GLOBAL_BB
   
   # Check images dict for thumbnail, otherwise render it - just moving prealigned
   function retrieve_image(mesh)
-    index = aligned(mesh.index)
+    index = prealigned(mesh.index)
     if !(index in keys(images))
       println("Making review for ", mesh.index)
       # @time (img, offset), _ = meshwarp_mesh(mesh)
@@ -228,8 +222,8 @@ function render_aligned_review(meshset, start=1, finish=0)
     # offset = [BB.i, BB.j] * scale
     O, O_bb = imfuse(src_img, src_offset, dst_img, dst_offset)
 
-    indexA = aligned(src_index)
-    indexB = aligned(dst_index)
+    indexA = prealigned(src_index)
+    indexB = prealigned(dst_index)
 
     path = get_review_path(indexB, indexA)
     println("Writing thumbnail:\n\t", path)
