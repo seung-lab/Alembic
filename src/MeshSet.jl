@@ -177,6 +177,7 @@ function concat!(meshset_one::MeshSet, meshset_two::MeshSet)
 			ind = find_mesh_index(ds, get_index(mesh_two))
 			if ind == 0 push!(meshset_one.meshes, mesh_two) end
 		end
+		sort!(meshset_one.meshes; by=get_index)
 	return meshset_one;
 end
 

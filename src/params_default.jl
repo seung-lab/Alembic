@@ -99,7 +99,7 @@ global PARAMS_PREALIGNMENT = Dict(
 					"ftol_cg" => FTOL_CG_PREALIGNMENT,
 					"max_iters" => MAX_ITERS_PREALIGNMENT),
 			     "filter" => Dict(
-			     		"sigma_filter" => (0.5, >, 50),
+			     		"sigma_filter" => (0.5, >, 200),
 			     		"r_filter" => ("r_max", <, 0.2)
 					      ),
 			     "render" => Dict(
@@ -136,7 +136,7 @@ global PARAMS_ALIGNMENT = Dict(
 			     "render" => Dict(
 					      ),
 			     "review" => Dict(
-						"filtered_ratio" => (:get_ratio_filtered, <, 0.25, 0)
+						"filtered_ratio" => (:get_ratio_filtered, <, 0.15, 0)
 					      ),
 			     "registry" => Dict(
 					"global_offsets" => GLOBAL_OFFSETS_ALIGNMENT
