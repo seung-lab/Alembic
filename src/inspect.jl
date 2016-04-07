@@ -41,7 +41,7 @@ function get_next_match(meshset::MeshSet, match_ind=1)
       return nothing, nothing
     else
       meshset = load(firstindex, lastindex)
-      match_ind = length(meshset.matches)
+      match_ind = 1
       return meshset, match_ind
     end
   else
