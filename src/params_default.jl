@@ -136,7 +136,8 @@ global PARAMS_ALIGNMENT = Dict(
 			     "render" => Dict(
 					      ),
 			     "review" => Dict(
-						"filtered_ratio" => (:get_ratio_filtered, <, 0.25, 0)
+						"filtered_ratio" => (:get_ratio_filtered, <, 0.25, 0),
+						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.95)
 					      ),
 			     "registry" => Dict(
 					"global_offsets" => GLOBAL_OFFSETS_ALIGNMENT
