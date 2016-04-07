@@ -12,13 +12,13 @@ end
 function montage_migrate(firstindex::Index, lastindex::Index)
   for index in get_index_range(montaged(firstindex), montaged(lastindex))
     ms = load(index)
-    migrate!(ms)
+    # migrate!(ms)
     check!(ms)
     save(ms)
     if is_flagged(ms)
       render_montaged(ms; render_full=false, render_review=true, flagged_only=true)
-    else
-      render_montaged(ms; render_full=true, render_review=false)
+    # else
+    #   render_montaged(ms; render_full=true, render_review=false)
     end
   end
 end
@@ -69,6 +69,11 @@ function reprealign(firstindex::Index, lastindex::Index, params)
   end
 end
 
+function align(firstindex::Index, lastindex::Index; fix_first=false)
+  ms = MeshSet(firstindex, lastindex; solve=false, fix_first=fix_first)
+  render_aligned_review(ms)
+end
+
 function copy_through_first_section(index::Index)
   img = get_image(montaged(index))
 
@@ -97,16 +102,25 @@ Cycle through index range and return list of flagged meshset indices
 function view_flags(firstindex::Index, lastindex::Index)
   flagged_indices = []
 
-  if is_montaged(firstindex)
-    func = montaged
-  elseif is_prealigned(firstindex)
-    func = prealigned
-  end
-  for index in get_index_range(montaged(firstindex), montaged(lastindex))
-    meshset = load(func(index))
-    # check!(meshset)
-    if is_flagged(meshset)
-      push!(flagged_indices, index)
+  if is_montaged(firstindex) || is_prealigned(firstindex)
+    if is_montaged(firstindex)
+      func = montaged
+    elseif is_prealigned(firstindex)
+      func = prealigned
+    end
+    for index in get_index_range(montaged(firstindex), montaged(lastindex))
+      meshset = load(func(index))
+      # check!(meshset)
+      if is_flagged(meshset)
+        push!(flagged_indices, index)
+      end
+    end
+  elseif is_aligned(firstindex)
+    meshset = load(prealigned(firstindex), prealigned(lastindex))
+    for (k, match) in enumerate(meshset.matches)
+      if is_flagged(match)
+        push!(flagged_indices, k)
+      end
     end
   end
 
