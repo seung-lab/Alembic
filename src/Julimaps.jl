@@ -1,8 +1,4 @@
-
-
 # TypeAliases
-
-
 export Index
 export Triangle, Triangles
 export Weight, Weights
@@ -10,6 +6,7 @@ export Pairing, Pairings
 export Point, Points
 export Edges
 export BinaryProperty, FloatProperty
+export Match, Mesh
 
 typealias Index Tuple{Int64, Int64, Int64, Int64};    # (wafer, section, row, column)
 
@@ -51,9 +48,9 @@ if !haskey(ENV, "USER")
 end
 
 if ENV["USER"] != "ubuntu"
-global const ON_AWS = false;
+  global const ON_AWS = false;
 else
-global const ON_AWS = true;
+  global const ON_AWS = true;
 end
 
 if ON_AWS || contains(gethostname(), "seunglab") || contains(gethostname(), "seungom")
@@ -71,7 +68,6 @@ global const SHARED_DST_IMAGE = SharedArray(IMG_ELTYPE, SUP_SIZE)
 PKGS_USED = ["HDF5", "JLD", "Images", "ImageView", "Colors", "FixedPointNumbers", "Cairo", "IterativeSolvers", "Optim", "Distributions", "RegERMs", "PyPlot"]
 
 PKGS_USED_CLONABLE = ["https://github.com/JuliaSparse/MKLSparse.jl.git", "https://github.com/seung-lab/ImageRegistration.git"]
-
 
 using HDF5
 using JLD
@@ -100,41 +96,41 @@ if ON_AWS
   #include("filesystem_formyelin.jl")
   include("dataset_zebrafish.jl")
 #  include("dataset_aibs.jl")
-      include("params_default.jl")
-      #  using AWS
-      #  using AWS.S3
-      #include("filesystem_aws.jl")
-      #include("aws_credentials.jl")
-    else
-      include("dataset_default.jl")
-      include("params_default.jl")
-    end
-    include("IO.jl")
-    include("convolve.jl")
-    include("imagecovariance.jl")
-    include("Mesh.jl")
-    include("Match.jl")
-    include("MeshSet.jl")
-    include("migrate.jl")
-    include("evaluate.jl")
-    include("parallelism.jl")
-    include("meshconjgrad.jl")
-    include("meshsession.jl")
-    include("tiletooverview.jl")
-    include("imageprocessing.jl")
-    include("render.jl")
-    include("review.jl")
-    include("solve.jl")
-    include("visualize.jl")
-    include("utilities.jl")
-    include("transforms.jl")
-    include("draw.jl")
-    include("visualize.jl")
+  include("params_default.jl")
+  #  using AWS
+  #  using AWS.S3
+  #include("filesystem_aws.jl")
+  #include("aws_credentials.jl")
+else
+  include("dataset_default.jl")
+  include("params_default.jl")
+end
+include("IO.jl")
+include("convolve.jl")
+include("imagecovariance.jl")
+include("Mesh.jl")
+include("Match.jl")
+include("MeshSet.jl")
+include("migrate.jl")
+include("evaluate.jl")
+include("parallelism.jl")
+include("meshconjgrad.jl")
+include("meshsession.jl")
+include("tiletooverview.jl")
+include("imageprocessing.jl")
+include("render.jl")
+include("review.jl")
+include("solve.jl")
+include("visualize.jl")
+include("utilities.jl")
+include("transforms.jl")
+include("draw.jl")
+include("visualize.jl")
 if !(contains(gethostname(), "seunglab") || contains(gethostname(), "seungom"))
-    include("player.jl")
-    include("inspect.jl")
-    include("check.jl")
-    include("brushtool.jl")
+  include("player.jl")
+  include("inspect.jl")
+  include("check.jl")
+  include("brushtool.jl")
 end
 
 
