@@ -24,6 +24,48 @@ function get_ratio_edge_proximity(match::Match)
      norms = map(norm, get_filtered_properties(match, "dv"))
 return maximum(norms) / match.properties["params"]["match"]["search_r"]; end
 
+function get_median_dv(match::Match)
+	if count_filtered_correspondences(match) == 0 
+		return 0.0
+	end
+	dvs = get_filtered_properties(match, "dv")
+	x, y = [dv[1] for dv in dvs], [dv[2] for dv in dvs]
+	return [median(x), median(y)]
+end
+
+function get_maximum_centered_norm(match::Match)
+	if count_filtered_correspondences(match) == 0 
+		return 0.0
+	end
+	dvs = get_filtered_properties(match, "dv")
+	x, y = [dv[1] for dv in dvs], [dv[2] for dv in dvs]
+	med = [median(x), median(y)]
+	norms = map(norm, [dv - med for dv in dvs])
+	return maximum(norms)
+end
+
+function get_norm_std(match::Match)
+	if count_filtered_correspondences(match) == 0 
+		return 0.0
+	end
+	norms = convert(Array{Float64}, map(norm, get_filtered_properties(match, "dv")))
+	return std(convert(Array{Float64}, norms))
+end
+
+function get_norms_std_sigmas(match::Match)
+	if count_filtered_correspondences(match) == 0 
+		return 0.0
+	end
+	norms = convert(Array{Float64}, map(norm, get_filtered_properties(match, "dv")))
+	mu = mean(norms)
+	stdev = std(norms)
+	return (norms - mu) / stdev
+end
+
+function count_outlier_norms(match::Match, sigma=3)
+	return sum(get_norms_std_sigmas(match) .> sigma)
+end
+
 function get_src_index(match::Match)
   return match.src_index
 end
