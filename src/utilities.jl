@@ -106,4 +106,10 @@ function imscale(img, scale_factor)
   return imwarp(img, tform);
 end
 
-
+"""
+Create rotation transform and apply to image (degrees)
+"""
+function imrotate(img, angle)
+  tform = [cos(angle) -sin(angle) 0; sin(angle) cos(angle) 0; 0 0 1];
+  return imwarp(img, tform);
+end
