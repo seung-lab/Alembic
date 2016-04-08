@@ -81,6 +81,18 @@ function is_flagged(meshset::MeshSet)
 	return |(map(is_flagged, meshset.matches)...)
 end
 
+function is_montaged(meshset::MeshSet)
+  return is_premontaged(meshset.meshes[1].index)
+end
+
+function is_prealigned(meshset::MeshSet)
+  return is_montaged(meshset.meshes[1].index) || is_montaged(meshset.meshes[2].index)
+end
+
+function is_aligned(meshset::MeshSet)
+  return is_prealigned(meshset.meshes[1].index) || is_prealigned(meshset.meshes[2].index)
+end
+
 function count_flags(meshset::MeshSet)
   return sum(map(is_flagged, meshset.matches))
 end
@@ -104,7 +116,7 @@ function check!(meshset::MeshSet, crits = Base.values(meshset.properties["params
 end
 
 function check_and_fix!(meshset::MeshSet, crits = Base.values(meshset.properties["params"]["review"]), filters = Base.values(meshset.properties["params"]["filter"])) 
-  if |(map(check!, meshset.matches, repeated(crits))...)
+  if check!(meshset, crits)
     for match in meshset.matches
       if is_flagged(match)
       	clear_filters!(match);
@@ -114,13 +126,14 @@ function check_and_fix!(meshset::MeshSet, crits = Base.values(meshset.properties
     fixed = !check!(meshset, crits);
     if fixed
       println("fixed successfully");
-    else println("failed to fix meshset")
-    for match in meshset.matches
-      if is_flagged(match)
-      	clear_filters!(match);
-        flag!(match)
+    else 
+      println("failed to fix meshset")
+      for match in meshset.matches
+        if is_flagged(match)
+        	clear_filters!(match);
+          flag!(match)
+        end
       end
-    end
     end
   end
 end
@@ -129,6 +142,16 @@ function clear_filters!(meshset::MeshSet)
   for match in meshset.matches
     clear_filters!(match)
   end
+end
+
+function get_parent(meshset::MeshSet)
+  parent = nothing
+  if haskey(meshset.properties, "meta")
+    if haskey(meshset.properties["meta"], "parent")
+      parent = meshset.properties["meta"]["parent"]
+    end
+  end
+  return parent
 end
 
 ### splitting
@@ -171,12 +194,38 @@ function concat_meshset(parent_name)
 	return ms;
 end
 
+function concat_meshsets(filenames::Array)
+  println(filenames[1])
+  ms = load(filenames[1])
+  for fn in filenames[2:end]
+    println(fn)
+    ms2 = load(fn)
+    concat!(ms, ms2)
+  end
+  save(ms)
+  return ms
+end
+
+"""
+Combine unique matches and meshes from meshset_two into meshset_one
+"""
 function concat!(meshset_one::MeshSet, meshset_two::MeshSet)
-		append!(meshset_one.matches, meshset_two.matches)
-		for mesh_two in meshset_two.meshes
-			ind = find_mesh_index(ds, get_index(mesh_two))
-			if ind == 0 push!(meshset_one.meshes, mesh_two) end
-		end
+  for match in meshset_two.matches
+    src_index = get_src_index(match)
+    dst_index = get_dst_index(match)
+    ind = find_match_index(meshset_one, src_index, dst_index)
+    if ind == 0
+      push!(meshset_one.matches, match)
+    end
+  end
+  for mesh in meshset_two.meshes
+    index = get_index(mesh)
+  	ind = find_mesh_index(meshset_one, index)
+  	if ind == 0 
+      push!(meshset_one.meshes, mesh) 
+    end
+  end
+  sort!(meshset_one.meshes; by=get_index)
 	return meshset_one;
 end
 
@@ -187,6 +236,11 @@ end
 function unflag!(meshset::MeshSet, match_ind)
 	unflag!(meshset.matches[match_ind])
 end
+
+function unflag!(meshset::MeshSet)
+  map(unflag!, meshset.matches)
+end
+
 function is_flagged(meshset::MeshSet, match_ind)
 	return is_flagged(meshset.matches[match_ind])
 end
@@ -344,8 +398,42 @@ function save(filename::String, meshset::MeshSet)
 end
 
 function save(meshset::MeshSet)
-  filename = get_filename(meshset)
+  if has_parent(meshset)
+    foldername = joinpath(ALIGNED_DIR, meshset.properties["meta"]["parent"])
+    if !isdir(foldername) mkdir(foldername) end
+    split_index = get_split_index(meshset);
+    filename = joinpath(foldername, "$split_index.jls")
+  else
+    filename = get_filename(meshset)
+  end
   save(filename, meshset);
+end
+
+function parse_meshset_filename(name::String)
+    indexA, indexB = NO_INDEX, NO_INDEX
+    # aligned-section
+    m = Base.match(r"(\d*),(\d*)-(\d*),(\d*)_aligned", name)
+    if typeof(m) != Void
+    indexA = aligned(parse(Int, m[1]), parse(Int, m[2]))
+    indexB = aligned(parse(Int, m[3]), parse(Int, m[4]))
+    end
+    return indexA, indexB
+end
+
+function get_jls(dir)
+  assert(isdir(dir))
+  files = readdir(dir)
+  return filter(x -> contains(x, ".jls"), files)
+end
+
+function filter_jls(dir, wafer_num)
+  jls = get_jls(dir)
+  index = (wafer_num, 0, 0, 0)
+  files = filter(x -> in_same_wafer(parse_meshset_filename(x)[1], index), jls)
+  indices = map(parse_meshset_filename, files)
+  sections = map(getindex, map(getindex, indices, repeated(1)), repeated(2))
+  sorted_files = files[sortperm(sections)]
+  return map(joinpath, repeated(dir), sorted_files)
 end
 
 function get_filename(meshset::MeshSet)
