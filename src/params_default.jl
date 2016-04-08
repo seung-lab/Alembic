@@ -123,7 +123,7 @@ global PARAMS_ALIGNMENT = Dict(
 			#		"monoblock_padding" => MONOBLOCK_PADDING_ALIGNMENT, 
 					"monoblock_ratio" => MONOBLOCK_RATIO_ALIGNMENT, 
 					"monoblock_match" => MONOBLOCK_MATCH_ALIGNMENT,
-					"depth" => 1),
+					"depth" => 2),
 			     "solve" => Dict(
 					"mesh_spring_coeff" => MESH_SPRING_COEFF_ALIGNMENT,
 					"match_spring_coeff" => MATCH_SPRING_COEFF_ALIGNMENT,
@@ -136,8 +136,10 @@ global PARAMS_ALIGNMENT = Dict(
 			     "render" => Dict(
 					      ),
 			     "review" => Dict(
-						"filtered_ratio" => (:get_ratio_filtered, <, 0.25, 0),
-						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.95)
+						"filtered_ratio" => (:get_ratio_filtered, <, 0.10, 100),
+						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.95),
+						"dv_outliers" => (:count_outlier_norms, >, 0, 5),
+						"centered_norm" => (:get_maximum_centered_norm, >, BLOCK_R_ALIGNMENT/2)
 					      ),
 			     "registry" => Dict(
 					"global_offsets" => GLOBAL_OFFSETS_ALIGNMENT
