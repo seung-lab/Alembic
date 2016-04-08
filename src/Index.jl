@@ -93,6 +93,17 @@ function is_preceding(A_index, B_index, within = 1)
 	return false;
 end
 
+function index_rank(index::Index)
+  return index[1]*10^3 + index[2]
+end
+
+function isless(indexA::Index, indexB::Index)
+  return index_rank(indexA) .< index_rank(indexB)
+end
+
+function isequal(indexA::Index, indexB::Index)
+  return index_rank(indexA) .== index_rank(indexB)
+end
 
 function get_overview_index(index)
   return (index[1:2]..., OVERVIEW_INDEX, OVERVIEW_INDEX)
