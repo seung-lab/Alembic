@@ -9,16 +9,13 @@ function montage(firstindex::Index, lastindex::Index)
   end
 end
 
-function montage_migrate(firstindex::Index, lastindex::Index)
+function render_flagged_montages(firstindex::Index, lastindex::Index)
   for index in get_index_range(montaged(firstindex), montaged(lastindex))
     ms = load(index)
-    # migrate!(ms)
-    check!(ms)
-    save(ms)
     if is_flagged(ms)
-      render_montaged(ms; render_full=false, render_review=true, flagged_only=true)
-    # else
-    #   render_montaged(ms; render_full=true, render_review=false)
+      unflag!(ms)
+      save(ms)
+      render_montaged(ms; render_full=true, render_review=false)
     end
   end
 end
@@ -74,6 +71,12 @@ function align(firstindex::Index, lastindex::Index; fix_first=false)
   render_aligned_review(ms)
 end
 
+function align(index_list)
+  for (indexA, indexB) in index_list
+    align(indexA, indexB)
+  end
+end
+
 function copy_through_first_section(index::Index)
   img = get_image(montaged(index))
 
@@ -116,9 +119,10 @@ function view_flags(firstindex::Index, lastindex::Index)
       end
     end
   elseif is_aligned(firstindex)
-    meshset = load(prealigned(firstindex), prealigned(lastindex))
-    for (k, match) in enumerate(meshset.matches)
-      if is_flagged(match)
+    parent_name = get_name(prealigned(firstindex), prealigned(lastindex))
+    for k in 1:count_children(parent_name)
+      ms = load_split(parent_name, k)
+      if is_flagged(ms)
         push!(flagged_indices, k)
       end
     end
