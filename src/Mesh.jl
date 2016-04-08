@@ -1,5 +1,5 @@
 type Mesh
-	index							# any sort of index associated with the mesh - by default a 4-tuple
+	index::Index							# any sort of index associated with the mesh - by default a 4-tuple
 
 	# all coordinates are taken with the image associated with the mesh having its left top corner at (0, 0) 
 	src_nodes::Points					# nodes as array of [i, j] coordinates, sorted in i, j order
@@ -41,25 +41,14 @@ function get_edge_points(mesh::Mesh, ind)
 	return mesh.src_nodes[inds[1]], mesh.src_nodes[inds[2]]
 end
 
-### math
-#=
-function get_edge_points(mesh::Mesh, ind)
-	start_pt = find(this -> this < 0, mesh.edges[:, ind]);
-	end_pt = find(this -> this > 0, mesh.edges[:, ind]);
-	start_pt = mesh.src_nodes[start_pt];
-	end_pt = mesh.src_nodes[end_pt];
-	#=start_tri_inds = find(this -> this < 0, mesh.edges[:, ind]);
-	start_tri_nodes = mesh.src_nodes[start_tri_inds];
-	start_tri_weights = [mesh.edges[start_tri_inds[1], ind]; mesh.edges[start_tri_inds[2], ind]; mesh.edges[start_tri_inds[3], ind]]
-	start_pt = dot(start_tri_nodes, start_tri_weights) * -1;
-
-	end_tri_inds = find(this -> this > 0, mesh.edges[:, ind]);
-	end_tri_nodes = mesh.src_nodes[end_tri_inds];
-	end_tri_weights = [mesh.edges[end_tri_inds[1], ind]; mesh.edges[end_tri_inds[2], ind]; mesh.edges[end_tri_inds[3], ind]]
-	end_pt = dot(end_tri_nodes, end_tri_weights);=#
-      return start_pt, end_pt;
+# Not sure why this doesn't work
+function isless(meshA::Mesh, meshB::Mesh)
+  return get_index(meshA) < get_index(meshB)
 end
-=#
+
+function isequal(meshA::Mesh, meshB::Mesh)
+  return get_index(meshA) == get_index(meshB)
+end
 
 function get_edge_length(mesh::Mesh, ind)	start_pt, end_pt = get_edge_points(mesh, ind);
       return norm(start_pt - end_pt);
