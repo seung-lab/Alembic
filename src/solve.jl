@@ -124,7 +124,7 @@ end
 """
 Elastic solve
 """
-function elastic_solve!(meshset)
+function elastic_solve!(meshset; from_current =false)
   params = get_params(meshset)
   #fixed = get_fixed(meshset)
   match_spring_coeff = params["solve"]["match_spring_coeff"]
@@ -172,7 +172,11 @@ function elastic_solve!(meshset)
   end
 
   for mesh in meshset.meshes
+    if from_current
+    nodes[:, noderanges[mesh.index]] = get_globalized_nodes_h(mesh)[2];
+  else
     nodes[:, noderanges[mesh.index]] = get_globalized_nodes_h(mesh)[1];
+  end
     if is_fixed(mesh)
     nodes_fixed[noderanges[mesh.index]][:] = fill(true, count_nodes(mesh))[:];
    # else
