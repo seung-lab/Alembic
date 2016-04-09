@@ -144,7 +144,7 @@ global PARAMS_ALIGNMENT = Dict(
 			     "render" => Dict(
 					      ),
 			     "review" => Dict(
-						"filtered_ratio" => (:get_ratio_filtered, <, 0.10, 100),
+						"filtered_ratio" => (:get_ratio_filtered, <, 0.10, 80),
 						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.95),
 						"norm_outliers" => (:count_outlier_norms, >, 0, 3),
 						"centered_norm" => (:get_maximum_centered_norm, >, BLOCK_R_ALIGNMENT/2)
