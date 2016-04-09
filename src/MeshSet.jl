@@ -98,17 +98,14 @@ function count_flags(meshset::MeshSet)
 end
 
 function filter!(meshset::MeshSet, filters = Base.values(meshset.properties["params"]["filter"]))
-  	for filter in filters
-		filter!(meshset, filter...)
-	end
+  for filter in filters
+  	filter!(meshset, filter)
+  end
 end
 
-function filter!(meshset::MeshSet, property_name, compare, threshold)
-	total = 0;
-	for match in meshset.matches
-		total = total + filter!(match, property_name, compare, threshold)
-	end
-	println("$total / $(count_correspondences(meshset)) correspondences filtered on $property_name")
+function filter!(meshset::MeshSet, filter::Tuple)
+	total = sum(map(filter!, meshset.matches, repeated(filter)))
+	println("$total / $(count_correspondences(meshset)) correspondences filtered on $filter")
 end
 
 function check!(meshset::MeshSet, crits = Base.values(meshset.properties["params"]["review"])) 

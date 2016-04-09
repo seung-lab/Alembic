@@ -355,24 +355,28 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0)
 	return vcat(pt + rel_offset + [di, dj], correspondence_properties);
 end
 
-function filter!(match::Match, property_name, compare, threshold)
-	attributes = get_properties(match, property_name)
+function filter!(match::Match, function_name, compare, threshold, vars...)
+	# attributes = get_properties(match, property_name)
+	attributes = eval(function_name)(match, vars...)
 	if attributes == nothing return 0; end
 	inds_to_filter = find(i -> compare(i, threshold), attributes);
+	type_name = function_name
+	if length(vars) > 0
+		type_name = vars[1]
+	end	
 	push!(match.filters, Dict{Any, Any}(
 				"author" => author(),
-				"type"	  => property_name,
+				"type"	  => type_name,
 				"threshold" => threshold,
-				"rejected"  => inds_to_filter
+				"rejected"  => inds_to_filter,
+				"function" => function_name
 			      ));
 	#println("$(length(inds_to_filter)) / $(count_correspondences(match)) rejected.");
 	return length(inds_to_filter);
 end
 
-function filter!(match::Match, filters) 
-     for filter in filters
-        filter!(match, filter...);
-     end
+function filter!(match::Match, filter)
+	return filter!(match, filter...)
 end
 
 #### HACKY
