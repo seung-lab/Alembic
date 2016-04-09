@@ -77,6 +77,14 @@ function align(index_list)
   end
 end
 
+function solve_align(firstindex::Index, lastindex::Index)
+  parent_name = get_name(firstindex, lastindex)
+  ms = concat_meshset(parent_name)
+  save(ms)
+  solve!(ms)
+  save(ms)
+end
+
 function copy_through_first_section(index::Index)
   img = get_image(montaged(index))
 
