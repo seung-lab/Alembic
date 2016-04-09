@@ -98,11 +98,11 @@ function index_rank(index::Index)
 end
 
 function isless(indexA::Index, indexB::Index)
-  return index_rank(indexA) .< index_rank(indexB)
+  return Base.isless(index_rank(indexA), index_rank(indexB))
 end
 
 function isequal(indexA::Index, indexB::Index)
-  return index_rank(indexA) .== index_rank(indexB)
+  return Base.isequal(index_rank(indexA), index_rank(indexB))
 end
 
 function get_overview_index(index)
