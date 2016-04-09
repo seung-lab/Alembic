@@ -93,6 +93,17 @@ function is_preceding(A_index, B_index, within = 1)
 	return false;
 end
 
+function index_rank(index::Index)
+  return index[1]*10^3 + index[2]
+end
+
+function isless(indexA::Index, indexB::Index)
+  return Base.isless(index_rank(indexA), index_rank(indexB))
+end
+
+function isequal(indexA::Index, indexB::Index)
+  return Base.isequal(index_rank(indexA), index_rank(indexB))
+end
 
 function get_overview_index(index)
   return (index[1:2]..., OVERVIEW_INDEX, OVERVIEW_INDEX)
@@ -228,27 +239,13 @@ end
 """
 Convert two indices into a name
 """
-function indices_to_string(indexA, indexB=(0,0,0,0))
-  if indexB[1] == 0
-    return join(indexA[1:2], ",")
+function indices_to_string(indexA, indexB)
+  if is_premontaged(indexA)
+    return string(join(indexA, ","), "-", join(indexB, ","))
+  else
+    return string(join(indexA[1:2], ","), "-", join(indexB[1:2], ","))
   end
-  return string(join(indexA[1:2], ","), "-", join(indexB[1:2], ","))
 end
-
-# function get_name(index::Index)
-#   ind_str = indices_to_string(index)
-#   name = ""
-#   if is_montaged(index)
-#     name = string(ind_str, "_montaged")
-#   elseif is_prealigned(index)
-#     name = string(ind_str, "_prealigned")
-#   elseif is_aligned(index)
-#     name = string(ind_str, "_aligned")
-#   else
-#     name = string(ind_str, "_premontaged")
-#   end
-#   return name
-# end
 
 function get_filename(index::Index, ext="h5")
   return string(get_name(index), ".", ext)

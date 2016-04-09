@@ -115,19 +115,19 @@ function parse_name(name::String)
     # montaged section
     m = Base.match(r"(\d*),(\d*)_montaged", name)
     if typeof(m) != Void
-    ret = parse(Int, m[1]), parse(Int, m[2]), MONTAGED_INDEX, MONTAGED_INDEX   
+    ret = montaged(parse(Int, m[1]), parse(Int, m[2]))
     end
 
     # prealigned section
     m = Base.match(r"(\d*),(\d*)_prealigned", name)
     if typeof(m) != Void
-    ret = parse(Int, m[1]), parse(Int, m[2]), PREALIGNED_INDEX, PREALIGNED_INDEX 
+    ret = prealigned(parse(Int, m[1]), parse(Int, m[2]))
     end
 
     # aligned-section
     m = Base.match(r"(\d*),(\d*)_aligned", name)
     if typeof(m) != Void
-    ret = parse(Int, m[1]), parse(Int, m[2]), ALIGNED_INDEX, ALIGNED_INDEX 
+    ret = aligned(parse(Int, m[1]), parse(Int, m[2]))
     end
 
     return ret

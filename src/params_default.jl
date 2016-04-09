@@ -60,15 +60,18 @@ global PARAMS_MONTAGE = Dict(
 					"ftol_cg" => FTOL_CG_MONTAGE,
 					"max_iters" => MAX_ITERS_MONTAGE),
 			     "filter" => Dict(
-			     		"sigma_filter" => (0.5, >, 7.5),
-			     		"r_filter" => ("r_max", <, 0.15)
+			     		"sigma_filter" => (:get_properties, >, 7.5, 0.5),
+			     		"r_filter" => (:get_properties, <, 0.15, "r_max"),
+			     		"norm_filter" => (:get_norms_std_sigmas, >, 5)
 					      ),
 			     "render" => Dict(
 					      ),
 			     "review" => Dict(
 					#	"too_few_corresps" => (:count_correspondences, <, 10),
 						"filtered_ratio" => (:get_ratio_filtered, <, 0.2, 20),
-						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.95)
+						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.95),
+						"norm_outliers" => (:count_outlier_norms, >, 0, 3),
+						"centered_norm" => (:get_maximum_centered_norm, >, BLOCK_R_MONTAGE/2)
 					      ),
 			     "registry" => Dict(
 					"global_offsets" => GLOBAL_OFFSETS_MONTAGE
@@ -99,14 +102,18 @@ global PARAMS_PREALIGNMENT = Dict(
 					"ftol_cg" => FTOL_CG_PREALIGNMENT,
 					"max_iters" => MAX_ITERS_PREALIGNMENT),
 			     "filter" => Dict(
-			     		"sigma_filter" => (0.5, >, 200),
-			     		"r_filter" => ("r_max", <, 0.2)
+			     		"sigma_filter" => (:get_properties, >, 50, 0.5),
+			     		"r_filter" => (:get_properties, <, 0.2, "r_max"),
+			     		"norm_filter" => (:get_norms_std_sigmas, >, 5)
 					      ),
 			     "render" => Dict(
 					      ),
 			     "review" => Dict(
 			     		"too_few_corresps" => (:count_correspondences, <, 3),
-						"filtered_ratio" => (:get_ratio_filtered, <, 0.25, 0)
+						"filtered_ratio" => (:get_ratio_filtered, <, 0.25, 0),
+						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.95),
+						"norm_outliers" => (:count_outlier_norms, >, 0, 3),
+						"centered_norm" => (:get_maximum_centered_norm, >, BLOCK_R_PREALIGNMENT/2)
 					      ),
 			     "registry" => Dict(
 					"global_offsets" => GLOBAL_OFFSETS_PREALIGNMENT
@@ -123,20 +130,24 @@ global PARAMS_ALIGNMENT = Dict(
 			#		"monoblock_padding" => MONOBLOCK_PADDING_ALIGNMENT, 
 					"monoblock_ratio" => MONOBLOCK_RATIO_ALIGNMENT, 
 					"monoblock_match" => MONOBLOCK_MATCH_ALIGNMENT,
-					"depth" => 1),
+					"depth" => 2),
 			     "solve" => Dict(
 					"mesh_spring_coeff" => MESH_SPRING_COEFF_ALIGNMENT,
 					"match_spring_coeff" => MATCH_SPRING_COEFF_ALIGNMENT,
 					"ftol_cg" => FTOL_CG_ALIGNMENT,
 					"max_iters" => MAX_ITERS_ALIGNMENT),
 			     "filter" => Dict(
-			     		"sigma_filter" => (0.5, >, 45),
-			     		"r_filter" => ("r_max", <, 0.15)
+			     		"sigma_filter" => (:get_properties, >, 4.5, 0.5),
+			     		"r_filter" => (:get_properties, <, 0.15, "r_max"),
+			     		"norm_filter" => (:get_norms_std_sigmas, >, 5)
 					      ),
 			     "render" => Dict(
 					      ),
 			     "review" => Dict(
-						"filtered_ratio" => (:get_ratio_filtered, <, 0.15, 0)
+						"filtered_ratio" => (:get_ratio_filtered, <, 0.10, 80),
+						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.95),
+						"norm_outliers" => (:count_outlier_norms, >, 0, 3),
+						"centered_norm" => (:get_maximum_centered_norm, >, BLOCK_R_ALIGNMENT/2)
 					      ),
 			     "registry" => Dict(
 					"global_offsets" => GLOBAL_OFFSETS_ALIGNMENT

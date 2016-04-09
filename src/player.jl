@@ -277,12 +277,12 @@ function go_to(meshset, area, slice, k; include_reverse=false)
   section_range = 1:length(meshset.meshes)
   islice = ((i-1)*slice[1]:i*slice[1]) + area.i
   jslice = ((j-1)*slice[1]:j*slice[1]) + area.j
-  stack = make_stack(meshset, section_range, (islice, jslice); 
+  stack = make_image_stack(meshset, section_range, (islice, jslice); 
                                             include_reverse=include_reverse)
   return stack, (islice, jslice)
 end
 
-function make_stack(meshset, section_range=(1:2), slice=(1:200,1:200); 
+function make_image_stack(meshset, section_range=(1:2), slice=(1:200,1:200); 
                                             include_reverse=false, perm=[1,2,3])
   imgs = []
   for mesh in meshset.meshes[section_range]
