@@ -392,7 +392,6 @@ function filter!(match::Match, filter)
 	return filter!(match, filter...)
 end
 
-#### HACKY
 function get_residual_norms_post(match, ms)
 	src_pts_after, dst_pts_after, filtered = get_globalized_correspondences_post(ms, findfirst(match_in_ms -> match_in_ms.src_index == match.src_index && match_in_ms.dst_index == match.dst_index, ms.matches));
 	return(map(norm, dst_pts_after - src_pts_after))
@@ -473,7 +472,6 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); src_
 	end
 
 	dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(SHARED_SRC_IMAGE), repeated(SHARED_DST_IMAGE), repeated(params["match"]["blockmatch_scale"])) 
-	#dst_allpoints = map(get_match, src_nodes, ranges, repeated(SHARED_SRC_IMAGE), repeated(SHARED_DST_IMAGE), repeated(params));
 	matched_inds = find(i -> i != nothing, dst_allpoints);
 	src_points = copy(src_mesh.src_nodes[ranged_inds][matched_inds]);
 	filters = Array{Dict{Any, Any}}(0);
