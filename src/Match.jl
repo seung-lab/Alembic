@@ -144,16 +144,17 @@ function get_author(match::Match)
 	return author
 end
 
-function is_flagged(match::Match)
-	flagged = false
-	if haskey(match.properties["review"], "flagged")
-		flagged = match.properties["review"]["flagged"]
-	end
-	return flagged
+function is_flagged(match::Match, filter_name = nothing)
+  	if filter_name == nothing return match.properties["review"]["flagged"];
+	else
+	return haskey(match.properties["review"]["flags"], filter_name); end
 end
 
-function flag!(match::Match)
+function flag!(match::Match, crit = nothing)
 	match.properties["review"]["flagged"] = true;
+	if crit != nothing
+	match.properties["review"]["flags"][crit[1]] = crit[2:end];
+      end
 end
 
 """
@@ -163,12 +164,24 @@ function flag!(match::Match, property_name, compare, threshold)
 	attributes = get_filtered_properties(match, property_name)
 	inds_to_filter = find(i -> compare(i, threshold), attributes)
 	if length(inds_to_filter) > 0
-		flag!(match)
+		flag!(match, (property_name, compare, threshold))
 	end
 end
 
-function unflag!(match::Match)
+function unflag!(match::Match, filter_name = nothing)
+  	if filter_name == nothing
 	match.properties["review"]["flagged"] = false;
+	for key in keys(match.properties["review"]["flags"])
+	  pop!(match.properties["review"]["flags"], key);
+	end
+      else
+	  if haskey(match.properties["review"]["flags"], filter_name)
+	  pop!(match.properties["review"]["flags"], filter_name);
+	end
+	  if length(match.properties["review"]["flags"]) == 0
+	  match.properties["review"]["flagged"] = false;
+	end
+      end
 end
 
 function get_correspondence_patches(match::Match, ind)
@@ -390,11 +403,14 @@ function check(match::Match, function_name, compare, threshold, vars...)
 end
 
 function check!(match::Match, crits) 
-     for crit in crits
-       if check(match, crit...) flag!(match); return true; end
-     end
      unflag!(match);
-     return false
+     for crit in crits
+       if check(match, crit...) 
+       		flag!(match, crit);
+       end
+     end
+
+     return is_flagged(match);
 end
 
 ### ADD MANUAL FILTER
@@ -468,7 +484,7 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); src_
 		"params" => params,
 		"review" => Dict{Any, Any}(
 				"flagged" => false,
-				"flags" => Dict{Any, Any},
+				"flags" => Dict{Any, Any}(),
 				"author" => null_author()
 				) 
 			);

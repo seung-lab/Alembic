@@ -48,7 +48,7 @@ index: 4-element tuple for section identifier
 offset: 2-element collection for the i,j offset
 sz: 2-element collection for the i,j height and width
 """
-function update_offset(index::Index, offset, sz=[0, 0])
+function update_offset(index::Index, offset, sz=[0, 0], needs_render = false)
   
   if is_montaged(index) registry_fp = montaged_registry_path;
   elseif is_prealigned(index) registry_fp = prealigned_registry_path;
@@ -62,7 +62,7 @@ function update_offset(index::Index, offset, sz=[0, 0])
   if !isfile(registry_fp)
     f = open(registry_fp, "w")
     close(f)
-    registry = [image_fn, offset..., sz...]'
+    registry = [image_fn, offset..., sz..., needs_render]'
   else  
     registry = readdlm(registry_fp)
     idx = findfirst(registry[:,1], image_fn)
@@ -72,7 +72,7 @@ function update_offset(index::Index, offset, sz=[0, 0])
         registry[idx, 4:5] = collect(sz)
       end
     else
-      registry_line = [image_fn, offset..., sz...]
+      registry_line = [image_fn, offset..., sz..., needs_render]
       registry = vcat(registry, registry_line')
     end
   end
@@ -84,11 +84,14 @@ function update_offset(index::Index, offset, sz=[0, 0])
   elseif is_aligned(index) global REGISTRY_ALIGNED = parse_registry(registry_fp);
   else global REGISTRY_PREMONTAGED = parse_registry(registry_fp);
   end
-
 end
 
-function update_offset(name, offset, sz=[0, 0])
-  update_offset(parse_name(name), offset, sz);
+function update_offset(name, offset, sz=[0, 0], needs_render = false)
+  update_offset(parse_name(name), offset, sz, needs_render);
+end
+
+function expunge(index)
+#	image = get_path(index);
 end
 """
 Create array of alphabetized filenames that have file extension in directory

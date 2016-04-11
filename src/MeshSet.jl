@@ -263,6 +263,7 @@ function prealign(index::Index; params=get_params(index), to_fixed=false)
 	end
 	meshset = MeshSet();
 	meshset.properties["params"] = params;
+	meshset.properties["meta"] = Dict{Any, Any}();
 	push!(meshset.meshes, Mesh(src_index, params))
 	push!(meshset.meshes, Mesh(dst_index, params, to_fixed))
 	push!(meshset.matches, Match(meshset.meshes[1], meshset.meshes[2], params))

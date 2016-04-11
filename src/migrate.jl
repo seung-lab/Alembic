@@ -66,7 +66,63 @@ function migrate!(meshset)
 	meshset.properties["params"]["review"]["ratio_edge_proximity"] = (:get_ratio_edge_proximity, >, 0.95)
   end
 
+  if typeof(meshset.matches[match_ind].properties["review"]["flags"]) == DataType;
+  	println("MIGRATION: 2016-04-11 MeshSet: fixing flags from ::Dict{Any, Any} to Dict{Any, Any}()"); 
+	for match in meshset.matches
+	  match.properties["review"]["flags"] = Dict{Any, Any}();
+	end
+
+  end
+
   return meshset
+end
+
+function migrate_registries!()
+  	premontaged_reg = readdlm(premontaged_registry_path);
+  	montaged_reg = readdlm(montaged_registry_path);
+  	prealigned_reg = readdlm(prealigned_registry_path);
+  	aligned_reg = readdlm(aligned_registry_path);
+
+	if size(premontaged_reg, 2) == 4
+	  println("MIGRATION: 2016-04-08: adding sizes to piriform premontages");
+	  premontaged_reg = hcat(premontaged_reg, fill(8000, size(premontaged_reg, 1), 2));
+	  writedlm(premontaged_registry_path, premontaged_reg)
+	end
+
+	global REGISTRY_PREMONTAGED = parse_registry(premontaged_registry_path);
+
+	if size(REGISTRY_PREMONTAGED, 2) == 6
+	  println("MIGRATION: 2016-04-09: adding needs_render to premontaged registry");
+	  premontaged_reg = hcat(premontaged_reg, fill(false, size(premontaged_reg, 1)));
+	  writedlm(premontaged_registry_path, premontaged_reg)
+	end
+
+	global REGISTRY_PREMONTAGED = parse_registry(premontaged_registry_path);
+
+	if size(REGISTRY_MONTAGED, 2) == 6
+	  println("MIGRATION: 2016-04-09: adding needs_render to montaged registry");
+	  montaged_reg = hcat(montaged_reg, fill(false, size(montaged_reg, 1)));
+	  writedlm(montaged_registry_path, montaged_reg)
+	end
+
+	global REGISTRY_MONTAGED = parse_registry(montaged_registry_path);
+
+	if size(REGISTRY_PREALIGNED, 2) == 6
+	  println("MIGRATION: 2016-04-09: adding needs_render to prealigned registry");
+	  prealigned_reg = hcat(prealigned_reg, fill(false, size(prealigned_reg, 1)));
+	  writedlm(prealigned_registry_path, prealigned_reg)
+	end
+
+	global REGISTRY_PREALIGNED = parse_registry(prealigned_registry_path);
+
+	if size(REGISTRY_ALIGNED, 2) == 6
+	  println("MIGRATION: 2016-04-09: adding needs_render to aligned registry");
+	  aligned_reg = hcat(aligned_reg, fill(false, size(aligned_reg, 1)));
+	  writedlm(aligned_registry_path, aligned_reg)
+	end
+
+	global REGISTRY_ALIGNED = parse_registry(aligned_registry_path);
+
 end
 
 
