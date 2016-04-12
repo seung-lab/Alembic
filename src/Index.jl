@@ -152,6 +152,11 @@ function get_image_sizes(index)
 	return Array{Int64, 1}(metadata[5:6]);
 end
 
+function needs_render(index)
+	metadata = get_metadata(index);
+	return Bool(metadata[7])
+end
+
 function get_preceding(index, num = 1)
   registry = get_registry(index);
   loc_in_reg = find_in_registry(index);
@@ -194,7 +199,6 @@ function get_index_range(first_index, last_index)
     first_index, last_index = aligned(first_index), aligned(last_index)
   end
 	ran = get_registry(last_index)[get_range_in_registry(first_index, last_index), 2];
-	#ran[1] = first_index;
 	return ran;
 end
 
