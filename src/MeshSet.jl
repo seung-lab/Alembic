@@ -117,7 +117,7 @@ function check_and_fix!(meshset::MeshSet, crits = Base.values(meshset.properties
     for match in meshset.matches
       if is_flagged(match)
       	clear_filters!(match);
-      	filter!(match, filters)
+      	map(filter!, repeated(match), filters)
       end
     end
     fixed = !check!(meshset, crits);
@@ -260,6 +260,8 @@ function prealign(index::Index; params=get_params(index), to_fixed=false)
 	dst_index = get_preceding(src_index)
 	if to_fixed
 	dst_index = aligned(dst_index);
+  # params["registry"]["global_offsets"] = true
+  # println("prealign to fixed, so use global_offsets")
 	end
 	meshset = MeshSet();
 	meshset.properties["params"] = params;
