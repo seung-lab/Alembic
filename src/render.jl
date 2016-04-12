@@ -69,114 +69,145 @@ end
 
 """
 Calculate prealignment transforms from first section through section_num
+
+Notes on transform composition:
+* Matrix operations happen from right to left, so repeat the orders of tform
+  calculations.
+    1. previous transforms: cumulative_tform
+    2. monoblock_match: translation
+    3. montage to montage matching: tform
+
+    tform * translation * cumulative_tform
+
+  * Be aware that aligned images are already positioned in global space, but
+    they are not *rescoped* to it (that's the finished images directory). So the
+    aligned image offset needs to be accounted for as an additional translation.
+    If the image is fixed, it's assumed to be an aligned image, so we pull its
+    offset, and calculate the additional translation.
 """
-function calculate_cumulative_tform(index::Index, startindex=ROI_FIRST)
-  index = montaged(index)
-  startindex = montaged(startindex)
+function prepare_prealignment(index::Index, startindex=montaged(ROI_FIRST))
+  src_index = montaged(index)
+  dst_index = get_preceding(src_index)
+
   cumulative_tform = eye(3)
-  if index != startindex
-    index_pairs = get_sequential_index_pairs(startindex, index)
-    for (indexA, indexB) in index_pairs
-      meshset = load(indexB, indexA)
-      # reset cumulative tform if the mesh is fixed
-      if is_fixed(meshset.meshes[2])
-        println(meshset.meshes[2].index, ": fixed")
-        cumulative_tform = eye(3)
-      end
-      # tform = affine_approximate(meshset)
-      offset = get_offset(indexB)
-      translation = [1 0 0; 0 1 0; offset[1] offset[2] 1]
-      tform = regularized_solve(meshset, lambda=0.9)
-      cumulative_tform = cumulative_tform*translation*tform
+  tform = eye(3)
+  for index in get_index_range(startindex, src_index)[2:end]
+    cumulative_tform = tform*cumulative_tform
+    src_index = index
+    dst_index = get_preceding(src_index)
+    meshset = load(src_index, dst_index)
+    dst_index = get_index(meshset.meshes[2])
+    src_offset = get_offset(src_index)
+    translation = make_translation_matrix(src_offset)
+    if is_fixed(meshset.meshes[2])
+      println("FIXED")
+      cumulative_tform = eye(3)
+      dst_offset = get_offset(dst_index)
+      translation = make_translation_matrix(dst_offset)*translation
     end
+    tform = regularized_solve(meshset, lambda=0.9)*translation
   end
-  return cumulative_tform
+  return src_index, dst_index, cumulative_tform, tform
 end
 
 function render_prealigned(index::Index; render_full=false, render_review=true)
-  src_index = montaged(index)
-  dst_index = get_preceding(src_index)
-  meshset = load(src_index, dst_index)
-  offset = get_offset(src_index)
-  translation = [1 0 0; 0 1 0; offset[1] offset[2] 1]
-  tform = translation*regularized_solve(meshset, lambda=0.9)
-  render_prealigned(src_index, dst_index, tform; 
+  src_index, dst_index, cumulative_tform, tform = prepare_prealignment(index)
+  render_prealigned(src_index, dst_index, cumulative_tform, tform; 
                           render_full=render_full, render_review=render_review)
 end
 
-function render_prealigned(src_index::Index, dst_index::Index, tform; 
-                                          render_full=false, render_review=true)
+function render_prealigned(src_index::Index, dst_index::Index, cumulative_tform, 
+                                  tform; render_full=false, render_review=true)
   println("Loading images for rendering... 1/2")
-  src_img = get_image(montaged(src_index))
+  src_img = get_image(src_index)
   println("Loading images for rendering... 2/2")
-  dst_img = get_image(montaged(dst_index))
-  render_prealigned(src_index, dst_index, src_img, dst_img, tform; 
-                          render_full=render_full, render_review=render_review)
+  dst_img = get_image(dst_index)
+  render_prealigned(src_index, dst_index, src_img, dst_img, cumulative_tform, 
+                    tform; render_full=render_full, render_review=render_review)
+end
+
+function render_prealigned(firstindex::Index, lastindex::Index; 
+                                        render_full=true, render_review=false)
+  dst_img = nothing
+  for index in get_index_range(montaged(firstindex), montaged(lastindex))
+    src_index, dst_index, cumulative_tform, tform = prepare_prealignment(index)
+    println("Loading src_image for rendering")
+    src_img = get_image(src_index)
+    if dst_img == nothing
+      println("Loading dst_image for rendering")
+      dst_img = get_image(dst_index)
+    end
+    render_prealigned(src_index, dst_index, src_img, dst_img, cumulative_tform, 
+                    tform; render_full=render_full, render_review=render_review)
+    println("Swapping src_image to dst_image")
+    dst_img = copy(src_img)
+  end
 end
 
 function render_prealigned(src_index::Index, dst_index::Index, src_img, dst_img, 
-                                  tform; render_full=false, render_review=true)
+                cumulative_tform, tform; render_full=false, render_review=true)
   scale = 0.05
-  s = [scale 0 0; 0 scale 0; 0 0 1]
+  s = make_scale_matrix(scale)
+
+  if render_review
+    dst_offset = [0,0]
+    if is_aligned(dst_index)
+      dst_offset = get_offset(dst_index)
+      println("dst image is aligned, so translate:\t$dst_offset")
+    end
+    println("Warping prealigned review image... 1/2")
+    src_thumb, src_thumb_offset = imwarp(src_img, tform*s, [0,0])
+    println("Warping prealigned review image... 2/2")
+    dst_thumb, dst_thumb_offset = imwarp(dst_img, s, dst_offset)
+    path = get_review_path(src_index, dst_index)
+    write_review_image(path, src_thumb, src_thumb_offset, dst_thumb, dst_thumb_offset, scale, tform)
+
+    println("Warping aligned review image... 1/2")
+    src_thumb, src_thumb_offset = imwarp(src_img, tform*cumulative_tform*s, [0,0])
+    println("Warping aligned review image... 2/2")
+    dst_thumb, dst_thumb_offset = imwarp(dst_img, cumulative_tform*s, [dst_offset])
+    aligned_path = get_review_path(prealigned(src_index), prealigned(dst_index))
+    write_review_image(aligned_path, src_thumb, src_thumb_offset, dst_thumb, dst_thumb_offset, scale, tform*cumulative_tform)
+  end
 
   if render_full
     src_index = prealigned(src_index)
-    println("Warping images for rendering... 1/1")
-    src_warped, src_offset = imwarp(src_img, tform, [0,0])
+    println("Warping full image... 1/1")
+    @time src_warped, src_offset = imwarp(src_img, tform*cumulative_tform, [0,0])
     update_offset(src_index, src_offset, size(src_warped))
-    println("Writing full image:", get_filename(src_index))
-    f = h5open(get_path(src_index), "w")
+    path = get_path(src_index)
+    println("Writing full image:\n ", path)
+    f = h5open(path, "w")
     chunksize = min(1000, min(size(src_warped)...))
     @time f["img", "chunk", (chunksize,chunksize)] = src_warped
     close(f)    
   end
-
-  if render_review
-    println("Warping images for rendering... 1/2")
-    src_thumb, src_thumb_offset = imwarp(src_img, tform*s, [0,0])
-    println("Warping images for rendering... 2/2")
-    dst_thumb, dst_thumb_offset = imwarp(dst_img, s, [0,0])
-    path = get_review_path(src_index, dst_index)
-    O, O_bb = imfuse(dst_thumb, dst_thumb_offset, src_thumb, src_thumb_offset)
-    f = h5open(path, "w")
-    chunksize = min(1000, min(size(O)...))
-    @time f["img", "chunk", (chunksize,chunksize)] = O
-    f["offset"] = O_bb
-    f["scale"] = scale
-    f["tform"] = tform
-    close(f)
-    println("Writing review image:\n\t", path)
-  end
 end
 
-# function render_prealigned(firstindex::Index, lastindex::Index; render_full=true, render_review=false)
-#   firstindex = montaged(firstindex)
-#   lastindex = montaged(lastindex)
-#   dst_img = nothing
-  
-#   for index in get_index_range(firstindex, lastindex)
-#     src_index = index
-#     dst_index = get_preceding(src_index)
-#     meshset = load(src_index, dst_index) 
-#     println("Loading src_image for rendering...")
-#     src_img = get_image(src_index)
-#     if dst_img == nothing
-#       println("Loading dst_image for rendering...")
-#       dst_img = get_image(dst_index)
-#     end
+function write_review_image(path, src_img, src_offset, dst_img, dst_offset, scale, tform)
+  O, O_bb = imfuse(dst_img, dst_offset, src_img, src_offset) # dst - red, src - green
+  println("Writing review image:\n ", path)
+  f = h5open(path, "w")
+  chunksize = min(1000, min(size(O)...))
+  @time f["img", "chunk", (chunksize,chunksize)] = O
+  f["offset"] = O_bb
+  f["scale"] = scale
+  f["tform"] = tform
+  close(f)
+end
 
-#     cumulative_tform = calculate_cumulative_tform(dst_index)
-#     offset = get_offset(src_index)
-#     translation = [1 0 0; 0 1 0; offset[1] offset[2] 1]
-#     tform = translation*regularized_solve(meshset, lambda=0.9)
-
-#     render_prealigned(src_index::Index, dst_index::Index, src_img, dst_img, 
-#                                   tform; render_full=render_full, render_review=render_review)
-
-#     println("Swapping src_image to dst_image")
-#     dst_img = copy(src_img)
-#   end
-# end
+# Check images dict for thumbnail, otherwise render it - just moving prealigned
+function retrieve_image(image_dict, index; tform=eye(3))
+  if !(index in keys(image_dict))
+    println("Making review for ", index)
+    # @time (img, offset), _ = meshwarp_mesh(mesh)
+    img = get_image(index)
+    offset = get_offset(index)
+    img, offset = imwarp(img, s, offset)
+    images[index] = img, offset
+  end
+  return images[index]
+end
 
 """
 Render aligned images
@@ -190,62 +221,29 @@ end
 
 function render_aligned_review(meshset, start=1, finish=length(meshset.matches))
   scale = 0.10
-  s = [scale 0 0; 0 scale 0; 0 0 1]
+  s = make_scale_matrix(scale)
   images = Dict()
-  BB = GLOBAL_BB
-  
-  # Check images dict for thumbnail, otherwise render it - just moving prealigned
-  function retrieve_image(mesh)
-    index = prealigned(mesh.index)
-    if !(index in keys(images))
-      println("Making review for ", mesh.index)
-      # @time (img, offset), _ = meshwarp_mesh(mesh)
-      # GLOBAL_BB = BoundingBox(-4000,-4000,38000,38000)
-      img = get_image(mesh)
-      offset = get_offset(mesh)
-      # @time img = rescopeimage(img, offset, BB)
-      img, offset = imwarp(img, s, offset)
-      images[index] = img, offset
-    end
-    return images[index]
-  end
 
   for (k, match) in enumerate(meshset.matches[start:finish])
-    src_index = match.src_index
-    dst_index = match.dst_index
+    src_index = get_src_index(match)
+    dst_index = get_dst_index(match)
 
-    src_mesh = meshset.meshes[find_mesh_index(meshset, src_index)]
-    dst_mesh = meshset.meshes[find_mesh_index(meshset, dst_index)]
+    src_img, src_offset = retrieve_image(image_dict, src_index; tform=s)
+    dst_img, dst_offset = retrieve_image(image_dict, dst_index; tform=s)
 
-    src_img, src_offset = retrieve_image(src_mesh)
-    dst_img, dst_offset = retrieve_image(dst_mesh)
-    # offset = [BB.i, BB.j] * scale
-    O, O_bb = imfuse(src_img, src_offset, dst_img, dst_offset)
-
-    indexA = prealigned(src_index)
-    indexB = prealigned(dst_index)
-
-    path = get_review_path(indexB, indexA)
-    println("Writing thumbnail:\n\t", path)
-    f = h5open(path, "w")
-    @time f["img", "chunk", (1000,1000)] = O
-    f["offset"] = O_bb # same as offset
-    f["scale"] = scale
-    close(f)
+    write_review_image(path, src_img, src_offset, dst_img, dst_offset, scale, s)
   end
 end
 
 """
 Render aligned images
 """
-function render_aligned(waferA, secA, waferB, secB, start=1, finish=0)
-  indexA = prealigned(waferA, secA)
-  indexB = prealigned(waferB, secB)
-  meshset = load(indexA, indexB)
+function render_aligned(indexA::Index, indexB::Index, start=1, finish=0)
+  meshset = load(prealigned(indexA), prealigned(indexB))
   render_aligned(meshset, start, finish)
 end
 
-function render_aligned(meshset, start=1, finish=0)
+function render_aligned(meshset::MeshSet, start=1, finish=0)
   scale = 0.10
   s = [scale 0 0; 0 scale 0; 0 0 1]
 
@@ -314,87 +312,4 @@ function write_finished(index, img, offset, BB=GLOBAL_BB)
   f["offset"] = offset
   f["bb"] = [BB.i, BB.j, BB.w, BB.h]
   close(f)
-end
-
-
-"""
-Prealignment where offsets are global
-"""
-function render_prealigned(firstindex::Index, lastindex::Index; render_full=true, render_review=false)
-  firstindex = montaged(firstindex)
-  lastindex = montaged(lastindex)
-  dir = PREALIGNED_DIR
-  scale = 0.05
-  s = [scale 0 0; 0 scale 0; 0 0 1]
-  fixed = Dict()
-
-  cumulative_tform = calculate_cumulative_tform(firstindex)
-  # cumulative_tform = eye(3)
-
-  # return Dictionary of staged image to remove redundancy in loading
-  function stage_image(mesh, cumulative_tform, tform)
-    stage = Dict()
-    stage["index"] = montaged(mesh.index)
-    img = get_image(mesh)
-    println("tform:\n", tform)
-    if cumulative_tform*tform == eye(3)
-      stage["img"], stage["offset"] = img, [0,0]
-    else
-      println("Warping ", get_index(mesh))
-      @time stage["img"], stage["offset"] = imwarp(img, cumulative_tform*tform, [0,0])
-    end
-    println("Creating thumbnail for ", get_index(mesh))
-    stage["thumb_fixed"], stage["thumb_offset_fixed"] = imwarp(img, s, [0,0])
-    stage["thumb_moving"], stage["thumb_offset_moving"] = imwarp(img, tform*s, [0,0])
-    stage["scale"] = scale
-    return stage
-  end
-
-  function save_image(stage)
-    new_fn = string(join(stage["index"][1:2], ","), "_prealigned.h5")
-    update_offset(prealigned(stage["index"]), stage["offset"], size(stage["img"]))
-    println("Writing image:\n\t", new_fn)
-    # @time imwrite(stage["img"], joinpath(dir, fn))
-    f = h5open(joinpath(dir, new_fn), "w")
-    chunksize = min(1000, min(size(stage["img"])...))
-    @time f["img", "chunk", (chunksize,chunksize)] = stage["img"]
-    close(f)
-  end
-
-  index_pairs = get_sequential_index_pairs(firstindex, lastindex)
-  for (k, (indexA, indexB)) in enumerate(index_pairs)
-    println("\nRendering ", indexA, " & ", indexB)
-    meshset = load(indexB, indexA)
-    if k==1
-      fixed = stage_image(meshset.meshes[2], cumulative_tform, eye(3))
-    end
-    offset = get_offset(indexB)
-    translation = [1 0 0; 0 1 0; offset[1] offset[2] 1]
-    tform = translation*regularized_solve(meshset, lambda=0.9)
-    moving = stage_image(meshset.meshes[1], cumulative_tform, tform)
-    
-    # save full scale image
-    if render_full
-      save_image(moving)
-    end
-
-    if render_review
-      # save thumbnail of fused images
-      path = get_review_path(moving["index"], fixed["index"])
-      O, O_bb = imfuse(fixed["thumb_fixed"], fixed["thumb_offset_fixed"], 
-                            moving["thumb_moving"], moving["thumb_offset_moving"])
-      f = h5open(path, "w")
-      chunksize = min(1000, min(size(O)...))
-      @time f["img", "chunk", (chunksize,chunksize)] = O
-      f["offset"] = O_bb
-      f["scale"] = scale
-      f["tform"] = tform
-      close(f)
-      println("Writing thumb:\n\t", path)
-    end
-
-    # propagate for the next section
-    fixed = moving
-    cumulative_tform = cumulative_tform*tform
-  end
 end
