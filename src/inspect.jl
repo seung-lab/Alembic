@@ -595,7 +595,8 @@ function filter_match_distance(imgc, img2, matches, vectors, params)
     end
   end
   println("Distance filter @ ", dist)
-  filter!(matches, "norm", >, dist)
+  filter = (:get_properties, >, dist, "norm")
+  filter!(matches, filter...)
   update_annotations(imgc, img2, matches, vectors, params)
 end
 
@@ -617,7 +618,8 @@ function filter_match_sigma(imgc, img2, matches, vectors, params)
     end
   end
   println("Sigma filter @ ", sigma)
-  filter!(matches, 0.5, >, sigma)
+  filter = (:get_properties, >, sigma, 0.5)
+  filter!(matches, filter...)
   update_annotations(imgc, img2, matches, vectors, params)
 end
 
