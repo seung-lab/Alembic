@@ -13,11 +13,16 @@ end
 ### counting
 function count_correspondences(match::Match) return size(match.src_points, 1);	end
 function count_filtered_correspondences(match::Match) return length(get_filtered_indices(match)); end
+function count_rejected_correspondences(match::Match) return length(get_rejected_indices(match)); end
 function count_filters(match::Match) return length(match.filters); end
 
 function get_ratio_filtered(match::Match, min_corresps = 0) 
   if count_correspondences(match) < min_corresps return 1.0 end
 return count_filtered_correspondences(match) / max(count_correspondences(match), 1); end
+
+function get_ratio_rejected(match::Match, min_corresps = 0) 
+  if count_correspondences(match) < min_corresps return 1.0 end
+return count_rejected_correspondences(match) / max(count_correspondences(match), 1); end
 
 function get_ratio_edge_proximity(match::Match)
      if count_filtered_correspondences(match) == 0 return 0.0 end
@@ -270,14 +275,14 @@ function monoblock_match(src_index, dst_index, src_image, dst_image, params=get_
 		println(dst_pt_locs + dv)
 		img = normxcorr2(src_image_scaled[range_in_src...], dst_image_scaled[range_in_dst...]);
 		view(img / maximum(img)) =#
-
 		if params["registry"]["global_offsets"]
-		update_offset(src_index, get_offset(dst_index) + dv / scale);
+		offset = get_offset(dst_index) + dv / scale
 		else
-		update_offset(src_index, (dv / scale));
+		offset = dv / scale
 		end
+		update_offset(src_index, offset);
 		print("    ")
-		println("Monoblock matched... relative displacement calculated at $( dv / scale)")
+		println("Monoblock matched... relative displacement calculated at $offset")
 	end
 end
 
