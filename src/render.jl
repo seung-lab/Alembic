@@ -197,13 +197,13 @@ function write_review_image(path, src_img, src_offset, dst_img, dst_offset, scal
 end
 
 # Check images dict for thumbnail, otherwise render it - just moving prealigned
-function retrieve_image(image_dict, index; tform=eye(3))
-  if !(index in keys(image_dict))
+function retrieve_image(images, index; tform=eye(3))
+  if !(index in keys(images))
     println("Making review for ", index)
     # @time (img, offset), _ = meshwarp_mesh(mesh)
     img = get_image(index)
     offset = get_offset(index)
-    img, offset = imwarp(img, s, offset)
+    img, offset = imwarp(img, tform, offset)
     images[index] = img, offset
   end
   return images[index]
@@ -228,9 +228,9 @@ function render_aligned_review(meshset, start=1, finish=length(meshset.matches))
     src_index = get_src_index(match)
     dst_index = get_dst_index(match)
 
-    src_img, src_offset = retrieve_image(image_dict, src_index; tform=s)
-    dst_img, dst_offset = retrieve_image(image_dict, dst_index; tform=s)
-
+    src_img, src_offset = retrieve_image(images, src_index; tform=s)
+    dst_img, dst_offset = retrieve_image(images, dst_index; tform=s)
+    path = get_review_path(prealigned(src_index), prealigned(dst_index))
     write_review_image(path, src_img, src_offset, dst_img, dst_offset, scale, s)
   end
 end
