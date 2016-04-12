@@ -64,8 +64,8 @@ end
 Return right-hand matrix for the matches
 `pts_src*T ~= pts_dst`
 """
-function affine_solve(Ms::MeshSet, k=1)
-  pts_src, pts_dst = get_homogeneous_correspondences(Ms, k; globalized=false)
+function affine_solve(Ms::MeshSet; k=1, globalized=false)
+  pts_src, pts_dst = get_homogeneous_correspondences(Ms, k; globalized=globalized)
 	for ind in 1:size(pts_dst, 1)
   	pts_dst[ind, 1:2] = pts_dst[ind, 1:2] - get_offset(Ms.matches[k].src_index)'
 	end
@@ -76,8 +76,8 @@ end
 Return right-hand matrix for the matches
 `pts_src*T ~= pts_dst`
 """
-function rigid_solve(Ms::MeshSet, k=1)
-  pts_src, pts_dst = get_homogeneous_correspondences(Ms, k; globalized=false)
+function rigid_solve(Ms::MeshSet; k=1, globalized=false)
+  pts_src, pts_dst = get_homogeneous_correspondences(Ms, k; globalized=globalized)
 	for ind in 1:size(pts_dst, 1)
   	pts_dst[ind, 1:2] = pts_dst[ind, 1:2] - get_offset(Ms.matches[k].src_index)'
 	end
@@ -87,9 +87,9 @@ end
 """
 Apply some weighted combination of affine and rigid, gauged by lambda
 """
-function regularized_solve(Ms::MeshSet; k=1, lambda=0.9)
-  affine = affine_solve(Ms, k)
-  rigid = rigid_solve(Ms, k)
+function regularized_solve(Ms::MeshSet; k=1, lambda=0.9, globalized=false)
+  affine = affine_solve(Ms; k=k, globalized=globalized)
+  rigid = rigid_solve(Ms; k=k, globalized=globalized)
   return lambda*affine + (1-lambda)*rigid
 end
 
