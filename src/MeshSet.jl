@@ -29,13 +29,20 @@ function count_correspondences(meshset::MeshSet)	return sum(map(count_correspond
 function count_filtered_correspondences(meshset::MeshSet)	return sum(map(count_filtered_correspondences, meshset.matches));		end
 
 ### finding
-function find_mesh_index(meshset::MeshSet, index)
+function find_mesh_index(meshset::MeshSet, index::Index)
   return findfirst(this -> index == get_index(this), meshset.meshes)
-  end
+end
 
-function find_match_index(meshset::MeshSet, src_index, dst_index)
+function find_match_index(meshset::MeshSet, src_index::Index, dst_index::Index)
   return findfirst(this -> (src_index == get_src_index(this)) && (dst_index == get_dst_index(this)), meshset.matches)
-  end
+end
+
+function find_match_indices(meshset::MeshSet, index::Index)
+  indices = []
+  indices = [indices, find(this->index==get_src_index(this), meshset.matches)]
+  indices = [indices, find(this->index==get_dst_index(this), meshset.matches)]
+  return indices
+end
 
 function find_node(Ms, mesh_ind, node_ind)
   return Ms.nodes_indices[mesh_ind] + node_ind
@@ -50,7 +57,18 @@ function add_match!(meshset::MeshSet, match::Match)
   push!(meshset.matches, match);
 end
 
+function remove_match!(meshset::MeshSet, src_index::Index, dst_index::Index)
+  i = find_match_index(meshset, src_index, dst_index)
+  deleteat!(meshset.matches, i)
+end
 
+function remove_mesh!(meshset::MeshSet, index::Index)
+  i = find_mesh_index(meshset, index)
+  deleteat!(meshset.meshes, i)
+  match_indices = find_match_indices(meshset, index)
+  mask = collect(setdiff(Set(1:length(meshset.matches)), match_indices))
+  meshset.matches = meshset.matches[mask]
+end
 
 ### reviewing
 function set_reviewed!(meshset::MeshSet, match_ind, flag = false)
@@ -184,10 +202,10 @@ function concat_meshset(parent_name)
 			ms.properties = deepcopy(cms.properties);
 			ms.properties["meta"]["parent"] = nothing;
 			ms.properties["meta"]["split_index"] = 0;
-
 		end
 		println("Child ", i, " / ", count_children(parent_name), " concatanated");
 	end
+  sort!(ms.meshes; by=get_index)
 	return ms;
 end
 
@@ -223,6 +241,8 @@ function concat!(meshset_one::MeshSet, meshset_two::MeshSet)
     end
   end
   sort!(meshset_one.meshes; by=get_index)
+  sort!(meshset_one.matches; by=get_dst_index)
+  sort!(meshset_one.matches; by=get_src_index)
 	return meshset_one;
 end
 
@@ -260,8 +280,6 @@ function prealign(index::Index; params=get_params(index), to_fixed=false)
 	dst_index = get_preceding(src_index)
 	if to_fixed
 	dst_index = aligned(dst_index);
-  # params["registry"]["global_offsets"] = true
-  # println("prealign to fixed, so use global_offsets")
 	end
 	meshset = MeshSet();
 	meshset.properties["params"] = params;
