@@ -38,18 +38,14 @@ end
 function prealign(firstindex::Index, lastindex::Index; start_to_fixed=false)
   for index in get_index_range(montaged(firstindex), montaged(lastindex))
     ms = MeshSet()
-    # try
-      if index==firstindex
-        ms = prealign(index; to_fixed=true)
-      else 
-        ms = prealign(index)
-      end
-      if is_flagged(ms)
-        render_prealigned(index; render_full=false, render_review=true)
-      end
-    # catch e
-    #   log_error(prealigned(index); fn="match_error_log", comment=e)
-    # end
+    if index==firstindex
+      ms = prealign(index; to_fixed=start_to_fixed)
+    else 
+      ms = prealign(index)
+    end
+    if is_flagged(ms)
+      render_prealigned(index; render_full=false, render_review=true)
+    end
   end
 end
 
