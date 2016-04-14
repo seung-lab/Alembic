@@ -9,7 +9,7 @@ function meshwarp_mesh(mesh::Mesh)
   offset = get_offset(mesh);
   node_dict = incidence_to_dict(mesh.edges')
   triangles = dict_to_triangles(node_dict)
-  return @time ImageRegistration.meshwarp(img, src_nodes, dst_nodes, triangles, offset), mesh.index
+  return @time ImageRegistration.meshwarp(img, src_nodes, dst_nodes, triangles, offset), get_index(mesh)
 end
 
 """
@@ -196,11 +196,12 @@ function write_review_image(path, src_img, src_offset, dst_img, dst_offset, scal
   close(f)
 end
 
-# Check images dict for thumbnail, otherwise render it - just moving prealigned
+"""
+Check images dict for thumbnail, otherwise render it - just moving prealigned
+"""
 function retrieve_image(images, index; tform=eye(3))
   if !(index in keys(images))
     println("Making review for ", index)
-    # @time (img, offset), _ = meshwarp_mesh(mesh)
     img = get_image(index)
     offset = get_offset(index)
     img, offset = imwarp(img, tform, offset)
@@ -213,16 +214,14 @@ end
 Render aligned images
 """
 function render_aligned_review(firstindex::Index, lastindex::Index, start=1, finish=0)
-  firstindex = prealigned(firstindex)
-  lastindex = prealigned(lastindex)
+  firstindex, lastindex = prealigned(firstindex), prealigned(lastindex)
   meshset = load(firstindex, lastindex)
   render_aligned_review(meshset, start, finish)
 end
 
-function render_aligned_review(meshset, start=1, finish=length(meshset.matches))
+function render_aligned_review(meshset, start=1, finish=length(meshset.matches); images=Dict())
   scale = 0.10
   s = make_scale_matrix(scale)
-  images = Dict()
 
   for (k, match) in enumerate(meshset.matches[start:finish])
     src_index = get_src_index(match)
@@ -238,23 +237,16 @@ end
 """
 Render aligned images
 """
-function render_aligned(indexA::Index, indexB::Index, start=1, finish=0)
-  meshset = load(prealigned(indexA), prealigned(indexB))
+function render_aligned(firstindex::Index, lastindex::Index, start=1, finish=0)
+  firstindex, lastindex = prealigned(firstindex), prealigned(lastindex)
+  meshset = load(firstindex, lastindex)
   render_aligned(meshset, start, finish)
 end
 
-function render_aligned(meshset::MeshSet, start=1, finish=0)
+function render_aligned(meshset::MeshSet, start=1, finish=length(meshset.meshes))
   scale = 0.10
-  s = [scale 0 0; 0 scale 0; 0 0 1]
-
-  if start <= 0
-    start = 1
-  end
-  if finish <= 0
-    finish = length(meshset.meshes)
-  end
+  s = make_scale_matrix(scale)
   images = Dict()
-
   for (k, mesh) in enumerate(meshset.meshes[start:finish])
     index = aligned(mesh.index)
     println("Warping ", mesh.index)
@@ -269,40 +261,18 @@ function render_aligned(meshset::MeshSet, start=1, finish=0)
     # Rescope the image & save
     write_finished(index, img, offset, GLOBAL_BB)
   end
-
-  for (k, match) in enumerate(meshset.matches)
-    src_index = aligned(match.src_index)
-    dst_index = aligned(match.dst_index)
-
-    if start <= find_mesh_index(meshset, src_index) <= finish &&
-          start <= find_mesh_index(meshset, dst_index) <= finish
-
-      src_img, src_offset = retrieve_image(src_mesh)
-      dst_img, dst_offset = retrieve_image(dst_mesh)
-      O, O_bb = imfuse(src_img, src_offset, dst_img, dst_offset)
-
-      path = get_review_path(dst_index, src_index)
-      println("Writing thumbnail:\n\t", path)
-      f = h5open(path, "w")
-      @time f["img", "chunk", (1000,1000)] = O
-      f["offset"] = O_bb # same as offset
-      f["scale"] = scale
-      close(f)
-    end
-  end
+  render_aligned_review(meshset; images=images)
 end
 
-function render_finished(waferA, secA, waferB, secB)
-  indexA = aligned(waferA, secA)
-  indexB = aligned(waferB, secB)
-  for index in get_index_range(indexA, indexB)
+function render_finished(firstindex::Index, lastindex::Index)
+  for index in get_index_range(aligned(firstindex), aligned(lastindex))
     img = get_image(index)
     offset = get_offset(index)
     write_finished(index, img, offset)
   end
 end
 
-function write_finished(index, img, offset, BB=GLOBAL_BB)
+function write_finished(index::Index, img, offset, BB=GLOBAL_BB)
   println("Rescoping ", get_name(index))
   @time img = rescopeimage(img, offset, BB)
   index = finished(index)
