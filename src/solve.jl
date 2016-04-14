@@ -178,7 +178,7 @@ function elastic_solve!(meshset; from_current =false)
     nodes[:, noderanges[mesh.index]] = get_globalized_nodes_h(mesh)[1];
   end
     if is_fixed(mesh)
-    nodes_fixed[noderanges[mesh.index]][:] = fill(true, count_nodes(mesh))[:];
+    nodes_fixed[noderanges[mesh.index]] = fill(true, count_nodes(mesh));
    # else
     #nodes_fixed[noderanges[mesh.index]] = fill(false, count_nodes(mesh));
     end
