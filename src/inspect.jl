@@ -194,6 +194,7 @@ function view_match(meshset::MeshSet, match_ind)
     view_inspection_statistics(match, params["search_r"])
   end
 
+  println("make image")
   imgc, img2 = view(img, pixelspacing=[1,1])
   # resize(imgc, 400, 600)
   vectors = make_vectors(meshset, match_ind, params)
@@ -372,11 +373,12 @@ function enable_inspection(imgc::ImageView.ImageCanvas,
   bind(win, ".", path->increase_distance_filter(imgc, img2, matches, vectors, params))
   bind(win, "n", path->decrease_sigma_filter(imgc, img2, matches, vectors, params))
   bind(win, "m", path->increase_sigma_filter(imgc, img2, matches, vectors, params))
+  bind(win, "b", path->adjust_sigma_filter(imgc, img2, matches, vectors, params))
   bind(win, "=", path->increase_vectors(imgc, img2, meshset, matches, vectors, params))
   bind(win, "-", path->decrease_vectors(imgc, img2, meshset, matches, vectors, params))
   bind(win, "p", path->switch_pre_to_post(imgc, img2, meshset, matches, vectors, params))
   bind(win, "s", path->save_inspection(meshset, match_ind))
-  bind(win, "<Return>", path->go_to_next_inspection(imgc, img2, meshset, match_ind; forward=true, flag=true, save=true))
+  # bind(win, "<Return>", path->go_to_next_inspection(imgc, img2, meshset, match_ind; forward=true, flag=true, save=true))
   bind(win, "<Control-Shift-Right>", path->go_to_next_inspection(imgc, img2, meshset, match_ind; forward=true, flag=true))
   bind(win, "<Control-Right>", path->go_to_next_inspection(imgc, img2, meshset, match_ind; forward=true, flag=false))
   bind(win, "<Control-Shift-Left>", path->go_to_next_inspection(imgc, img2, meshset, match_ind; forward=false, flag=true))
@@ -397,11 +399,14 @@ function disable_inspection(imgc::ImageView.ImageCanvas, img2::ImageView.ImageSl
   bind(win, "i", path->path)
   bind(win, ",", path->path)
   bind(win, ".", path->path)
+  bind(win, "n", path->path)
+  bind(win, "m", path->path)
+  bind(win, "b", path->path)
   bind(win, "=", path->path)
   bind(win, "-", path->path)
   bind(win, "p", path->path)
   bind(win, "s", path->path)
-  bind(win, "<Return>", path->path)
+  # bind(win, "<Return>", path->path)
   bind(win, "<Control-Shift-Right>", path->path)
   bind(win, "<Control-Right>", path->path)
   bind(win, "<Control-Shift-Left>", path->path)
@@ -600,6 +605,14 @@ function filter_match_distance(imgc, img2, matches, vectors, params)
   update_annotations(imgc, img2, matches, vectors, params)
 end
 
+function adjust_sigma_filter(imgc, img2, matches, vectors, params)
+  println("Enter sigma filter value:")
+  val = chomp(readline())
+  val = parse(Int, val)
+  params["sigma"] = val
+  filter_match_sigma(imgc, img2, matches, vectors, params)
+end
+
 function increase_sigma_filter(imgc, img2, matches, vectors, params)
   params["sigma"] += 1
   filter_match_sigma(imgc, img2, matches, vectors, params)
@@ -724,17 +737,22 @@ end
 
 function view_property_histogram(match::Match, property_name; filtered=true, nbins=20)
   color="#990000"
-  properties_func = get_properties
-  if filtered
-    properties_func = get_filtered_properties
-    color="#009900"
-  end
-  attr = properties_func(match, property_name)
+  attr = get_properties(match, property_name)
+  attr_filtered = get_filtered_properties(match, property_name)
   if length(attr) > 1
-    p = plt[:hist](attr, nbins, color=color)
-    grid("on")
-    title(property_name)
-    return p
+    max_bin = min(maximum(attr), 1000)
+    min_bin = minimum(attr)
+    bins = [linspace(min_bin, max_bin, nbins)]
+    if filtered
+      attr = attr_filtered
+      color="#009900"
+    end
+    if length(attr) > 1
+      p = plt[:hist](attr, bins=bins, color=color)
+      grid("on")
+      title(property_name)
+      return p
+    end
   end
 end
 
@@ -798,7 +816,7 @@ function view_inspection_statistics(match, sr)
   view_property_spatial_scatter(match, "norm"; filtered=false, factor=1)
   view_property_spatial_scatter(match, "norm"; filtered=true, factor=1)
   subplot(236)
-  view_property_spatial_scatter(match, "src_kurtosis"; filtered=false, factor=10)
-  view_property_spatial_scatter(match, "src_kurtosis"; filtered=true, factor=10)
+  view_property_histogram(match, 0.5; filtered=false, nbins=20)
+  view_property_histogram(match, 0.5; filtered=true, nbins=20)
   fig[:canvas][:draw]()
 end
