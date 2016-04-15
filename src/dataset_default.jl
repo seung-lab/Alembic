@@ -196,48 +196,35 @@ cur_dataset = "piriform"
 #cur_dataset = "zebrafish"
 affine_dir_path = "~"
 
+raw_dir_path = "0_raw"
 premontaged_dir_path = "1_premontaged"
 montaged_dir_path = "2_montaged"
 prealigned_dir_path = "3_prealigned"
 aligned_dir_path = "4_aligned"
 finished_dir_path = "5_finished"
 
-if isdefined(:review_round)
-    aligned_dir_path = joinpath(aligned_dir_path, review_round)
-end    
+expunged_dir = "expunged"
 
 wafer_filename = "wafer_paths.txt"
 premontaged_registry_filename = "registry_premontaged.txt"
 montaged_registry_filename = "registry_montaged.txt"
 prealigned_registry_filename = "registry_prealigned.txt"
 aligned_registry_filename = "registry_aligned.txt"
-
-inspection_storage_path = ""
-if isfile("inspection_storage_path.txt")
-    inspection_storage_path = rstrip(readall("inspection_storage_path.txt"), '\n')
-elseif isfile("../inspection_storage_path.txt")
-    inspection_storage_path = rstrip(readall("../inspection_storage_path.txt"), '\n')
-else
-    inspection_storage_path = joinpath(homedir(), "seungmount/Omni/alignment/datasets")
-    if isdefined(:training)
-        if training
-            println("TRAINING PATHS LOADED")
-            inspection_storage_path = joinpath(homedir(), "seungmount/Omni/alignment/training")
-        end
-    end
-end
+expunged_registry_filename = "expunged_aligned.txt"
 
 export BUCKET, DATASET_DIR, AFFINE_DIR, WAFER_DIR_DICT, PREMONTAGED_OFFSETS, PREMONTAGE_DIR, ALIGNMENT_DIR, INSPECTION_DIR
 
 global BUCKET = bucket_dir_path
 global AFFINE_DIR = affine_dir_path
 global DATASET_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset)
+global RAW_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, raw_dir_path)
 global PREMONTAGED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, premontaged_dir_path)
 global MONTAGED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, montaged_dir_path)
 global PREALIGNED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, prealigned_dir_path)
 global ALIGNED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, aligned_dir_path)
 global FINISHED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, finished_dir_path)
-global INSPECTION_DIR = inspection_storage_path
+
+global EXPUNGED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, raw_dir_path, expunged_dir)
 
 waferpath_filename = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, wafer_filename)
 global WAFER_DIR_DICT = waferpaths_to_dict(waferpath_filename)
@@ -254,6 +241,9 @@ global REGISTRY_PREALIGNED = parse_registry(prealigned_registry_path)
 
 aligned_registry_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, aligned_dir_path, aligned_registry_filename)
 global REGISTRY_ALIGNED = parse_registry(aligned_registry_path)
+
+expunged_registry_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, raw_dir_path, expunged_dir, expunged_registry_filename)
+global REGISTRY_EXPUNGED = parse_registry(expunged_registry_path)
 
 show_plot = false
 

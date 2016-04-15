@@ -180,29 +180,10 @@ prealigned_dir_path = "3_prealigned"
 aligned_dir_path = "4_aligned"
 finished_dir_path = "5_finished"
 
-if isdefined(:review_round)
-    aligned_dir_path = joinpath(aligned_dir_path, review_round)
-end    
-
 premontaged_registry_filename = "registry_premontaged.txt"
 montaged_registry_filename = "registry_montaged.txt"
 prealigned_registry_filename = "registry_prealigned.txt"
 aligned_registry_filename = "registry_aligned.txt"
-
-inspection_storage_path = ""
-if isfile("inspection_storage_path.txt")
-    inspection_storage_path = rstrip(readall("inspection_storage_path.txt"), '\n')
-elseif isfile("../inspection_storage_path.txt")
-    inspection_storage_path = rstrip(readall("../inspection_storage_path.txt"), '\n')
-else
-    inspection_storage_path = joinpath(homedir(), "seungmount/Omni/alignment/datasets")
-    if isdefined(:training)
-        if training
-            println("TRAINING PATHS LOADED")
-            inspection_storage_path = joinpath(homedir(), "seungmount/Omni/alignment/training")
-        end
-    end
-end
 
 export BUCKET, DATASET_DIR, AFFINE_DIR, PREMONTAGED_OFFSETS, PREMONTAGE_DIR, ALIGNMENT_DIR, INSPECTION_DIR
 
@@ -214,7 +195,6 @@ global MONTAGED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, 
 global PREALIGNED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, prealigned_dir_path)
 global ALIGNED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, aligned_dir_path)
 global FINISHED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, finished_dir_path)
-global INSPECTION_DIR = inspection_storage_path
 
 premontaged_registry_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, premontaged_dir_path, premontaged_registry_filename)
 global REGISTRY_PREMONTAGED = parse_registry(premontaged_registry_path)

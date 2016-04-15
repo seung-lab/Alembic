@@ -37,62 +37,6 @@ function homogenize_points(pts)
   return pts_new;
 end
 
-function reset_offset(index::Index)
-  update_offset(index, [0,0])
-end
-
-"""
-Edit the offset_log text file associated with an index
-
-index: 4-element tuple for section identifier
-offset: 2-element collection for the i,j offset
-sz: 2-element collection for the i,j height and width
-"""
-function update_offset(index::Index, offset, sz=[0, 0], needs_render = false)
-  
-  if is_montaged(index) registry_fp = montaged_registry_path;
-  elseif is_prealigned(index) registry_fp = prealigned_registry_path;
-  elseif is_aligned(index) registry_fp = aligned_registry_path;
-  else registry_fp = premontaged_registry_path; end
-
-  image_fn = string(get_name(index));
-
-  println("Updating registry for ", image_fn, " in:\n", registry_fp, ": offset is now ", offset)
-
-  if !isfile(registry_fp)
-    f = open(registry_fp, "w")
-    close(f)
-    registry = [image_fn, offset..., sz..., needs_render]'
-  else  
-    registry = readdlm(registry_fp)
-    idx = findfirst(registry[:,1], image_fn)
-    if idx != 0
-      registry[idx, 2:3] = collect(offset)
-      if sz != [0, 0]
-        registry[idx, 4:5] = collect(sz)
-      end
-    else
-      registry_line = [image_fn, offset..., sz..., needs_render]
-      registry = vcat(registry, registry_line')
-    end
-  end
-  registry = registry[sortperm(registry[:, 1], by=parse_name), :];
-  writedlm(registry_fp, registry)
-  
-  if is_montaged(index) global REGISTRY_MONTAGED = parse_registry(registry_fp);
-  elseif is_prealigned(index) global REGISTRY_PREALIGNED = parse_registry(registry_fp);
-  elseif is_aligned(index) global REGISTRY_ALIGNED = parse_registry(registry_fp);
-  else global REGISTRY_PREMONTAGED = parse_registry(registry_fp);
-  end
-end
-
-function update_offset(name, offset, sz=[0, 0], needs_render = false)
-  update_offset(parse_name(name), offset, sz, needs_render);
-end
-
-function expunge(index)
-#	image = get_path(index);
-end
 """
 Create array of alphabetized filenames that have file extension in directory
 """

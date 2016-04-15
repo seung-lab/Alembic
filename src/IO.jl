@@ -103,3 +103,35 @@ function load_section_images(session, section_num)
 
   return imageArray
 end
+
+function expunge_tile(index::Index)
+  assert(is_premontaged(index))
+  fn = get_filename(index)
+  path = get_path(index)
+  new_path = joinpath(EXPUNGED_DIR, fn)
+  println("Expunging $fn")
+  println("Moving to $new_path")
+  assert(isfile(path) && !isfile(new_path))
+  mv(path, new_path)
+  # metadata = get_metadata(index)
+  purge_from_registry!(index)
+end
+
+function resurrect_tile(index::Index)
+  assert(is_premontaged(index))
+  fn = get_filename(index)
+  path = joinpath(EXPUNGED_DIR, fn)
+  new_path = get_path(index)
+  println("Resurrecting $fn")
+  println("Moving back to $new_path")
+  assert(isfile(path) && !isfile(new_path))
+  mv(path, new_path)
+end
+
+function is_expunged(index::Index)
+  assert(is_premontaged(index))
+  fn = get_filename(index)
+  expunged_path = joinpath(EXPUNGED_DIR, fn)
+  included_path = get_path(index)
+  return assert(isfile(expunged_path) && !isfile(included_path))
+end
