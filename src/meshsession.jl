@@ -39,6 +39,7 @@ function prealign(firstindex::Index, lastindex::Index; start_to_fixed=false)
   for index in get_index_range(montaged(firstindex), montaged(lastindex))
     ms = MeshSet()
     if index==firstindex
+      println("Prealigning first section to FIXED aligned section")
       ms = prealign(index; to_fixed=start_to_fixed)
     else 
       ms = prealign(index)
