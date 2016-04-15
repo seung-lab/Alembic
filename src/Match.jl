@@ -256,20 +256,18 @@ function get_ranges(pt, src_index, src_offset, src_img_size, dst_index, dst_offs
 end
 
 """
-Template match two images & record translation for source image
+Template match two images & record translation for source image - already scaled
 """
 function monoblock_match(src_index, dst_index, src_image, dst_image, params=get_params(src_index))
 	if params["match"]["monoblock_match"] == false return; end
 	scale = params["match"]["monoblock_scale"];
 	ratio = params["match"]["monoblock_ratio"];
-	src_image_scaled = imscale(src_image, scale)[1]
-	dst_image_scaled = imscale(dst_image, scale)[1]
 
-	scaled_rads = ceil(Int64, ratio * size(src_image_scaled, 1) / 2), round(Int64, ratio * size(src_image_scaled, 2) / 2)
-	range_in_src = ceil(Int64, size(src_image_scaled, 1) / 2) + (-scaled_rads[1]:scaled_rads[1]), round(Int64, size(src_image_scaled, 2) / 2) + (-scaled_rads[2]:scaled_rads[2])
+	scaled_rads = ceil(Int64, ratio * size(src_image, 1) / 2), round(Int64, ratio * size(src_image, 2) / 2)
+	range_in_src = ceil(Int64, size(src_image, 1) / 2) + (-scaled_rads[1]:scaled_rads[1]), round(Int64, size(src_image, 2) / 2) + (-scaled_rads[2]:scaled_rads[2])
 
-	range_in_dst = 1:size(dst_image_scaled, 1), 1:size(dst_image_scaled, 2);
-	dst_range_full = 1:size(dst_image_scaled, 1), 1:size(dst_image_scaled, 2);
+	range_in_dst = 1:size(dst_image, 1), 1:size(dst_image, 2);
+	dst_range_full = 1:size(dst_image, 1), 1:size(dst_image, 2);
 	src_pt_locs = [1, 1]; 
 	dst_pt_locs = [first(range_in_src[1]), first(range_in_src[2])];
 	dst_pt_locs_full = dst_pt_locs;
@@ -277,7 +275,8 @@ function monoblock_match(src_index, dst_index, src_image, dst_image, params=get_
 
 	ranges = src_index, range_in_src, src_pt_locs, dst_index, range_in_dst, dst_range_full, dst_pt_locs, dst_pt_locs_full, rel_offset
 
-	match = get_match(src_pt_locs, ranges, src_image_scaled, dst_image_scaled, 1)
+	match = get_match(src_pt_locs, ranges, src_image, dst_image, 1)
+
 	if match == nothing
 		error("MONOBLOCK_MATCH FAILED: Cross correlogram maximum is NaN. Check that images have variance.")
 	else
@@ -439,7 +438,7 @@ function undo_filter!(match::Match)
 	end
 end
 
-function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); src_image=get_image(src_mesh), dst_image=get_image(dst_mesh), rotate=0)
+function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rotate=0)
 	println("Matching $(get_index(src_mesh)) -> $(get_index(dst_mesh)):")
 	if src_mesh == dst_mesh
 		println("nothing at")
@@ -448,35 +447,26 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); src_
 		return nothing
 	end
 
-	#load at full scale for monoblock match
-	SHARED_SRC_IMAGE[1:size(src_image, 1), 1:size(src_image, 2)] = src_image;
-	SHARED_DST_IMAGE[1:size(dst_image, 1), 1:size(dst_image, 2)] = dst_image;
-  	src_index = get_index(src_mesh);
-	dst_index = get_index(dst_mesh);
+  	src_index = get_index(src_mesh); dst_index = get_index(dst_mesh);
 
-	monoblock_match(src_index, dst_index, src_image, dst_image, params);
+	if params["match"]["monoblock_match"]
+	monoblock_match(src_index, dst_index, get_image(src_index, params["match"]["monoblock_scale"]), get_image(dst_index, params["match"]["monoblock_scale"]), params);
+        end
 
-	#load at full scale for monoblock match
-	scale = params["match"]["blockmatch_scale"];
+	ranges = pmap(get_ranges, src_mesh.src_nodes, repeated(src_index), repeated(get_offset(src_index)), repeated(get_image_sizes(src_index)), repeated(dst_index), repeated(get_offset(dst_index)), repeated(get_image_sizes(dst_index)), repeated(params["match"]["block_r"]), repeated(params["match"]["search_r"]), repeated(params["registry"]["global_offsets"]); pids=WORKER_PROCS);
 
-	if scale != 1
-	src_image = imscale(src_image, scale)[1]
-	dst_image = imscale(dst_image, scale)[1]
-	SHARED_SRC_IMAGE[1:size(src_image, 1), 1:size(src_image, 2)] = src_image;
-	SHARED_DST_IMAGE[1:size(dst_image, 1), 1:size(dst_image, 2)] = dst_image;
-	end
-
-	ranges = pmap(get_ranges, src_mesh.src_nodes, repeated(src_index), repeated(get_offset(src_index)), repeated(get_image_sizes(src_index)), repeated(dst_index), repeated(get_offset(dst_index)), repeated(get_image_sizes(dst_index)), repeated(params["match"]["block_r"]), repeated(params["match"]["search_r"]), repeated(params["registry"]["global_offsets"]));
 	ranged_inds = find(i -> i != nothing, ranges);
-	#src_nodes = copy(src_mesh.src_nodes[ranged_inds]);
 	ranges = ranges[ranged_inds];
 	print("    ")
+
 	println("$(length(ranged_inds)) / $(length(src_mesh.src_nodes)) nodes to check.")
+
 	if length(ranged_inds) != 0
 		ranges = Array{typeof(ranges[1]), 1}(ranges);
 	end
 
-	dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(SHARED_SRC_IMAGE), repeated(SHARED_DST_IMAGE), repeated(params["match"]["blockmatch_scale"])) 
+        dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(get_image(src_index, params["match"]["blockmatch_scale"])), repeated(get_image(dst_index, params["match"]["blockmatch_scale"])), repeated(params["match"]["blockmatch_scale"]); pids=WORKER_PROCS) 
+
 	matched_inds = find(i -> i != nothing, dst_allpoints);
 	src_points = copy(src_mesh.src_nodes[ranged_inds][matched_inds]);
 	filters = Array{Dict{Any, Any}}(0);

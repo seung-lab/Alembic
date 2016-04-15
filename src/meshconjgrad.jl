@@ -20,7 +20,8 @@ MeshConjGrad- given spring mesh, solve for equilibrium positions of vertices wit
  could be changed to 1xE binary vector
 """
 
-global eps = 1E-16
+#currently defined in Julimaps
+#global eps = 1E-16
 
 function Energy(Springs, Stiffnesses, RestLengths)
     # potential energy per spring (normalized)

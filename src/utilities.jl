@@ -49,7 +49,10 @@ offset: 2-element collection for the i,j offset
 sz: 2-element collection for the i,j height and width
 """
 function update_offset(index::Index, offset, sz=[0, 0], needs_render = false)
-  
+  if myid() != IO_PROC
+    return remotecall_fetch(IO_PROC, update_offset, index, offset, sz, needs_render);
+  end
+
   if is_montaged(index) registry_fp = montaged_registry_path;
   elseif is_prealigned(index) registry_fp = prealigned_registry_path;
   elseif is_aligned(index) registry_fp = aligned_registry_path;
