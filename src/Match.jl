@@ -16,6 +16,10 @@ function count_filtered_correspondences(match::Match) return length(get_filtered
 function count_rejected_correspondences(match::Match) return length(get_rejected_indices(match)); end
 function count_filters(match::Match) return length(match.filters); end
 
+function count_filtered_properties(match::Match, property_name, compare, threshold)
+ return sum(compare(get_filtered_properties(match::Match, property_name), threshold))
+end
+
 function get_ratio_filtered(match::Match, min_corresps = 0) 
   if count_correspondences(match) < min_corresps return 1.0 end
 return count_filtered_correspondences(match) / max(count_correspondences(match), 1); end
