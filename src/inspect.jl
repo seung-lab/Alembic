@@ -186,7 +186,7 @@ function view_match(meshset::MeshSet, match_ind)
   if is_montaged(meshset)
     params["vector_scale"] = 4
   end
-  params["post_matches"] = false
+  params["post_matches"] = is_prealigned(indexA)
   params["dist"] = 90
   params["sigma"] = 7
 
@@ -740,7 +740,7 @@ function view_property_histogram(match::Match, property_name; filtered=true, nbi
   attr = get_properties(match, property_name)
   attr_filtered = get_filtered_properties(match, property_name)
   if length(attr) > 1
-    max_bin = min(maximum(attr), 1000)
+    max_bin = min(maximum(attr), 10000)
     min_bin = minimum(attr)
     bins = [linspace(min_bin, max_bin, nbins)]
     if filtered
