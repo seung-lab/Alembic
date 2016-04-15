@@ -58,7 +58,7 @@ function Gradient_given_lengths(Springs, Lengths, Incidence_d, Stiffnesses_d, Re
     return (Incidence_d * Forces)
 end
 
-function SolveMesh!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, max_iter, ftol)
+function SolveMeshConjugateGradient!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, max_iter, ftol)
     # double everything
     Vertices_t = Vertices';
     Vertices_t = vcat(Vertices_t[:, 1], Vertices_t[:, 2])

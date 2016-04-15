@@ -22,13 +22,13 @@ could be changed to 1xE binary vector
 
 global eps = 1E-8
 
-function Energy( Springs, Stiffnesses, RestLengths)
+function EnergyGD( Springs, Stiffnesses, RestLengths)
     # potential energy in springs
     Lengths=sqrt(sum(Springs.^2,1))   # spring lengths (row vector)
     sum(Stiffnesses[:].*(Lengths[:]-RestLengths[:]).^2)/2
 end
 
-function Gradient( Springs, Incidence, Stiffnesses, RestLengths)
+function GradientGD( Springs, Incidence, Stiffnesses, RestLengths)
     # gradient of energy with respect to vertex positions
     # returns dxV array, same size as Vertices
     # physically, -gradient is spring forces acting on vertices
@@ -108,7 +108,7 @@ function Hessian2( Springs, Incidence, Stiffnesses, RestLengths)
     sparse(II[1:numel],JJ[1:numel],SS[1:numel])
 end
 
-function SolveMesh!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, eta_gradient, ftol_gradient, eta_newton, ftol_newton)
+function SolveMeshGDNewton!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, eta_gradient, ftol_gradient, eta_newton, ftol_newton)
     d=size(Vertices,1)
     V=size(Vertices,2)
     E=size(Incidence,2)
@@ -122,9 +122,9 @@ function SolveMesh!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, eta_gr
 
     while true
         Springs=Vertices*Incidence
-        g=Gradient(Springs, Incidence, Stiffnesses, RestLengths)
+        g=GradientGD(Springs, Incidence, Stiffnesses, RestLengths)
         Vertices[:,Moving]=Vertices[:,Moving]-eta_gradient*g[:,Moving]
-        push!(U, Energy(Springs,Stiffnesses,RestLengths))
+        push!(U, EnergyGD(Springs,Stiffnesses,RestLengths))
         println(iter," ", U[iter])
         if iter != 1
     	if abs((U[iter-1] - U[iter]) / U[iter-1]) < ftol_gradient
@@ -136,11 +136,11 @@ function SolveMesh!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, eta_gr
 
     while true
     	Springs=Vertices*Incidence
-    	g=Gradient(Springs, Incidence, Stiffnesses, RestLengths)
+    	g=GradientGD(Springs, Incidence, Stiffnesses, RestLengths)
     	H=Hessian2(Springs, Incidence, Stiffnesses, RestLengths)
         #Vertices[:,Moving]=Vertices[:,Moving]-eta_newton*reshape(H[Moving2,Moving2]\g[:,Moving][:],2,length(find(Moving)))
         Vertices[:,Moving]=Vertices[:,Moving]-eta_newton*reshape(cg(H[Moving2,Moving2],g[:,Moving][:])[1],2,length(find(Moving)))
-    	push!(U, Energy(Springs,Stiffnesses,RestLengths))
+    	push!(U, EnergyGD(Springs,Stiffnesses,RestLengths))
         println(iter," ", U[iter])
         if abs((U[iter-1] - U[iter]) / U[iter-1]) < ftol_newton
             println("Converged below ", ftol_newton); break;

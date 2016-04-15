@@ -131,6 +131,10 @@ function elastic_solve!(meshset; from_current =false)
   mesh_spring_coeff = params["solve"]["mesh_spring_coeff"]
   max_iters = params["solve"]["max_iters"]
   ftol_cg = params["solve"]["ftol_cg"]
+  eta_gd = params["solve"]["eta_gd"] 
+  ftol_gd = params["solve"]["ftol_gd"]
+  eta_newton = params["solve"]["eta_newton"]
+  ftol_newton = params["solve"]["ftol_newton"]
 
   println("Solving meshset: $(count_nodes(meshset)) nodes, $(count_edges(meshset)) edges, $(count_filtered_correspondences(meshset)) correspondences");
 
@@ -245,8 +249,11 @@ function elastic_solve!(meshset; from_current =false)
 #return nodes, nodes_fixed, edges, edge_spring_coeffs, edge_lengths, max_iters, ftol_cg;
 
  #println(find(this -> this == true, nodes_fixed));
-
-  @time SolveMesh!(nodes, nodes_fixed, edges, edge_spring_coeffs, edge_lengths, max_iters, ftol_cg)
+  if params["solve"]["use_conjugate_gradient"]
+    @time SolveMeshConjugateGradient!(nodes, nodes_fixed, edges, edge_spring_coeffs, edge_lengths, max_iters, ftol_cg)
+  else
+    @time SolveMeshGDNewton!(nodes, nodes_fixed, edges, edge_spring_coeffs, edge_lengths, eta_gd, ftol_gd, eta_newton, ftol_newton)
+  end
   dst_nodes = Points(0)
   for i in 1:size(nodes, 2)
           push!(dst_nodes, vec(nodes[:, i]))
