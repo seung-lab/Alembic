@@ -353,6 +353,8 @@ succeeding_pairs = Pairings(0)
   end
 
   pairs = vcat(adjacent_pairs, diagonal_pairs, preceding_pairs, succeeding_pairs)
+  sort!(pairs, getindex, 2)
+  sort!(pairs, getindex, 1)
   println("$(length(pairs)) pairs found")
   return pairs
 end

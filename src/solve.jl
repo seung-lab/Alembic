@@ -215,8 +215,12 @@ function elastic_solve!(meshset; from_current =false)
 	for ind in 1:count_filtered_correspondences(match)
 		if src_pt_triangles[ind] == NO_TRIANGLE || dst_pt_triangles[ind] == NO_TRIANGLE continue; end
 	        for i in 1:3
+		  	if src_pt_weights[ind][i] > eps
 			push!(edges_to_add, (noderange_src[src_pt_triangles[ind][i]], edgerange[ind], -src_pt_weights[ind][i]))
+		        end
+		  	if dst_pt_weights[ind][i] > eps
 			push!(edges_to_add, (noderange_dst[dst_pt_triangles[ind][i]], edgerange[ind], dst_pt_weights[ind][i]))
+		      end
 		end
 	end
 	return edges_to_add;

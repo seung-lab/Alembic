@@ -24,7 +24,7 @@ function get_metadata(mesh::Mesh)		return get_metadata(mesh.index);	end
 
 ### IO.jl EXTENSIONS
 function get_path(mesh::Mesh)			return get_path(mesh.index);		end
-function get_image(mesh::Mesh, dtype = UInt8)	return get_image(mesh.index, dtype);	end
+function get_image(mesh::Mesh, scale=1.0, dtype = IMG_ELTYPE)	return get_image(mesh.index, scale, dtype);	end
 
 ### counting
 function count_nodes(mesh::Mesh)		return size(mesh.src_nodes, 1);		end

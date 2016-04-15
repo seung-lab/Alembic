@@ -1,3 +1,23 @@
+global const IMG_ELTYPE = UInt8
+global const IMG_SUP_SIZE = (75000, 75000)
+
+# size in bytes
+global const IMG_CACHE_SIZE = 8 * 2^30 # n * gibibytes
+global const IMG_CACHE_DICT = Dict{Any, SharedArray}()
+global const IMG_CACHE_LIST = Array{Any, 1}();
+
+global const IO_PROC = nprocs();
+#global const WORKER_PROCS = setdiff(procs(), IO_PROC);
+if nprocs() > 5
+global const WORKER_PROCS = setdiff(procs(), [1, IO_PROC]);
+else 
+global const WORKER_PROCS = setdiff(procs(), [1]);
+end
+
+#global const SHARED_SRC_IMAGE = SharedArray(IMG_ELTYPE, SUP_SIZE)
+#global const SHARED_DST_IMAGE = SharedArray(IMG_ELTYPE, SUP_SIZE)
+
+
 function save(path::String, img::Array)
       f = h5open(path, "w")
       @time f["img", "chunk", (1000,1000)] = img
@@ -7,7 +27,7 @@ function save(path::String, img::Array)
 # extensions:
 # Mesh.jl	get_image(mesh::Mesh)
 # filesystem.jl	get_image() 
-function get_image(path::String, dtype = UInt8)
+function get_image_disk(path::String, dtype = IMG_ELTYPE)
 	ext = splitext(path)[2];
   	if ext == ".tif"
   		img = data(FileIO.load(path))
@@ -19,42 +39,59 @@ function get_image(path::String, dtype = UInt8)
 	end
 end
 
-function get_uint8_image(path::String)
-  img = Images.load(path)
-  return reinterpret(UInt8, data(img)[:,:,1])'
+function get_image(path::String, scale=1.0, dtype = IMG_ELTYPE)
+#=  	if myid() != IO_PROC
+	  return remotecall_fetch(IO_PROC, get_image, path, scale, dtype);
+	end =#
+
+  	if haskey(IMG_CACHE_DICT, (path, scale))
+	  println("$path is in cache at scale $scale - loading from cache...")
+	  return IMG_CACHE_DICT[(path, scale)]
+	end
+
+	if !haskey(IMG_CACHE_DICT, (path, 1.0))
+	    println("$path is not in cache at full scale - loading into cache...")
+	    img = get_image_disk(path, dtype);
+	    shared_img = SharedArray(dtype, size(img)...);
+	    shared_img[:,:] = img[:,:];
+
+	    push!(IMG_CACHE_LIST, (path, 1.0))
+	    IMG_CACHE_DICT[(path, 1.0)] = shared_img;
+	end
+
+	if scale != 1.0
+	  println("$path is in cache at full scale - downsampling to scale $scale...")
+	  scaled_img = imscale(Array(IMG_CACHE_DICT[(path, 1.0)]), scale)[1]
+    	  shared_img_scaled = SharedArray(dtype, size(scaled_img)...);
+	  shared_img_scaled[:,:] = scaled_img[:,:];
+
+	  push!(IMG_CACHE_LIST, (path, scale))
+	  IMG_CACHE_DICT[(path, scale)] = shared_img_scaled;
+        end
+
+	while sum(map(Int64, map(length, values(IMG_CACHE_DICT)))) > IMG_CACHE_SIZE && !length(IMG_CACHE_DICT) < 2
+		delete!(IMG_CACHE_DICT, shift!(IMG_CACHE_LIST))
+	end
+
+	cur_cache_size = sum(map(Int64, map(length, values(IMG_CACHE_DICT))));
+
+	println("current cache usage: $cur_cache_size / $IMG_CACHE_SIZE (bytes), $(round(Int64, cur_cache_size/IMG_CACHE_SIZE * 100))%")
+
+	return IMG_CACHE_DICT[(path, scale)];
 end
 
-function get_image(index, dtype = UInt8)
-  return get_image(get_path(index), dtype)
+function get_image(index, scale = 1.0, dtype = IMG_ELTYPE)
+  return get_image(get_path(index), scale, dtype)
 end
 
 function ufixed8_to_uint8(img)
   reinterpret(UInt8, -img)
 end
 
-function get_h5_path(index::Index)
-  return string(get_path(index)[1:end-4], ".h5")
-end
-
-function get_h5_slice(path::String, slice)
+function get_slice(path::String, slice)
   # return reinterpret(Ufixed8, h5read(path, "img", slice))
+  if splitext(path)[2] != ".h5" return get_image(path)[slice...] end
   return h5read(path, "img", slice)
-end
-
-function get_h5_image(path::String)
-  return h5read(path, "img")
-end
-
-# extensions:
-# Mesh.jl get_float_image(mesh::Mesh)
-function get_float_image(path::String)
-  img = Images.load(path)
-  img.properties["timedim"] = 0
-  return convert(Array{Float64, 2}, convert(Array, img[:,:,1]))
-end
-
-function get_ufixed8_image(path::String)
-  return convert(Array{Ufixed8}, data(Images.load(path))[:,:,1])'
 end
 
 function load_affine(path::String)
