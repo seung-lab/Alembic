@@ -21,11 +21,11 @@ function count_filtered_properties(match::Match, property_name, compare, thresho
 end
 
 function get_ratio_filtered(match::Match, min_corresps = 0) 
-  if count_correspondences(match) < min_corresps return 1.0 end
+  if count_correspondences(match) < min_corresps return 1.0 end # ignore low match cases
 return count_filtered_correspondences(match) / max(count_correspondences(match), 1); end
 
 function get_ratio_rejected(match::Match, min_corresps = 0) 
-  if count_correspondences(match) < min_corresps return 1.0 end
+  if count_correspondences(match) < min_corresps return 0.0 end # ignore low match cases
 return count_rejected_correspondences(match) / max(count_correspondences(match), 1); end
 
 function get_ratio_edge_proximity(match::Match)
