@@ -83,10 +83,10 @@ global PARAMS_MONTAGE = Dict(
 			     "render" => Dict(
 					      ),
 			     "review" => Dict(
-						"too_few_corresps" => (:count_correspondences, <, 10),
-						"rejected_ratio" => (:get_ratio_rejected, >, 0.25, 0),
+						# "too_few_corresps" => (:count_correspondences, <, 10),
+						"rejected_ratio" => (:get_ratio_rejected, >, 0.66, 8),
 						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.95),
-						"norm_outliers" => (:count_outlier_norms, >, 0, 3),
+						# "norm_outliers" => (:count_outlier_norms, >, 0, 3),
 						"centered_norm" => (:get_maximum_centered_norm, >, BLOCK_R_MONTAGE/2)
 					      ),
 			     "registry" => Dict(
