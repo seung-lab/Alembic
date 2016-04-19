@@ -186,7 +186,7 @@ function view_match(meshset::MeshSet, match_ind)
   if is_montaged(meshset)
     params["vector_scale"] = 4
   end
-  params["post_matches"] = is_prealigned(indexA)
+  params["post_matches"] = false # is_prealigned(indexA)
   params["dist"] = 90
   params["sigma"] = 7
 
@@ -818,5 +818,14 @@ function view_inspection_statistics(match, sr)
   subplot(236)
   view_property_histogram(match, 0.5; filtered=false, nbins=20)
   view_property_histogram(match, 0.5; filtered=true, nbins=20)
+
+  annotate(string("Flags:\n", join(keys(match.properties["review"]["flags"]), "\n")),
+    xy=[0;1],
+    xycoords="figure fraction",
+    xytext=[10,-10],
+    textcoords="offset points",
+    ha="left",
+    va="top",
+    fontsize=16)
   fig[:canvas][:draw]()
 end
