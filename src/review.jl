@@ -80,7 +80,7 @@ Boolean if bounding boxes intersect
 """
 function intersects(bbA::BoundingBox, bbB::BoundingBox)
   bb = bbA - bbB
-  return !isequal(bb.i, NaN)
+  return !Base.isequal(bb.i, NaN)
 end
 
 """
