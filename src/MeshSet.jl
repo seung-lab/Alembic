@@ -332,7 +332,19 @@ function MeshSet(first_index, last_index; params=get_params(first_index), solve=
 	return meshset;
 end
 
+function mark_solved(meshset::MeshSet)
+  meshset.properties["meta"]["solved"] = author()
+end
 
+function reset!(meshset::MeshSet)
+  m = string("Are you sure you want to reset all the meshes in ", get_name(meshset), "?")
+  if user_approves(m)
+    for mesh in meshset.meshes
+      reset!(mesh)
+    end
+    meshset.properties["meta"]["reset"] = author()
+  end
+end
 
 
 ### match
@@ -464,7 +476,7 @@ function get_filename(firstindex::Index, lastindex::Index)
   filename = string(get_name(firstindex, lastindex), ".jls")
   if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_aligned(lastindex))
     filepath = PREALIGNED_DIR
-  elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex))
+  elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex)) || (is_prealigned(firstindex) && is_aligned(lastindex))
     filepath = ALIGNED_DIR
   else 
     filepath = MONTAGED_DIR
@@ -488,7 +500,7 @@ function get_name(firstindex::Index, lastindex::Index)
   name = ""
   if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_aligned(lastindex))
     name = string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned")
-  elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex))
+  elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex)) || (is_prealigned(firstindex) && is_aligned(lastindex))
     name = string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned")
   else 
     name = string(join(firstindex[1:2], ","), "_montaged")

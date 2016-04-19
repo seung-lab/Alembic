@@ -328,3 +328,7 @@ end
 function is_fixed(mesh::Mesh)
 	get(mesh.properties, "fixed", false)
 end
+
+function reset!(mesh::Mesh)
+	mesh.dst_nodes = mesh.src_nodes
+end
