@@ -114,7 +114,7 @@ function get_registry(index)
   elseif is_montaged(index) registry = REGISTRY_MONTAGED;
   elseif is_prealigned(index) registry = REGISTRY_PREALIGNED;
   elseif is_aligned(index) registry = REGISTRY_ALIGNED;
-  elseif is_registered(index) registry = REGISTRY_ALIGNED;
+  elseif is_finished(index) registry = REGISTRY_FINISHED;
   else registry = Void; println("Index $index does not correspond to a pipeline stage."); end
   return registry; 
 end
@@ -133,12 +133,15 @@ function find_in_registry(index)
   return findfirst(registry[:,2], index);
 end
 
-function purge_from_registry!(index)
-  assert(is_premontaged(index))
+"""
+Remove index from registry file & reload that registry
+"""
+function purge_from_registry!(index::Index)
+  # assert(is_premontaged(index))
   registry_path = get_registry_path(index)
   registry = readdlm(registry_path)
   i = find_in_registry(index)
-  println("Purging $index from REGISTRY_PREMONTAGED")
+  println("Purging $index from $registry_path")
   registry = registry[1:size(registry,1).!=i, :]
   writedlm(registry_path, registry)
   reload_registry(index)

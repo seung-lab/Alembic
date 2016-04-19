@@ -117,6 +117,26 @@ function expunge_tile(index::Index)
   purge_from_registry!(index)
 end
 
+function expunge_section(index::Index)
+  tiles = get_index_range(premontaged(index), premontaged(index))
+  for tile in tiles
+    expunge_tile(tile)
+  end
+  purges = []
+  if is_finished(index)
+    purges = [aligned(index), prealigned(index), montaged(index)]
+  elseif is_aligned(index)
+    purges = [aligned(index), prealigned(index), montaged(index)]
+  elseif is_prealigned(index)
+    purges = [prealigned(index), montaged(index)]
+  elseif is_montaged(index)
+    purges = [montaged(index)]
+  end
+  for purge in purges
+    purge_from_registry!(purge)
+  end
+end
+
 function resurrect_tile(index::Index)
   assert(is_premontaged(index))
   fn = get_filename(index)
