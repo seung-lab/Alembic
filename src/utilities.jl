@@ -68,3 +68,10 @@ end
 function make_scale_matrix(scale)
   return [scale 0 0; 0 scale 0; 0 0 1]
 end
+
+function user_approves(m="Are you sure?")
+  println(m)
+  println("(type 'yes')")
+  a = readline()
+  return chomp(a) == "yes"
+end
