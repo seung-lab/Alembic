@@ -39,7 +39,7 @@ function render_montaged(meshset::MeshSet; render_full=false, render_review=true
     println("The meshset has a flag. Continuing anyway....")
   end
 
-  try
+  # try
     new_fn = get_filename(index)
     println("Rendering ", new_fn)
     warps = pmap(meshwarp_mesh, meshset.meshes);
@@ -60,10 +60,10 @@ function render_montaged(meshset::MeshSet; render_full=false, render_review=true
       close(f)
       update_offset(index, [0,0], size(img))
     end
-  catch e
-    println(e)
-    log_error(index; comment=e)
-  end
+  # catch e
+  #   println(e)
+  #   log_error(index; comment=e)
+  # end
 
 end
 
@@ -110,8 +110,8 @@ function prepare_prealignment(index::Index, startindex=montaged(ROI_FIRST))
   return src_index, dst_index, cumulative_tform, tform
 end
 
-function render_prealigned(index::Index; render_full=false, render_review=true)
-  src_index, dst_index, cumulative_tform, tform = prepare_prealignment(index)
+function render_prealigned(index::Index; render_full=false, render_review=true, startindex=montaged(ROI_FIRST))
+  src_index, dst_index, cumulative_tform, tform = prepare_prealignment(index, startindex)
   render_prealigned(src_index, dst_index, cumulative_tform, tform; 
                           render_full=render_full, render_review=render_review)
 end
@@ -127,10 +127,11 @@ function render_prealigned(src_index::Index, dst_index::Index, cumulative_tform,
 end
 
 function render_prealigned(firstindex::Index, lastindex::Index; 
-                                        render_full=true, render_review=false)
+                                        render_full=true, render_review=false, startindex=montaged(ROI_FIRST), align=false)
+  startindex = montaged(startindex)
   dst_img = nothing
   for index in get_index_range(montaged(firstindex), montaged(lastindex))
-    src_index, dst_index, cumulative_tform, tform = prepare_prealignment(index)
+    src_index, dst_index, cumulative_tform, tform = prepare_prealignment(index, startindex)
     println("Loading src_image for rendering")
     src_img = get_image(src_index)
     if dst_img == nothing
@@ -141,6 +142,14 @@ function render_prealigned(firstindex::Index, lastindex::Index;
                     tform; render_full=render_full, render_review=render_review)
     println("Swapping src_image to dst_image")
     dst_img = copy(src_img)
+
+    println(index, " ", firstindex, " ", align && montaged(index) > montaged(firstindex))
+    if align && montaged(index) > montaged(firstindex)
+      println("Aligning meshes between $dst_index, $src_index")
+      reload_registry(prealigned(src_index))
+      ms = MeshSet(prealigned(dst_index), prealigned(src_index); solve=false, fix_first=(dst_index==startindex))
+      render_aligned_review(ms)
+    end
   end
 end
 
@@ -220,7 +229,7 @@ function render_aligned_review(firstindex::Index, lastindex::Index, start=1, fin
 end
 
 function render_aligned_review(meshset, start=1, finish=length(meshset.matches); images=Dict())
-  scale = 0.10
+  scale = 0.05
   s = make_scale_matrix(scale)
 
   for (k, match) in enumerate(meshset.matches[start:finish])
@@ -244,7 +253,7 @@ function render_aligned(firstindex::Index, lastindex::Index, start=1, finish=0)
 end
 
 function render_aligned(meshset::MeshSet, start=1, finish=length(meshset.meshes))
-  scale = 0.10
+  scale = 0.05
   s = make_scale_matrix(scale)
   images = Dict()
   for (k, mesh) in enumerate(meshset.meshes[start:finish])
