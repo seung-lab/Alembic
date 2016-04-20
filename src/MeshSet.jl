@@ -51,10 +51,12 @@ end
 ### adding
 function add_mesh!(meshset::MeshSet, mesh::Mesh)
   push!(meshset.meshes, mesh);
+  sort!(ms.meshes; by=get_index)
 end
 
 function add_match!(meshset::MeshSet, match::Match)
   push!(meshset.matches, match);
+  sort!(ms.matches; by=get_src_and_dst_indices)
 end
 
 function remove_match!(meshset::MeshSet, src_index::Index, dst_index::Index)
@@ -296,10 +298,10 @@ end
 
 function MeshSet(index; params=get_params(index))
 	if is_premontaged(index) return MeshSet(index, index); end
-	if is_montaged(index) return MeshSet(premontaged(index), premontaged(index); prefetch_all=true); end
+	if is_montaged(index) return MeshSet(premontaged(index), premontaged(index)); end
 end
 
-function MeshSet(first_index, last_index; params=get_params(first_index), solve=true, solve_method="elastic", fix_first=false, prefetch_all = false)
+function MeshSet(first_index, last_index; params=get_params(first_index), solve=true, solve_method="elastic", fix_first=false)
 	ind_range = get_index_range(first_index, last_index);
 	if length(ind_range) == 0 return nothing; end
 	fixed_inds = Array{Any, 1}(0);
@@ -315,7 +317,7 @@ function MeshSet(first_index, last_index; params=get_params(first_index), solve=
 					"split_index" => 0)
 					)
 	meshset = MeshSet(meshes, matches, properties);
-	match!(meshset, params["match"]["depth"]; prefetch_all=prefetch_all);
+	match!(meshset, params["match"]["depth"]);
 
 	filter!(meshset);
 	check_and_fix!(meshset);
@@ -353,28 +355,22 @@ succeeding_pairs = Pairings(0)
   end
 
   pairs = vcat(adjacent_pairs, diagonal_pairs, preceding_pairs, succeeding_pairs)
-  sort!(pairs, getindex, 2)
-  sort!(pairs, getindex, 1)
+  sort!(pairs)
   println("$(length(pairs)) pairs found")
   return pairs
 end
 
-function match!(meshset::MeshSet, within = 1; prefetch_all = false)
+function match!(meshset::MeshSet, within = 1)
 	params = get_params(meshset);
 	pairs = get_all_overlaps(meshset, within);
-	if prefetch_all
-	imgdict = Dict{Mesh, Array}();
-	for mesh in meshset.meshes
-		imgdict[mesh] = get_image(mesh);
-	end
-	for i in 1:length(pairs)
-		add_match!(meshset, Match(meshset.meshes[pairs[i][1]], meshset.meshes[pairs[i][2]], src_image=imgdict[meshset.meshes[pairs[i][1]]], dst_image=imgdict[meshset.meshes[pairs[i][2]]], params));
-	end
-	else
-	for i in 1:length(pairs)
+	for i in 1:2:(length(pairs) - 2)
+	        fetch = prefetch(get_index(meshset.meshes[pairs[i+2][2]]), get_params(meshset)["match"]["blockmatch_scale"]);
 		add_match!(meshset, Match(meshset.meshes[pairs[i][1]], meshset.meshes[pairs[i][2]], params));
+		add_match!(meshset, Match(meshset.meshes[pairs[i+1][1]], meshset.meshes[pairs[i+1][2]], params));
+		wait(fetch);
 	end
-	end
+	add_match!(meshset, Match(meshset.meshes[pairs[end-1][1]], meshset.meshes[pairs[end-1][2]], params));
+	add_match!(meshset, Match(meshset.meshes[pairs[end][1]], meshset.meshes[pairs[end][2]], params));
 end
 
 function rematch!(meshset::MeshSet, match_ind, params)
@@ -386,7 +382,7 @@ function rematch!(meshset::MeshSet, match_ind, params)
   add_match!(meshset, Match(src_mesh, dst_mesh, params))
   meshset.properties["params"] = params
   meshset.properties["author"] = author()
-  save(meshset)
+  #save(meshset)
 end
 
 function sanitize!(meshset::MeshSet)

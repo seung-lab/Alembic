@@ -2,7 +2,7 @@ global const IMG_ELTYPE = UInt8
 global const IMG_SUP_SIZE = (75000, 75000)
 
 # size in bytes
-global const IMG_CACHE_SIZE = 8 * 2^30 # n * gibibytes
+global const IMG_CACHE_SIZE = 12 * 2^30 # n * gibibytes
 global const IMG_CACHE_DICT = Dict{Any, SharedArray}()
 global const IMG_CACHE_LIST = Array{Any, 1}();
 
@@ -39,6 +39,52 @@ function get_image_disk(path::String, dtype = IMG_ELTYPE)
 	end
 end
 
+function prefetch(index, scale=1.0, dtype = IMG_ELTYPE)
+        clean_cache()  
+	if haskey(IMG_CACHE_DICT, (get_path(index), scale)) index = NO_INDEX end;
+	println("$(get_path(index)) is being prefetched at scale $scale...")
+	return remotecall(IO_PROC, get_image_disk_async, index, scale, dtype);
+end
+
+function get_image_disk_async(index, scale=1.0, dtype = IMG_ELTYPE) 
+        if index == NO_INDEX
+	  return nothing;
+	end
+        path = get_path(index);
+	img = get_image_disk(path, dtype);
+	scaled_img = imscale(img, scale)[1]
+	shared_img = SharedArray(dtype, size(scaled_img)...);
+	shared_img[:,:] = scaled_img[:,:];
+	ref = RemoteRef();
+	put!(ref, scaled_img);
+	remotecall_fetch(1, load_image, path, scale, ref, dtype)
+	return nothing;
+end
+
+function load_image(path::String, scale, shared_img::Array, dtype = IMG_ELTYPE)
+	    push!(IMG_CACHE_LIST, (path, scale))
+	    IMG_CACHE_DICT[(path, scale)] = shared_img;
+end
+
+function load_image(path::String, scale, imgref::RemoteRef, dtype = IMG_ELTYPE)
+            shared_img = take!(imgref);
+	    close(imgref);
+	    load_image(path, scale, shared_img, dtype);
+end
+
+function clean_cache()
+	if sum(map(Int64, map(length, values(IMG_CACHE_DICT)))) > IMG_CACHE_SIZE && !(length(IMG_CACHE_DICT) < 2)
+	while sum(map(Int64, map(length, values(IMG_CACHE_DICT)))) > IMG_CACHE_SIZE / 2 && !(length(IMG_CACHE_DICT) < 2)
+		delete!(IMG_CACHE_DICT, shift!(IMG_CACHE_LIST))
+	end
+	gc(); gc(); gc();
+      end
+
+	cur_cache_size = sum(map(Int64, map(length, values(IMG_CACHE_DICT))));
+
+	println("current cache usage: $cur_cache_size / $IMG_CACHE_SIZE (bytes), $(round(Int64, cur_cache_size/IMG_CACHE_SIZE * 100))%")
+end
+
 function get_image(path::String, scale=1.0, dtype = IMG_ELTYPE)
 #=  	if myid() != IO_PROC
 	  return remotecall_fetch(IO_PROC, get_image, path, scale, dtype);
@@ -48,6 +94,8 @@ function get_image(path::String, scale=1.0, dtype = IMG_ELTYPE)
 	  println("$path is in cache at scale $scale - loading from cache...")
 	  return IMG_CACHE_DICT[(path, scale)]
 	end
+
+	clean_cache();
 
 	if !haskey(IMG_CACHE_DICT, (path, 1.0))
 	    println("$path is not in cache at full scale - loading into cache...")
@@ -61,21 +109,13 @@ function get_image(path::String, scale=1.0, dtype = IMG_ELTYPE)
 
 	if scale != 1.0
 	  println("$path is in cache at full scale - downsampling to scale $scale...")
-	  scaled_img = imscale(Array(IMG_CACHE_DICT[(path, 1.0)]), scale)[1]
+	  scaled_img = imscale(sdata(IMG_CACHE_DICT[(path, 1.0)]), scale)[1]
     	  shared_img_scaled = SharedArray(dtype, size(scaled_img)...);
 	  shared_img_scaled[:,:] = scaled_img[:,:];
 
 	  push!(IMG_CACHE_LIST, (path, scale))
 	  IMG_CACHE_DICT[(path, scale)] = shared_img_scaled;
         end
-
-	while sum(map(Int64, map(length, values(IMG_CACHE_DICT)))) > IMG_CACHE_SIZE && !length(IMG_CACHE_DICT) < 2
-		delete!(IMG_CACHE_DICT, shift!(IMG_CACHE_LIST))
-	end
-
-	cur_cache_size = sum(map(Int64, map(length, values(IMG_CACHE_DICT))));
-
-	println("current cache usage: $cur_cache_size / $IMG_CACHE_SIZE (bytes), $(round(Int64, cur_cache_size/IMG_CACHE_SIZE * 100))%")
 
 	return IMG_CACHE_DICT[(path, scale)];
 end
