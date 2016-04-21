@@ -155,3 +155,68 @@ function is_expunged(index::Index)
   included_path = get_path(index)
   return assert(isfile(expunged_path) && !isfile(included_path))
 end
+
+function make_stack(firstindex::Index, lastindex::Index, slice=(1:200, 1:200))
+    imgs = []
+    bb = nothing
+    for index in get_index_range(firstindex, lastindex)
+        index = finished(index)
+        print(string(join(index[1:2], ",") ,"|"))
+        img = get_h5_slice(get_path(index), slice)
+        if bb == nothing
+            bb = h5read(get_path(index), "bb")
+        else
+            current_bb = h5read(get_path(index), "bb")
+            if current_bb != bb
+                error("FINISHED IMAGE, $index, NOT IN SAME BOUNDING BOX: $bb")
+            end
+        end
+        push!(imgs, img)
+    end
+    return imgs, bb
+end
+
+function concat_stack(firstindex::Index, lastindex::Index, slice=(1:200, 1:200))
+    imgs, bb = make_stack(firstindex, lastindex, slice)
+    return cat(3, imgs...), bb
+end
+
+function save_stack(firstindex::Index, lastindex::Index, slice=(1:200, 1:200))
+  stack, bb = concat_stack(firstindex, lastindex, slice)
+  return save_stack(stack, bb, firstindex, lastindex, slice)
+end
+
+function save_stack(stack::Array{UInt8,3}, bb::Array{Int64,1}, firstindex::Index, lastindex::Index, slice=(1:200, 1:200))
+  scale = 1.0
+  # perm = [3,2,1]
+  # stack = permutedims(stack, perm)
+  orientation = "zyx"
+  dataset = cur_dataset
+  origin = [bb[1], bb[2]]
+  x_slice = [slice[1][1], slice[1][end]] + origin
+  y_slice = [slice[2][1], slice[2][end]] + origin
+  z_slice = [find_in_registry(aligned(firstindex)), find_in_registry(aligned(lastindex))]
+  filename = string(cur_dataset, "_", join([join(x_slice, "-"), join(y_slice, "-"), join(z_slice,"-")], ","), ".h5")
+  filepath = joinpath(STACKS_DIR, filename)
+  println("\nSaving stack to ", filepath)
+  f = h5open(filepath, "w")
+  chunksize = min(512, min(size(stack)...))
+  @time f["main", "chunk", (chunksize,chunksize,chunksize)] = stack
+  # f = Dict()
+  f["orientation"] = orientation
+  f["origin"] = origin
+  f["x_slice_local"] = x_slice - origin
+  f["y_slice_local"] = y_slice - origin
+  f["z_slice_local"] = z_slice
+  f["x_slice_global"] = x_slice
+  f["y_slice_global"] = y_slice
+  f["z_slice_global"] = z_slice
+  f["z_start_index"] = [firstindex...]
+  f["z_end_index"] = [lastindex...] 
+  f["scale"] = scale
+  f["by"] = ENV["USER"]
+  f["machine"] = gethostname()
+  f["timestamp"] = string(now())
+  f["dataset"] = cur_dataset
+  close(f)
+end
