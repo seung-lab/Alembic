@@ -66,7 +66,6 @@ end
 
 function load_image(path::String, scale, imgref::RemoteRef, dtype = IMG_ELTYPE)
             shared_img = take!(imgref);
-	    println(typeof(shared_img));
 	    close(imgref);
 	    load_image(path, scale, shared_img, dtype);
 end
