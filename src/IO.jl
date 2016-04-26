@@ -59,9 +59,9 @@ function get_image_disk_async(index, scale=1.0, dtype = IMG_ELTYPE)
 	return nothing;
 end
 
-function load_image(path::String, scale, shared_img::SharedArray, dtype = IMG_ELTYPE)
+function load_image(path::String, scale, img::Array, dtype = IMG_ELTYPE)
 	    push!(IMG_CACHE_LIST, (path, scale))
-	    IMG_CACHE_DICT[(path, scale)] = shared_img;
+	    IMG_CACHE_DICT[(path, scale)] = img;
 end
 
 function load_image(path::String, scale, imgref::RemoteRef, dtype = IMG_ELTYPE)
