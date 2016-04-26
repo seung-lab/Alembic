@@ -1,14 +1,14 @@
 global const IMG_ELTYPE = UInt8
-global const IMG_SUP_SIZE = (75000, 75000)
+#global const IMG_SUP_SIZE = (75000, 75000)
 
 # size in bytes
-global const IMG_CACHE_SIZE = 12 * 2^30 # n * gibibytes
+global const IMG_CACHE_SIZE = 8 * 2^30 # n * gibibytes
 global const IMG_CACHE_DICT = Dict{Any, SharedArray}()
 global const IMG_CACHE_LIST = Array{Any, 1}();
 
 global const IO_PROC = nprocs();
 #global const WORKER_PROCS = setdiff(procs(), IO_PROC);
-if nprocs() > 5
+if nprocs() > 4
 global const WORKER_PROCS = setdiff(procs(), [1, IO_PROC]);
 else 
 global const WORKER_PROCS = setdiff(procs(), [1]);
@@ -73,11 +73,15 @@ function load_image(path::String, scale, imgref::RemoteRef, dtype = IMG_ELTYPE)
 end
 
 function clean_cache()
+	@everywhere gc();
 	if sum(map(Int64, map(length, values(IMG_CACHE_DICT)))) > IMG_CACHE_SIZE && !(length(IMG_CACHE_DICT) < 2)
-	while sum(map(Int64, map(length, values(IMG_CACHE_DICT)))) > IMG_CACHE_SIZE / 2 && !(length(IMG_CACHE_DICT) < 2)
-		delete!(IMG_CACHE_DICT, shift!(IMG_CACHE_LIST))
+	while sum(map(Int64, map(length, values(IMG_CACHE_DICT)))) > IMG_CACHE_SIZE * 0.75 && !(length(IMG_CACHE_DICT) < 2)
+		todelete = shift!(IMG_CACHE_LIST);
+		IMG_CACHE_DICT[todelete] = SharedArray(IMG_ELTYPE, 0, 0);
+		delete!(IMG_CACHE_DICT, todelete)
+	@everywhere gc();
 	end
-	gc(); gc(); gc();
+	@everywhere gc();
       end
 
 	cur_cache_size = sum(map(Int64, map(length, values(IMG_CACHE_DICT))));
@@ -86,6 +90,7 @@ function clean_cache()
 end
 
 function get_image(path::String, scale=1.0, dtype = IMG_ELTYPE)
+	@everywhere gc();
 #=  	if myid() != IO_PROC
 	  return remotecall_fetch(IO_PROC, get_image, path, scale, dtype);
 	end =#
@@ -117,6 +122,7 @@ function get_image(path::String, scale=1.0, dtype = IMG_ELTYPE)
 	  IMG_CACHE_DICT[(path, scale)] = shared_img_scaled;
         end
 
+	@everywhere gc();
 	return IMG_CACHE_DICT[(path, scale)];
 end
 

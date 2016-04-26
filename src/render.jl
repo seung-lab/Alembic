@@ -9,7 +9,7 @@ function meshwarp_mesh(mesh::Mesh)
   offset = get_offset(mesh);
   node_dict = incidence_to_dict(mesh.edges')
   triangles = dict_to_triangles(node_dict)
-  return @time ImageRegistration.meshwarp(img, src_nodes, dst_nodes, triangles, offset), get_index(mesh)
+  return @time ImageRegistration.meshwarp(sdata(img), src_nodes, dst_nodes, triangles, offset), get_index(mesh)
 end
 
 """
@@ -249,7 +249,11 @@ function render_aligned(meshset::MeshSet, start=1, finish=length(meshset.meshes)
   scale = 0.10
   s = make_scale_matrix(scale)
   images = Dict()
-  for (k, mesh) in enumerate(meshset.meshes[start:finish])
+  for mesh_ind in start:finish
+    if mesh_ind != finish
+      fetch = prefetch(get_index(meshset.meshes[mesh_ind + 1]));
+    end
+    mesh = meshset.meshes[mesh_ind];
     index = aligned(mesh.index)
     println("Warping ", mesh.index)
     @time (img, offset), _ = meshwarp_mesh(mesh)
@@ -262,6 +266,9 @@ function render_aligned(meshset::MeshSet, start=1, finish=length(meshset.meshes)
     images[index] = imwarp(img, s) 
     # Rescope the image & save
     write_finished(index, img, offset, GLOBAL_BB)
+    if mesh_ind != finish
+      wait(fetch);
+    end
   end
   # render_aligned_review(meshset; images=images)
 end
