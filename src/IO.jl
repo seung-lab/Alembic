@@ -156,7 +156,7 @@ function is_expunged(index::Index)
   return assert(isfile(expunged_path) && !isfile(included_path))
 end
 
-function make_stack(firstindex::Index, lastindex::Index, slice=(1:200, 1:200))
+function make_stack_from_finished(firstindex::Index, lastindex::Index, slice=(1:200, 1:200))
     imgs = []
     bb = nothing
     for index in get_index_range(firstindex, lastindex)
@@ -173,30 +173,52 @@ function make_stack(firstindex::Index, lastindex::Index, slice=(1:200, 1:200))
         end
         push!(imgs, img)
     end
-    return imgs, bb
-end
-
-function concat_stack(firstindex::Index, lastindex::Index, slice=(1:200, 1:200))
-    imgs, bb = make_stack(firstindex, lastindex, slice)
     return cat(3, imgs...), bb
 end
 
-function save_stack(firstindex::Index, lastindex::Index, slice=(1:200, 1:200))
-  stack, bb = concat_stack(firstindex, lastindex, slice)
-  return save_stack(stack, bb, firstindex, lastindex, slice)
+function make_stack(firstindex::Index, lastindex::Index, slice=(1:255, 1:255))
+  # dtype = h5read(get_path(firstindex), "dtype")
+  dtype = UInt8
+  stack_offset = [slice[1][1], slice[2][1]] - [1,1]
+  stack_size = map(length, slice)
+  global_bb = BoundingBox(stack_offset..., stack_size...)
+  imgs = []
+  for index in get_index_range(firstindex, lastindex)
+    print(string(join(index[1:2], ",") ,"|"))
+    img = zeros(dtype, stack_size...)
+    offset = get_offset(index)
+    sz = get_image_size(index)
+    bb = BoundingBox(offset..., sz...)
+    if intersects(bb, global_bb)
+      shared_bb = global_bb - bb
+      img_roi = translate_bb(shared_bb, -offset)
+      stack_roi = translate_bb(shared_bb, -stack_offset)
+      h5_slice = bb_to_slice(img_roi)
+      img_slice = bb_to_slice(stack_roi)
+      # println(h5_slice, " " , img_slice)
+      img[img_slice...] = get_h5_slice(get_path(index), h5_slice) 
+    end
+    push!(imgs, img)
+  end
+  return cat(3, imgs...)
 end
 
-function save_stack(stack::Array{UInt8,3}, bb::Array{Int64,1}, firstindex::Index, lastindex::Index, slice=(1:200, 1:200))
+function save_stack(firstindex::Index, lastindex::Index, slice=(1:200, 1:200))
+  stack = make_stack(firstindex, lastindex, slice)
+  return save_stack(stack, firstindex, lastindex, slice)
+end
+
+function save_stack(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, slice=(1:200, 1:200))
   scale = 1.0
   # perm = [3,2,1]
   # stack = permutedims(stack, perm)
   orientation = "zyx"
   dataset = cur_dataset
-  origin = [bb[1], bb[2]]
+  origin = [0,0]
   x_slice = [slice[1][1], slice[1][end]] + origin
   y_slice = [slice[2][1], slice[2][end]] + origin
   z_slice = [find_in_registry(aligned(firstindex)), find_in_registry(aligned(lastindex))]
-  filename = string(cur_dataset, "_", join([join(x_slice, "-"), join(y_slice, "-"), join(z_slice,"-")], ","), ".h5")
+  filename = string(cur_dataset, "_", join([join(x_slice, "-"), join(y_slice, "-"), join(z_slice,"-")], "_"), ".h5")
   filepath = joinpath(STACKS_DIR, filename)
   println("\nSaving stack to ", filepath)
   f = h5open(filepath, "w")
@@ -205,12 +227,9 @@ function save_stack(stack::Array{UInt8,3}, bb::Array{Int64,1}, firstindex::Index
   # f = Dict()
   f["orientation"] = orientation
   f["origin"] = origin
-  f["x_slice_local"] = x_slice - origin
-  f["y_slice_local"] = y_slice - origin
-  f["z_slice_local"] = z_slice
-  f["x_slice_global"] = x_slice
-  f["y_slice_global"] = y_slice
-  f["z_slice_global"] = z_slice
+  f["x_slice"] = x_slice
+  f["y_slice"] = y_slice
+  f["z_slice"] = z_slice
   f["z_start_index"] = [firstindex...]
   f["z_end_index"] = [lastindex...] 
   f["scale"] = scale

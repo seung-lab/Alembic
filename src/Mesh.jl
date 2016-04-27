@@ -19,7 +19,7 @@ function get_params(mesh::Mesh)			return get_params(mesh.index);		end
 	     
 ### META.jl EXTENSIONS
 function get_offset(mesh::Mesh)		return get_offset(mesh.index);		end
-function get_image_sizes(mesh::Mesh)		return get_image_sizes(get_metadata(mesh.index));	end
+function get_image_size(mesh::Mesh)		return get_image_size(get_metadata(mesh.index));	end
 function get_metadata(mesh::Mesh)		return get_metadata(mesh.index);	end
 
 ### IO.jl EXTENSIONS
@@ -96,11 +96,11 @@ function Mesh(index, params = get_params(index), fixed=false)
 	# e.g. a mesh with 5-4-5-4-5-4-5-4 nodes in each row will have dims = (8, 5)
 	# 1 is added because of 1-indexing (in length)
 	# 2 is added to pad the mesh to extend it beyond by one meshpoint in each direction
-	dims = round(Int64, div(get_image_sizes(index), dists)) + 1 + 2;
+	dims = round(Int64, div(get_image_size(index), dists)) + 1 + 2;
 
 	# location of the first node (top left)
 	# TODO: Julia does not support rem() for two arrays, so divrem() cannot be used
-	topleft_offset = (get_image_sizes(index) .% dists) / 2 - dists;
+	topleft_offset = (get_image_size(index) .% dists) / 2 - dists;
 
 	n = maximum([get_mesh_index(dims, dims[1], dims[2]); get_mesh_index(dims, dims[1], dims[2]-1)]);
 	m = 0;
