@@ -80,8 +80,8 @@ function reprealign(firstindex::Index, lastindex::Index, params)
   end
 end
 
-function align(firstindex::Index, lastindex::Index; fix_first=false)
-  ms = MeshSet(firstindex, lastindex; solve=false, fix_first=fix_first)
+function align(firstindex::Index, lastindex::Index; fix_first=false, fix_last=false)
+  ms = MeshSet(firstindex, lastindex; solve=false, fix_first=fix_first, fix_last=fix_last)
   render_aligned_review(ms)
   split_meshset(ms)
 end
@@ -89,6 +89,15 @@ end
 function align(index_list)
   for (indexA, indexB) in index_list
     align(indexA, indexB)
+  end
+end
+
+function align_over_missing_tiles(index_depth_list)
+  for (firstindex, lastindex, depth) in index_depth_list[1:7]
+    params = get_params(firstindex);
+    params["match"]["depth"] = depth;
+    ms = MeshSet(firstindex, lastindex; solve=false, params=params);
+    render_aligned_review(ms)
   end
 end
 
