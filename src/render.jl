@@ -263,12 +263,15 @@ function render_aligned(meshset::MeshSet, start=1, finish=length(meshset.meshes)
     println("Writing ", get_name(index))
     f = h5open(get_path(index), "w")
     @time f["img", "chunk", (1000,1000)] = img
+    f["dtype"] = typeof(img[1])
+    f["offset"] = offset
+    f["size"] = [size(img)...]
     close(f)
     # Log image offsets
     update_offset(index, offset, size(img))
     images[index] = imwarp(img, s) 
     # Rescope the image & save
-    write_finished(index, img, offset, GLOBAL_BB)
+    # write_finished(index, img, offset, GLOBAL_BB)
   end
   # render_aligned_review(meshset; images=images)
 end
