@@ -183,12 +183,13 @@ function view_match(meshset::MeshSet, match_ind)
   params["scale"] = scale
   params["match_index"] = match_ind
   params["vector_scale"] = 40
+  params["dist"] = 90
+  params["sigma"] = 20
   if is_montaged(meshset)
     params["vector_scale"] = 4
+    params["sigma"] = 7
   end
   params["post_matches"] = false # is_prealigned(indexA)
-  params["dist"] = 90
-  params["sigma"] = 7
 
   if USE_PYPLOT
     view_inspection_statistics(match, params["search_r"])
@@ -200,6 +201,18 @@ function view_match(meshset::MeshSet, match_ind)
   vectors = make_vectors(meshset, match_ind, params)
   show_vectors(imgc, img2, vectors, RGB(0,0,1), RGB(1,0,1))
   update_annotations(imgc, img2, match, vectors, params)
+
+  c = canvas(imgc)
+  win = Tk.toplevel(c)
+  fnotify = ImageView.Frame(win)
+  lastrow = 2
+  ImageView.grid(fnotify, lastrow+=1, 1, sticky="ew")
+  xypos = ImageView.Label(fnotify)
+  imgc.handles[:pointerlabel] = xypos
+  ImageView.grid(xypos, 1, 1, sticky="ne")
+  ImageView.set_visible(win, true)
+  c.mouse.motion = (path,x,y)-> updatexylabel(xypos, imgc, img2, x, y, params["offset"]..., scale)
+
   return imgc, img2, vectors, params
 end
 
@@ -819,6 +832,16 @@ function view_inspection_statistics(match, sr)
   view_property_histogram(match, 0.5; filtered=false, nbins=20)
   view_property_histogram(match, 0.5; filtered=true, nbins=20)
 
+  src_index = get_src_index(match)
+  dst_index = get_dst_index(match)
+  annotate("$src_index-$dst_index",
+    xy=[1;1],
+    xycoords="figure fraction",
+    xytext=[-10,-10],
+    textcoords="offset points",
+    ha="right",
+    va="top",
+    fontsize=16)
   annotate(string("Flags:\n", join(keys(match.properties["review"]["flags"]), "\n")),
     xy=[0;1],
     xycoords="figure fraction",
