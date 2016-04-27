@@ -145,7 +145,7 @@ function check_and_fix!(meshset::MeshSet, crits = Base.values(meshset.properties
       println("failed to fix meshset")
       for match in meshset.matches
         if is_flagged(match)
-        	clear_filters!(match);
+        	# clear_filters!(match);
           flag!(match)
         end
       end
@@ -220,6 +220,16 @@ function concat_meshsets(filenames::Array)
   save(ms)
   return ms
 end
+
+# function merge_mesh_lists(meshesA, meshesB)
+#   for mesh in meshset_two.meshes
+#     index = get_index(mesh)
+#     ind = find_mesh_index(meshset_one, index)
+#     if ind == 0 
+#       push!(meshset_one.meshes, mesh) 
+#     end
+#   end
+# end
 
 """
 Combine unique matches and meshes from meshset_two into meshset_one
@@ -299,13 +309,19 @@ function MeshSet(index; params=get_params(index))
 	if is_montaged(index) return MeshSet(premontaged(index), premontaged(index); prefetch_all=true); end
 end
 
-function MeshSet(first_index, last_index; params=get_params(first_index), solve=true, solve_method="elastic", fix_first=false, prefetch_all = false)
+function MeshSet(first_index, last_index; params=get_params(first_index), solve=true, solve_method="elastic", fix_first=false, fix_last=false, prefetch_all=false)
 	ind_range = get_index_range(first_index, last_index);
 	if length(ind_range) == 0 return nothing; end
 	fixed_inds = Array{Any, 1}(0);
-	if fix_first push!(fixed_inds, first_index); 
-		ind_range[1] = aligned(ind_range[1])
+	if fix_first 
+    push!(fixed_inds, first_index); 
+    ind_range[1] = aligned(ind_range[1])
 	end
+  if fix_last 
+    push!(fixed_inds, last_index); 
+    ind_range[end] = aligned(ind_range[end])
+  end
+
 	meshes = map(Mesh, ind_range, repeated(params), map(in, ind_range, repeated(fixed_inds)))
  	matches = Array{Match, 1}(0)		
 	properties = Dict{Any, Any}(	"params"  => params,
@@ -330,6 +346,14 @@ function MeshSet(first_index, last_index; params=get_params(first_index), solve=
 
 	save(meshset);
 	return meshset;
+end
+
+function MeshSet(firstindex::Index, lastindex::Index, fixed_meshes; params=get_params(firstindex))
+  indices = get_index_range(firstindex, lastindex)
+  if length(indices) == 0 return nothing; end
+  meshes = map(Mesh, ind_range, repeated(params));
+
+
 end
 
 function mark_solved(meshset::MeshSet)
@@ -708,3 +732,29 @@ function get_param(meshset::MeshSet, property_name)
   end  
   return property
 end =#
+
+function calculate_depth(firstindex::Index, lastindex::Index, num_tiles=16)
+  index_depth = []
+  firstsection = NO_INDEX
+  lastsection = NO_INDEX
+  parent_name = get_name(firstindex, lastindex)
+  depth = 1
+  for index in get_index_range(prealigned(firstindex), prealigned(lastindex))
+    pindex = premontaged(index)
+    tiles = get_index_range(pindex, pindex)
+    if length(tiles) < num_tiles
+      if depth == 1
+        firstsection = get_preceding(index)
+      end
+      depth += 1
+      println(index, " ", depth, " ", length(tiles))
+    else
+      if depth > 1
+        lastsection = index
+        push!(index_depth, (firstsection, lastsection, depth))
+      end
+      depth = 1
+    end
+  end
+  return index_depth
+end
