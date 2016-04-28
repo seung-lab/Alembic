@@ -56,7 +56,7 @@ end
 
 function add_match!(meshset::MeshSet, match::Match)
   push!(meshset.matches, match);
-  sort!(ms.matches; by=get_src_and_dst_indices)
+  sort!(meshset.matches; by=get_src_and_dst_indices)
 end
 
 function remove_match!(meshset::MeshSet, src_index::Index, dst_index::Index)

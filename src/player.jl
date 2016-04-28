@@ -287,7 +287,7 @@ function make_image_stack(meshset, section_range=(1:2), slice=(1:200,1:200);
   imgs = []
   for mesh in meshset.meshes[section_range]
     index = (mesh.index[1:2]..., mesh.index[3]-1, mesh.index[4]-1)
-    img = reinterpret(UFixed8, get_h5_slice(get_path(index), slice))
+    img = reinterpret(UFixed8, get_slice(get_path(index), slice))
     push!(imgs, img)
   end
   if include_reverse
@@ -406,9 +406,13 @@ function view_stack(indexA::Index, indexB::Index, slice=(1:200,1:200);
       index = prealigned(index)
     end
     print(string(join(index[1:2], ",") ,"|"))
-    img = reinterpret(UFixed8, get_h5_slice(get_path(index), slice))
+    img = reinterpret(UFixed8, get_slice(get_path(index), slice))
     push!(imgs, img)
   end
+  return view_stack(imgs; include_reverse=include_reverse, perm=perm)
+end
+
+function view_stack(imgs; include_reverse=false, perm=[1,2,3])
   img_stack = permutedims(cat(3, imgs...), perm)
   if include_reverse
     img_stack = cat(3, img_stack, img_stack[:,:,end:-1:1])
@@ -432,7 +436,7 @@ function view_stack(indexA::Index, indexB::Index, slice=(1:200,1:200);
   bind(win, "<Destroy>", path->exit_stack(imgc, img2))
 
   start_loop(imgc, img2, 30)
-  return imgc, img2
+  return imgs
 end
 
 function updatexylabel(xypos, imgc, img2, x, y, x_off, y_off)

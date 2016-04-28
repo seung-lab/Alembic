@@ -3,67 +3,67 @@
 # "solve" functions operate on a Match (within a MeshSet), and will try to come up with the best fit for the given matches
 =#
 
-"""
+#="""
 Retrieve nodes and nodes_t of mesh, make homogenous, and transpose to Nx3
-"""
-function get_homogeneous_nodes(mesh::Mesh)
+"""=#
+@fastmath @inbounds function get_homogeneous_nodes(mesh::Mesh)
   return homogenize_points(mesh.src_nodes), homogenize_points(mesh.dst_nodes);
 end
 
-function get_homogeneous_nodes(meshset::MeshSet, k)
+@fastmath @inbounds function get_homogeneous_nodes(meshset::MeshSet, k)
   return get_homogeneous_nodes(meshset.meshes[k]);
 end
 
 #filtered ones only
-function get_homogeneous_correspondences(match::Match; globalized = false)
+@fastmath @inbounds function get_homogeneous_correspondences(match::Match; globalized = false)
   src_points, dst_points = get_filtered_correspondences(match; globalized=globalized);
   return homogenize_points(src_points), homogenize_points(dst_points);
 end
 
-function get_homogeneous_correspondences(meshset::MeshSet, k; globalized = false)
+@fastmath @inbounds function get_homogeneous_correspondences(meshset::MeshSet, k; globalized = false)
   return get_homogeneous_correspondences(meshset.matches[k]; globalized=globalized)
 end
 
-"""
+#="""
 Return right-hand matrix for the mesh
 `nodes*T ~= nodes_T`
-"""
+"""=#
 function rigid_approximate(M::Mesh)
   pts_src, pts_dst = get_homogeneous_nodes(M)
   return find_rigid(pts_src, pts_dst)
 end
 
-"""
+#="""
 Return the right-hand matrix for the mesh
 `nodes*T ~= nodes_T`
-"""
+"""=#
 function affine_approximate(M::Mesh)
   pts_src, pts_dst = get_homogeneous_nodes(M)
   return find_affine(pts_src, pts_dst)
 end
 
-"""
+#="""
 Apply some weighted combination of affine and rigid, gauged by lambda
-"""
+"""=#
 function regularized_approximate(M::Mesh, lambda=0.9)
   affine = affine_approximate(M)
   rigid = rigid_approximate(M)
   return lambda*affine + (1-lambda)*rigid
 end
 
-"""
+#="""
 Use in montage?
-"""
+"""=#
 function affine_approximate(Ms::MeshSet, row, col)
 	ind = findfirst(i -> Ms.meshes[i].index[3:4] == (row, col), 1:Ms.N)
  	return affine_approximate(Ms.meshes[ind])
 end
 
 
-"""
+#="""
 Return right-hand matrix for the matches
 `pts_src*T ~= pts_dst`
-"""
+"""=#
 function affine_solve(Ms::MeshSet; k=1, globalized=false)
   pts_src, pts_dst = get_homogeneous_correspondences(Ms, k; globalized=globalized)
 	for ind in 1:size(pts_dst, 1)
@@ -72,10 +72,10 @@ function affine_solve(Ms::MeshSet; k=1, globalized=false)
   return find_affine(pts_src, pts_dst)
 end
 
-"""
+#="""
 Return right-hand matrix for the matches
 `pts_src*T ~= pts_dst`
-"""
+"""=#
 function rigid_solve(Ms::MeshSet; k=1, globalized=false)
   pts_src, pts_dst = get_homogeneous_correspondences(Ms, k; globalized=globalized)
 	for ind in 1:size(pts_dst, 1)
@@ -84,18 +84,18 @@ function rigid_solve(Ms::MeshSet; k=1, globalized=false)
   return find_rigid(pts_src, pts_dst)
 end
 
-"""
+#="""
 Apply some weighted combination of affine and rigid, gauged by lambda
-"""
+"""=#
 function regularized_solve(Ms::MeshSet; k=1, lambda=0.9, globalized=false)
   affine = affine_solve(Ms; k=k, globalized=globalized)
   rigid = rigid_solve(Ms; k=k, globalized=globalized)
   return lambda*affine + (1-lambda)*rigid
 end
 
-"""
+#="""
 ONLY WORKS ON CASES WHERE MATCHES[1] = MESHES[1] -> MESHES[2]
-"""
+"""=#
 function regularized_solve!(Ms::MeshSet; k=1, lambda=0.9)
 	tform = regularized_solve(Ms, k=k, lambda=lambda);
 	for ind in 1:count_nodes(Ms.meshes[k])
@@ -121,9 +121,9 @@ function solve!(meshset; method="elastic")
 	if method == "affine" return affine_solve!(meshset); end
 end
 
-"""
+#="""
 Elastic solve
-"""
+"""=#
 function elastic_solve!(meshset; from_current =false)
   params = get_params(meshset)
   #fixed = get_fixed(meshset)
@@ -143,6 +143,7 @@ function elastic_solve!(meshset; from_current =false)
 
   edge_lengths = FloatProperty(count_edges(meshset) + count_filtered_correspondences(meshset))
   edge_spring_coeffs = FloatProperty(count_edges(meshset) + count_filtered_correspondences(meshset))
+  #edges = spzeros(count_nodes(meshset), 0)
 
   noderanges = Dict{Any, Any}();
   edgeranges = Dict{Any, Any}();
@@ -154,6 +155,8 @@ function elastic_solve!(meshset; from_current =false)
   matches_ref = Array{RemoteRef, 1}()
   src_indices = Array{Any, 1}();
   dst_indices = Array{Any, 1}();
+
+  @fastmath @inbounds begin
 
   for (index, mesh) in enumerate(meshset.meshes)
   	noderanges[mesh.index] = cum_nodes + (1:count_nodes(mesh))
@@ -190,6 +193,31 @@ function elastic_solve!(meshset; from_current =false)
     edge_spring_coeffs[edgeranges[mesh.index]] = fill(mesh_spring_coeff, count_edges(mesh));
   end
 
+  end # @fm @ib 
+
+  noderange_list = Array{UnitRange, 1}([getindex(noderanges, mesh.index) for mesh in meshset.meshes]);
+  edgerange_list = Array{UnitRange, 1}([getindex(edgeranges, mesh.index) for mesh in meshset.meshes]);
+
+  @inbounds @fastmath function make_local_sparse(num_nodes, num_edges)
+	global LOCAL_SPM = spzeros(num_nodes, num_edges)
+  end
+
+@sync begin
+   @async for proc in procs() remotecall_fetch(proc, make_local_sparse, count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset)); end 
+ end
+
+  @inbounds function copy_sparse_matrix(mesh_ref, noderange, edgerange)
+    mesh = fetch(mesh_ref)
+    LOCAL_SPM[noderange, edgerange] = mesh.edges;
+  end
+
+  pmap(copy_sparse_matrix, meshes_ref, noderange_list, edgerange_list);
+
+#  edges_subarrays_meshes = Array{SparseMatrixCSC{Float64, Int64}, 1}(pmap(pad_sparse_matrix, meshes_ref, repeated(count_nodes(meshset)), noderange_list))
+
+#  @time @inbounds @fastmath edges_subarrays_meshes = [hcat(edges_subarrays_meshes..., spzeros(count_nodes(meshset), count_filtered_correspondences(meshset)))]
+
+
   println("meshes collated: $(count_meshes(meshset)) meshes")
 
   for match in meshset.matches
@@ -197,7 +225,7 @@ function elastic_solve!(meshset; from_current =false)
     	edge_spring_coeffs[edgeranges[match]] = fill(match_spring_coeff, count_filtered_correspondences(match));
   end
 
-  function compute_sparse_entries(match_ref, src_mesh_ref, dst_mesh_ref, noderange_src, noderange_dst, edgerange)
+  @inbounds function compute_sparse_matrix(match_ref, src_mesh_ref, dst_mesh_ref, noderange_src, noderange_dst, edgerange)
 
   	match = fetch(match_ref)
   	println("match $(match.src_index)->$(match.dst_index) being collated...")
@@ -205,51 +233,70 @@ function elastic_solve!(meshset; from_current =false)
   	dst_mesh = fetch(dst_mesh_ref)
 
 	src_pts, dst_pts = get_filtered_correspondences(match);
-	src_pt_triangles = map(find_mesh_triangle, repeated(src_mesh), src_pts);
-	src_pt_weights = map(get_triangle_weights, repeated(src_mesh), src_pts, src_pt_triangles);
-	dst_pt_triangles = map(find_mesh_triangle, repeated(dst_mesh), dst_pts);
-	dst_pt_weights = map(get_triangle_weights, repeated(dst_mesh), dst_pts, dst_pt_triangles);
+	src_pt_triangles = find_mesh_triangle(src_mesh, src_pts);
+	dst_pt_triangles = find_mesh_triangle(dst_mesh, dst_pts);
+	src_pt_weights = get_triangle_weights(src_mesh, src_pts, src_pt_triangles);
+	dst_pt_weights = get_triangle_weights(dst_mesh, dst_pts, dst_pt_triangles);
 
-
-	edges_to_add = Array{Tuple{Int64, Int64, Float64}, 1}();
 	for ind in 1:count_filtered_correspondences(match)
 		if src_pt_triangles[ind] == NO_TRIANGLE || dst_pt_triangles[ind] == NO_TRIANGLE continue; end
 	        for i in 1:3
 		  	if src_pt_weights[ind][i] > eps
-			push!(edges_to_add, (noderange_src[src_pt_triangles[ind][i]], edgerange[ind], -src_pt_weights[ind][i]))
+			LOCAL_SPM[noderange_src[src_pt_triangles[ind][i]], edgerange[ind]] = -src_pt_weights[ind][i]
 		        end
 		  	if dst_pt_weights[ind][i] > eps
-			push!(edges_to_add, (noderange_dst[dst_pt_triangles[ind][i]], edgerange[ind], dst_pt_weights[ind][i]))
+			LOCAL_SPM[noderange_dst[dst_pt_triangles[ind][i]], edgerange[ind]] = dst_pt_weights[ind][i]
 		      end
 		end
 	end
-	return edges_to_add;
   end
 
-  edges_to_add = pmap(compute_sparse_entries, matches_ref, meshes_ref[map(getindex, repeated(meshes_order), src_indices)], meshes_ref[map(getindex, repeated(meshes_order), dst_indices)], map(getindex, repeated(noderanges), src_indices), map(getindex, repeated(noderanges), dst_indices), map(getindex, repeated(edgeranges), meshset.matches));
+
+  noderange_src_list = Array{UnitRange, 1}(map(getindex, repeated(noderanges), src_indices))
+  noderange_dst_list = Array{UnitRange, 1}(map(getindex, repeated(noderanges), dst_indices))
   
-  edges_to_add = vcat(edges_to_add...)
-  num_entries = length(edges_to_add);
-  println("populating sparse matrix: $(num_entries) entries")
+  edgerange_list = Array{UnitRange, 1}(map(getindex, repeated(edgeranges), meshset.matches))
 
-  @time begin
-  node_inds = Array{Int64, 1}(num_entries);
-  edge_inds = Array{Int64, 1}(num_entries);
-  tri_weights = Array{Float64, 1}(num_entries);
+  #edges_subarrays_matches = Array{SparseMatrixCSC{Float64, Int64}, 1}(pmap(compute_sparse_matrix, matches_ref, meshes_ref[map(getindex, repeated(meshes_order), src_indices)], meshes_ref[map(getindex, repeated(meshes_order), dst_indices)], noderange_src_list, noderange_dst_list, edgerange_list));
 
+  pmap(compute_sparse_matrix, matches_ref, meshes_ref[map(getindex, repeated(meshes_order), src_indices)], meshes_ref[map(getindex, repeated(meshes_order), dst_indices)], noderange_src_list, noderange_dst_list, edgerange_list);
+
+  println("matches collated: $(count_matches(meshset)) matches. populating sparse matrix....")
+
+  function get_local_sparse(i)
+	return LOCAL_SPM;
+  end
+  
+  edges_subarrays = Array{SparseMatrixCSC{Float64, Int64}, 1}(pmap(get_local_sparse, [2:nprocs()]))
+
+  function add_local_sparse(sp_a, sp_b)
+    global LOCAL_SPM = 0;
+    global LOCAL_SPM = 0;
+    gc();
+    global LOCAL_SPM = sp_a + sp_b
+	return LOCAL_SPM;
+  end
+
+  @time @inbounds @fastmath while length(edges_subarrays) != 1
+    println(length(edges_subarrays));
+    if isodd(length(edges_subarrays)) push!(edges_subarrays, spzeros(count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset))) end
+    @time edges_subarrays = Array{SparseMatrixCSC{Float64, Int64}, 1}(pmap(add_local_sparse, edges_subarrays[1:div(length(edges_subarrays), 2)], edges_subarrays[div(length(edges_subarrays),2)+1:end]))
+  end
+
+  edges = edges_subarrays[1];
+
+
+#=
   for (index, edge) in enumerate(edges_to_add)
     node_inds[index], edge_inds[index], tri_weights[index] = edge
   end
     edges = sparse(node_inds, edge_inds, tri_weights, count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset));
   #edges = spzeros(Float64, count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset));
+=#
 
-  for mesh in meshset.meshes
-    edges[noderanges[mesh.index], edgeranges[mesh.index]] = mesh.edges;
-  end
 
-  println("matches collated: $(count_matches(meshset)) matches")
+  #println("matches collated: $(count_matches(meshset)) matches")
 
-	end #time
 #return nodes, nodes_fixed, edges, edge_spring_coeffs, edge_lengths, max_iters, ftol_cg;
 
  #println(find(this -> this == true, nodes_fixed));
@@ -272,7 +319,7 @@ function elastic_solve!(meshset; from_current =false)
 end
 
 # may be invalid as well
-function get_globalized_correspondences(meshset, ind)
+@fastmath function get_globalized_correspondences(meshset, ind)
   	match = meshset.matches[ind];
   
 	src_pts, dst_pts = get_correspondences(match);
@@ -305,12 +352,14 @@ function get_globalized_correspondences_post(meshset, ind)
 	dst_mesh = meshes[match.dst_index]
 
 	src_pt_triangles = find_mesh_triangle(src_mesh, src_pts);
-	src_pt_weights = get_triangle_weights(src_mesh, src_pts, src_pt_triangles);
 	dst_pt_triangles = find_mesh_triangle(dst_mesh, dst_pts);
+
+	@fastmath begin
+	src_pt_weights = get_triangle_weights(src_mesh, src_pts, src_pt_triangles);
 	dst_pt_weights = get_triangle_weights(dst_mesh, dst_pts, dst_pt_triangles);
 
-	src_pts_after = map(get_tripoint_dst, repeated(src_mesh), src_pt_triangles, src_pt_weights);
-	dst_pts_after = map(get_tripoint_dst, repeated(dst_mesh), dst_pt_triangles, dst_pt_weights);
+	src_pts_after = get_tripoint_dst(src_mesh, src_pt_triangles, src_pt_weights);
+	dst_pts_after = get_tripoint_dst(dst_mesh, dst_pt_triangles, dst_pt_weights);
 
 	if is_montaged(meshset.meshes[1].index) || (haskey(meshset.properties["params"], "registry") && !meshset.properties["params"]["registry"]["global_offsets"])
 	g_src_pts_after = src_pts_after + fill(get_offset(match.src_index), length(src_pts));
@@ -320,17 +369,85 @@ function get_globalized_correspondences_post(meshset, ind)
 	g_dst_pts_after = dst_pts_after + fill(get_offset(match.dst_index), length(dst_pts));
 	end
 
+      end
+
 	return g_src_pts_after, g_dst_pts_after, filtered_inds;
 end
 
-function stats(meshset::MeshSet)
+@inbounds function rectify_drift(meshset::MeshSet)
+  meshes = Dict{Any, Any}();
+  for mesh in meshset.meshes
+	meshes[mesh.index] = mesh;
+  end
+
+  #meshinds = get_index_range(get_index(first(meshset.meshes)), get_index(last(meshset.meshes)))
+
+  drifts = Points(fill(Point([0,0]), count_meshes(meshset)));
+
+  for match in meshset.matches
+  	src_mesh = meshes[match.src_index]
+  	dst_mesh = meshes[match.dst_index]
+
+  	# handle for empty match
+  	if count_filtered_correspondences(match) == 0
+  		continue;
+  	end
+
+  	src_pts, dst_pts = get_filtered_correspondences(match);
+  	src_pt_triangles = find_mesh_triangle(src_mesh, src_pts);
+  	src_pt_weights = get_triangle_weights(src_mesh, src_pts, src_pt_triangles);
+  	dst_pt_triangles = find_mesh_triangle(dst_mesh, dst_pts);
+  	dst_pt_weights = get_triangle_weights(dst_mesh, dst_pts, dst_pt_triangles);
+
+  	src_pts_after = get_tripoint_dst(src_mesh, src_pt_triangles, src_pt_weights);
+  	dst_pts_after = get_tripoint_dst(dst_mesh, dst_pt_triangles, dst_pt_weights);
+
+  	g_src_pts = src_pts + fill(get_offset(match.src_index), length(src_pts));
+  	g_src_pts_after = src_pts_after + fill(get_offset(match.src_index), length(src_pts));
+
+  	if meshset.properties["params"]["registry"]["global_offsets"]
+  		g_dst_pts = dst_pts + fill(get_offset(match.dst_index), length(dst_pts));
+  		g_dst_pts_after = dst_pts_after + fill(get_offset(match.dst_index), length(dst_pts));
+  	else
+  		g_dst_pts = dst_pts;
+  		g_dst_pts_after = dst_pts_after;
+
+  	end
+
+  	residuals_match_pre = g_dst_pts - g_src_pts;
+  	residuals_match_post = g_dst_pts_after - g_src_pts_after;
+
+	avg_drift = mean(residuals_match_post);
+
+	if is_preceding(get_index(src_mesh), get_index(dst_mesh), 5)
+	  drifts[find_mesh_index(meshset, match.dst_index)] -= avg_drift/2;
+	else
+	  drifts[find_mesh_index(meshset, match.src_index)] += avg_drift/2;
+	end
+
+  end
+  #return drifts;
+  cum_drift = Point([0,0]);
+  for (ind, drift) in enumerate(drifts)
+    cum_drift += drift;
+    #println(cum_drift);
+    update_offset(get_index(meshset.meshes[ind]), get_offset(get_index(meshset.meshes[ind])) + cum_drift)
+  end
+
+
+end
+
+@inbounds function stats(meshset::MeshSet)
 
   println("Computing statistics...")
 
   params = get_params(meshset)
 
+  # these arrays have been reversed as necessary to get the right direction
   residuals_pre = Points(0)
   residuals_post = Points(0)
+  avg_drifts = Points(0)
+
   r_maxs = Array{Float64}(0)
   matches_to_review = Array{Match, 1}(0)
 
@@ -343,17 +460,20 @@ function stats(meshset::MeshSet)
 	print("src_index       ")
 	print("dst_index   ")
 	print("corrs  ")
-	print("    ")
+	print("  ")
 	print("rms_pre   ")
 	print("avg_pre   ")
 	print("std_pre   ")
 	print("max_pre   ")
-	print("    ")
+	print("  ")
 	print("rms_post  ")
 	print("avg_post  ")
 	print("std_post  ")
 	print("max_post  ")
-	print("     ")
+	print("   ")
+	print("drift_di    ")
+	print("drift_dj    ")
+	print("   ")
 	print("rms_r     ")
 	print("avg_r     ")
 	print("std_r     ")
@@ -384,8 +504,8 @@ function stats(meshset::MeshSet)
   	dst_pt_triangles = find_mesh_triangle(dst_mesh, dst_pts);
   	dst_pt_weights = get_triangle_weights(dst_mesh, dst_pts, dst_pt_triangles);
 
-  	src_pts_after = Points(map(get_tripoint_dst, repeated(src_mesh), src_pt_triangles, src_pt_weights));
-  	dst_pts_after = Points(map(get_tripoint_dst, repeated(dst_mesh), dst_pt_triangles, dst_pt_weights));
+  	src_pts_after = get_tripoint_dst(src_mesh, src_pt_triangles, src_pt_weights);
+  	dst_pts_after = get_tripoint_dst(dst_mesh, dst_pt_triangles, dst_pt_weights);
 
   	g_src_pts = src_pts + fill(get_offset(match.src_index), length(src_pts));
   	g_src_pts_after = src_pts_after + fill(get_offset(match.src_index), length(src_pts));
@@ -403,17 +523,19 @@ function stats(meshset::MeshSet)
   	residuals_match_post = g_dst_pts_after - g_src_pts_after;
   	r_maxs_match = Array{Float64}(map(get_dfs, props, repeated("r_max")));
 
-   	res_norm = map(norm, residuals_match_pre)
+   	res_norm = Array{Float64}(map(norm, residuals_match_pre))
    	rms_pre = sqrt(mean(res_norm.^2))
    	avg_pre = mean(res_norm)
    	std_pre = std(res_norm)
    	max_pre = maximum(res_norm)
 
-   	res_norm_post = map(norm, residuals_match_post)
+   	res_norm_post = Array{Float64}(map(norm, residuals_match_post))
    	rms_post = sqrt(mean(res_norm_post.^2))
    	avg_post = mean(res_norm_post)
    	std_post = std(res_norm_post)
    	max_post = maximum(res_norm_post)
+
+	avg_drift = mean(residuals_match_post);
 
    	rms_r = sqrt(mean(r_maxs_match.^2))
    	avg_r = mean(r_maxs_match)
@@ -430,6 +552,9 @@ function stats(meshset::MeshSet)
    	std_post_s = @sprintf("%10.2f", std_post)
    	max_post_s = @sprintf("%10.2f", max_post)
 
+   	avg_drift_di_s = @sprintf("%10.2f", avg_drift[1])
+   	avg_drift_dj_s = @sprintf("%10.2f", avg_drift[2])
+
    	rms_r_s = @sprintf("%10.3f", rms_r) 
    	avg_r_s = @sprintf("%10.3f", avg_r)
    	std_r_s = @sprintf("%10.3f", std_r)
@@ -440,17 +565,20 @@ function stats(meshset::MeshSet)
   	print("->")
   	print(@sprintf("%14s", string(dst_mesh.index)))
   	print(@sprintf("%6i", count_filtered_correspondences(match)))
-  	print("    ")
+  	print("  ")
   	print(rms_pre_s)
   	print(avg_pre_s)
   	print(std_pre_s)
   	print(max_pre_s)
-  	print("    ")
+  	print("  ")
   	print(rms_post_s)
   	print(avg_post_s)
   	print(std_post_s)
   	print(max_post_s)
-  	print("    ")
+  	print("  ")
+  	print(avg_drift_di_s)
+  	print(avg_drift_dj_s)
+  	print("  ")
   	print(rms_r_s)
   	print(avg_r_s)
   	print(std_r_s)
@@ -463,23 +591,35 @@ function stats(meshset::MeshSet)
   		push!(matches_to_review, match)
   	end
   	println()
+
+	# turning residuals around for drift calculation
+	if !is_preceding(get_index(src_mesh), get_index(dst_mesh), 5)
+		residuals_pre = -1 * residuals_pre;
+		residuals_post = -1 * residuals_post;
+		avg_drift = -1 * avg_drift;
+	end
   	      
   	append!(residuals_pre, residuals_match_pre)
   	append!(residuals_post, residuals_match_post)
+  	push!(avg_drifts, avg_drift)
   	append!(r_maxs, r_maxs_match)
   end
 
- 	res_norm = map(norm, residuals_pre)
+ 	res_norm = Array{Float64}(map(norm, residuals_pre))
  	rms_pre = sqrt(mean(res_norm.^2))
  	avg_pre = mean(res_norm)
  	std_pre = std(res_norm)
  	max_pre = maximum(res_norm)
 
- 	res_norm_post = map(norm, residuals_post)
+ 	res_norm_post = Array{Float64}(map(norm, residuals_post))
  	rms_post = sqrt(mean(res_norm_post.^2))
  	avg_post = mean(res_norm_post)
  	std_post = std(res_norm_post)
  	max_post = maximum(res_norm_post)
+
+	avg_drift = mean(residuals_post);
+	avg_avg_drifts = mean(avg_drifts);
+	net_drift = avg_avg_drifts * count_matches(meshset) / 2;
 
  	rms_r = sqrt(mean(r_maxs.^2))
  	avg_r = mean(r_maxs)
@@ -496,6 +636,14 @@ function stats(meshset::MeshSet)
  	std_post_s = @sprintf("%10.2f", std_post)
  	max_post_s = @sprintf("%10.2f", max_post)
 
+   	avg_drift_di_s = @sprintf("%10.2f", avg_drift[1])
+   	avg_drift_dj_s = @sprintf("%10.2f", avg_drift[2])
+
+   	avg_avg_drifts_di_s = @sprintf("%10.2f", avg_avg_drifts[1])
+   	avg_avg_drifts_dj_s = @sprintf("%10.2f", avg_avg_drifts[2])
+   	net_drift_di_s = @sprintf("%10.2f", net_drift[1])
+   	net_drift_dj_s = @sprintf("%10.2f", net_drift[2])
+
  	rms_r_s = @sprintf("%10.3f", rms_r) 
  	avg_r_s = @sprintf("%10.3f", avg_r)
  	std_r_s = @sprintf("%10.3f", std_r)
@@ -503,9 +651,14 @@ function stats(meshset::MeshSet)
 
   println("==============")
   println("Statistics across all matches")
-  println("Residuals before solving: rms: $rms_pre_s,  mean: $avg_pre_s,  std: $std_pre_s,  max: $max_pre_s")
-  println("Residuals after solving:  rms: $rms_post_s,  mean: $avg_post_s,  std: $std_post_s,  max: $max_post_s")
-  println("r-values:                 rms: $rms_r_s,  mean: $avg_r_s,  std: $std_r_s,  min: $min_r_s")
+  println("residuals before solving  : rms: $rms_pre_s,  mean: $avg_pre_s,  std: $std_pre_s,  max: $max_pre_s")
+  println("residuals after solving   : rms: $rms_post_s,  mean: $avg_post_s,  std: $std_post_s,  max: $max_post_s")
+  println("r-values                  : rms: $rms_r_s,  mean: $avg_r_s,  std: $std_r_s,  min: $min_r_s")
+  println();
+  println("residual drift (corresp.) : di : $avg_drift_di_s,  dj: $avg_drift_dj_s")
+  println("residual drift (matches)  : di : $avg_avg_drifts_di_s,  dj: $avg_avg_drifts_dj_s")
+  println();
+  println("net drift                 : di : $net_drift_di_s,  dj: $net_drift_dj_s")
 
   println("==============")
   println("$(length(matches_to_review)) matches flagged for review")

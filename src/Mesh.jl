@@ -171,7 +171,7 @@ end
 
 
 # find the triangular mesh indices for a given point in mesh image coordinates
-function find_mesh_triangle(mesh::Mesh, point::Point)
+@inbounds function find_mesh_triangle(mesh::Mesh, point::Point)
 	
 	dims, dists = get_dims_and_dists(mesh); 
 	point_padded = point - get_topleft_offset(mesh);
@@ -288,12 +288,12 @@ function find_mesh_triangle(mesh::Mesh, point::Point)
 	return (ind0, ind1, ind2);
 end
 
-function find_mesh_triangle(mesh::Mesh, points::Points)
+@inbounds function find_mesh_triangle(mesh::Mesh, points::Points)
 	return Triangles(map(find_mesh_triangle, repeated(mesh), points));
 end
 
 # Convert Cartesian coordinate to triple of barycentric coefficients
-function get_triangle_weights(mesh::Mesh, point::Point, triangle::Triangle)
+@inbounds function get_triangle_weights(mesh::Mesh, point::Point, triangle::Triangle)
 	if triangle == NO_TRIANGLE return NO_WEIGHTS; end
 	R = vcat(mesh.src_nodes[triangle[1]]', mesh.src_nodes[triangle[2]]', mesh.src_nodes[triangle[3]]')
 	R = hcat(R, ones(Float64, 3, 1));
@@ -304,16 +304,20 @@ function get_triangle_weights(mesh::Mesh, point::Point, triangle::Triangle)
 	return (V[1], V[2], V[3]);
 end
 
-function get_triangle_weights(mesh::Mesh, points::Points, triangles::Triangles)
+@inbounds function get_triangle_weights(mesh::Mesh, points::Points, triangles::Triangles)
 
 	return Weights(map(get_triangle_weights, repeated(mesh), points, triangles))
 
 end
 
-function get_tripoint_dst(mesh::Mesh, triangle, weights)
+@fastmath @inbounds function get_tripoint_dst(mesh::Mesh, triangles::Triangles, weights::Weights)
+	return Points(map(get_tripoint_dst, repeated(mesh), triangles, weights))
+end
+
+@fastmath @inbounds function get_tripoint_dst(mesh::Mesh, triangle::Triangle, weight::Weight)
 	if triangle == NO_TRIANGLE return NO_POINT; end
 	dst_trinodes = mesh.dst_nodes[triangle[1]], mesh.dst_nodes[triangle[2]], mesh.dst_nodes[triangle[3]]
-	dst_point = dst_trinodes[1] * weights[1] + dst_trinodes[2] * weights[2] + dst_trinodes[3] * weights[3];
+	dst_point = dst_trinodes[1] * weight[1] + dst_trinodes[2] * weight[2] + dst_trinodes[3] * weight[3];
 	return dst_point;
 end
 
