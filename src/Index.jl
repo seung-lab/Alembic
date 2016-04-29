@@ -158,7 +158,7 @@ function get_offset(index)
 	return Point(metadata[3:4]);
 end
 
-function get_image_sizes(index)
+function get_image_size(index)
 	metadata = get_metadata(index);
 	return Array{Int64, 1}(metadata[5:6]);
 end
