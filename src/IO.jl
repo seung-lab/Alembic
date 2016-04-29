@@ -198,6 +198,26 @@ function expunge_tile(index::Index)
   purge_from_registry!(index)
 end
 
+function expunge_section(index::Index)
+  tiles = get_index_range(premontaged(index), premontaged(index))
+  for tile in tiles
+    expunge_tile(tile)
+  end
+  purges = []
+  if is_finished(index)
+    purges = [aligned(index), prealigned(index), montaged(index)]
+  elseif is_aligned(index)
+    purges = [aligned(index), prealigned(index), montaged(index)]
+  elseif is_prealigned(index)
+    purges = [prealigned(index), montaged(index)]
+  elseif is_montaged(index)
+    purges = [montaged(index)]
+  end
+  for purge in purges
+    purge_from_registry!(purge)
+  end
+end
+
 function resurrect_tile(index::Index)
   assert(is_premontaged(index))
   fn = get_filename(index)
@@ -215,4 +235,88 @@ function is_expunged(index::Index)
   expunged_path = joinpath(EXPUNGED_DIR, fn)
   included_path = get_path(index)
   return assert(isfile(expunged_path) && !isfile(included_path))
+end
+
+function make_stack_from_finished(firstindex::Index, lastindex::Index, slice=(1:200, 1:200))
+    imgs = []
+    bb = nothing
+    for index in get_index_range(firstindex, lastindex)
+        index = finished(index)
+        print(string(join(index[1:2], ",") ,"|"))
+        img = get_slice(get_path(index), slice)
+        if bb == nothing
+            bb = h5read(get_path(index), "bb")
+        else
+            current_bb = h5read(get_path(index), "bb")
+            if current_bb != bb
+                error("FINISHED IMAGE, $index, NOT IN SAME BOUNDING BOX: $bb")
+            end
+        end
+        push!(imgs, img)
+    end
+    return cat(3, imgs...), bb
+end
+
+function make_stack(firstindex::Index, lastindex::Index, slice=(1:255, 1:255))
+  # dtype = h5read(get_path(firstindex), "dtype")
+  dtype = UInt8
+  stack_offset = [slice[1][1], slice[2][1]] - [1,1]
+  stack_size = map(length, slice)
+  global_bb = BoundingBox(stack_offset..., stack_size...)
+  imgs = []
+  for index in get_index_range(firstindex, lastindex)
+    print(string(join(index[1:2], ",") ,"|"))
+    img = zeros(dtype, stack_size...)
+    offset = get_offset(index)
+    sz = get_image_size(index)
+    bb = BoundingBox(offset..., sz...)
+    if intersects(bb, global_bb)
+      shared_bb = global_bb - bb
+      img_roi = translate_bb(shared_bb, -offset)
+      stack_roi = translate_bb(shared_bb, -stack_offset)
+      h5_slice = bb_to_slice(img_roi)
+      img_slice = bb_to_slice(stack_roi)
+      # println(h5_slice, " " , img_slice)
+      img[img_slice...] = get_slice(get_path(index), h5_slice) 
+    end
+    push!(imgs, img)
+  end
+  return cat(3, imgs...)
+end
+
+function save_stack(firstindex::Index, lastindex::Index, slice=(1:200, 1:200))
+  stack = make_stack(firstindex, lastindex, slice)
+  return save_stack(stack, firstindex, lastindex, slice)
+end
+
+function save_stack(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, slice=(1:200, 1:200))
+  scale = 1.0
+  # perm = [3,2,1]
+  # stack = permutedims(stack, perm)
+  orientation = "zyx"
+  dataset = cur_dataset
+  origin = [0,0]
+  x_slice = [slice[1][1], slice[1][end]] + origin
+  y_slice = [slice[2][1], slice[2][end]] + origin
+  z_slice = [find_in_registry(aligned(firstindex)), find_in_registry(aligned(lastindex))]
+  filename = string(cur_dataset, "_", join([join(x_slice, "-"), join(y_slice, "-"), join(z_slice,"-")], "_"), ".h5")
+  filepath = joinpath(STACKS_DIR, filename)
+  println("\nSaving stack to ", filepath)
+  f = h5open(filepath, "w")
+  chunksize = min(512, min(size(stack)...))
+  @time f["main", "chunk", (chunksize,chunksize,chunksize)] = stack
+  # f = Dict()
+  f["orientation"] = orientation
+  f["origin"] = origin
+  f["x_slice"] = x_slice
+  f["y_slice"] = y_slice
+  f["z_slice"] = z_slice
+  f["z_start_index"] = [firstindex...]
+  f["z_end_index"] = [lastindex...] 
+  f["scale"] = scale
+  f["by"] = ENV["USER"]
+  f["machine"] = gethostname()
+  f["timestamp"] = string(now())
+  f["dataset"] = cur_dataset
+  close(f)
 end
