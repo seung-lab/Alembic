@@ -23,22 +23,26 @@ MeshConjGrad- given spring mesh, solve for equilibrium positions of vertices wit
 #currently defined in Julimaps
 #global eps = 1E-16
 
-@fastmath @inbounds function Energy(Springs, Stiffnesses, RestLengths)
+function Energy(Springs, Stiffnesses, RestLengths)
     # potential energy per spring (normalized)
     Lengths=get_lengths(Springs)
     return Energy_given_lengths(Lengths, Stiffnesses, RestLengths)
 end
 
-@fastmath @inbounds function get_lengths(Springs)
+function get_lengths(Springs)
+   @fastmath @inbounds begin
     halflen = div(length(Springs), 2);
     r1 = 1:halflen
     r2 = halflen + 1:halflen * 2
     return sqrt(Springs[r1] .* Springs[r1] .+ Springs[r2] .* Springs[r2]) + eps
+  end
 end
 
-@fastmath @inbounds function Energy_given_lengths(Lengths, Stiffnesses, RestLengths)
-    dLengths = Lengths - RestLengths;
+function Energy_given_lengths(Lengths, Stiffnesses, RestLengths)
+    @fastmath @inbounds begin
+    dLengths = Lengths - RestLengths
     return sum(Stiffnesses.*(dLengths.*dLengths))/2/length(Lengths)
+  end
 end
 
 #="""
@@ -46,21 +50,22 @@ gradient of unnormalized potential energy with respect to vertex positions
 returns dxV array, same size as Vertices
 physically, -gradient is spring forces acting on vertices
 """=#
-@fastmath @inbounds function Gradient(Springs, Incidence_d, Stiffnesses_d, RestLengths_d)
+function Gradient(Springs, Incidence_d, Stiffnesses_d, RestLengths_d)
     print(".");
     Lengths = get_length(Springs)
     return Gradient_given_lengths(Springs, Lengths, Incidence_d, Stiffnesses_d, RestLengths_d)
 end
 
-@fastmath @inbounds function Gradient_given_lengths(Springs, Lengths, Incidence_d, Stiffnesses_d, RestLengths_d)
-    Directions = Springs ./ vcat(Lengths, Lengths);
+function Gradient_given_lengths(Springs, Lengths, Incidence_d, Stiffnesses_d, RestLengths_d)
+    @fastmath Directions = Springs ./ vcat(Lengths, Lengths);
     #Directions[isnan(Directions)] *= 0
-    Forces = (Springs-(Directions .* RestLengths_d)) .* Stiffnesses_d
-    return (Incidence_d * Forces)
+    @fastmath Forces = (Springs-(Directions .* RestLengths_d)) .* Stiffnesses_d
+    @fastmath return (Incidence_d * Forces)
 end
 
-@fastmath @inbounds function SolveMeshConjugateGradient!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, max_iter, ftol)
+function SolveMeshConjugateGradient!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, max_iter, ftol)
     # double everything
+    @fastmath @inbounds begin
     Vertices_t = Vertices';
     Vertices_t = vcat(Vertices_t[:, 1], Vertices_t[:, 2])
 
@@ -72,26 +77,30 @@ end
     Stiffnesses_d = vcat(Stiffnesses, Stiffnesses)
     RestLengths_d = vcat(RestLengths, RestLengths)
 
-    @fastmath @inbounds function cost(x)
+  end
+
+    function cost(x)
         Vertices_t[Moving] = x[Moving];
         Springs = Incidence_t * Vertices_t;
         return Energy(Springs,Stiffnesses,RestLengths)
     end
 
-    @fastmath @inbounds function cost_gradient!(x,storage)
+    function cost_gradient!(x,storage)
         Vertices_t[Moving] = x[Moving];
         Springs = Incidence_t * Vertices_t;
         g = Gradient(Springs, Incidence_d, Stiffnesses_d, RestLengths_d)
         storage[:] = g
     end
 
-    @fastmath @inbounds function cost_and_gradient!(x,storage)
+    function cost_and_gradient!(x,storage)
+    @fastmath @inbounds begin    
         Vertices_t[Moving] = x[Moving];
         Springs = Incidence_t * Vertices_t;
     	Lengths = get_lengths(Springs);
     	g = Gradient_given_lengths(Springs, Lengths, Incidence_d, Stiffnesses_d, RestLengths_d)
         storage[:] = g
         return Energy_given_lengths(Lengths,Stiffnesses,RestLengths)
+      end
     end
 
     df = DifferentiableFunction(cost, cost_gradient!, cost_and_gradient!)
@@ -106,7 +115,7 @@ end
     #    end
     #    df = DifferentiableFunction(cost, cost_gradient!, cost_and_gradient!)
 
-    res = optimize(df,Vertices_t,method=:cg,show_trace=true,iterations=max_iter,ftol=ftol)
+    @fastmath res = optimize(df,Vertices_t,method=:cg,show_trace=true,iterations=max_iter,ftol=ftol)
     # return res
     Vertices_t[Moving] = res.minimum[Moving];
     Vertices[:] = vcat(Vertices_t[1:(length(Vertices_t)/2)]', Vertices_t[1+(length(Vertices_t)/2):end]');

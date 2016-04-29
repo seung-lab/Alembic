@@ -33,8 +33,16 @@ function find_mesh_index(meshset::MeshSet, index::Index)
   return findfirst(this -> index == get_index(this), meshset.meshes)
 end
 
+function find_mesh_index(meshset::MeshSet, mesh::Mesh)
+  return find_mesh_index(meshset, get_index(mesh));
+end
+
 function find_match_index(meshset::MeshSet, src_index::Index, dst_index::Index)
   return findfirst(this -> (src_index == get_src_index(this)) && (dst_index == get_dst_index(this)), meshset.matches)
+end
+
+function find_match_index(meshset::MeshSet, match::Match)
+  return find_match_index(meshset, get_src_and_dst_indices(match)...);
 end
 
 function find_match_indices(meshset::MeshSet, index::Index)

@@ -37,7 +37,7 @@ function get_topleft_offset(mesh::Mesh)		return mesh.src_nodes[1];		end
 function get_edge_points(mesh::Mesh, ind)
 #	src_ind = findfirst(this -> this < 0, mesh.edges[:, ind]);
 #	dst_ind = findfirst(this -> this > 0, mesh.edges[:, ind]);
-	inds = findnz(mesh.edges[:, ind])[1];
+	@fastmath @inbounds inds = findnz(mesh.edges[:, ind])[1];
 	return mesh.src_nodes[inds[1]], mesh.src_nodes[inds[2]]
 end
 
@@ -51,7 +51,7 @@ function isequal(meshA::Mesh, meshB::Mesh)
 end
 
 function get_edge_length(mesh::Mesh, ind)	start_pt, end_pt = get_edge_points(mesh, ind);
-      return norm(start_pt - end_pt);
+      @fastmath return norm(start_pt - end_pt);
 end
 
 function get_edge_lengths(mesh::Mesh)		return map(get_edge_length, repeated(mesh), collect(1:count_edges(mesh)));		end
@@ -59,18 +59,18 @@ function get_edge_lengths(mesh::Mesh)		return map(get_edge_length, repeated(mesh
 function get_homogenous_edge_lengths(mesh::Mesh)	return fill(get_edge_length(mesh, 1), count_edges(mesh));		end
 
 function get_globalized_nodes_h(mesh::Mesh)
-	g_src_nodes, g_dst_nodes = get_globalized_nodes(mesh);
+	@fastmath g_src_nodes, g_dst_nodes = get_globalized_nodes(mesh);
     return hcat(g_src_nodes...), hcat(g_dst_nodes...)
 end
 function get_globalized_nodes(mesh::Mesh)
-    g_src_nodes = mesh.src_nodes + fill(get_offset(mesh), count_nodes(mesh));
-    g_dst_nodes = mesh.dst_nodes + fill(get_offset(mesh), count_nodes(mesh));
+    @fastmath g_src_nodes = mesh.src_nodes + fill(get_offset(mesh), count_nodes(mesh));
+    @fastmath g_dst_nodes = mesh.dst_nodes + fill(get_offset(mesh), count_nodes(mesh));
     return g_src_nodes, g_dst_nodes
 end
 
 function get_dims_and_dists(mesh::Mesh)
 	n = count_nodes(mesh);
-
+	@fastmath @inbounds begin
 	i_dist = 0;
 	j_dist = mesh.src_nodes[2][2] - mesh.src_nodes[1][2];
 	j_dim = 0;
@@ -83,6 +83,7 @@ function get_dims_and_dists(mesh::Mesh)
 		end
 	end
 	i_dim = round(Int64, 1 + (mesh.src_nodes[count_nodes(mesh)][1] - mesh.src_nodes[1][1]) / i_dist);
+      end #fmib
 	return (i_dim, j_dim), [i_dist, j_dist];
 end
 
@@ -109,7 +110,7 @@ function Mesh(index, params = get_params(index), fixed=false)
 	src_nodes = Points(n);
 	edges = spzeros(Float64, n, m_upperbound);
 
-	for i in 1:dims[1], j in 1:dims[2]
+	@fastmath @inbounds for i in 1:dims[1], j in 1:dims[2]
 		k = get_mesh_index(dims, i, j); if k == 0 continue; end
 		src_nodes[k] = get_mesh_coord(dims, topleft_offset, dists, i, j);
 		if (j != 1)
@@ -132,7 +133,7 @@ function Mesh(index, params = get_params(index), fixed=false)
 		end
 	end
 
-	edges = edges[:, 1:m];
+	@inbounds edges = edges[:, 1:m];
 	dst_nodes = copy(src_nodes);
 
 	properties = Dict{Any, Any}(
@@ -144,6 +145,7 @@ end
 
 
 function get_mesh_index(dims, i, j)
+  @fastmath @inbounds begin
 	ind = 0;
 	
 	if iseven(i) && (j == dims[2]) return ind; end
@@ -153,10 +155,12 @@ function get_mesh_index(dims, i, j)
 	ind += div(i, 2) * dims[2]; #odd rows
 	ind += j;
 	ind = convert(Int64, ind);
+      end#fmib
 	return ind;
 end
 
 function get_mesh_coord(dims, total_offset, dists, i, j)
+  @fastmath @inbounds begin
 	if iseven(i) && (j == dims[2]) return (0, 0); end
 	
 	pi = (i-1) * dists[1] + total_offset[1];
@@ -165,14 +169,16 @@ function get_mesh_coord(dims, total_offset, dists, i, j)
 	else		pj = (j-1) * dists[2] + total_offset[2];
 	end
 
+      end#fmib
+
 	return [pi; pj];
 end
 
 
 
 # find the triangular mesh indices for a given point in mesh image coordinates
-@inbounds function find_mesh_triangle(mesh::Mesh, point::Point)
-	
+function find_mesh_triangle(mesh::Mesh, point::Point)
+  @inbounds begin	
 	dims, dists = get_dims_and_dists(mesh); 
 	point_padded = point - get_topleft_offset(mesh);
 
@@ -196,6 +202,7 @@ end
 	node0 = mesh.src_nodes[ind0];
 
 	res = point - node0;
+
 
 	theta = abs(atan(res[1] / res[2]));
 	if (theta < pi / 3)
@@ -285,17 +292,19 @@ end
 		#println("$res at $ind0");
 		return NO_TRIANGLE;
 	end
+
+      end #ib
 	return (ind0, ind1, ind2);
 end
 
-@inbounds function find_mesh_triangle(mesh::Mesh, points::Points)
+function find_mesh_triangle(mesh::Mesh, points::Points)
 	return Triangles(map(find_mesh_triangle, repeated(mesh), points));
 end
 
 # Convert Cartesian coordinate to triple of barycentric coefficients
-@inbounds function get_triangle_weights(mesh::Mesh, point::Point, triangle::Triangle)
-	if triangle == NO_TRIANGLE return NO_WEIGHTS; end
-	R = vcat(mesh.src_nodes[triangle[1]]', mesh.src_nodes[triangle[2]]', mesh.src_nodes[triangle[3]]')
+function get_triangle_weights(mesh::Mesh, point::Point, triangle::Triangle)
+	if triangle == NO_TRIANGLE::Triangle return NO_WEIGHTS::Weight; end
+	@inbounds R = vcat(mesh.src_nodes[triangle[1]]', mesh.src_nodes[triangle[2]]', mesh.src_nodes[triangle[3]]')
 	R = hcat(R, ones(Float64, 3, 1));
 	r = vcat(point, 1.0);
 
@@ -304,20 +313,22 @@ end
 	return (V[1], V[2], V[3]);
 end
 
-@inbounds function get_triangle_weights(mesh::Mesh, points::Points, triangles::Triangles)
+function get_triangle_weights(mesh::Mesh, points::Points, triangles::Triangles)
 
 	return Weights(map(get_triangle_weights, repeated(mesh), points, triangles))
 
 end
 
-@fastmath @inbounds function get_tripoint_dst(mesh::Mesh, triangles::Triangles, weights::Weights)
+function get_tripoint_dst(mesh::Mesh, triangles::Triangles, weights::Weights)
 	return Points(map(get_tripoint_dst, repeated(mesh), triangles, weights))
 end
 
-@fastmath @inbounds function get_tripoint_dst(mesh::Mesh, triangle::Triangle, weight::Weight)
+function get_tripoint_dst(mesh::Mesh, triangle::Triangle, weight::Weight)
+  @fastmath @inbounds begin
 	if triangle == NO_TRIANGLE return NO_POINT; end
 	dst_trinodes = mesh.dst_nodes[triangle[1]], mesh.dst_nodes[triangle[2]], mesh.dst_nodes[triangle[3]]
 	dst_point = dst_trinodes[1] * weight[1] + dst_trinodes[2] * weight[2] + dst_trinodes[3] * weight[3];
+      end #fmib
 	return dst_point;
 end
 

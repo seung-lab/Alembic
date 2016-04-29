@@ -245,7 +245,7 @@ function render_aligned(firstindex::Index, lastindex::Index, start=1, finish=0)
   render_aligned(meshset, start, finish)
 end
 
-function render_aligned(meshset::MeshSet, start=1, finish=length(meshset.meshes))
+@fastmath @inbounds function render_aligned(meshset::MeshSet, start=1, finish=length(meshset.meshes))
   scale = 0.10
   s = make_scale_matrix(scale)
   images = Dict()
@@ -281,7 +281,7 @@ function render_finished(firstindex::Index, lastindex::Index)
   end
 end
 
-function write_finished(index::Index, img, offset, BB=GLOBAL_BB)
+@fastmath @inbounds function write_finished(index::Index, img, offset, BB=GLOBAL_BB)
   println("Rescoping ", get_name(index))
   @time img = rescopeimage(img, offset, BB)
   index = finished(index)
