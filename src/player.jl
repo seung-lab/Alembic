@@ -282,138 +282,28 @@ function go_to(meshset, area, slice, k; include_reverse=false)
   return stack, (islice, jslice)
 end
 
-function make_image_stack(meshset, section_range=(1:2), slice=(1:200,1:200); 
-                                            include_reverse=false, perm=[1,2,3])
-  imgs = []
-  for mesh in meshset.meshes[section_range]
-    index = (mesh.index[1:2]..., mesh.index[3]-1, mesh.index[4]-1)
-    img = reinterpret(UFixed8, get_slice(get_path(index), slice))
-    push!(imgs, img)
-  end
-  if include_reverse
-    img_stack = cat(3, imgs..., reverse(imgs[2:end-1])...)
-  else
-    img_stack = cat(3, imgs...)
-  end
-  return Image(permutedims(img_stack, perm), timedim=3)
-end
-
-"""
-"""
-function mark_stack(mov; fps=10, include_reverse=true)
-  e = Condition()
-
-  N = size(mov, 3)
-  if include_reverse
-    N = round(Int64, (N + 2) / 2)
-  end
-  frame_errors = zeros(Int64, N)
-  escape = false
-  paused = false
-
-  imgc, img2 = view(mov, pixelspacing=[1,1])
+function get_frame(imgc)
   state = imgc.navigationstate
-  set_fps!(state, fps)
-  start_loop(imgc, img2, fps)
-
-  c = canvas(imgc)
-  win = Tk.toplevel(c)
-  bind(win, "<KP_1>", path->mark_frame(1))
-  bind(win, "<KP_2>", path->mark_frame(2))
-  bind(win, "<KP_3>", path->mark_frame(3))
-  bind(win, "<KP_Enter>", path->destroy())
-  bind(win, "<Up>", path->adjust_fps(1))
-  bind(win, "<Down>", path->adjust_fps(-1))
-  bind(win, "<Escape>", path->end_auto())
-  bind(win, "<space>", path->toggle_loop())
-  # bind(win, "<Delete>", path->destroy())
-  bind(win, "<Destroy>", path->end_count())
-
-  function mark_frame(n)
-    f = get_frame()
-    frame_errors[f] = n
+  t = state.t
+  if t > N
+    t = 2*N - t
   end
-
-  function get_frame()
-    t = state.t
-    if t > N
-      t = 2*N - t
-    end
-    println(t)
-    return t
-  end
-
-  function adjust_fps(d)
-    fps += d
-    fps = min(fps, 50)
-    fps = max(fps, 1)
-    println("Adjust FPS: ", fps)
-    stop_loop(imgc)
-    set_fps!(state, fps)
-    start_loop(imgc, img2, fps)
-  end
-
-  function toggle_loop()
-    if paused
-      start_loop(imgc, img2, fps)
-    else
-      stop_loop(imgc)
-    end
-    paused = !paused
-  end
-
-  function destroy()
-    stop_loop(imgc)
-    end_count()
-    Tk.destroy(win)
-  end
-
-  function end_auto()
-    escape = !escape
-    println("End auto mode: ", escape)
-    destroy()
-  end
-
-  function end_count()
-    notify(e)
-    bind(win, "<KP_1>", path->path)
-    bind(win, "<KP_2>", path->path)
-    bind(win, "<KP_3>", path->path)
-    bind(win, "<KP_Enter>", path->path)
-    bind(win, "<Up>", path->path)
-    bind(win, "<Down>", path->path)
-    bind(win, "<Escape>", path->path)
-    bind(win, "<space>", path->path)
-    # bind(win, "<Delete>", path->path)
-    bind(win, "<Destroy>", path->path)
-  end
-  
-  wait(e)
-  return frame_errors, escape, fps
+  println(t)
+  return t
 end
 
 """
 Cycle through sections of the stack stack, with images staged for easier viewing
 """
-function view_stack(indexA::Index, indexB::Index, slice=(1:200,1:200);
+function view_stack(firstindex::Index, lastindex::Index, slice=(1:200,1:200);
                                         include_reverse=false, perm=[1,2,3])
-  imgs = []
-  for index in get_index_range(indexA, indexB)
-    if is_finished(indexA)
-      index = finished(index)
-    end
-    if is_montaged(indexA)
-      index = prealigned(index)
-    end
-    print(string(join(index[1:2], ",") ,"|"))
-    img = reinterpret(UFixed8, get_slice(get_path(index), slice))
-    push!(imgs, img)
-  end
-  return view_stack(imgs; include_reverse=include_reverse, perm=perm)
+  stack = make_stack(firstindex, lastindex, slice);
+  view_stack(stack; slice=slice, include_reverse=include_reverse, perm=perm)
+  return stack
 end
 
-function view_stack(imgs; include_reverse=false, perm=[1,2,3])
-  img_stack = permutedims(cat(3, imgs...), perm)
+function view_stack(stack; slice=(0:0, 0:0), include_reverse=false, perm=[1,2,3])
+  img_stack = permutedims(reinterpret(UFixed8, stack), perm)
   if include_reverse
     img_stack = cat(3, img_stack, img_stack[:,:,end:-1:1])
   end
@@ -428,7 +318,7 @@ function view_stack(imgs; include_reverse=false, perm=[1,2,3])
   imgc.handles[:pointerlabel] = xypos
   ImageView.grid(xypos, 1, 1, sticky="ne")
   ImageView.set_visible(win, true)
-  c.mouse.motion = (path,x,y)-> updatexylabel(xypos, imgc, img2, x, y, slice[2][1], slice[1][1])
+  c.mouse.motion = (path,x,y)-> updatexylabel(xypos, imgc, img2, x, y, slice[2][1]-1, slice[1][1]-1)
 
   bind(win, "<Up>", path->adjust_fps(imgc, img2, 1))
   bind(win, "<Down>", path->adjust_fps(imgc, img2, -1))
@@ -436,10 +326,9 @@ function view_stack(imgs; include_reverse=false, perm=[1,2,3])
   bind(win, "<Destroy>", path->exit_stack(imgc, img2))
 
   start_loop(imgc, img2, 30)
-  return imgs
 end
 
-function updatexylabel(xypos, imgc, img2, x, y, x_off, y_off)
+function updatexylabel(xypos, imgc, img2, x, y, x_off, y_off, scale=1.0)
   w = width(imgc.c)
   xu, yu = ImageView.device_to_user(Tk.getgc(imgc.c), x, y)
   # Image-coordinates
@@ -447,14 +336,15 @@ function updatexylabel(xypos, imgc, img2, x, y, x_off, y_off)
   if ImageView.isinside(imgc.canvasbb, x, y)
     val = img2[xi,yi]
     xo, yo = xi + x_off, yi + y_off
-    str = "$xo, $yo ($xi, $yi): $val"
+    xo, yo = round(Int64, xo / scale), round(Int64, yo / scale)
+    str = "$yo, $xo ($yi, $xi): $val"
     if length(str)*10>w
-      ImageView.set_value(xypos, "$xo, $yo ($xi, $yi)")
+      ImageView.set_value(xypos, "$yo, $xo ($yi, $xi)")
     else
       ImageView.set_value(xypos, str)
     end
   else
-    ImageView.set_value(xypos, "$xo, $yo ($xi, $yi)")
+    ImageView.set_value(xypos, "($yi, $xi)")
   end
 end
 

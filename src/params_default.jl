@@ -53,7 +53,7 @@ FTOL_GD_ALIGNMENT = 3e-3
 ETA_NEWTON_ALIGNMENT = 0.5
 FTOL_NEWTON_ALIGNMENT = 1e-8
 
-global GLOBAL_BB = BoundingBox(0,0,80000,38000)
+global GLOBAL_BB = BoundingBox(0,0,75000,32000)
 
 global PARAMS_MONTAGE = Dict(
 			     "mesh" => Dict(
