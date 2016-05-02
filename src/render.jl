@@ -263,35 +263,35 @@ function render_aligned(meshset::MeshSet, start=1, finish=length(meshset.meshes)
     println("Writing ", get_name(index))
     f = h5open(get_path(index), "w")
     @time f["img", "chunk", (1000,1000)] = img
-    f["dtype"] = typeof(img[1])
+    f["dtype"] = string(typeof(img[1]))
     f["offset"] = offset
     f["size"] = [size(img)...]
     close(f)
     # Log image offsets
     update_offset(index, offset, size(img))
-    images[index] = imwarp(img, s) 
+    # images[index] = imwarp(img, s) 
     # Rescope the image & save
     # write_finished(index, img, offset, GLOBAL_BB)
   end
   # render_aligned_review(meshset; images=images)
 end
 
-function render_finished(firstindex::Index, lastindex::Index)
-  for index in get_index_range(aligned(firstindex), aligned(lastindex))
-    img = get_image(index)
-    offset = get_offset(index)
-    write_finished(index, img, offset)
-  end
-end
+# function render_finished(firstindex::Index, lastindex::Index)
+#   for index in get_index_range(aligned(firstindex), aligned(lastindex))
+#     img = get_image(index)
+#     offset = get_offset(index)
+#     write_finished(index, img, offset)
+#   end
+# end
 
-function write_finished(index::Index, img, offset, BB=GLOBAL_BB)
-  println("Rescoping ", get_name(index))
-  @time img = rescopeimage(img, offset, BB)
-  index = finished(index)
-  println("Writing ", get_name(index))
-  f = h5open(get_path(index), "w")
-  @time f["img", "chunk", (1000,1000)] = img
-  f["offset"] = offset
-  f["bb"] = [BB.i, BB.j, BB.w, BB.h]
-  close(f)
-end
+# function write_finished(index::Index, img, offset, BB=GLOBAL_BB)
+#   println("Rescoping ", get_name(index))
+#   @time img = rescopeimage(img, offset, BB)
+#   index = finished(index)
+#   println("Writing ", get_name(index))
+#   f = h5open(get_path(index), "w")
+#   @time f["img", "chunk", (1000,1000)] = img
+#   f["offset"] = offset
+#   f["bb"] = [BB.i, BB.j, BB.w, BB.h]
+#   close(f)
+# end
