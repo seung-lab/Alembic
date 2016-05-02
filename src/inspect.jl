@@ -31,8 +31,8 @@ function inspect(meshset::MeshSet, match_ind=0)
   src_index = meshset.matches[k].src_index
   dst_index = meshset.matches[k].dst_index
   println("\n", name, ": ", (src_index, dst_index), num_string)
-  imgc, img2, vectors, params = view_match(meshset, k)
-  enable_inspection(imgc, img2, meshset, k, vectors, params)
+  imgc, img2, params = view_match(meshset, k)
+  enable_inspection(imgc, img2, meshset, k, params)
 end
 
 """
@@ -190,6 +190,7 @@ function view_match(meshset::MeshSet, match_ind)
     params["sigma"] = 7
   end
   params["post_matches"] = false # is_prealigned(indexA)
+  params["meshset"] = meshset
 
   if USE_PYPLOT
     view_inspection_statistics(match, params["search_r"])
@@ -198,9 +199,9 @@ function view_match(meshset::MeshSet, match_ind)
   println("make image")
   imgc, img2 = view(img, pixelspacing=[1,1])
   # resize(imgc, 400, 600)
-  vectors = make_vectors(meshset, match_ind, params)
-  show_vectors(imgc, img2, vectors, RGB(0,0,1), RGB(1,0,1))
-  update_annotations(imgc, img2, match, vectors, params)
+  make_vectors!(params)
+  show_vectors(imgc, img2, params["vectors"], RGB(0,0,1), RGB(1,0,1))
+  update_annotations(imgc, img2, match, params)
 
   c = canvas(imgc)
   win = Tk.toplevel(c)
@@ -213,7 +214,7 @@ function view_match(meshset::MeshSet, match_ind)
   ImageView.set_visible(win, true)
   c.mouse.motion = (path,x,y)-> updatexylabel(xypos, imgc, img2, x, y, params["offset"]..., scale)
 
-  return imgc, img2, vectors, params
+  return imgc, img2, params
 end
 
 function resize(imgc, w, h)
@@ -225,7 +226,9 @@ end
 """
 Make vectors for display, scaling and offsetting appropriately
 """
-function make_vectors(meshset, match_ind, params)
+function make_vectors!(params)
+  meshset = params["meshset"]
+  match_ind = params["match_index"]
   scale = params["scale"]
   offset = params["offset"]
   src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences(meshset, match_ind)
@@ -236,7 +239,9 @@ function make_vectors(meshset, match_ind, params)
   vectorsB = scale_matches(dst_nodes, scale)
   vecs = offset_matches(vectorsA, vectorsB, offset)
   vectors = [hcat(vecs[1]...); hcat(vecs[2]...)]
-  return [vectors[2,:]; vectors[1,:]; vectors[4,:]; vectors[3,:]]
+  params["displacements"] = [vectors[2,:]; vectors[1,:]; vectors[4,:]; vectors[3,:]]
+  params["vectors"] = [vectors[2,:]; vectors[1,:]; vectors[4,:]; vectors[3,:]]
+  change_vector_lengths!(params)
 end
 
 """
@@ -249,15 +254,16 @@ end
 """
 Maintain vector start point, but adjust end point for more prominent visual
 """
-function change_vector_lengths(vectors, k)
-  v = []
+function change_vector_lengths!(params)
+  k = params["vector_scale"]
+  vectors = params["displacements"]
+  params["vectors"] = []
   if length(vectors) > 0
-    v = [vectors[1,:]; 
-          vectors[2,:]; 
-          (vectors[3,:]-vectors[1,:])*k + vectors[1,:]; 
-          (vectors[4,:]-vectors[2,:])*k + vectors[2,:]]
+    params["vectors"] = [vectors[1,:]; 
+                          vectors[2,:]; 
+                          (vectors[3,:]-vectors[1,:])*k + vectors[1,:]; 
+                          (vectors[4,:]-vectors[2,:])*k + vectors[2,:]]
   end
-  return v
 end
 
 function offset_matches(src_pts, dst_pts, offset)
@@ -266,8 +272,9 @@ function offset_matches(src_pts, dst_pts, offset)
   return src_pts, dst_pts
 end
 
-function update_annotations(imgc, img2, match, vectors, params)
-  v = change_vector_lengths(vectors, params["vector_scale"])
+function update_annotations(imgc, img2, match, params)
+  v = params["vectors"] 
+  # v = change_vector_lengths(params["vectors"], params["vector_scale"])
   mask = get_filtered_indices(match)
   for an in Base.values(imgc.annotations)
     if :pts in fieldnames(an.data)
@@ -356,40 +363,38 @@ Extend ImageView to inspect & remove matches
 """
 function enable_inspection(imgc::ImageView.ImageCanvas, 
                                 img2::ImageView.ImageSlice2d, 
-                                meshset, match_ind, vectors, params)
+                                meshset, match_ind, params)
   println("Enable inspection")
   matches = meshset.matches[match_ind]
   c = canvas(imgc)
   win = Tk.toplevel(c)
-  c.mouse.button2press = (c, x, y) -> brushtool_start(c, x, y, (c, bb) -> remove_contained_points(imgc, img2, matches, vectors, bb, params))
+  c.mouse.button2press = (c, x, y) -> brushtool_start(c, x, y, (c, bb) -> remove_contained_points(imgc, img2, matches, bb, params))
   bind(c, "<Button-3>", (c, x, y)->inspect_match(imgc, img2, 
                                                         parse(Int, x), 
                                                         parse(Int, y), 
                                                         matches,
-                                                        vectors, 
                                                         params))
   bind(c, "<Control-Button-3>", (c, x, y)->remove_match(imgc, img2, 
                                                                 parse(Int, x), 
                                                                 parse(Int, y), 
                                                                 matches,
-                                                                vectors,
                                                                 params))
   bind(win, "f", path->toggle_flag(imgc, img2, matches))
-  bind(win, "<Control-z>", path->undo_match_filter(imgc, img2, matches, vectors, params))
+  bind(win, "<Control-z>", path->undo_match_filter(imgc, img2, matches, params))
   bind(win, "<Control-r>", path->refresh(imgc, img2, meshset, match_ind))
   bind(win, "<Escape>", path->disable_inspection(imgc, img2))
   bind(win, "<Destroy>", path->disable_inspection(imgc, img2))
   # bind(win, "z", path->end_edit())
-  # bind(win, "c", path->compare_filter(imgc, img2, matches, vectors))
-  bind(win, "i", path->show_removed(imgc, img2, matches, vectors, params))
-  bind(win, ",", path->decrease_distance_filter(imgc, img2, matches, vectors, params))
-  bind(win, ".", path->increase_distance_filter(imgc, img2, matches, vectors, params))
-  bind(win, "n", path->decrease_sigma_filter(imgc, img2, matches, vectors, params))
-  bind(win, "m", path->increase_sigma_filter(imgc, img2, matches, vectors, params))
-  bind(win, "b", path->adjust_sigma_filter(imgc, img2, matches, vectors, params))
-  bind(win, "=", path->increase_vectors(imgc, img2, meshset, matches, vectors, params))
-  bind(win, "-", path->decrease_vectors(imgc, img2, meshset, matches, vectors, params))
-  bind(win, "p", path->switch_pre_to_post(imgc, img2, meshset, matches, vectors, params))
+  # bind(win, "c", path->compare_filter(imgc, img2, matches))
+  bind(win, "i", path->show_removed(imgc, img2, matches, params))
+  bind(win, ",", path->decrease_distance_filter(imgc, img2, matches, params))
+  bind(win, ".", path->increase_distance_filter(imgc, img2, matches, params))
+  bind(win, "n", path->decrease_sigma_filter(imgc, img2, matches, params))
+  bind(win, "m", path->increase_sigma_filter(imgc, img2, matches, params))
+  bind(win, "b", path->adjust_sigma_filter(imgc, img2, matches, params))
+  bind(win, "=", path->increase_vectors(imgc, img2, meshset, matches, params))
+  bind(win, "-", path->decrease_vectors(imgc, img2, meshset, matches, params))
+  bind(win, "p", path->switch_pre_to_post(imgc, img2, matches, params))
   bind(win, "s", path->save_inspection(meshset, match_ind))
   # bind(win, "<Return>", path->go_to_next_inspection(imgc, img2, meshset, match_ind; forward=true, flag=true, save=true))
   bind(win, "<Control-Shift-Right>", path->go_to_next_inspection(imgc, img2, meshset, match_ind; forward=true, flag=true))
@@ -472,7 +477,7 @@ end
 """
 Preliminary method to test filters in the GUI
 """
-function compare_filter(imgc, img2, match, vectors, params)
+function compare_filter(imgc, img2, match, params)
   filter = (0.5, >, 5)
   inds_to_filter = Array{Any, 1}()
   attributes = get_properties(match, filter[1])
@@ -485,13 +490,13 @@ function compare_filter(imgc, img2, match, vectors, params)
 
   clear_filters!(match)
   filter_manual!(match, reverse_mask)
-  update_annotations(imgc, img2, match, vectors, params)
+  update_annotations(imgc, img2, match, params)
 end
 
 """
 Invert to just the bad matches
 """
-function show_removed(imgc, img2, match, vectors, params)
+function show_removed(imgc, img2, match, params)
   all_inds = Set(1:length(match.src_points))
   rejected_inds = get_rejected_indices(match)
 
@@ -499,11 +504,12 @@ function show_removed(imgc, img2, match, vectors, params)
 
   clear_filters!(match)
   filter_manual!(match, accepted_inds)
-  update_annotations(imgc, img2, match, vectors, params)
+  update_annotations(imgc, img2, match, params)
 end
 
-function inspect_match(imgc, img2, x, y, matches, vectors, params, prox=0.0125)
+function inspect_match(imgc, img2, x, y, matches, params, prox=0.0125)
   # prox: 0.0125 = 100/8000
+  vectors = params["vectors"]
   indices = get_filtered_indices(matches)
   lines = vectors[:, indices]
 
@@ -517,7 +523,7 @@ function inspect_match(imgc, img2, x, y, matches, vectors, params, prox=0.0125)
     ptB = vectors[3:4,idx] # - params["dst_offset"]
     println(idx, ": ", ptA, ", ", ptB)
     bm_win = view_blockmatch(matches, idx, params)
-    detect_blockmatch_removal(imgc, img2, bm_win, matches, idx, vectors, params)
+    detect_blockmatch_removal(imgc, img2, bm_win, matches, idx, params)
   end
 end
 
@@ -547,31 +553,33 @@ function find_idx_of_nearest_pt(pts, pt, limit)
     end
 end
 
-function remove_contained_points(imgc, img2, matches, vectors, bb, params)
+function remove_contained_points(imgc, img2, matches, bb, params)
+  vectors = params["vectors"]
   indices = get_filtered_indices(matches)
   pts = vectors[1:2, indices]
   within_bb = vcat((bb.xmin .<= pts[1,:] .<= bb.xmax) & (bb.ymin .<= pts[2,:] .<= bb.ymax)...)
   contained_indices = indices[within_bb]
   println("Brushtool removed ", length(contained_indices), " points")
   filter_manual!(matches, contained_indices)
-  update_annotations(imgc, img2, matches, vectors, params)
+  update_annotations(imgc, img2, matches, params)
 end
 
 function detect_blockmatch_removal(imgc::ImageView.ImageCanvas, 
                                       img2::ImageView.ImageSlice2d, 
-                                      win, matches, idx, vectors, params)
+                                      win, matches, idx, params)
   bind(win, "<Delete>", path->remove_blockmatch_from_patch_window(win, imgc, 
-                                                  img2, matches, idx, vectors, params))
+                                                  img2, matches, idx, params))
 end
 
-function remove_blockmatch_from_patch_window(win, imgc, img2, matches, idx, vectors, params)
+function remove_blockmatch_from_patch_window(win, imgc, img2, matches, idx, params)
   bind(win, "<Delete>", path->path)
   destroy(win)
   filter_manual!(matches, idx)
-  update_annotations(imgc, img2, matches, vectors, params)
+  update_annotations(imgc, img2, matches, params)
 end
 
-function remove_match(imgc, img2, x, y, matches, vectors, params, prox=0.0125)
+function remove_match(imgc, img2, x, y, matches, params, prox=0.0125)
+  vectors = params["vectors"]
   indices = get_filtered_indices(matches)
   lines = vectors[:, indices]
 
@@ -584,27 +592,27 @@ function remove_match(imgc, img2, x, y, matches, vectors, params, prox=0.0125)
     pt = vectors[1:2,idx]
     println("Manually removed ", idx, ": ", pt)
     filter_manual!(matches, idx)
-    update_annotations(imgc, img2, matches, vectors, params)
+    update_annotations(imgc, img2, matches, params)
   end
 end
 
-function undo_match_filter(imgc, img2, matches, vectors, params)
+function undo_match_filter(imgc, img2, matches, params)
   println("Undo")
   idx = undo_filter!(matches)
-  update_annotations(imgc, img2, matches, vectors, params)
+  update_annotations(imgc, img2, matches, params)
 end
 
-function increase_distance_filter(imgc, img2, matches, vectors, params)
+function increase_distance_filter(imgc, img2, matches, params)
   params["dist"] += 10
-  filter_match_distance(imgc, img2, matches, vectors, params)
+  filter_match_distance(imgc, img2, matches, params)
 end
 
-function decrease_distance_filter(imgc, img2, matches, vectors, params)
+function decrease_distance_filter(imgc, img2, matches, params)
   params["dist"] = max(params["dist"]-10, 0)
-  filter_match_distance(imgc, img2, matches, vectors, params)
+  filter_match_distance(imgc, img2, matches, params)
 end
 
-function filter_match_distance(imgc, img2, matches, vectors, params)
+function filter_match_distance(imgc, img2, matches, params)
   # hack to test if a match_distance filter was just implemented
   dist = params["dist"]
   if length(matches.filters) > 0
@@ -615,28 +623,28 @@ function filter_match_distance(imgc, img2, matches, vectors, params)
   println("Distance filter @ ", dist)
   filter = (:get_properties, >, dist, "norm")
   filter!(matches, filter...)
-  update_annotations(imgc, img2, matches, vectors, params)
+  update_annotations(imgc, img2, matches, params)
 end
 
-function adjust_sigma_filter(imgc, img2, matches, vectors, params)
+function adjust_sigma_filter(imgc, img2, matches, params)
   println("Enter sigma filter value:")
   val = chomp(readline())
   val = parse(Int, val)
   params["sigma"] = val
-  filter_match_sigma(imgc, img2, matches, vectors, params)
+  filter_match_sigma(imgc, img2, matches, params)
 end
 
-function increase_sigma_filter(imgc, img2, matches, vectors, params)
+function increase_sigma_filter(imgc, img2, matches, params)
   params["sigma"] += 1
-  filter_match_sigma(imgc, img2, matches, vectors, params)
+  filter_match_sigma(imgc, img2, matches, params)
 end
 
-function decrease_sigma_filter(imgc, img2, matches, vectors, params)
+function decrease_sigma_filter(imgc, img2, matches, params)
   params["sigma"] = max(params["sigma"]-1, 0)
-  filter_match_sigma(imgc, img2, matches, vectors, params)
+  filter_match_sigma(imgc, img2, matches, params)
 end
 
-function filter_match_sigma(imgc, img2, matches, vectors, params)
+function filter_match_sigma(imgc, img2, matches, params)
   sigma = params["sigma"]
   if length(matches.filters) > 0
     if matches.filters[end]["type"] == 0.5
@@ -644,9 +652,9 @@ function filter_match_sigma(imgc, img2, matches, vectors, params)
     end
   end
   println("Sigma filter @ ", sigma)
-  filter = (:get_properties, >, sigma, 0.5)
+  filter = (:get_properties, >, sigma, 0.8)
   filter!(matches, filter...)
-  update_annotations(imgc, img2, matches, vectors, params)
+  update_annotations(imgc, img2, matches, params)
 end
 
 function toggle_flag(imgc, img2, match)
@@ -659,21 +667,23 @@ function toggle_flag(imgc, img2, match)
   end
 end
 
-function increase_vectors(imgc, img2, meshset, matches, vectors, params)
-  params["vector_scale"] *= 1.1
-  update_annotations(imgc, img2, matches, vectors, params)
+function increase_vectors(imgc, img2, meshset, matches, params)
+  params["vector_scale"] = min(params["vector_scale"] + 1, 100)
+  change_vector_lengths!(params)
+  update_annotations(imgc, img2, matches, params)
 end
 
-function decrease_vectors(imgc, img2, meshset, matches, vectors, params)
-  params["vector_scale"] = max(params["vector_scale"]*0.9, 0.1)
-  update_annotations(imgc, img2, matches, vectors, params)
+function decrease_vectors(imgc, img2, meshset, matches, params)
+  params["vector_scale"] = max(params["vector_scale"] - 1, 0)
+  change_vector_lengths!(params)
+  update_annotations(imgc, img2, matches, params)
 end
 
-function switch_pre_to_post(imgc, img2, meshset, matches, vectors, params)
+function switch_pre_to_post(imgc, img2, matches, params)
   params["post_matches"] = !params["post_matches"]
   println(params["post_matches"] ? "Using post matches" : "Using pre matches" )
-  k = params["match_index"]
-  update_annotations(imgc, img2, matches, vectors, params)
+  make_vectors!(params)
+  update_annotations(imgc, img2, matches, params)
 end
 
 function view_dv_dispersion(index::Index)
@@ -753,7 +763,7 @@ function view_property_histogram(match::Match, property_name; filtered=true, nbi
   attr = get_properties(match, property_name)
   attr_filtered = get_filtered_properties(match, property_name)
   if length(attr) > 1
-    max_bin = min(maximum(attr), 10000)
+    max_bin = min(maximum(attr), 500)
     min_bin = minimum(attr)
     bins = [linspace(min_bin, max_bin, nbins)]
     if filtered
@@ -820,17 +830,17 @@ function view_inspection_statistics(match, sr)
   view_dv_dispersion(match, sr; filtered=false)
   view_dv_dispersion(match, sr; filtered=true)
   subplot(233)
-  view_property_spatial_scatter(match, "r_max"; filtered=false, factor=100)
-  view_property_spatial_scatter(match, "r_max"; filtered=true, factor=100)
-  subplot(234)
   view_property_spatial_scatter(match, 0.5; filtered=false, factor=1)
   view_property_spatial_scatter(match, 0.5; filtered=true, factor=1)
+  subplot(234)
+  view_property_histogram(match, "norm"; filtered=false, nbins=20)
+  view_property_histogram(match, "norm"; filtered=true, nbins=20)
   subplot(235)
   view_property_spatial_scatter(match, "norm"; filtered=false, factor=1)
   view_property_spatial_scatter(match, "norm"; filtered=true, factor=1)
   subplot(236)
-  view_property_histogram(match, 0.5; filtered=false, nbins=20)
-  view_property_histogram(match, 0.5; filtered=true, nbins=20)
+  view_property_spatial_scatter(match, 0.8; filtered=false, factor=1)
+  view_property_spatial_scatter(match, 0.8; filtered=true, factor=1)
 
   src_index = get_src_index(match)
   dst_index = get_dst_index(match)
