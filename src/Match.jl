@@ -65,9 +65,10 @@ function get_norms_std_sigmas(match::Match)
 	if count_filtered_correspondences(match) == 0 
 		return 0.0
 	end
-	norms = convert(Array{Float64}, map(norm, get_filtered_properties(match, "dv")))
-	mu = mean(norms)
-	stdev = std(norms)
+	norms = convert(Array{Float64}, map(norm, get_properties(match, "dv")))
+	filtered_norms = convert(Array{Float64}, map(norm, get_filtered_properties(match, "dv")))
+	mu = mean(filtered_norms)
+	stdev = std(filtered_norms)
 	return (norms - mu) / stdev
 end
 
