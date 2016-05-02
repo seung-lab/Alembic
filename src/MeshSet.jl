@@ -64,10 +64,12 @@ end
 
 function remove_mesh!(meshset::MeshSet, index::Index)
   i = find_mesh_index(meshset, index)
-  deleteat!(meshset.meshes, i)
-  match_indices = find_match_indices(meshset, index)
-  mask = collect(setdiff(Set(1:length(meshset.matches)), match_indices))
-  meshset.matches = meshset.matches[mask]
+  if i != 0
+    deleteat!(meshset.meshes, i)
+    match_indices = find_match_indices(meshset, index)
+    mask = collect(setdiff(Set(1:length(meshset.matches)), match_indices))
+    meshset.matches = meshset.matches[mask]
+  end
 end
 
 ### reviewing
@@ -221,15 +223,19 @@ function concat_meshsets(filenames::Array)
   return ms
 end
 
-# function merge_mesh_lists(meshesA, meshesB)
-#   for mesh in meshset_two.meshes
-#     index = get_index(mesh)
-#     ind = find_mesh_index(meshset_one, index)
-#     if ind == 0 
-#       push!(meshset_one.meshes, mesh) 
-#     end
-#   end
-# end
+"""
+Merge meshes from list A into list B if they don't already exist
+"""
+function merge_meshes!(meshesA, meshesB)
+  indices = map(get_index, meshesB)
+  for mesh in meshesA
+    index = get_index(mesh)
+    if !(index in indices)
+      push!(meshesB, mesh) 
+    end
+  end
+  sort!(meshesB; by=get_index)
+end
 
 """
 Combine unique matches and meshes from meshset_two into meshset_one
@@ -243,14 +249,7 @@ function concat!(meshset_one::MeshSet, meshset_two::MeshSet)
       push!(meshset_one.matches, match)
     end
   end
-  for mesh in meshset_two.meshes
-    index = get_index(mesh)
-  	ind = find_mesh_index(meshset_one, index)
-  	if ind == 0 
-      push!(meshset_one.meshes, mesh) 
-    end
-  end
-  sort!(meshset_one.meshes; by=get_index)
+  merge_meshes!(meshset_two.meshes, meshset_one.meshes)
   sort!(meshset_one.matches; by=get_dst_index)
   sort!(meshset_one.matches; by=get_src_index)
 	return meshset_one;
@@ -348,12 +347,33 @@ function MeshSet(first_index, last_index; params=get_params(first_index), solve=
 	return meshset;
 end
 
-function MeshSet(firstindex::Index, lastindex::Index, fixed_meshes; params=get_params(firstindex))
+function MeshSet(firstindex::Index, lastindex::Index, fixed_meshes::Array{Mesh,1}; params=get_params(firstindex))
+  println("Using ", length(fixed_meshes), " fixed meshes to build meshset")
   indices = get_index_range(firstindex, lastindex)
-  if length(indices) == 0 return nothing; end
-  meshes = map(Mesh, ind_range, repeated(params));
+  if length(indices) == 0 
+    return nothing; 
+  end
+  meshes = map(Mesh, indices, repeated(params));
+  map(fix!, fixed_meshes)
+  merge_meshes!(meshes, fixed_meshes) # merge meshes into fixed_meshes
+  matches = Array{Match, 1}(0)
+  properties = Dict{Any, Any}(  "params"  => params,
+          "author" => author(),
+          "meta" => Dict{Any, Any}(
+          "parent" => nothing,
+          "split_index" => 0)
+          )
+  for mesh in fixed_meshes
+    println(get_index(mesh), " ", length(mesh.src_nodes))
+  end
+  meshset = MeshSet(fixed_meshes, matches, properties);
+  match!(meshset, params["match"]["depth"]);
 
+  filter!(meshset);
+  check_and_fix!(meshset);
 
+  save(meshset);
+  return meshset;
 end
 
 function mark_solved(meshset::MeshSet)
