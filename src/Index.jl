@@ -214,7 +214,11 @@ end
 
 function get_index_range(firstindex::Index, lastindex::Index)
   firstindex, lastindex = match_index_stages(firstindex, lastindex)
-  return filter(i->firstindex <= i <= lastindex, get_indices(firstindex))
+  if is_premontaged(firstindex)
+    get_registry(firstindex)[get_range_in_registry(firstindex, lastindex), 2]
+  else
+    return filter(i->firstindex <= i <= lastindex, get_indices(firstindex))
+  end
 end
 
 function match_index_stages(indexA, indexB)
