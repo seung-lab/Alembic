@@ -192,7 +192,7 @@ end
 
 datasets_dir_path = "research/Julimaps/datasets"
 cur_dataset = "piriform"
-in_alignment_test = false
+in_alignment_test = true
 test_dataset = "piriform_finer_mesh"
 #cur_dataset = "zebrafish"
 affine_dir_path = "~"

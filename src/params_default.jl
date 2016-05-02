@@ -36,7 +36,7 @@ MESH_LENGTH_ALIGNMENT = 800
 GLOBAL_OFFSETS_ALIGNMENT = true
 BLOCKMATCH_SCALE_ALIGNMENT = 1.0
 BLOCK_R_ALIGNMENT = 200
-SEARCH_R_ALIGNMENT = 2000
+SEARCH_R_ALIGNMENT = 407
 MONOBLOCK_SCALE_ALIGNMENT = 1
 MONOBLOCK_MATCH_ALIGNMENT = false
 MONOBLOCK_RATIO_ALIGNMENT = 0.4
@@ -78,7 +78,7 @@ global PARAMS_MONTAGE = Dict(
 			     "filter" => Dict(
 			     		"sigma_filter" => (:get_properties, >, 7.5, 0.5),
 			     		"r_filter" => (:get_properties, <, 0.15, "r_max"),
-			     		"norm_filter" => (:get_norms_std_sigmas, >, 5)
+			     		"norm_filter" => (:get_norms_std_sigmas, .>, 5)
 					      ),
 			     "render" => Dict(
 					      ),
@@ -163,7 +163,7 @@ global PARAMS_ALIGNMENT = Dict(
 			     	"eta_newton" => ETA_NEWTON_ALIGNMENT,
 			     	"ftol_newton" => FTOL_NEWTON_ALIGNMENT),
 			     "filter" => Dict(
-			     		"sigma_filter" => (:get_properties, >, 30, 0.5),
+			     		"sigma_filter" => (:get_properties, >, 15, 0.8),
 			     		"r_filter" => (:get_properties, <, 0.15, "r_max"),
 			     		"norm_filter" => (:get_norms_std_sigmas, >, 5)
 					      ),
