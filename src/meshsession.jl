@@ -93,7 +93,7 @@ function align(index_list)
 end
 
 function align_over_missing_tiles(index_depth_list)
-  for (firstindex, lastindex, depth) in index_depth_list[1:7]
+  for (firstindex, lastindex, depth) in index_depth_list
     params = get_params(firstindex);
     params["match"]["depth"] = depth;
     ms = MeshSet(firstindex, lastindex; solve=false, params=params);
