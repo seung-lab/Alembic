@@ -1,3 +1,23 @@
+global const IMG_ELTYPE = UInt8
+#global const IMG_SUP_SIZE = (75000, 75000)
+
+# size in bytes
+global const IMG_CACHE_SIZE = 5 * 2^30 # n * gibibytes
+global const IMG_CACHE_DICT = Dict{Any, SharedArray}()
+global const IMG_CACHE_LIST = Array{Any, 1}();
+
+global const IO_PROC = nprocs();
+#global const WORKER_PROCS = setdiff(procs(), IO_PROC);
+if nprocs() > 2
+global const WORKER_PROCS = setdiff(procs(), [1, IO_PROC]);
+else 
+global const WORKER_PROCS = setdiff(procs(), [1]);
+end
+
+#global const SHARED_SRC_IMAGE = SharedArray(IMG_ELTYPE, SUP_SIZE)
+#global const SHARED_DST_IMAGE = SharedArray(IMG_ELTYPE, SUP_SIZE)
+
+
 function save(path::String, img::Array)
       f = h5open(path, "w")
       @time f["img", "chunk", (1000,1000)] = img
@@ -7,7 +27,7 @@ function save(path::String, img::Array)
 # extensions:
 # Mesh.jl	get_image(mesh::Mesh)
 # filesystem.jl	get_image() 
-function get_image(path::String, dtype = UInt8)
+function get_image_disk(path::String, dtype = IMG_ELTYPE)
 	ext = splitext(path)[2];
   	if ext == ".tif"
   		img = data(FileIO.load(path))
@@ -19,42 +39,103 @@ function get_image(path::String, dtype = UInt8)
 	end
 end
 
-function get_uint8_image(path::String)
-  img = Images.load(path)
-  return reinterpret(UInt8, data(img)[:,:,1])'
+function prefetch(index, scale=1.0, dtype = IMG_ELTYPE)
+        clean_cache()  
+	if haskey(IMG_CACHE_DICT, (get_path(index), scale)) index = NO_INDEX end;
+	println("$(get_path(index)) is being prefetched at scale $scale...")
+	return remotecall(IO_PROC, get_image_disk_async, index, scale, dtype);
 end
 
-function get_image(index, dtype = UInt8)
-  return get_image(get_path(index), dtype)
+function get_image_disk_async(index, scale=1.0, dtype = IMG_ELTYPE) 
+        if index == NO_INDEX
+	  return nothing;
+	end
+        path = get_path(index);
+	img = get_image_disk(path, dtype);
+	scaled_img = imscale(img, scale)[1]
+	ref = RemoteRef();
+	put!(ref, scaled_img);
+	remotecall_fetch(1, load_image, path, scale, ref, dtype)
+	return nothing;
+end
+
+function load_image(path::String, scale, img::Array, dtype = IMG_ELTYPE)
+	    push!(IMG_CACHE_LIST, (path, scale))
+	    IMG_CACHE_DICT[(path, scale)] = img;
+end
+
+function load_image(path::String, scale, imgref::RemoteRef, dtype = IMG_ELTYPE)
+            img = take!(imgref);
+	    close(imgref);
+	    load_image(path, scale, img, dtype);
+	    img = 0;
+	   fetch = remotecall(IO_PROC, gc); gc(); wait(fetch)
+end
+
+function clean_cache()
+	if sum(map(Int64, map(length, values(IMG_CACHE_DICT)))) > IMG_CACHE_SIZE && !(length(IMG_CACHE_DICT) < 2)
+	while sum(map(Int64, map(length, values(IMG_CACHE_DICT)))) > IMG_CACHE_SIZE * 0.75 && !(length(IMG_CACHE_DICT) < 2)
+		todelete = shift!(IMG_CACHE_LIST);
+		IMG_CACHE_DICT[todelete] = SharedArray(IMG_ELTYPE, 0, 0);
+		delete!(IMG_CACHE_DICT, todelete)
+	end
+	@everywhere gc();
+      end
+
+	cur_cache_size = sum(map(Int64, map(length, values(IMG_CACHE_DICT))));
+
+	println("current cache usage: $cur_cache_size / $IMG_CACHE_SIZE (bytes), $(round(Int64, cur_cache_size/IMG_CACHE_SIZE * 100))%")
+end
+
+function get_image(path::String, scale=1.0, dtype = IMG_ELTYPE)
+	@everywhere gc();
+#=  	if myid() != IO_PROC
+	  return remotecall_fetch(IO_PROC, get_image, path, scale, dtype);
+	end =#
+
+  	if haskey(IMG_CACHE_DICT, (path, scale))
+	  println("$path is in cache at scale $scale - loading from cache...")
+	  return IMG_CACHE_DICT[(path, scale)]
+	end
+
+	clean_cache();
+
+	if !haskey(IMG_CACHE_DICT, (path, 1.0))
+	    println("$path is not in cache at full scale - loading into cache...")
+	    img = get_image_disk(path, dtype);
+	    shared_img = SharedArray(dtype, size(img)...);
+	    shared_img[:,:] = img[:,:];
+
+	    push!(IMG_CACHE_LIST, (path, 1.0))
+	    IMG_CACHE_DICT[(path, 1.0)] = shared_img;
+	end
+
+	if scale != 1.0
+	  println("$path is in cache at full scale - downsampling to scale $scale...")
+	  scaled_img = imscale(sdata(IMG_CACHE_DICT[(path, 1.0)]), scale)[1]
+    	  shared_img_scaled = SharedArray(dtype, size(scaled_img)...);
+	  shared_img_scaled[:,:] = scaled_img[:,:];
+
+	  push!(IMG_CACHE_LIST, (path, scale))
+	  IMG_CACHE_DICT[(path, scale)] = shared_img_scaled;
+        end
+
+	@everywhere gc();
+	return IMG_CACHE_DICT[(path, scale)];
+end
+
+function get_image(index, scale = 1.0, dtype = IMG_ELTYPE)
+  return get_image(get_path(index), scale, dtype)
 end
 
 function ufixed8_to_uint8(img)
   reinterpret(UInt8, -img)
 end
 
-function get_h5_path(index::Index)
-  return string(get_path(index)[1:end-4], ".h5")
-end
-
-function get_h5_slice(path::String, slice)
+function get_slice(path::String, slice)
   # return reinterpret(Ufixed8, h5read(path, "img", slice))
+  if splitext(path)[2] != ".h5" return get_image(path)[slice...] end
   return h5read(path, "img", slice)
-end
-
-function get_h5_image(path::String)
-  return h5read(path, "img")
-end
-
-# extensions:
-# Mesh.jl get_float_image(mesh::Mesh)
-function get_float_image(path::String)
-  img = Images.load(path)
-  img.properties["timedim"] = 0
-  return convert(Array{Float64, 2}, convert(Array, img[:,:,1]))
-end
-
-function get_ufixed8_image(path::String)
-  return convert(Array{Ufixed8}, data(Images.load(path))[:,:,1])'
 end
 
 function load_affine(path::String)
@@ -162,7 +243,7 @@ function make_stack_from_finished(firstindex::Index, lastindex::Index, slice=(1:
     for index in get_index_range(firstindex, lastindex)
         index = finished(index)
         print(string(join(index[1:2], ",") ,"|"))
-        img = get_h5_slice(get_path(index), slice)
+        img = get_slice(get_path(index), slice)
         if bb == nothing
             bb = h5read(get_path(index), "bb")
         else
@@ -196,7 +277,7 @@ function make_stack(firstindex::Index, lastindex::Index, slice=(1:255, 1:255))
       h5_slice = bb_to_slice(img_roi)
       img_slice = bb_to_slice(stack_roi)
       # println(h5_slice, " " , img_slice)
-      img[img_slice...] = get_h5_slice(get_path(index), h5_slice) 
+      img[img_slice...] = get_slice(get_path(index), h5_slice) 
     end
     push!(imgs, img)
   end

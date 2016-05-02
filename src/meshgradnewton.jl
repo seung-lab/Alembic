@@ -20,7 +20,8 @@ E = # of springs
 could be changed to 1xE binary vector
 """
 
-global eps = 1E-8
+# defined in Julimaps
+#global eps = 1E-8
 
 function EnergyGD( Springs, Stiffnesses, RestLengths)
     # potential energy in springs

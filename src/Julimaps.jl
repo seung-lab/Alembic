@@ -42,6 +42,8 @@ global const PREALIGNED_INDEX = -3;
 global const ALIGNED_INDEX = -4;
 global const FINISHED_INDEX = -5;
 
+global const eps = 1e-12;
+
 
 if !haskey(ENV, "USER")
   ENV["USER"] = "ubuntu"
@@ -59,11 +61,6 @@ else
   global const USE_PYPLOT = true;
 end
 
-global const IMG_ELTYPE = UInt8
-global const SUP_SIZE = (80000, 80000)
-
-global const SHARED_SRC_IMAGE = SharedArray(IMG_ELTYPE, SUP_SIZE)
-global const SHARED_DST_IMAGE = SharedArray(IMG_ELTYPE, SUP_SIZE)
 
 PKGS_USED = ["HDF5", "JLD", "Images", "ImageView", "Colors", "FixedPointNumbers", "Cairo", "IterativeSolvers", "Optim", "Distributions", "RegERMs", "PyPlot"]
 

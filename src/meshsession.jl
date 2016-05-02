@@ -80,8 +80,8 @@ function reprealign(firstindex::Index, lastindex::Index, params)
   end
 end
 
-function align(firstindex::Index, lastindex::Index; fix_first=false, fix_last=false)
-  ms = MeshSet(firstindex, lastindex; solve=false, fix_first=fix_first, fix_last=fix_last)
+function align(firstindex::Index, lastindex::Index; fix_first=false)
+  ms = MeshSet(firstindex, lastindex; solve=false, fix_first=fix_first)
   render_aligned_review(ms)
   split_meshset(ms)
 end

@@ -9,7 +9,7 @@ function meshwarp_mesh(mesh::Mesh)
   offset = get_offset(mesh);
   node_dict = incidence_to_dict(mesh.edges')
   triangles = dict_to_triangles(node_dict)
-  return @time ImageRegistration.meshwarp(img, src_nodes, dst_nodes, triangles, offset), get_index(mesh)
+  return @time ImageRegistration.meshwarp(sdata(img), src_nodes, dst_nodes, triangles, offset), get_index(mesh)
 end
 
 """
@@ -155,6 +155,8 @@ end
 
 function render_prealigned(src_index::Index, dst_index::Index, src_img, dst_img, 
                 cumulative_tform, tform; render_full=false, render_review=true)
+		src_img = sdata(src_img);
+		dst_img = sdata(dst_img);
   scale = 0.05
   s = make_scale_matrix(scale)
 
@@ -211,7 +213,7 @@ Check images dict for thumbnail, otherwise render it - just moving prealigned
 function retrieve_image(images, index; tform=eye(3))
   if !(index in keys(images))
     println("Making review for ", index)
-    img = get_image(index)
+    img = sdata(get_image(index))
     offset = get_offset(index)
     img, offset = imwarp(img, tform, offset)
     images[index] = img, offset
@@ -252,11 +254,15 @@ function render_aligned(firstindex::Index, lastindex::Index, start=1, finish=0)
   render_aligned(meshset, start, finish)
 end
 
-function render_aligned(meshset::MeshSet, start=1, finish=length(meshset.meshes))
+@fastmath @inbounds function render_aligned(meshset::MeshSet, start=1, finish=length(meshset.meshes))
   scale = 0.05
   s = make_scale_matrix(scale)
   images = Dict()
-  for (k, mesh) in enumerate(meshset.meshes[start:finish])
+  for mesh_ind in start:finish
+    if mesh_ind != finish
+      fetch = prefetch(get_index(meshset.meshes[mesh_ind + 1]));
+    end
+    mesh = meshset.meshes[mesh_ind];
     index = aligned(mesh.index)
     println("Warping ", mesh.index)
     @time (img, offset), _ = meshwarp_mesh(mesh)
@@ -272,6 +278,9 @@ function render_aligned(meshset::MeshSet, start=1, finish=length(meshset.meshes)
     # images[index] = imwarp(img, s) 
     # Rescope the image & save
     # write_finished(index, img, offset, GLOBAL_BB)
+    # if mesh_ind != finish
+    #   wait(fetch);
+    # end
   end
   # render_aligned_review(meshset; images=images)
 end
@@ -284,7 +293,7 @@ end
 #   end
 # end
 
-# function write_finished(index::Index, img, offset, BB=GLOBAL_BB)
+# @fastmath @inbounds function write_finished(index::Index, img, offset, BB=GLOBAL_BB)
 #   println("Rescoping ", get_name(index))
 #   @time img = rescopeimage(img, offset, BB)
 #   index = finished(index)
