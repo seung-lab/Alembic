@@ -20,27 +20,40 @@ function render_flagged_montages(firstindex::Index, lastindex::Index)
   end
 end
 
-function remontage(firstindex::Index, lastindex::Index, params)
+function remontage(index::Index)
+  index = montaged(index)
+  ms = MeshSet(index)
+  if is_flagged(ms)
+    render_montaged(ms; render_full=false, render_review=true, flagged_only=true)
+  else
+    render_montaged(ms; render_full=true, render_review=false)
+  end
+  return ms
+end
+
+function render_montage_and_prealign(firstindex::Index, lastindex::Index)
+  params = get_params(premontaged(firstindex))
   for index in get_index_range(montaged(firstindex), montaged(lastindex))
     ms = load(index)
-    check!(ms)
-    if is_flagged(ms)
-      ms = MeshSet(index; params=params)
+    ms.properties["params"]["solve"] = params["solve"]
+    solve!(ms)
+    save(ms)
+    render_montaged(ms; render_full=true, render_review=false)
+    if index > firstindex
+      ms = prealign(index)
       if is_flagged(ms)
-        render_montaged(ms; render_full=false, render_review=true, flagged_only=true)
-      else
-        render_montaged(ms; render_full=true, render_review=false)
+        render_prealigned(index; render_full=false, render_review=true, startindex=montaged(firstindex))
       end
     end
   end
 end
 
-function prealign(firstindex::Index, lastindex::Index; start_to_fixed=false)
+function prealign(firstindex::Index, lastindex::Index; fix_start=false)
   for index in get_index_range(montaged(firstindex), montaged(lastindex))
     ms = MeshSet()
-    if index==firstindex
+    if index==firstindex && fix_start
       println("Prealigning first section to FIXED aligned section")
-      ms = prealign(index; to_fixed=start_to_fixed)
+      ms = prealign(index; to_fixed=fix_start)
     else 
       ms = prealign(index)
     end
@@ -76,6 +89,15 @@ end
 function align(index_list)
   for (indexA, indexB) in index_list
     align(indexA, indexB)
+  end
+end
+
+function align_over_missing_tiles(index_depth_list)
+  for (firstindex, lastindex, depth) in index_depth_list
+    params = get_params(firstindex);
+    params["match"]["depth"] = depth;
+    ms = MeshSet(firstindex, lastindex; solve=false, params=params);
+    render_aligned_review(ms)
   end
 end
 

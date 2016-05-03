@@ -32,7 +32,7 @@ MONOBLOCK_PADDING_PREALIGNMENT = 0.0
 # MAX_ITERS_PREALIGNMENT = 1000
 # USE_CONJUGATE_GRADIENT_ALIGNMENT = false
 
-MESH_LENGTH_ALIGNMENT = 1750
+MESH_LENGTH_ALIGNMENT = 800
 GLOBAL_OFFSETS_ALIGNMENT = true
 BLOCKMATCH_SCALE_ALIGNMENT = 0.25
 BLOCK_R_ALIGNMENT = 400
@@ -85,10 +85,10 @@ global PARAMS_MONTAGE = Dict(
 			     "render" => Dict(
 					      ),
 			     "review" => Dict(
-						"too_few_corresps" => (:count_correspondences, <, 10),
-						"rejected_ratio" => (:get_ratio_rejected, >, 0.25, 0),
+						# "too_few_corresps" => (:count_correspondences, <, 10),
+						"rejected_ratio" => (:get_ratio_rejected, >, 0.66, 8),
 						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.95),
-						"norm_outliers" => (:count_outlier_norms, >, 0, 3),
+						# "norm_outliers" => (:count_outlier_norms, >, 0, 3),
 						"centered_norm" => (:get_maximum_centered_norm, >, BLOCK_R_MONTAGE/2)
 					      ),
 			     "registry" => Dict(

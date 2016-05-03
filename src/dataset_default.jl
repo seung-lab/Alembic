@@ -59,7 +59,6 @@ function get_path(name::String)
     return get_path(parse_name(name))
 end
 
-
 function get_image(index::Index)
     return get_image(get_path(index))
 end
@@ -193,6 +192,8 @@ end
 
 datasets_dir_path = "research/Julimaps/datasets"
 cur_dataset = "piriform"
+in_alignment_test = true
+test_dataset = "piriform_finer_mesh"
 #cur_dataset = "zebrafish"
 affine_dir_path = "~"
 
@@ -204,6 +205,7 @@ aligned_dir_path = "4_aligned"
 finished_dir_path = "5_finished"
 
 expunged_dir = "expunged"
+stack_dir = "stacks"
 
 wafer_filename = "wafer_paths.txt"
 premontaged_registry_filename = "registry_premontaged.txt"
@@ -221,8 +223,15 @@ global RAW_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, raw_d
 global PREMONTAGED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, premontaged_dir_path)
 global MONTAGED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, montaged_dir_path)
 global PREALIGNED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, prealigned_dir_path)
-global ALIGNED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, aligned_dir_path)
-global FINISHED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, finished_dir_path)
+if in_alignment_test
+    global ALIGNED_DIR = joinpath(bucket_dir_path, datasets_dir_path, test_dataset, aligned_dir_path)
+    global FINISHED_DIR = joinpath(bucket_dir_path, datasets_dir_path, test_dataset, finished_dir_path)
+    global STACKS_DIR = joinpath(bucket_dir_path, datasets_dir_path, test_dataset, finished_dir_path, stack_dir)
+else
+    global ALIGNED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, aligned_dir_path)
+    global FINISHED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, finished_dir_path)
+    global STACKS_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, finished_dir_path, stack_dir)
+end
 
 global EXPUNGED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, raw_dir_path, expunged_dir)
 

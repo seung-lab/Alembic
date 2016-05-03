@@ -114,9 +114,13 @@ function get_registry(index)
   elseif is_montaged(index) registry = REGISTRY_MONTAGED;
   elseif is_prealigned(index) registry = REGISTRY_PREALIGNED;
   elseif is_aligned(index) registry = REGISTRY_ALIGNED;
-  elseif is_registered(index) registry = REGISTRY_ALIGNED;
+  elseif is_finished(index) registry = REGISTRY_FINISHED;
   else registry = Void; println("Index $index does not correspond to a pipeline stage."); end
   return registry; 
+end
+
+function get_indices(index::Index)
+  return get_registry(index)[:,2]
 end
 
 function get_params(index)
@@ -133,12 +137,15 @@ function find_in_registry(index)
   return findfirst(registry[:,2], index);
 end
 
-function purge_from_registry!(index)
-  assert(is_premontaged(index))
+"""
+Remove index from registry file & reload that registry
+"""
+function purge_from_registry!(index::Index)
+  # assert(is_premontaged(index))
   registry_path = get_registry_path(index)
   registry = readdlm(registry_path)
   i = find_in_registry(index)
-  println("Purging $index from REGISTRY_PREMONTAGED")
+  println("Purging $index from $registry_path")
   registry = registry[1:size(registry,1).!=i, :]
   writedlm(registry_path, registry)
   reload_registry(index)
@@ -158,7 +165,7 @@ function get_offset(index)
 	return Point(metadata[3:4]);
 end
 
-function get_image_size(index)
+function get_image_size(index::Index)
 	metadata = get_metadata(index);
 	return Array{Int64, 1}(metadata[5:6]);
 end
@@ -205,23 +212,38 @@ function get_preceding_in_wafer(index::Index)
   end
 end
 
-function get_index_range(first_index, last_index)
-  if is_finished(first_index) || is_finished(last_index)
-    first_index, last_index = aligned(first_index), aligned(last_index)
+function get_index_range(firstindex::Index, lastindex::Index)
+  firstindex, lastindex = match_index_stages(firstindex, lastindex)
+  if is_premontaged(firstindex)
+    get_registry(firstindex)[get_range_in_registry(firstindex, lastindex), 2]
+  else
+    return filter(i->firstindex <= i <= lastindex, get_indices(firstindex))
   end
-	ran = get_registry(last_index)[get_range_in_registry(first_index, last_index), 2];
-	return ran;
 end
 
-function get_range_in_registry(indexA, indexB)
-	
-	if indexA[1:2] == indexB[1:2] && is_premontaged(indexA) && is_premontaged(indexB)
-			return find(ind -> ind[1:2] == indexA[1:2], REGISTRY_PREMONTAGED[:, 2]);
+function match_index_stages(indexA, indexB)
+  if is_premontaged(indexA)
+    indexB = premontaged(indexB)
+  elseif is_montaged(indexA)
+    indexB = montaged(indexB)
+  elseif is_prealigned(indexA)
+    indexB = prealigned(indexB)
+  elseif is_aligned(indexA)
+    indexB = aligned(indexB)
+  elseif is_finished(indexA)
+    indexA = aligned(indexA)
+    indexB = aligned(indexB)
+  end
+  return indexA, indexB
+end
+
+function get_range_in_registry(firstindex, lastindex)
+	firstindex, lastindex = match_index_stages(firstindex, lastindex)
+	if firstindex[1:2] == lastindex[1:2] && is_premontaged(firstindex) && is_premontaged(lastindex)
+			return find(ind -> ind[1:2] == firstindex[1:2], REGISTRY_PREMONTAGED[:, 2]);
 	end
-	if indexA[3] != indexB[3] || indexA[4] != indexB[4]
-		println("The indices are from different pipeline stages or from different sections for premontage. Defaulting to the latter's stage...");
-	end
-	return find_in_registry((indexA[1:2]..., indexB[3:4]...)):find_in_registry(indexB);
+  indices = get_indices(firstindex)
+  return eachindex(indices)[firstindex .<= indices .<= lastindex]
 end
 
 """

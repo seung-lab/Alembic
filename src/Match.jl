@@ -21,11 +21,11 @@ function count_filtered_properties(match::Match, property_name, compare, thresho
 end
 
 function get_ratio_filtered(match::Match, min_corresps = 0) 
-  if count_correspondences(match) < min_corresps return 1.0 end
+  if count_correspondences(match) < min_corresps return 1.0 end # ignore low match cases
 return count_filtered_correspondences(match) / max(count_correspondences(match), 1); end
 
 function get_ratio_rejected(match::Match, min_corresps = 0) 
-  if count_correspondences(match) < min_corresps return 1.0 end
+  if count_correspondences(match) < min_corresps return 0.0 end # ignore low match cases
 return count_rejected_correspondences(match) / max(count_correspondences(match), 1); end
 
 function get_ratio_edge_proximity(match::Match)
@@ -65,9 +65,10 @@ function get_norms_std_sigmas(match::Match)
 	if count_filtered_correspondences(match) == 0 
 		return 0.0
 	end
-	norms = convert(Array{Float64}, map(norm, get_filtered_properties(match, "dv")))
-	mu = mean(norms)
-	stdev = std(norms)
+	norms = convert(Array{Float64}, map(norm, get_properties(match, "dv")))
+	filtered_norms = convert(Array{Float64}, map(norm, get_filtered_properties(match, "dv")))
+	mu = mean(filtered_norms)
+	stdev = std(filtered_norms)
 	return (norms - mu) / stdev
 end
 
@@ -462,7 +463,6 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
         end
 
 	ranges = pmap(get_ranges, src_mesh.src_nodes, repeated(src_index), repeated(get_offset(src_index)), repeated(get_image_size(src_index)), repeated(dst_index), repeated(get_offset(dst_index)), repeated(get_image_size(dst_index)), repeated(params["match"]["block_r"]), repeated(params["match"]["search_r"]), repeated(params["registry"]["global_offsets"]); pids=WORKER_PROCS);
-
 	ranged_inds = find(i -> i != nothing, ranges);
 	ranges = ranges[ranged_inds];
 	print("    ")

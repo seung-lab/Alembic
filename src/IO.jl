@@ -300,7 +300,7 @@ function save_stack(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, 
   y_slice = [slice[2][1], slice[2][end]] + origin
   z_slice = [find_in_registry(aligned(firstindex)), find_in_registry(aligned(lastindex))]
   filename = string(cur_dataset, "_", join([join(x_slice, "-"), join(y_slice, "-"), join(z_slice,"-")], "_"), ".h5")
-  filepath = joinpath(STACKS_DIR, filename)
+  filepath = joinpath(FINISHED_DIR, filename)
   println("\nSaving stack to ", filepath)
   f = h5open(filepath, "w")
   chunksize = min(512, min(size(stack)...))
@@ -319,4 +319,34 @@ function save_stack(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, 
   f["timestamp"] = string(now())
   f["dataset"] = cur_dataset
   close(f)
+end
+
+function build_range(origin, cube_dim, overlap, grid_dim, i)
+  return origin[i] : cube_dim[i]-overlap[i] : origin[i] + (cube_dim[i]-overlap[i]) * grid_dim[i]-1
+end
+
+"""
+Save out a grid of cubes starting from the orgin
+
+All dimensions in i,j,k format
+"""
+function save_cubes(origin::Tuple{Int64, Int64, Int64}, cube_dims::Tuple{Int64, Int64, Int64}, overlap::Tuple{Int64, Int64, Int64}, grid_dims::Tuple{Int64, Int64, Int64})
+  indices = get_indices(aligned(1,2))
+  start_i = build_range(origin, cube_dims, overlap, grid_dims, 1)
+  start_j = build_range(origin, cube_dims, overlap, grid_dims, 2)
+  start_k = build_range(origin, cube_dims, overlap, grid_dims, 3)
+  x,y,z = cube_dims
+  n = 1
+  for i in start_i
+    for j in start_j
+      for k in start_k
+        firstindex = indices[k]
+        lastindex = indices[k+z-1]
+        slice = (i:i+x-1, j:j+y-1)
+        println(join([n, firstindex, lastindex, slice], ", "))
+        n += 1
+        save_stack(firstindex, lastindex, slice)
+      end
+    end
+  end
 end

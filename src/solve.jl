@@ -107,6 +107,7 @@ end
 function solve!(meshset)
   method=meshset.properties["params"]["solve"]["method"]
   solve!(meshset; method=method)
+  mark_solved(meshset)
 end
 
 function solve!(meshset; method="elastic")
@@ -121,10 +122,10 @@ function solve!(meshset; method="elastic")
 	if method == "affine" return affine_solve!(meshset); end
 end
 
-#="""
+"""
 Elastic solve
-"""=#
-function elastic_solve!(meshset; from_current =false)
+"""
+function elastic_solve!(meshset; from_current = true)
   params = get_params(meshset)
   #fixed = get_fixed(meshset)
   match_spring_coeff = params["solve"]["match_spring_coeff"]
@@ -180,14 +181,12 @@ function elastic_solve!(meshset; from_current =false)
 
   for mesh in meshset.meshes
     if from_current
-    nodes[:, noderanges[get_index(mesh)]] = get_globalized_nodes_h(mesh)[2];
-  else
-    nodes[:, noderanges[get_index(mesh)]] = get_globalized_nodes_h(mesh)[1];
-  end
+      nodes[:, noderanges[get_index(mesh)]] = get_globalized_nodes_h(mesh)[2];
+    else
+      nodes[:, noderanges[get_index(mesh)]] = get_globalized_nodes_h(mesh)[1];
+    end
     if is_fixed(mesh)
-    nodes_fixed[noderanges[get_index(mesh)]] = fill(true, count_nodes(mesh));
-   # else
-    #nodes_fixed[noderanges[get_index(mesh)]] = fill(false, count_nodes(mesh));
+      nodes_fixed[noderanges[get_index(mesh)]] = fill(true, count_nodes(mesh));
     end
     edge_lengths[edgeranges[get_index(mesh)]] = get_edge_lengths(mesh);
     edge_spring_coeffs[edgeranges[get_index(mesh)]] = fill(mesh_spring_coeff, count_edges(mesh));
@@ -202,9 +201,11 @@ function elastic_solve!(meshset; from_current =false)
 	global LOCAL_SPM = spzeros(num_nodes, num_edges)
   end
 
-@sync begin
-   @async for proc in procs() remotecall_fetch(proc, make_local_sparse, count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset)); end 
- end
+  @sync begin
+    @async for proc in procs() 
+      remotecall_fetch(proc, make_local_sparse, count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset)); 
+    end 
+  end
 
   function copy_sparse_matrix(mesh_ref, noderange, edgerange)
     mesh = fetch(mesh_ref)
