@@ -80,7 +80,21 @@ Boolean if bounding boxes intersect
 """
 function intersects(bbA::BoundingBox, bbB::BoundingBox)
   bb = bbA - bbB
-  return !isequal(bb.i, NaN)
+  return !isnan(bb.i)
+end
+
+"""
+Shift bounding box by 2-element array
+"""
+function translate_bb(bb::BoundingBox, offset)
+  return BoundingBox(bb.i + offset[1], bb.j + offset[2], bb.h, bb.w)
+end
+
+"""
+Convert bounding box to tuple of ranges for easy array slicing
+"""
+function bb_to_slice(bb::BoundingBox)
+  return Int64(bb.i+1) : Int64(bb.i+bb.h), Int64(bb.j+1) : Int64(bb.j+bb.w)
 end
 
 """

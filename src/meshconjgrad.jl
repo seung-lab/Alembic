@@ -97,6 +97,7 @@ function SolveMeshConjugateGradient!(Vertices, Fixed, Incidence, Stiffnesses, Re
         Vertices_t[Moving] = x[Moving];
         Springs = Incidence_t * Vertices_t;
     	Lengths = get_lengths(Springs);
+	#println(Lengths);
     	g = Gradient_given_lengths(Springs, Lengths, Incidence_d, Stiffnesses_d, RestLengths_d)
         storage[:] = g
         return Energy_given_lengths(Lengths,Stiffnesses,RestLengths)

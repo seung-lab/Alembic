@@ -263,11 +263,15 @@ function elastic_solve!(meshset; from_current =false)
 
   println("matches collated: $(count_matches(meshset)) matches. populating sparse matrix....")
 
-  function get_local_sparse(i)
+  function get_local_sparse()
 	return LOCAL_SPM;
   end
   
-  edges_subarrays = Array{SparseMatrixCSC{Float64, Int64}, 1}(pmap(get_local_sparse, procs()))
+  edges_subarrays = Array{SparseMatrixCSC{Float64, Int64}, 1}(length(procs()))
+
+@sync begin
+   @async for proc in procs() edges_subarrays[proc] = remotecall_fetch(proc, get_local_sparse); end 
+ end
 
   function add_local_sparse(sp_a, sp_b)
     global LOCAL_SPM = 0;

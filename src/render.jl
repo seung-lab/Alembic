@@ -263,9 +263,9 @@ end
     close(f)
     # Log image offsets
     update_offset(index, offset, size(img))
-    images[index] = imwarp(img, s) 
+    #images[index] = imwarp(img, s) 
     # Rescope the image & save
-    write_finished(index, img, offset, GLOBAL_BB)
+    #write_finished(index, img, offset, GLOBAL_BB)
     if mesh_ind != finish
       wait(fetch);
     end
