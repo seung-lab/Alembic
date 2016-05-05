@@ -107,7 +107,7 @@ end
 function solve!(meshset)
   method=meshset.properties["params"]["solve"]["method"]
   solve!(meshset; method=method)
-  mark_solved(meshset)
+  mark_solved!(meshset)
 end
 
 function solve!(meshset; method="elastic")
@@ -122,6 +122,14 @@ function solve!(meshset; method="elastic")
 	if method == "affine" return affine_solve!(meshset); end
 end
 
+function elastic_solve_piecewise!(meshset::MeshSet; from_current = true)
+	meshsets = make_submeshsets(meshset);
+	for (index, cur_meshset) in enumerate(meshsets)
+	  println("SOLVING SUBMESHSET $index OF $(length(meshsets))");
+	  elastic_solve!(cur_meshset; from_current = from_current);
+	end
+	return meshset;
+end
 """
 Elastic solve
 """
@@ -283,9 +291,9 @@ function elastic_solve!(meshset; from_current = true)
   end
 
   @time @inbounds @fastmath while length(edges_subarrays) != 1
-    println(length(edges_subarrays));
+    #println(length(edges_subarrays));
     if isodd(length(edges_subarrays)) push!(edges_subarrays, spzeros(count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset))) end
-    @time edges_subarrays = Array{SparseMatrixCSC{Float64, Int64}, 1}(pmap(add_local_sparse, edges_subarrays[1:div(length(edges_subarrays), 2)], edges_subarrays[div(length(edges_subarrays),2)+1:end]))
+    edges_subarrays = Array{SparseMatrixCSC{Float64, Int64}, 1}(pmap(add_local_sparse, edges_subarrays[1:div(length(edges_subarrays), 2)], edges_subarrays[div(length(edges_subarrays),2)+1:end]))
   end
 
   edges = edges_subarrays[1];
