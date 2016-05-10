@@ -372,7 +372,7 @@ function get_globalized_correspondences_post(meshset::MeshSet, ind)
 	return get_globalized_correspondences_post(match, src_mesh, dst_mesh, meshset.properties["params"]["registry"]["global_offsets"])
 end
 
-function rectify_drift(meshset::MeshSet)
+function rectify_drift(meshset::MeshSet; rectify_aligned = false)
   meshes = Dict{Any, Any}();
   for mesh in meshset.meshes
 	meshes[mesh.index] = mesh;
@@ -391,7 +391,7 @@ function rectify_drift(meshset::MeshSet)
 
 	g_src_pts_after, g_dst_pts_after, filtered_after = get_globalized_correspondences_post(match, src_mesh, dst_mesh, meshset.properties["params"]["registry"]["global_offsets"])
 
-  	residuals_match_post[filtered_after] = g_dst_pts_after - g_src_pts_after;
+  	residuals_match_post = g_dst_pts_after[filtered_after] - g_src_pts_after[filtered_after]; 
 
 	avg_drift = mean(residuals_match_post);
 
@@ -405,7 +405,10 @@ function rectify_drift(meshset::MeshSet)
   cum_drift = Point([0,0]);
   for (ind, drift) in enumerate(drifts)
     cum_drift += drift;
-    update_offset(get_index(meshset.meshes[ind]), get_offset(get_index(meshset.meshes[ind])) + cum_drift)
+    update_offset(get_index(meshset.meshes[ind]), round(Int64, get_offset(get_index(meshset.meshes[ind])) + cum_drift))
+    if rectify_aligned
+    update_offset(aligned(get_index(meshset.meshes[ind])), round(Int64, get_offset(aligned(get_index(meshset.meshes[ind]))) + cum_drift))
+  end
   end
 
 

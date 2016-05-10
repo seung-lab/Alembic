@@ -408,6 +408,7 @@ function update_offset(index::Index, registry_fp::String, offset::Array, sz=[0,0
   registry = registry[sortperm(registry[:, 1], by=parse_name), :];
   writedlm(registry_fp, registry)
   reload_registry(index)
+  remotecall_fetch(IO_PROC, reload_registry, index)
 end
 
 function get_registry_path(index::Index)
