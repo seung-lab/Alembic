@@ -360,6 +360,25 @@ function get_globalized_correspondences_post(meshset::MeshSet, ind)
 	return get_globalized_correspondences_post(match, src_mesh, dst_mesh, meshset.properties["params"]["registry"]["global_offsets"])
 end
 
+function get_displacements_post(meshset::MeshSet, ind)
+  src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences_post(meshset, ind)
+  return src_nodes - dst_nodes, filtered_inds
+end
+
+function get_norms_post(meshset::MeshSet, ind)
+  displacements, filtered_inds = get_displacements_post(meshset, ind)
+  return map(norm, displacements), filtered_inds
+end
+
+function calculate_post_statistics!(meshset::MeshSet, match_ind)
+  dv, _ = get_displacements_post(meshset, match_ind)
+  norms, _ = get_norms_post(meshset, match_ind)
+  for (cp, dv_i, norm_i) in zip(meshset.matches[match_ind].correspondence_properties, dv, norms)
+    cp["vects"]["dv_post"] = dv_i
+    cp["vects"]["norm_post"] = norm_i
+  end
+end
+
 function rectify_drift(meshset::MeshSet)
   meshes = Dict{Any, Any}();
   for mesh in meshset.meshes
