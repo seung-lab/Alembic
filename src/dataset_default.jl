@@ -227,10 +227,14 @@ if in_alignment_test
     global ALIGNED_DIR = joinpath(bucket_dir_path, datasets_dir_path, test_dataset, aligned_dir_path)
     global FINISHED_DIR = joinpath(bucket_dir_path, datasets_dir_path, test_dataset, finished_dir_path)
     global STACKS_DIR = joinpath(bucket_dir_path, datasets_dir_path, test_dataset, finished_dir_path, stack_dir)
+    aligned_registry_path = joinpath(bucket_dir_path, datasets_dir_path, test_dataset, aligned_dir_path, aligned_registry_filename)
+    global REGISTRY_ALIGNED = parse_registry(aligned_registry_path)
 else
     global ALIGNED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, aligned_dir_path)
     global FINISHED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, finished_dir_path)
     global STACKS_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, finished_dir_path, stack_dir)
+    aligned_registry_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, aligned_dir_path, aligned_registry_filename)
+    global REGISTRY_ALIGNED = parse_registry(aligned_registry_path)
 end
 
 global EXPUNGED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, raw_dir_path, expunged_dir)
@@ -247,9 +251,6 @@ global REGISTRY_MONTAGED = parse_registry(montaged_registry_path)
 
 prealigned_registry_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, prealigned_dir_path, prealigned_registry_filename)
 global REGISTRY_PREALIGNED = parse_registry(prealigned_registry_path)
-
-aligned_registry_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, aligned_dir_path, aligned_registry_filename)
-global REGISTRY_ALIGNED = parse_registry(aligned_registry_path)
 
 expunged_registry_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, raw_dir_path, expunged_dir, expunged_registry_filename)
 global REGISTRY_EXPUNGED = parse_registry(expunged_registry_path)
