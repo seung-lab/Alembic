@@ -376,6 +376,7 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0)
 	correspondence_properties["vects"] = Dict{Any, Any}();
 	correspondence_properties["vects"]["dv"] = [di, dj];
 	correspondence_properties["vects"]["norm"] = norm([di, dj]);
+	correspondence_properties["posts"] = Dict{Any, Any}();
 
 
 	return vcat(pt + rel_offset + [di, dj], correspondence_properties);

@@ -386,8 +386,8 @@ function calculate_post_statistics!(meshset::MeshSet, match_ind)
   dv, _ = get_displacements_post(meshset, match_ind)
   norms, _ = get_norms_post(meshset, match_ind)
   for (cp, dv_i, norm_i) in zip(meshset.matches[match_ind].correspondence_properties, dv, norms)
-    cp["vects"]["dv_post"] = dv_i
-    cp["vects"]["norm_post"] = norm_i
+    cp["posts"]["dv_post"] = dv_i
+    cp["posts"]["norm_post"] = norm_i
   end
 end
 

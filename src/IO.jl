@@ -2,7 +2,7 @@ global const IMG_ELTYPE = UInt8
 #global const IMG_SUP_SIZE = (75000, 75000)
 
 # size in bytes
-global const IMG_CACHE_SIZE = 0.5 * 2^30 # n * gibibytes
+global const IMG_CACHE_SIZE = 8 * 2^30 # n * gibibytes
 
 if myid() == 1
 	global const IMG_CACHE_DICT = Dict{Any, SharedArray}()
@@ -91,7 +91,6 @@ function clean_cache()
 end
 
 function get_image(path::String, scale=1.0, dtype = IMG_ELTYPE)
-	@everywhere gc();
 #=  	if myid() != IO_PROC
 	  return remotecall_fetch(IO_PROC, get_image, path, scale, dtype);
 	end =#
@@ -123,7 +122,7 @@ function get_image(path::String, scale=1.0, dtype = IMG_ELTYPE)
 	  IMG_CACHE_DICT[(path, scale)] = shared_img_scaled;
         end
 
-	@everywhere gc();
+	#@everywhere gc();
 	return IMG_CACHE_DICT[(path, scale)];
 end
 
