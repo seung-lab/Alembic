@@ -307,7 +307,7 @@ function view_stack(stack; slice=(0:0, 0:0), include_reverse=false, perm=[1,2,3]
   if include_reverse
     img_stack = cat(3, img_stack, img_stack[:,:,end:-1:1])
   end
-  imgc, img2 = view(Image(img_stack, timedim=3))
+  imgc, img2 = view(Image(img_stack, timedim=3), pixelspacing=DATASET_RESOLUTION[perm[1:2]])
 
   c = canvas(imgc)
   win = Tk.toplevel(c)
