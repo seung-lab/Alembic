@@ -97,6 +97,10 @@ function index_rank(index::Index)
   return index[1]*10^3 + index[2]
 end
 
+function index_to_int(index::Index)
+  return index[1]*10^7 + index[2]*10^4 + index[3]*10^2 + index[4] 
+end
+
 function isless(indexA::Index, indexB::Index)
   return Base.isless(index_rank(indexA), index_rank(indexB))
 end
