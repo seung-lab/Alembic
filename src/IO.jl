@@ -2,7 +2,7 @@ global const IMG_ELTYPE = UInt8
 #global const IMG_SUP_SIZE = (75000, 75000)
 
 # size in bytes
-global const IMG_CACHE_SIZE = 5 * 2^30 # n * gibibytes
+global const IMG_CACHE_SIZE = 0.5 * 2^30 # n * gibibytes
 global const IMG_CACHE_DICT = Dict{Any, SharedArray}()
 global const IMG_CACHE_LIST = Array{Any, 1}();
 
