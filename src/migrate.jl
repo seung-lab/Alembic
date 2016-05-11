@@ -257,3 +257,21 @@ function migrate_to_review_dict!(ms::MeshSet)
 	ms.matches = map(migrate_to_review_dict!, ms.matches)
 end
 
+function check_match_flags(ms::MeshSet)
+	for match in ms.matches
+		if typeof(match.properties["review"]["flags"]) == DataType;
+			println("MIGRATION: 2016-04-11 MeshSet: fixing flags from ::Dict{Any, Any} to Dict{Any, Any}()"); 
+			match.properties["review"]["flags"] = Dict{Any, Any}()
+		end
+	end
+	return ms
+end
+
+function check_match_flags!(firstindex::Index, lastindex::Index)
+	parent_name = get_name(firstindex, lastindex)
+	for i in 1:count_children(parent_name)
+		ms = load_split(parent_name, i)
+		ms = check_match_flags(ms)
+		save(ms)
+	end
+end
