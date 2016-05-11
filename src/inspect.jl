@@ -157,6 +157,7 @@ end
 Display match index match_ind as overlayed images with points
 """
 function view_match(meshset::MeshSet, match_ind)
+  calculate_post_statistics!(meshset, match_ind)
   match = meshset.matches[match_ind]
   indexA = match.src_index
   indexB = match.dst_index
@@ -193,7 +194,8 @@ function view_match(meshset::MeshSet, match_ind)
   params["meshset"] = meshset
 
   if USE_PYPLOT
-    view_inspection_statistics(match, params["search_r"])
+    view_inspection_statistics(meshset, match_ind)
+    # view_inspection_statistics(match, params["search_r"])
   end
 
   println("make image")
@@ -231,12 +233,12 @@ function make_vectors!(params)
   match_ind = params["match_index"]
   scale = params["scale"]
   offset = params["offset"]
-  src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences(meshset, match_ind)
+  src_points, dst_points, filtered_inds = get_globalized_correspondences(meshset, match_ind)
   if params["post_matches"]
-    src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences_post(meshset, match_ind)
+    src_points, dst_points, filtered_inds = get_globalized_correspondences_post(meshset, match_ind)
   end
-  vectorsA = scale_matches(src_nodes, scale)
-  vectorsB = scale_matches(dst_nodes, scale)
+  vectorsA = scale_matches(src_points, scale)
+  vectorsB = scale_matches(dst_points, scale)
   vecs = offset_matches(vectorsA, vectorsB, offset)
   vectors = [hcat(vecs[1]...); hcat(vecs[2]...)]
   params["displacements"] = [vectors[2,:]; vectors[1,:]; vectors[4,:]; vectors[3,:]]
@@ -406,7 +408,7 @@ end
 function disable_inspection(imgc::ImageView.ImageCanvas, img2::ImageView.ImageSlice2d)
   c = canvas(imgc)
   win = Tk.toplevel(c)
-  println("Disable inspection")
+  # println("Disable inspection")
   bind(c, "<Button-3>", path->path)
   bind(c, "<Control-Button-3>", path->path)
   bind(win, "f", path->path)
@@ -763,8 +765,8 @@ function view_property_histogram(match::Match, property_name; filtered=true, nbi
   attr = get_properties(match, property_name)
   attr_filtered = get_filtered_properties(match, property_name)
   if length(attr) > 1
-    max_bin = min(maximum(attr), 500)
-    min_bin = minimum(attr)
+    max_bin = min(maximum(attr), 50)
+    min_bin = 0
     bins = [linspace(min_bin, max_bin, nbins)]
     if filtered
       attr = attr_filtered
@@ -779,14 +781,14 @@ function view_property_histogram(match::Match, property_name; filtered=true, nbi
   end
 end
 
-function view_dv_dispersion(match, sr; filtered=true)
+function view_dv_dispersion(match, sr; filtered=true, property_name="dv")
   color="#990000"
   properties_func = get_properties
   if filtered
     properties_func = get_filtered_properties
     color="#009900"
   end
-  dv = hcat(properties_func(match, "dv")...)
+  dv = hcat(properties_func(match, property_name)...)
   inc = max(round(Int64, 2*sr/40), 10)
   dv_bounds = vcat([[i -sr] for i=-sr:inc:sr]...,
                     [[i sr] for i=-sr:inc:sr]...,
@@ -796,9 +798,27 @@ function view_dv_dispersion(match, sr; filtered=true)
     p = plt[:scatter](dv[2,:], -dv[1,:], color=color, alpha=0.5)
     p = plt[:scatter](dv_bounds[:,1], dv_bounds[:,2], color="#0f0f0f", marker="+", alpha=0.2)
     grid("on")
-    title("dv")
+    title(property_name)
     return p
   end
+end
+
+function view_mesh_strain(mesh, factor=10)
+  pts = hcat(get_edge_midpoints(mesh)...)
+  lengths_pre = get_edge_lengths(mesh)
+  lengths_post = get_edge_lengths_post(mesh)
+  strain = lengths_post - lengths_pre
+  # strain = (lengths_post - lengths_pre) ./ lengths_pre
+  # colors = [s <= 0 ? "#000099" : "#990000" for s in strain]
+  # colors = ones(length(strain))*factor
+  p = plt[:scatter](pts[2,:], -pts[1,:], s=ones(length(strain))*factor, c=strain, cmap=ColorMap("seismic"), edgecolors="face", alpha=0.5)
+  grid("on")
+  title("mesh_displacement")
+  ax = gca()
+  ax[:xaxis][:set_visible](false)
+  ax[:yaxis][:set_visible](false)
+  colorbar(p)
+  return p
 end
 
 function view_property_spatial_scatter(match, property_name; filtered=true, factor=1)
@@ -816,31 +836,43 @@ function view_property_spatial_scatter(match, property_name; filtered=true, fact
     p = plt[:scatter](pts[2,:], -pts[1,:], s=attr*factor, color=color, alpha=0.5)
     grid("on")
     title(property_name)
+    ax = gca()
+    ax[:xaxis][:set_visible](false)
+    ax[:yaxis][:set_visible](false)
     return p
   end
 end
 
-function view_inspection_statistics(match, sr)
+function view_inspection_statistics(meshset::MeshSet, match_ind::Int64)
+  match = meshset.matches[match_ind]
+  sr = get_dfs(meshset.properties, "search_r")
+  mesh = get_mesh(meshset, get_src_index(match))
+
   fig = figure("image pair statistics", figsize=(20,20))
   PyPlot.clf()
   subplot(231)
-  view_property_histogram(match, "r_max"; filtered=false, nbins=20)
-  view_property_histogram(match, "r_max"; filtered=true, nbins=20)
+  # view_property_histogram(match, "r_max"; filtered=false, nbins=20)
+  # view_property_histogram(match, "r_max"; filtered=true, nbins=20)
+  view_property_histogram(match, "norm"; filtered=true, nbins=20)
   subplot(232)
+  view_property_spatial_scatter(match, "norm"; filtered=true, factor=1)
+  subplot(233)
+  # view_property_spatial_scatter(match, 0.5; filtered=false, factor=1)
+  # view_property_spatial_scatter(match, 0.5; filtered=true, factor=1)
   view_dv_dispersion(match, sr; filtered=false)
   view_dv_dispersion(match, sr; filtered=true)
-  subplot(233)
-  view_property_spatial_scatter(match, 0.5; filtered=false, factor=1)
-  view_property_spatial_scatter(match, 0.5; filtered=true, factor=1)
   subplot(234)
-  view_property_histogram(match, "norm"; filtered=false, nbins=20)
-  view_property_histogram(match, "norm"; filtered=true, nbins=20)
+  # view_property_histogram(match, "norm_post"; filtered=false, nbins=20)
+  view_property_histogram(match, "norm_post"; filtered=true, nbins=20)
   subplot(235)
-  view_property_spatial_scatter(match, "norm"; filtered=false, factor=1)
-  view_property_spatial_scatter(match, "norm"; filtered=true, factor=1)
+  # view_property_spatial_scatter(match, "norm_post"; filtered=false, factor=1)
+  view_property_spatial_scatter(match, "norm_post"; filtered=true, factor=5)
   subplot(236)
-  view_property_spatial_scatter(match, 0.8; filtered=false, factor=1)
-  view_property_spatial_scatter(match, 0.8; filtered=true, factor=1)
+  # view_property_spatial_scatter(match, 0.8; filtered=false, factor=1)
+  # view_property_spatial_scatter(match, 0.8; filtered=true, factor=1)
+  # view_dv_dispersion(match, sr; filtered=false, property_name="dv_post")
+  # view_dv_dispersion(match, sr; filtered=true, property_name="dv_post")
+  view_mesh_strain(mesh)
 
   src_index = get_src_index(match)
   dst_index = get_dst_index(match)
@@ -852,7 +884,7 @@ function view_inspection_statistics(match, sr)
     ha="right",
     va="top",
     fontsize=16)
-  annotate(string("Flags:\n", join(keys(match.properties["review"]["flags"]), "\n")),
+  annotate(string("Flags:\n", join(Base.keys(match.properties["review"]["flags"]), "\n")),
     xy=[0;1],
     xycoords="figure fraction",
     xytext=[10,-10],
@@ -861,4 +893,60 @@ function view_inspection_statistics(match, sr)
     va="top",
     fontsize=16)
   fig[:canvas][:draw]()
+end
+
+function get_random_slice(index::Index, dim=(511,511))
+  sz = get_image_size(index)
+  i = rand(1:(sz[1]-dim[1]))
+  j = rand(1:(sz[2]-dim[2]))
+  return i:(i+dim[1]), j:(j+dim[2])
+end
+
+function view_random_slice(index::Index, slice=get_random_slice(index))
+  img = get_slice(get_path(index), slice)
+  return ImageView.view(reinterpret(Ufixed8, img))
+end
+
+function inspect(indices::Array, k=1)
+  println("Inspecting #$k: $(indices[k])")
+  imgc, img2 = view_random_slice(indices[k])
+  c = canvas(imgc)
+  win = Tk.toplevel(c)
+  bind(win, "<Escape>", path->disable_inspection(imgc, img2))
+  bind(win, "<Destroy>", path->disable_inspection(imgc, img2))
+  bind(win, "<Right>", path->go_to_inspect(imgc, img2, indices, k+1))
+  bind(win, "<Left>", path->go_to_inspect(imgc, img2, indices, k-1))
+  bind(win, "f", path->log_flagged_indices(indices[k]))
+  bind(win, "r", path->go_to_inspect(imgc, img2, indices, k))
+end
+
+function go_to_inspect(imgc, img2, indices, k)
+  disable_inspection(imgc, img2)
+  if 1 <= k <= length(indices)
+    inspect(indices, k)
+  end
+end
+
+function write_flagged_indices(flagged)
+  fn = joinpath(DATASET_DIR, "flagged_autoblockmatch_indices.txt")
+  writedlm(fn, vcat(flagged...))
+end
+
+"""
+Write indices to flag in a text file
+"""
+function log_flagged_indices(index::Index)
+  println("Flagging $index")
+  path = joinpath(DATASET_DIR, "flagged_autoblockmatch_indices.txt")
+  row = [index]'
+  if !isfile(path)
+    f = open(path, "w")
+    close(f)
+    table = row
+  else  
+    table = readdlm(path)
+    table = vcat(table, row)
+  end
+  # println("Saving montage_review:\n", path)
+  writedlm(path, table)
 end
