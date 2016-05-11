@@ -107,7 +107,7 @@ end
 function solve!(meshset)
   method=meshset.properties["params"]["solve"]["method"]
   solve!(meshset; method=method)
-  mark_solved(meshset)
+  mark_solved!(meshset)
 end
 
 function solve!(meshset; method="elastic")
@@ -122,6 +122,14 @@ function solve!(meshset; method="elastic")
 	if method == "affine" return affine_solve!(meshset); end
 end
 
+function elastic_solve_piecewise!(meshset::MeshSet; from_current = true)
+	meshsets = make_submeshsets(meshset);
+	for (index, cur_meshset) in enumerate(meshsets)
+	  println("SOLVING SUBMESHSET $index OF $(length(meshsets))");
+	  elastic_solve!(cur_meshset; from_current = from_current);
+	end
+	return meshset;
+end
 """
 Elastic solve
 """
@@ -264,11 +272,15 @@ function elastic_solve!(meshset; from_current = true)
 
   println("matches collated: $(count_matches(meshset)) matches. populating sparse matrix....")
 
-  function get_local_sparse(i)
+  function get_local_sparse()
 	return LOCAL_SPM;
   end
   
-  edges_subarrays = Array{SparseMatrixCSC{Float64, Int64}, 1}(pmap(get_local_sparse, procs()))
+  edges_subarrays = Array{SparseMatrixCSC{Float64, Int64}, 1}(length(procs()))
+
+@sync begin
+   @async for proc in procs() edges_subarrays[proc] = remotecall_fetch(proc, get_local_sparse); end 
+ end
 
   function add_local_sparse(sp_a, sp_b)
     global LOCAL_SPM = 0;
@@ -279,9 +291,9 @@ function elastic_solve!(meshset; from_current = true)
   end
 
   @time @inbounds @fastmath while length(edges_subarrays) != 1
-    println(length(edges_subarrays));
+    #println(length(edges_subarrays));
     if isodd(length(edges_subarrays)) push!(edges_subarrays, spzeros(count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset))) end
-    @time edges_subarrays = Array{SparseMatrixCSC{Float64, Int64}, 1}(pmap(add_local_sparse, edges_subarrays[1:div(length(edges_subarrays), 2)], edges_subarrays[div(length(edges_subarrays),2)+1:end]))
+    edges_subarrays = Array{SparseMatrixCSC{Float64, Int64}, 1}(pmap(add_local_sparse, edges_subarrays[1:div(length(edges_subarrays), 2)], edges_subarrays[div(length(edges_subarrays),2)+1:end]))
   end
 
   edges = edges_subarrays[1];
@@ -379,7 +391,7 @@ function calculate_post_statistics!(meshset::MeshSet, match_ind)
   end
 end
 
-function rectify_drift(meshset::MeshSet)
+function rectify_drift(meshset::MeshSet; rectify_aligned = false)
   meshes = Dict{Any, Any}();
   for mesh in meshset.meshes
 	meshes[mesh.index] = mesh;
@@ -398,7 +410,7 @@ function rectify_drift(meshset::MeshSet)
 
 	g_src_pts_after, g_dst_pts_after, filtered_after = get_globalized_correspondences_post(match, src_mesh, dst_mesh, meshset.properties["params"]["registry"]["global_offsets"])
 
-  	residuals_match_post[filtered_after] = g_dst_pts_after - g_src_pts_after;
+  	residuals_match_post = g_dst_pts_after[filtered_after] - g_src_pts_after[filtered_after]; 
 
 	avg_drift = mean(residuals_match_post);
 
@@ -412,7 +424,10 @@ function rectify_drift(meshset::MeshSet)
   cum_drift = Point([0,0]);
   for (ind, drift) in enumerate(drifts)
     cum_drift += drift;
-    update_offset(get_index(meshset.meshes[ind]), get_offset(get_index(meshset.meshes[ind])) + cum_drift)
+    update_offset(get_index(meshset.meshes[ind]), round(Int64, get_offset(get_index(meshset.meshes[ind])) + cum_drift))
+    if rectify_aligned
+    update_offset(aligned(get_index(meshset.meshes[ind])), round(Int64, get_offset(aligned(get_index(meshset.meshes[ind]))) + cum_drift))
+  end
   end
 
 

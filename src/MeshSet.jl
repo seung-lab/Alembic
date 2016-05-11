@@ -64,8 +64,71 @@ function find_match_indices(meshset::MeshSet, index::Index)
   return indices
 end
 
-function find_node(Ms, mesh_ind, node_ind)
-  return Ms.nodes_indices[mesh_ind] + node_ind
+### finding subs
+function find_matches_subarray(meshset::MeshSet, meshes::Array{Mesh, 1})
+	matches_sub = Array{Match, 1}(0);
+	meshes_inds = [get_index(mesh) for mesh in meshes]
+	for match in meshset.matches
+	  if issubset(get_src_and_dst_indices(match), meshes_inds)
+	    push!(matches_sub, match);
+	  end
+	end
+	return matches_sub;
+end
+
+function find_meshes_subarrays(meshset::MeshSet)
+  meshes_subs = Array{Array{Mesh, 1}, 1}(0);
+  current_sub = Array{Mesh, 1}(0)
+  for (index, mesh) in enumerate(meshset.meshes)
+      push!(current_sub, mesh);
+      if (is_fixed(mesh) && index != 1) || index == count_meshes(meshset)
+	if !is_fixed(current_sub[end-1])
+		push!(meshes_subs, current_sub);
+        end
+  	current_sub = Array{Mesh, 1}(0)
+        push!(current_sub, mesh);
+      end
+  end
+  return meshes_subs;
+end
+
+function make_submeshsets(meshset::MeshSet)
+   meshes_subs = find_meshes_subarrays(meshset);
+   matches_subs = [find_matches_subarray(meshset, meshes) for meshes in meshes_subs];
+   meshsets = Array{MeshSet, 1}(map(MeshSet, meshes_subs, matches_subs, repeated(meshset.properties)));
+   return meshsets;
+end
+
+function fix!(meshset::MeshSet, mesh_ind::Int64)
+	fix!(meshset.meshes[mesh_ind]);
+end
+
+function fix!(meshset::MeshSet, mesh_ind_first::Int64, mesh_ind_last::Int64)
+  	for mesh_ind in mesh_ind_first:mesh_ind_last
+	fix!(meshset.meshes[mesh_ind]);
+      end
+end
+
+function fix!(meshset::MeshSet)
+  for mesh in meshset.meshes
+	fix!(mesh);
+      end
+end
+
+function unfix!(meshset::MeshSet, mesh_ind::Int64)
+	unfix!(meshset.meshes[mesh_ind]);
+end
+
+function unfix!(meshset::MeshSet, mesh_ind_first::Int64, mesh_ind_last::Int64)
+  	for mesh_ind in mesh_ind_first:mesh_ind_last
+	unfix!(meshset.meshes[mesh_ind]);
+      end
+end
+
+function unfix!(meshset::MeshSet)
+  for mesh in meshset.meshes
+	unfix!(mesh);
+      end
 end
 
 ### adding
@@ -346,20 +409,10 @@ function MeshSet(index; params=get_params(index))
 	if is_montaged(index) return MeshSet(premontaged(index), premontaged(index)); end
 end
 
-function MeshSet(first_index, last_index; params=get_params(first_index), solve=true, solve_method="elastic", fix_first=false)
+function MeshSet(first_index, last_index; params=get_params(first_index), solve=true, solve_method="elastic")
 	ind_range = get_index_range(first_index, last_index);
 	if length(ind_range) == 0 return nothing; end
-	fixed_inds = Array{Any, 1}(0);
-	if fix_first 
-    push!(fixed_inds, first_index); 
-    ind_range[1] = aligned(ind_range[1])
-	end
-  if fix_last 
-    push!(fixed_inds, last_index); 
-    ind_range[end] = aligned(ind_range[end])
-  end
-
-	meshes = map(Mesh, ind_range, repeated(params), map(in, ind_range, repeated(fixed_inds)))
+	meshes = map(Mesh, ind_range, repeated(params))
  	matches = Array{Match, 1}(0)		
 	properties = Dict{Any, Any}(	"params"  => params,
 					"author" => author(),
@@ -414,7 +467,7 @@ function MeshSet(firstindex::Index, lastindex::Index, fixed_meshes::Array{Mesh,1
   return meshset;
 end
 
-function mark_solved(meshset::MeshSet)
+function mark_solved!(meshset::MeshSet)
   meshset.properties["meta"]["solved"] = author()
 end
 
@@ -465,7 +518,7 @@ function match!(meshset::MeshSet, within = 1)
 	add_match!(meshset, Match(meshset.meshes[pairs[end][1]], meshset.meshes[pairs[end][2]], params));
 end
 
-function rematch!(meshset::MeshSet, match_ind, params)
+function rematch!(meshset::MeshSet, match_ind, params = get_params(meshset))
   src_index = get_src_index(meshset.matches[match_ind])
   dst_index = get_dst_index(meshset.matches[match_ind])
   src_mesh = meshset.meshes[find_mesh_index(meshset, src_index)]

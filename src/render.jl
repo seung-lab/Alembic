@@ -9,7 +9,7 @@ function meshwarp_mesh(mesh::Mesh)
   offset = get_offset(mesh);
   node_dict = incidence_to_dict(mesh.edges')
   triangles = dict_to_triangles(node_dict)
-  return @time ImageRegistration.meshwarp(sdata(img), src_nodes, dst_nodes, triangles, offset), get_index(mesh)
+  return @time meshwarp(img, src_nodes, dst_nodes, triangles, offset), get_index(mesh)
 end
 
 """
@@ -155,8 +155,6 @@ end
 
 function render_prealigned(src_index::Index, dst_index::Index, src_img, dst_img, 
                 cumulative_tform, tform; render_full=false, render_review=true)
-		src_img = sdata(src_img);
-		dst_img = sdata(dst_img);
   scale = 0.05
   s = make_scale_matrix(scale)
 
@@ -213,7 +211,7 @@ Check images dict for thumbnail, otherwise render it - just moving prealigned
 function retrieve_image(images, index; tform=eye(3))
   if !(index in keys(images))
     println("Making review for ", index)
-    img = sdata(get_image(index))
+    img = get_image(index)
     offset = get_offset(index)
     img, offset = imwarp(img, tform, offset)
     images[index] = img, offset
@@ -275,12 +273,12 @@ end
     close(f)
     # Log image offsets
     update_offset(index, offset, size(img))
-    # images[index] = imwarp(img, s) 
+    #images[index] = imwarp(img, s) 
     # Rescope the image & save
-    # write_finished(index, img, offset, GLOBAL_BB)
-    # if mesh_ind != finish
-    #   wait(fetch);
-    # end
+    #write_finished(index, img, offset, GLOBAL_BB)
+    if mesh_ind != finish
+      wait(fetch);
+    end
   end
   # render_aligned_review(meshset; images=images)
 end

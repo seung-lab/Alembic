@@ -367,5 +367,5 @@ function is_fixed(mesh::Mesh)
 end
 
 function reset!(mesh::Mesh)
-	mesh.dst_nodes = mesh.src_nodes
+	mesh.dst_nodes = copy(mesh.src_nodes)
 end
