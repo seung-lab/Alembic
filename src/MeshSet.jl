@@ -28,13 +28,25 @@ function count_correspondences(meshset::MeshSet)	return sum(map(count_correspond
 
 function count_filtered_correspondences(meshset::MeshSet)	return sum(map(count_filtered_correspondences, meshset.matches));		end
 
+function get_mesh(meshset::MeshSet, index::Index)
+  return meshset.meshes[find_mesh_index(meshset, index)]
+end
+
 ### finding
 function find_mesh_index(meshset::MeshSet, index::Index)
   return findfirst(this -> index == get_index(this), meshset.meshes)
 end
 
 function find_mesh_index(meshset::MeshSet, mesh::Mesh)
-  return find_mesh_index(meshset, get_index(mesh));
+  return find_mesh_index(meshset, get_index(mesh))
+end
+
+function contains_mesh(meshset::MeshSet, index::Index)
+  return !(find_mesh_index(meshset, index) == 0)
+end
+
+function contains_mesh(meshset::MeshSet, mesh::Mesh)
+  return contains_mesh(meshset, get_index(mesh))
 end
 
 function find_match_index(meshset::MeshSet, src_index::Index, dst_index::Index)
@@ -221,6 +233,23 @@ function concat_meshset(parent_name)
 	return ms;
 end
 
+function find_mesh_indices(firstindex::Index, lastindex::Index, i::Int64)
+  indices = get_index_range(firstindex, lastindex)
+  return find_mesh_indices(firstindex, lastindex, indices[i])
+end
+
+function find_mesh_indices(firstindex::Index, lastindex::Index, index::Index)
+  parent_name = get_name(firstindex, lastindex)
+  ind = []
+  for i in 1:count_children(parent_name)
+    ms = load_split(parent_name, i)
+    if contains_mesh(ms, index)
+      push!(ind, i)
+    end
+  end
+  return ind
+end
+
 function concat_meshsets(filenames::Array)
   println(filenames[1])
   ms = load(filenames[1])
@@ -289,8 +318,7 @@ end
 function MeshSet()
  	meshes = Array{Mesh, 1}(0)
  	matches = Array{Match, 1}(0)		
-  	properties = Dict{Any, Any}()
-
+  properties = Dict{Any, Any}()
 	return MeshSet(meshes, matches, properties)
 end
 
@@ -517,9 +545,14 @@ function filter_jls(dir, wafer_num)
 end
 
 function get_filename(meshset::MeshSet)
-  firstindex = meshset.meshes[1].index
-  lastindex = meshset.meshes[count_meshes(meshset)].index
-  return get_filename(firstindex, lastindex)
+  if get_src_index(meshset.matches[1]) == get_dst_index(meshset.matches[1])
+    firstindex = get_index(meshset.meshes[1])
+    return get_filename(firstindex, firstindex)
+  else
+    firstindex = get_index(meshset.meshes[1])
+    lastindex = get_index(meshset.meshes[end])
+    return get_filename(firstindex, lastindex)
+  end
 end
 
 function get_filename(firstindex::Index, lastindex::Index)
@@ -528,6 +561,8 @@ function get_filename(firstindex::Index, lastindex::Index)
     filepath = PREALIGNED_DIR
   elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex)) || (is_prealigned(firstindex) && is_aligned(lastindex))
     filepath = ALIGNED_DIR
+  elseif is_premontaged(firstindex) && is_premontaged(lastindex) && firstindex == lastindex
+    filepath = PREMONTAGED_DIR
   else 
     filepath = MONTAGED_DIR
   end
@@ -539,9 +574,12 @@ end
 function get_name(meshset::MeshSet)
   if has_parent(meshset)
     return get_split_index(meshset);
+  elseif get_src_index(meshset.matches[1]) == get_dst_index(meshset.matches[1])
+    firstindex = get_index(meshset.meshes[1])
+    return get_name(firstindex, firstindex)
   else
-    firstindex = meshset.meshes[1].index
-    lastindex = meshset.meshes[count_meshes(meshset)].index
+    firstindex = get_index(meshset.meshes[1])
+    lastindex = get_index(meshset.meshes[end])
     return get_name(firstindex, lastindex)
   end
 end
@@ -552,6 +590,8 @@ function get_name(firstindex::Index, lastindex::Index)
     name = string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned")
   elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex)) || (is_prealigned(firstindex) && is_aligned(lastindex))
     name = string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned")
+  elseif is_premontaged(firstindex) && is_premontaged(lastindex) && firstindex == lastindex
+    name = string(join(firstindex[1:2], ","), "_premontaged")
   else 
     name = string(join(firstindex[1:2], ","), "_montaged")
   end
@@ -783,4 +823,92 @@ function calculate_depth(firstindex::Index, lastindex::Index, num_tiles=16)
     end
   end
   return index_depth
+end
+
+function autoblockmatch(index::Index; params=get_params(index))
+  indices = get_index_range(index, index)
+  if length(indices) == 0 
+    return nothing; 
+  end
+  meshes = map(Mesh, indices, repeated(params));
+  matches = Array{Match, 1}(0)
+  properties = Dict{Any, Any}(  
+          "params"  => params,
+          "author" => author(),
+          "meta" => Dict{Any, Any}(
+          "parent" => nothing,
+          "split_index" => 0)
+          )
+  meshset = MeshSet(meshes, matches, properties);
+  for mesh in meshset.meshes
+    add_match!(meshset, Match(mesh, mesh, params));
+  end
+
+  save(meshset);
+  return meshset;
+end
+
+function get_correspondence_property(meshset::MeshSet, key)
+  return map(get_properties, meshset.matches, repeated(key))
+end
+
+function get_correspondence_stats(ms::MeshSet, key)
+  s = get_correspondence_property(ms, key)
+  indices = map(get_src_index, ms.matches)
+  l = map(length, s)
+  mn = map(round, map(minimum, s), repeated(2))
+  m = map(round, map(median, s), repeated(2))
+  mx = map(round, map(maximum, s), repeated(2))
+  sd = map(round, map(std, s), repeated(2))
+  return Dict("index"=>indices, "count"=>l, "min"=>mn, "med"=>m, "max"=>mx, "std"=>sd)
+end
+
+function compile_correspondence_stats(firstindex::Index, lastindex::Index, key)
+  s = []
+  for index in get_index_range(montaged(firstindex), montaged(lastindex))
+    ms = load(premontaged(index), premontaged(index))
+    push!(s, get_correspondence_stats(ms, key))
+  end
+  return s
+end
+
+function flatten_correspondence_stats(stats)
+  stats_keys = keys(stats[1])
+  s = Dict()
+  for k in stats_keys
+    f = []
+    for d in stats
+      push!(f, d[k])
+    end
+    s[k] = vcat(f...)
+    s[k] = convert(Array{typeof(stats[1][k][1]), 1}, s[k])
+  end
+  return s
+end
+
+function plot_correspondence_stats(stats)
+  s = flatten_correspondence_stats(stats)
+  color = "#009900"
+  fig = figure("correspondence stats")
+  stats_keys = ["min", "med", "max", "std"]
+  for (i, k) in enumerate(stats_keys)
+    subplot(410+i)
+    plt[:scatter](1:length(s[k]), s[k], alpha=0.2, color=color)
+    grid("on")
+    title(k)
+  end
+end
+
+function flag_correspondence_stats(stats, k="med", sigma=1.5)
+  s = flatten_correspondence_stats(stats)
+  threshold = median(s[k])
+  e = round(std(s[k]), 2)
+  println("Flagging correspondence stats for $k outside $threshold +/- $sigma*$e")
+  flagged = []
+  for (i, m) in enumerate(s[k])
+    if m > (threshold+sigma*e) || m < (threshold-sigma*e)
+      push!(flagged, [s["index"][i], m])
+    end
+  end
+  return flagged
 end

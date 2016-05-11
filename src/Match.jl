@@ -449,12 +449,12 @@ end
 
 function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rotate=0)
 	println("Matching $(get_index(src_mesh)) -> $(get_index(dst_mesh)):")
-	if src_mesh == dst_mesh
-		println("nothing at")
-		println(get_index(src_mesh))
-		println(get_index(dst_mesh))
-		return nothing
-	end
+	# if src_mesh == dst_mesh
+	# 	println("nothing at")
+	# 	println(get_index(src_mesh))
+	# 	println(get_index(dst_mesh))
+	# 	return nothing
+	# end
 
   	src_index = get_index(src_mesh); dst_index = get_index(dst_mesh);
 
