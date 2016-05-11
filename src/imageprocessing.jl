@@ -186,15 +186,3 @@ end
 function laplacian_variance(img)
     return var(laplacian(img))
 end
-
-function calculate_blurry_score(index::Index)
-    sz = get_image_size(index)
-    patch = 150
-    v = []
-    for k = 1:3
-        i, j = rand(1:sz[1]-patch), rand(1:sz[2]-patch)
-        img, _ = imscale(get_h5_slice(get_path(index), (i:i+patch-1, j:j+patch-1)), 0.5)
-        push!(v, laplacian_variance(img))
-    end
-    return v
-end
