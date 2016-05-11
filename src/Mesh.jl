@@ -41,6 +41,13 @@ function get_edge_points(mesh::Mesh, ind)
 	return mesh.src_nodes[inds[1]], mesh.src_nodes[inds[2]]
 end
 
+function get_edge_points_post(mesh::Mesh, ind)
+#	src_ind = findfirst(this -> this < 0, mesh.edges[:, ind]);
+#	dst_ind = findfirst(this -> this > 0, mesh.edges[:, ind]);
+	@fastmath @inbounds inds = findnz(mesh.edges[:, ind])[1];
+	return mesh.dst_nodes[inds[1]], mesh.dst_nodes[inds[2]]
+end
+
 # Not sure why this doesn't work
 function isless(meshA::Mesh, meshB::Mesh)
   return get_index(meshA) < get_index(meshB)
@@ -54,7 +61,22 @@ function get_edge_length(mesh::Mesh, ind)	start_pt, end_pt = get_edge_points(mes
       @fastmath return norm(start_pt - end_pt);
 end
 
+function get_edge_length_post(mesh::Mesh, ind)	start_pt, end_pt = get_edge_points_post(mesh, ind);
+      @fastmath return norm(start_pt - end_pt);
+end
+
+function get_edge_midpoint(mesh::Mesh, ind)
+	start_pt, end_pt = get_edge_points(mesh, ind);
+	return (start_pt + end_pt) / 2
+end
+
+function get_edge_midpoints(mesh::Mesh)
+	return map(get_edge_midpoint, repeated(mesh), collect(1:count_edges(mesh)))
+end
+
 function get_edge_lengths(mesh::Mesh)		return map(get_edge_length, repeated(mesh), collect(1:count_edges(mesh)));		end
+
+function get_edge_lengths_post(mesh::Mesh)		return map(get_edge_length_post, repeated(mesh), collect(1:count_edges(mesh)));		end
 
 function get_homogenous_edge_lengths(mesh::Mesh)	return fill(get_edge_length(mesh, 1), count_edges(mesh));		end
 
