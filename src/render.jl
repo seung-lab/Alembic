@@ -9,7 +9,6 @@ function meshwarp_mesh(mesh::Mesh)
   offset = get_offset(mesh);
   node_dict = incidence_to_dict(mesh.edges')
   triangles = dict_to_triangles(node_dict)
-  println("meshwarp:")
   return @time meshwarp(img, src_nodes, dst_nodes, triangles, offset), get_index(mesh)
 end
 
