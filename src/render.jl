@@ -9,6 +9,7 @@ function meshwarp_mesh(mesh::Mesh)
   offset = get_offset(mesh);
   node_dict = incidence_to_dict(mesh.edges')
   triangles = dict_to_triangles(node_dict)
+  println("meshwarp:")
   return @time meshwarp(img, src_nodes, dst_nodes, triangles, offset), get_index(mesh)
 end
 
@@ -257,9 +258,9 @@ end
   s = make_scale_matrix(scale)
   images = Dict()
   for mesh_ind in start:finish
-    if mesh_ind != finish
-      fetch = prefetch(get_index(meshset.meshes[mesh_ind + 1]));
-    end
+    #=if mesh_ind != finish
+      prefetched = prefetch(get_index(meshset.meshes[mesh_ind + 1]));
+    end=#
     mesh = meshset.meshes[mesh_ind];
     index = aligned(mesh.index)
     println("Warping ", mesh.index)
@@ -276,9 +277,9 @@ end
     #images[index] = imwarp(img, s) 
     # Rescope the image & save
     #write_finished(index, img, offset, GLOBAL_BB)
-    if mesh_ind != finish
-      wait(fetch);
-    end
+    #=if mesh_ind != finish
+      load_prefetched(prefetched);
+    end=#
   end
   # render_aligned_review(meshset; images=images)
 end

@@ -509,10 +509,10 @@ function match!(meshset::MeshSet, within = 1)
 	params = get_params(meshset);
 	pairs = get_all_overlaps(meshset, within);
 	for i in 1:2:(length(pairs) - 2)
-	        fetch = prefetch(get_index(meshset.meshes[pairs[i+2][2]]), get_params(meshset)["match"]["blockmatch_scale"]);
+	        #prefetched = prefetch(get_index(meshset.meshes[pairs[i+2][2]]), get_params(meshset)["match"]["blockmatch_scale"]);
 		add_match!(meshset, Match(meshset.meshes[pairs[i][1]], meshset.meshes[pairs[i][2]], params));
 		add_match!(meshset, Match(meshset.meshes[pairs[i+1][1]], meshset.meshes[pairs[i+1][2]], params));
-		wait(fetch);
+		#load_prefetched(prefetched);
 	end
 	add_match!(meshset, Match(meshset.meshes[pairs[end-1][1]], meshset.meshes[pairs[end-1][2]], params));
 	add_match!(meshset, Match(meshset.meshes[pairs[end][1]], meshset.meshes[pairs[end][2]], params));
