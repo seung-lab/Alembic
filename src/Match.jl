@@ -268,6 +268,7 @@ end
 Template match two images & record translation for source image - already scaled
 """
 function monoblock_match(src_index, dst_index, src_image, dst_image, params=get_params(src_index))
+  println("meshwarp:")
 	if params["match"]["monoblock_match"] == false return; end
 	scale = params["match"]["monoblock_scale"];
 	ratio = params["match"]["monoblock_ratio"];
@@ -463,7 +464,7 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 	monoblock_match(src_index, dst_index, get_image(src_index, params["match"]["monoblock_scale"]), get_image(dst_index, params["match"]["monoblock_scale"]), params);
         end
 
-	ranges = pmap(get_ranges, src_mesh.src_nodes, repeated(src_index), repeated(get_offset(src_index)), repeated(get_image_size(src_index)), repeated(dst_index), repeated(get_offset(dst_index)), repeated(get_image_size(dst_index)), repeated(params["match"]["block_r"]), repeated(params["match"]["search_r"]), repeated(params["registry"]["global_offsets"]); pids=WORKER_PROCS);
+	ranges = pmap(get_ranges, src_mesh.src_nodes, repeated(src_index), repeated(get_offset(src_index)), repeated(get_image_size(src_index)), repeated(dst_index), repeated(get_offset(dst_index)), repeated(get_image_size(dst_index)), repeated(params["match"]["block_r"]), repeated(params["match"]["search_r"]), repeated(params["registry"]["global_offsets"]));
 	ranged_inds = find(i -> i != nothing, ranges);
 	ranges = ranges[ranged_inds];
 	print("    ")
@@ -474,7 +475,7 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 		ranges = Array{typeof(ranges[1]), 1}(ranges);
 	end
 
-        dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(get_image(src_index, params["match"]["blockmatch_scale"])), repeated(get_image(dst_index, params["match"]["blockmatch_scale"])), repeated(params["match"]["blockmatch_scale"]); pids=WORKER_PROCS) 
+        dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(get_image(src_index, params["match"]["blockmatch_scale"])), repeated(get_image(dst_index, params["match"]["blockmatch_scale"])), repeated(params["match"]["blockmatch_scale"])) 
 
 	matched_inds = find(i -> i != nothing, dst_allpoints);
 	src_points = copy(src_mesh.src_nodes[ranged_inds][matched_inds]);

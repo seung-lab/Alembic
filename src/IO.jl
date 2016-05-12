@@ -105,24 +105,26 @@ function get_image(path::String, scale=1.0, dtype = IMG_ELTYPE)
 	if !haskey(IMG_CACHE_DICT, (path, 1.0))
 	    println("$path is not in cache at full scale - loading into cache...")
 	    img = get_image_disk(path, dtype);
-	    shared_img = SharedArray(dtype, size(img)...);
-	    shared_img[:,:] = img[:,:];
+	 #   shared_img = SharedArray(dtype, size(img)...);
+	 #   shared_img[:,:] = img[:,:];
 
 	    push!(IMG_CACHE_LIST, (path, 1.0))
-	    IMG_CACHE_DICT[(path, 1.0)] = shared_img;
+	    IMG_CACHE_DICT[(path, 1.0)] = img;
+	    img = 0;
 	end
 
 	if scale != 1.0
 	  println("$path is in cache at full scale - downsampling to scale $scale...")
 	  scaled_img = imscale(sdata(IMG_CACHE_DICT[(path, 1.0)]), scale)[1]
-    	  shared_img_scaled = SharedArray(dtype, size(scaled_img)...);
-	  shared_img_scaled[:,:] = scaled_img[:,:];
+    	  #shared_img_scaled = SharedArray(dtype, size(scaled_img)...);
+	  #shared_img_scaled[:,:] = scaled_img[:,:];
 
 	  push!(IMG_CACHE_LIST, (path, scale))
-	  IMG_CACHE_DICT[(path, scale)] = shared_img_scaled;
+	  IMG_CACHE_DICT[(path, scale)] = scaled_img;
+	  scaled_img = 0;
         end
 
-	#@everywhere gc();
+	@everywhere gc();
 	return IMG_CACHE_DICT[(path, scale)];
 end
 

@@ -523,8 +523,9 @@ function rematch!(meshset::MeshSet, match_ind, params = get_params(meshset))
   dst_index = get_dst_index(meshset.matches[match_ind])
   src_mesh = meshset.meshes[find_mesh_index(meshset, src_index)]
   dst_mesh = meshset.meshes[find_mesh_index(meshset, dst_index)]
+  newmatch = Match(src_mesh, dst_mesh, params)
   deleteat!(meshset.matches, match_ind)
-  add_match!(meshset, Match(src_mesh, dst_mesh, params))
+  add_match!(meshset, newmatch)
   meshset.properties["params"] = params
   meshset.properties["author"] = author()
   #save(meshset)
