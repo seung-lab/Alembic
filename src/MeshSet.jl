@@ -32,6 +32,11 @@ function get_mesh(meshset::MeshSet, index::Index)
   return meshset.meshes[find_mesh_index(meshset, index)]
 end
 
+function get_matches(meshset::MeshSet, index::Index)
+  k = find(i -> (index == get_src_index(i)) || (index == get_dst_index(i)), meshset.matches)
+  return meshset.matches[k]
+end
+
 ### finding
 function find_mesh_index(meshset::MeshSet, index::Index)
   return findfirst(this -> index == get_index(this), meshset.meshes)
@@ -294,6 +299,23 @@ function concat_meshset(parent_name)
 	end
   sort!(ms.meshes; by=get_index)
 	return ms;
+end
+
+"""
+Create partial meshset of a meshset split into children
+"""
+function compile_partial_meshset(parent_name, firstindex::Index, lastindex::Index)
+  ms = MeshSet()
+  indices = get_index_range(prealigned(firstindex), prealigned(lastindex))
+  ind = []
+  ms.properties = deepcopy(load_split(parent_name, 1).properties)
+  for i = 1:count_children(parent_name)
+    child_ms = load_split(parent_name, i)
+    if length(intersect(map(get_index, child_ms.meshes), indices)) > 0
+      concat!(ms, child_ms)
+    end
+  end
+  return ms
 end
 
 function find_mesh_indices(firstindex::Index, lastindex::Index, i::Int64)
