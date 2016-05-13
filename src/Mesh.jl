@@ -83,7 +83,7 @@ end
 
 function get_globalized_edge_lines_post(mesh::Mesh)
 	offset = get_offset(mesh)
-	return map(get_globalized_edge_points_post, repeated(mesh), collect(1:count_edges(mesh)), repeated(offset))
+	return map(get_globalized_edge_lines_post, repeated(mesh), collect(1:count_edges(mesh)), repeated(offset))
 end
 
 function get_edge_lengths(mesh::Mesh)		return map(get_edge_length, repeated(mesh), collect(1:count_edges(mesh)));		end
