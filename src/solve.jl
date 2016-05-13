@@ -423,7 +423,7 @@ function rectify_drift(meshset::MeshSet; rectify_aligned = false)
   end
   cum_drift = Point([0,0]);
   for (ind, drift) in enumerate(drifts)
-    cum_drift += drift;
+    cum_drift += (drift);
     update_offset(get_index(meshset.meshes[ind]), round(Int64, get_offset(get_index(meshset.meshes[ind])) + cum_drift))
     if rectify_aligned
     update_offset(aligned(get_index(meshset.meshes[ind])), round(Int64, get_offset(aligned(get_index(meshset.meshes[ind]))) + cum_drift))
