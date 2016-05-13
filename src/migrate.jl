@@ -71,7 +71,21 @@ function migrate!(meshset)
 	for match in meshset.matches
 	  match.properties["review"]["flags"] = Dict{Any, Any}();
 	end
+  end
 
+  if !haskey(meshset.matches[match_ind].correspondence_properties, "posts")
+  	println("MIGRATION: 2016-05-11 MeshSet: adding posts to correspondence_properties / moving dv_post and norm_post"); 
+	for match in meshset.matches
+	  for prop in match.correspondence_properties
+	    prop["posts"] = Dict{Any, Any}();
+  		if haskey(prop["vects"], "dv_post")
+		  prop["posts"]["dv_post"] = prop["vects"]["dv_post"];
+		  prop["posts"]["norm_post"] = prop["vects"]["norm_post"];
+		  delete!(prop["vects"], "dv_post")
+		  delete!(prop["vects"], "norm_post")
+		end
+	  end
+	end
   end
 
   return meshset
