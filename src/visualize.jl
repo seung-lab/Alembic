@@ -203,7 +203,7 @@ function override_xy_label(imgc, img2, offset, scale=1.0)
   imgc.handles[:pointerlabel] = xypos
   ImageView.grid(xypos, 1, 1, sticky="ne")
   ImageView.set_visible(win, true)
-  c.mouse.motion = (path,x,y)-> updatexylabel(xypos, imgc, img2, x, y, offset, scale)
+  c.mouse.motion = (path,x,y)-> updatexylabel(xypos, imgc, img2, x, y, offset..., scale)
 end
 
 function updatexylabel(xypos, imgc, img2, x, y, x_off, y_off, scale=1.0)
