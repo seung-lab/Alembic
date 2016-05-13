@@ -28,9 +28,7 @@ function inspect(meshset::MeshSet, match_ind=0)
     name = string("#", get_name(meshset), " ", get_parent(meshset))
     num_string = ""
   end
-  src_index = meshset.matches[k].src_index
-  dst_index = meshset.matches[k].dst_index
-  println("\n", name, ": ", (src_index, dst_index), num_string)
+  println("\n", name, ": ", get_name(meshset.matches[k]), num_string)
   imgc, img2, params = view_match(meshset, k)
   enable_inspection(imgc, img2, meshset, k, params)
 end
@@ -198,23 +196,12 @@ function view_match(meshset::MeshSet, match_ind)
     # view_inspection_statistics(match, params["search_r"])
   end
 
-  println("make image")
   imgc, img2 = view(img, pixelspacing=[1,1])
   # resize(imgc, 400, 600)
   make_vectors!(params)
   show_vectors(imgc, img2, params["vectors"], RGB(0,0,1), RGB(1,0,1))
   update_annotations(imgc, img2, match, params)
-
-  c = canvas(imgc)
-  win = Tk.toplevel(c)
-  fnotify = ImageView.Frame(win)
-  lastrow = 2
-  ImageView.grid(fnotify, lastrow+=1, 1, sticky="ew")
-  xypos = ImageView.Label(fnotify)
-  imgc.handles[:pointerlabel] = xypos
-  ImageView.grid(xypos, 1, 1, sticky="ne")
-  ImageView.set_visible(win, true)
-  c.mouse.motion = (path,x,y)-> updatexylabel(xypos, imgc, img2, x, y, params["offset"]..., scale)
+  override_xy_label(imgc, img2, params["offset"], params["scale"])
 
   return imgc, img2, params
 end
@@ -239,10 +226,11 @@ function make_vectors!(params)
   end
   vectorsA = scale_matches(src_points, scale)
   vectorsB = scale_matches(dst_points, scale)
-  vecs = offset_matches(vectorsA, vectorsB, offset)
-  vectors = [hcat(vecs[1]...); hcat(vecs[2]...)]
-  params["displacements"] = [vectors[2,:]; vectors[1,:]; vectors[4,:]; vectors[3,:]]
-  params["vectors"] = [vectors[2,:]; vectors[1,:]; vectors[4,:]; vectors[3,:]]
+  vectorsA, vectorsB = offset_points(vectorsA, vectorsB, offset)
+  vectorsA, vectorsB = transpose_points(vectorsA), transpose_points(vectorsB)
+  vectors = [hcat(vectorsA...); hcat(vectorsB...)]
+  params["displacements"] = vectors
+  params["vectors"] = vectors
   change_vector_lengths!(params)
 end
 
@@ -261,17 +249,29 @@ function change_vector_lengths!(params)
   vectors = params["displacements"]
   params["vectors"] = []
   if length(vectors) > 0
-    params["vectors"] = [vectors[1,:]; 
-                          vectors[2,:]; 
-                          (vectors[3,:]-vectors[1,:])*k + vectors[1,:]; 
-                          (vectors[4,:]-vectors[2,:])*k + vectors[2,:]]
+    params["vectors"] = change_vector_lengths(vectors, k)
   end
 end
 
-function offset_matches(src_pts, dst_pts, offset)
+function change_vector_lengths(vectors, scale)
+  return [vectors[1,:]; 
+            vectors[2,:]; 
+            (vectors[3,:]-vectors[1,:])*scale + vectors[1,:]; 
+            (vectors[4,:]-vectors[2,:])*scale + vectors[2,:]]
+end
+
+function offset_points(src_pts, dst_pts, offset)
   src_pts = [x - offset for x in src_pts]
   dst_pts = [x - offset for x in dst_pts]
   return src_pts, dst_pts
+end
+
+function transpose_points(point_list)
+  return map(reverse, point_list)
+end
+
+function transpose_vectors(vectors)
+  return [vectors[2,:]; vectors[1,:]; vectors[4,:]; vectors[3,:]]
 end
 
 function update_annotations(imgc, img2, match, params)
