@@ -95,18 +95,32 @@ Args:
   img2: ImageSliced2d object 
   nodes: 2xN array of points
 Returns:
-  imgc: ImageCanvas object
-  img2: ImageSliced2d object
   an_points: annotation object for the points
 """
-function show_points(imgc, img2, points, color=RGB(0,0,1), linewidth=1.0, shape='x')
-    points = [points[2,:]; points[1,:]]
+function show_points(imgc, img2, points; color=RGB(0,0,1), linewidth=2.0, size=10.0, shape='o', t=NaN)
+  an_points = nothing
+  if length(points) > 0
     an_points = annotate!(imgc, img2, AnnotationPoints(points, 
                                                         color=color, 
                                                         linewidth=linewidth,
-                                                        shape=shape))
-    return an_points
+                                                        size=size,
+                                                        shape=shape, t=t, scale=true))
+  end
+  return an_points
 end 
+
+function show_lines(imgc, img2, lines; color=RGB(0,0,1), linewidth=3.0, t=NaN)
+  an_vectors = nothing
+  if length(lines) > 0
+    an_vectors = annotate!(imgc, img2, AnnotationLines(lines, color=color, t=t,
+                                            coord_order="xxyy", linewidth=linewidth))
+  end
+  return an_vectors
+end 
+
+function show_text(imgc, img2, str, x, y; color=RGB(0,0,1), fontsize=30, t=NaN)
+  return annotate!(imgc, img2, AnnotationText(x, y, str, t=t, color=color, fontsize=fontsize, halign="left"))
+end
 
 function imwrite_box(img, point, radius, path, color=RGB(0,1,0), linewidth=1.0)
   upper_left = point - [radius, radius]
@@ -177,4 +191,37 @@ end
 
 function uview(img::Array{UInt8,2})
   return ImageView.view(convert(Array{Ufixed8}, img))
+end
+
+function override_xy_label(imgc, img2, offset, scale=1.0)
+  c = canvas(imgc)
+  win = Tk.toplevel(c)
+  fnotify = ImageView.Frame(win)
+  lastrow = 2
+  ImageView.grid(fnotify, lastrow+=1, 1, sticky="ew")
+  xypos = ImageView.Label(fnotify)
+  imgc.handles[:pointerlabel] = xypos
+  ImageView.grid(xypos, 1, 1, sticky="ne")
+  ImageView.set_visible(win, true)
+  c.mouse.motion = (path,x,y)-> updatexylabel(xypos, imgc, img2, x, y, offset..., scale)
+end
+
+function updatexylabel(xypos, imgc, img2, x, y, x_off, y_off, scale=1.0)
+  w = width(imgc.c)
+  xu, yu = ImageView.device_to_user(Tk.getgc(imgc.c), x, y)
+  # Image-coordinates
+  xi, yi = floor(Integer, 1+xu), floor(Integer, 1+yu)
+  if ImageView.isinside(imgc.canvasbb, x, y)
+    val = img2[xi,yi]
+    xo, yo = xi + x_off, yi + y_off
+    xo, yo = round(Int64, xo / scale), round(Int64, yo / scale)
+    str = "$yo, $xo ($yi, $xi): $val"
+    if length(str)*10>w
+      ImageView.set_value(xypos, "$yo, $xo ($yi, $xi)")
+    else
+      ImageView.set_value(xypos, str)
+    end
+  else
+    ImageView.set_value(xypos, "($yi, $xi)")
+  end
 end

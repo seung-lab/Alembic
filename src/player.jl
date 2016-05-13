@@ -8,11 +8,31 @@ function stop_playing!(state::ImageView.NavigationState)
     end
 end
 
+# function update_player_annotations(imgc, img2, annotations, t)
+#   if length(annotations) > 0
+#     display_list = annotations["display"]
+#     for k in display_list
+#       data = annotations["annotations"][k]["data"][:, :, t]
+#       if annotations["annotations"][k]["hash"] == nothing
+#         func = annotations["annotations"][k]["function"]
+#         handle = eval(func)(imgc, img2, data)
+#         annotations["annotations"][k]["hash"] = handle.hash
+#         annotations["annotations"][k]["symbol"] = fieldnames(handle.ann.data)[1]
+#       else
+#         h = annotations["annotations"][k]["hash"]
+#         sym = annotations["annotations"][k]["symbol"]
+#         imgc.annotations[h].data.(sym) = data
+#       end
+#     end
+#     ImageView.redraw(imgc)
+#   end
+# end
+
 """
 Ripped from ImageView > navigation.jl
 """
-function updatet(ctrls, state)
-  Tk.set_value(ctrls.editt, string(state.t))
+function updatet(ctrls, state, t_display)
+  Tk.set_value(ctrls.editt, t_display)
   Tk.set_value(ctrls.scalet, state.t)
   enableback = state.t > 1
   Tk.set_enabled(ctrls.stepback, enableback)
@@ -25,42 +45,65 @@ end
 """
 Ripped from ImageView > navigation.jl
 """
-function incrementt(inc, ctrls, state, showframe)
+function incrementt(inc, ctrls, state, showframe, annotations)
     state.t += inc
-    updatet(ctrls, state)
+    t_display = string(state.t)
+    if length(annotations) > 0
+      index = annotations["indices"][state.t]
+      t_display = string(join(index[1:2], ","))
+    end
+    updatet(ctrls, state, t_display)
+    # update_player_annotations(imgc, img2, annotations, state.t)
     showframe(state)
 end
 
 """
 Ripped from ImageView > navigation.jl
 """
-function playt(inc, ctrls, state, showframe)
+function playt(inc, ctrls, state, showframe, annotations)
     if !(state.fps > 0)
         error("Frame rate is not positive")
     end
     stop_playing!(state)
     dt = 1/state.fps
-    state.timer = Timer(timer -> stept(inc, ctrls, state, showframe), dt, dt)
+    state.timer = Timer(timer -> stept(inc, ctrls, state, showframe, annotations), dt, dt)
 end
 
 """
 Ripped from ImageView > navigation.jl
 """
-function stept(inc, ctrls, state, showframe)
+function stept(inc, ctrls, state, showframe, annotations)
     if 1 <= state.t+inc <= state.tmax
-        incrementt(inc, ctrls, state, showframe)
+        incrementt(inc, ctrls, state, showframe, annotations)
     else
         stop_playing!(state)
     end
 end
 
 """
+Endlessly repeat forward loop (continuous stept)
+"""
+function loopt(ctrls, state, showframe, annotations)
+  inc = 1
+  if state.t+inc < 1 || state.tmax < state.t+inc
+      state.t = 0
+  end
+  incrementt(inc, ctrls, state, showframe, annotations)
+end
+
+"""
+Building on ImageView > navigation.jl
+"""
+function set_fps!(state, fps)
+  state.fps = fps
+end
+
+"""
 Create loop of the image
 """
-function start_loop(imgc, img2, fps=6)
+function start_loop(imgc, img2, showframe, fps=6, annotations=Dict())
   state = imgc.navigationstate
   ctrls = imgc.navigationctrls
-  showframe = state -> ImageView.reslice(imgc, img2, state)
   set_fps!(state, fps)
 
   if !(state.fps > 0)
@@ -68,7 +111,7 @@ function start_loop(imgc, img2, fps=6)
   end
   stop_playing!(state)
   dt = 1/state.fps
-  state.timer = Timer(timer -> loopt(ctrls, state, showframe), dt, dt)
+  state.timer = Timer(timer -> loopt(ctrls, state, showframe, annotations), dt, dt)
 end
 
 """
@@ -79,283 +122,216 @@ function stop_loop(imgc)
 end
 
 """
-Endlessly repeat forward loop (continuous stept)
-"""
-function loopt(ctrls, state, showframe)
-  inc = 1
-  if state.t+inc < 1 || state.tmax < state.t+inc
-      state.t = 0
-  end
-  incrementt(inc, ctrls, state, showframe)
-end
-
-"""
-Building on ImageView > navigation.jl
-"""
-function set_fps!(state, fps)
-  state.fps = fps
-end
-
-
-"""
-meshset, area, slice, username, path = load_stack_params("hmcgowan")
-review_stack(username, meshset, area, slice, 1, true)
-"""
-function load_stack_params(username)
-  meshset = load((1,2,-3,-3), (1,167,-3,-3))
-  area = BoundingBox(5000,5000,28000,28000)
-  slice = [400, 400]
-  path = get_stack_errors_path(meshset, username)
-  return meshset, area, slice, username, path
-end
-
-function get_stack_errors_path(meshset, username)
-  firstindex = meshset.meshes[1].index
-  lastindex = meshset.meshes[end].index
-  fn = string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","),
-                "_aligned_stack_errors.txt")
-  fn = update_filename(fn, username)
-  return joinpath(INSPECTION_DIR, fn)
-end
-
-function review_stack(username, meshset, area, slice, k; auto=false, fps=12)
-  mov, slice_range = go_to(meshset, area, slice, k; include_reverse=true)
-  println("Reviewing stack @ column ", k)
-  errors, escape, fps = mark_stack(mov; fps=fps, include_reverse=true)
-  path = get_stack_errors_path(meshset, username)
-  store_stack_errors(path, username, slice_range, k, errors)
-  println("Last reviewed stack @ column ", k)
-  if auto & !escape
-    return review_stack(username, meshset, area, slice, k+1; auto=true, fps=fps)
-  end
-end
-
-"""
-Stores all slice reviews in chronological order - no overwriting
-"""
-function store_stack_errors(path, username, slice_range, k, errors)
-  ts = Dates.format(now(), "yymmddHHMMSS")
-  i, j = slice_range[1][1], slice_range[2][1]
-  n, m = slice_range[1][end]-slice_range[1][1], 
-                    slice_range[2][end]-slice_range[2][1]
-  error_line = [ts, username, i, j, n, m, k, join(errors, ",")]'
-  if !isfile(path)
-    f = open(path, "w")
-    close(f)
-    stack_errors = error_line
-  else  
-    stack_errors = readdlm(path)
-    stack_errors = vcat(stack_errors, error_line)
-  end
-  stack_errors = stack_errors[sortperm(stack_errors[:, 3]), :]
-  println("Saving stack_errors:\n", path)
-  writedlm(path, stack_errors)
-end
-
-"""
-Retrieves all slice ranges, calculating count for last review
-"""
-function get_stack_errors(path, area)
-  s = 0.1
-  z = 0
-  if isfile(path)
-    stack_errors = readdlm(path)
-    z = zeros(Int64, round(Int64, area.h*s), round(Int64, area.w*s))
-    for k in 1:size(stack_errors, 1)
-      i = round(Int64, (stack_errors[k, 3] - area.i)*s)+1
-      j = round(Int64, (stack_errors[k, 4] - area.j)*s)+1
-      iz = round(Int64, stack_errors[k, 5]*s)
-      jz = round(Int64, stack_errors[k, 6]*s)
-      errors = stack_errors[k, 8]
-      if typeof(errors) != Int64
-        errors = readdlm(IOBuffer(stack_errors[k, 8]), ',', Int)
-      end
-      l = length(errors)
-      z[i:i+iz, j:j+jz] = ones(Int64, iz+1, jz+1)*l
-    end
-  end
-  return z
-end
-
-function get_stack_errors_groundtruth_path()
-  fn = "1,2-1,167_aligned_stack_errors_EDITED_tmacrina_baseline.txt"
-  return joinpath(inspection_storage_path, fn)
-end
-
-function print_stack_errors_report(meshset, path)
-  dC = compare_stack_errors(meshset, path)
-  report = ["k" "1_agree" "1_disagree" "2_agree" "2_disagree" "3_agree" "3_disagree"]
-  for k in sort(collect(keys(dC)))
-    agree1 = join(push!(dC[k][1],0), ",")
-    disagree1 = join(push!(dC[k][2], dC[k][3]..., 0), ",")
-    agree2 = join(push!(dC[k][4],0), ",")
-    disagree2 = join(push!(dC[k][5], dC[k][6]..., 0), ",")
-    agree3 = join(push!(dC[k][7],0), ",")
-    disagree3 = join(push!(dC[k][8], dC[k][9]..., 0), ",")
-    report = vcat(report, [k agree1 disagree1 agree2 disagree2 agree3 disagree3])
-  end
-  path = string(path[1:end-4], "_report.txt")
-  println("Saving report:\n", path)
-  writedlm(path, report)
-  return report
-end
-
-function compare_stack_errors(meshset, pathA, pathB=get_stack_errors_groundtruth_path())
-  dC = Dict()
-  dA = dict_of_stack_errors(meshset, pathA)
-  dB = dict_of_stack_errors(meshset, pathB)
-  sections = intersect(Set(keys(dB)), Set(keys(dA)))
-  for k in sections
-    assert(dA[k][4] == dB[k][4])
-    A1, A2, A3 = Set(dA[k][1]), Set(dA[k][2]), Set(dA[k][3])
-    B1, B2, B3 = Set(dB[k][1]), Set(dB[k][2]), Set(dB[k][3])
-    # [TP in A, TN in A, FP in A, FN in A] # TN: match properly removed
-    dC[k] = [intersect(A1, B1),
-              setdiff(A1, B1),
-              setdiff(B1, A1),
-              intersect(A2, B2),
-              setdiff(A2, B2),
-              setdiff(B2, A2),
-              intersect(A3, B3),
-              setdiff(A3, B3),
-              setdiff(B3, A3)]
-  end
-  return dC
-end
-
-function dict_of_stack_errors(meshset, path)
-  d = Dict()
-  pts = readdlm(path)
-  indices = 1:length(meshset.meshes)
-  for i in 1:size(pts,1)
-    match_index = pts[i,7]
-    frames = readdlm(IOBuffer(pts[i,8]), ',', Int)
-    d[match_index] = []
-    push!(d[match_index], push!(indices'[frames .== 1], 0))
-    push!(d[match_index], push!(indices'[frames .== 2], 0))
-    push!(d[match_index], push!(indices'[frames .== 3], 0))
-    push!(d[match_index], pts[i,4:7])
-  end
-  return d
-end
-
-function normalize_to_uint8(a)
-  assert(minimum(a) == 0)
-  mx = maximum(a)
-  a /= mx
-  return convert(Array{UInt8}, round(a*255))
-end
-
-function create_stack_colormap()
-  return vcat(linspace(RGB(0.0,0.0,0.0), RGB(0.2,0.2,0.2), 127), 
-              linspace(RGB(0.2,0.2,0.2), RGB(1.0,0.0,0.0), 128))
-end
-
-function view_errors(path, area)
-  z = get_stack_errors(path, area)
-  a = normalize_to_uint8(z)
-  cm = create_stack_colormap()
-  b = apply_colormap(a, cm)
-  imgc, img2 = view(b, pixelspacing=[1,1])
-  c = canvas(imgc)
-  win = Tk.toplevel(c)
-  fnotify = ImageView.Frame(win)
-  lastrow = 1
-  ImageView.grid(fnotify, lastrow+=1, 1, sticky="ew")
-  xypos = ImageView.Label(fnotify)
-  imgc.handles[:pointerlabel] = xypos
-  ImageView.grid(xypos, 1, 1, sticky="ne")
-  ImageView.set_visible(win, true)
-  c.mouse.motion = (path,x,y)-> updatexylabel(xypos, imgc, z-1, x, y)
-end
-
-function go_to(meshset, area, slice, k; include_reverse=false)
-  assert(k != 0)
-  n, m = round(Int64, area.h/slice[1]), round(Int64, area.w/slice[2])
-  i = (k-1)%n + 1
-  j = ceil(Int64, k/n)
-  section_range = 1:length(meshset.meshes)
-  islice = ((i-1)*slice[1]:i*slice[1]) + area.i
-  jslice = ((j-1)*slice[1]:j*slice[1]) + area.j
-  stack = make_image_stack(meshset, section_range, (islice, jslice); 
-                                            include_reverse=include_reverse)
-  return stack, (islice, jslice)
-end
-
-function get_frame(imgc)
-  state = imgc.navigationstate
-  t = state.t
-  if t > N
-    t = 2*N - t
-  end
-  println(t)
-  return t
-end
-
-"""
 Cycle through sections of the stack stack, with images staged for easier viewing
 """
-function view_stack(firstindex::Index, lastindex::Index, slice=(1:200,1:200);
+function view_stack(firstindex::Index, lastindex::Index, center, radius;
                                         include_reverse=false, perm=[1,2,3])
-  stack = make_stack(firstindex, lastindex, slice);
-  view_stack(stack; slice=slice, include_reverse=include_reverse, perm=perm)
-  return stack
+  x, y = center
+  slice = (x-radius):(x+radius), (y-radius):(y+radius)
+  return view_stack(firstindex, lastindex, slice, include_reverse=include_reverse, perm=perm)
 end
 
-function view_stack(stack; slice=(0:0, 0:0), include_reverse=false, perm=[1,2,3])
+function view_stack(firstindex::Index, lastindex::Index, slice=(1:200,1:200); include_reverse=false, perm=[1,2,3])
+  stack = make_stack(firstindex, lastindex, slice)
+  offset = get_offset(slice_to_bb(slice))
+  indices = get_index_range(firstindex, lastindex)
+  annotations = Dict("indices" => [indices, reverse(indices)])
+  imgc, img2 = view_stack(stack, offset=offset, annotations=annotations, include_reverse=include_reverse, perm=perm)
+  return stack, annotations, imgc, img2
+end
+
+function view_stack(stack; offset=[0,0], annotations=Dict(), include_reverse=false, perm=[1,2,3])
   img_stack = permutedims(reinterpret(UFixed8, stack), perm)
   if include_reverse
     img_stack = cat(3, img_stack, img_stack[:,:,end:-1:1])
   end
   imgc, img2 = view(Image(img_stack, timedim=3), pixelspacing=DATASET_RESOLUTION[perm[1:2]])
+  override_xy_label(imgc, img2, offset, 1.0)
 
   c = canvas(imgc)
   win = Tk.toplevel(c)
-  fnotify = ImageView.Frame(win)
-  lastrow = 2
-  ImageView.grid(fnotify, lastrow+=1, 1, sticky="ew")
-  xypos = ImageView.Label(fnotify)
-  imgc.handles[:pointerlabel] = xypos
-  ImageView.grid(xypos, 1, 1, sticky="ne")
-  ImageView.set_visible(win, true)
-  c.mouse.motion = (path,x,y)-> updatexylabel(xypos, imgc, img2, x, y, slice[2][1]-1, slice[1][1]-1)
-
-  bind(win, "<Up>", path->adjust_fps(imgc, img2, 1))
-  bind(win, "<Down>", path->adjust_fps(imgc, img2, -1))
+  state = imgc.navigationstate
+  ctrls = imgc.navigationctrls
+  showframe = state -> ImageView.reslice(imgc, img2, state)
+  incrementt(0, ctrls, state, showframe, annotations)
+  bind(win, "<Up>", path->adjust_fps(imgc, img2, showframe, 1, annotations))
+  bind(win, "<Down>", path->adjust_fps(imgc, img2, showframe, -1, annotations))
   bind(win, "<Escape>", path->exit_stack(imgc, img2))
   bind(win, "<Destroy>", path->exit_stack(imgc, img2))
-
-  start_loop(imgc, img2, 30)
+  bind(win, "<Alt-Right>", path->stept(1,ctrls,state,showframe, annotations))
+  bind(win, "<Alt-Left>", path->stept(-1,ctrls,state,showframe, annotations))
+  bind(win, "<Alt-Shift-Right>", path->playt(1,ctrls,state,showframe, annotations))
+  bind(win, "<Alt-Shift-Left>", path->playt(-1,ctrls,state,showframe, annotations))
+  # bind(c, "<Button-3>", (c, x, y)->inspect_match(imgc, img2, 
+  #                                                       parse(Int, x), 
+  #                                                       parse(Int, y), 
+  #                                                       annotations))
+  return imgc, img2
 end
 
-function updatexylabel(xypos, imgc, img2, x, y, x_off, y_off, scale=1.0)
-  w = width(imgc.c)
-  xu, yu = ImageView.device_to_user(Tk.getgc(imgc.c), x, y)
-  # Image-coordinates
-  xi, yi = floor(Integer, 1+xu), floor(Integer, 1+yu)
-  if ImageView.isinside(imgc.canvasbb, x, y)
-    val = img2[xi,yi]
-    xo, yo = xi + x_off, yi + y_off
-    xo, yo = round(Int64, xo / scale), round(Int64, yo / scale)
-    str = "$yo, $xo ($yi, $xi): $val"
-    if length(str)*10>w
-      ImageView.set_value(xypos, "$yo, $xo ($yi, $xi)")
-    else
-      ImageView.set_value(xypos, str)
+# function inspect_match(imgc, img2, x, y, matches, prox=0.0125)
+#   # prox: 0.0125 = 100/8000
+#   t = imgc.navigationstate.t
+#   index = annotations["indices"][t]
+#   ann = annotations["ann"][index]["match"]
+#   vectors = []
+#   for (k, v) in ann
+#     push!(vectors, v)
+#   end
+#   vectors = hcat(vectors...)
+
+#   xu, yu = Graphics.device_to_user(Graphics.getgc(imgc.c), x, y)
+#   xi, yi = floor(Integer, 1+xu), floor(Integer, 1+yu)
+#   limit = (img2.zoombb.xmax - img2.zoombb.xmin) * prox 
+#   annidx = find_idx_of_nearest_pt(vectors[1:2,:], [xi, yi], limit)
+#   if annidx > 0
+#     idx = indices[annidx]
+#     ptA = vectors[1:2,idx] # - params["src_offset"]
+#     ptB = vectors[3:4,idx] # - params["dst_offset"]
+#     println(idx, ": ", ptA, ", ", ptB)
+#     bm_win = view_blockmatch(matches, idx, params)
+#     detect_blockmatch_removal(imgc, img2, bm_win, matches, idx, params)
+#   end
+
+
+function make_vectors(meshset::MeshSet, match_ind::Int, offset, scale=10)
+  src_points, dst_points, filtered_inds = get_globalized_correspondences_post(meshset, match_ind)
+  return offset_points(src_points, dst_points, offset), filtered_inds
+end
+
+function mask_and_combine_points(src, dst, mask)
+  src_masked, dst_masked = src[mask], dst[mask]
+  return [[i...] for i in zip(src_masked, dst_masked)]
+end
+
+function filter_contained_points(vectors, bb)
+  return filter(i->point_is_contained(bb, i[1:2]), vectors)
+end
+
+function filter_contained_lines(vectors, bb)
+  return filter(i->line_is_contained(bb, i), vectors)
+end
+
+function compile_match_annotations(meshset::MeshSet, match::Match, bb::BoundingBox, scale=20)
+  match_ind = find_match_index(meshset, match)
+  offset = get_offset(bb)
+  local_bb = translate_bb(bb, -offset)
+  (src, dst), accepted_inds = make_vectors(meshset::MeshSet, match_ind::Int, offset)
+  rejected_inds = collect(setdiff(1:length(src), accepted_inds))
+  accepted = mask_and_combine_points(src, dst, accepted_inds)
+  rejected = mask_and_combine_points(src, dst, rejected_inds)
+  accepted_vectors = transpose_vectors(hcat(filter_contained_points(accepted, local_bb)...))
+  rejected_vectors = transpose_vectors(hcat(filter_contained_points(accepted, local_bb)...))
+  return change_vector_lengths(accepted_vectors, scale), change_vector_lengths(rejected_vectors, scale)
+end
+
+function compile_mesh_annotations(mesh::Mesh, bb::BoundingBox)
+  offset = get_offset(bb)
+  local_bb = translate_bb(bb, -offset)
+  edges = [x - [offset, offset] for x in get_globalized_edge_lines_post(mesh)]
+  edges_to_display = hcat(filter_contained_lines(edges, local_bb)...)
+  edges_to_display = transpose_vectors(edges_to_display)
+  lengths_pre = get_edge_lengths(mesh)
+  lengths_post = get_edge_lengths_post(mesh)
+  strain = lengths_post - lengths_pre
+  return edges_to_display, strain
+end
+
+function compile_annotations(parent_name, firstindex::Index, lastindex::Index, slice)
+  ms = compile_partial_meshset(parent_name, firstindex, lastindex)
+  return ms, compile_annotations(ms, firstindex, lastindex, slice)
+end
+
+function compile_annotations(meshset::MeshSet, firstindex::Index, lastindex::Index, center, radius)
+  x, y = center
+  slice = (x-radius):(x+radius), (y-radius):(y+radius)
+  return compile_annotations(meshset, firstindex, lastindex, slice)
+end
+
+function compile_annotations(meshset::MeshSet, firstindex::Index, lastindex::Index, slice)
+  indices = get_index_range(firstindex, lastindex)
+  bb = slice_to_bb(slice)
+  annotations = ["ann" => Dict(), 
+                 "meshset" => meshset, 
+                 "indices" => indices,
+                 "slice" => slice,
+                 "bb" => bb]
+  for index in indices
+    annotations["ann"][index] = Dict()
+    annotations["ann"][index]["match"] = Dict()
+    annotations["ann"][index]["match_names"] = Dict()
+    match_inds = find_match_indices(meshset, prealigned(index))
+    for i in match_inds
+      src_index, dst_index = get_src_and_dst_indices(ms.matches[i])
+      if (firstindex <= aligned(src_index) <= lastindex) && 
+                  (firstindex <= aligned(dst_index) <= lastindex)
+        vectors, _ = compile_match_annotations(ms, ms.matches[i], bb)
+        annotations["ann"][index]["match"][i] = vectors
+        annotations["ann"][index]["match_names"][i] = get_name(ms.matches[i])
+      end
     end
-  else
-    ImageView.set_value(xypos, "($yi, $xi)")
+    mesh = get_mesh(ms, prealigned(index))
+    edges, strain = compile_mesh_annotations(mesh, bb)
+    annotations["ann"][index]["mesh"] = Dict("edges" => edges, "strain" => strain)
+  end
+
+  annotations["indices"] = indices
+  return annotations
+end
+
+function display_annotations(imgc, img2, annotations)
+  colors = [RGB(0,1,0), RGB(1,0,1), RGB(0,0.6,0), RGB(0.6,0,0.6)]
+  for (i, index) in enumerate(annotations["indices"])
+    data = annotations["ann"][index]["mesh"]["edges"]
+    if size(data, 2) > 1
+      show_lines(imgc, img2, data, color=RGB(0.4, 0.4, 0.4), t=i)
+    end
+    for (k, match_ind) in enumerate(keys(annotations["ann"][index]["match"]))
+      data = annotations["ann"][index]["match"][match_ind]
+      name = annotations["ann"][index]["match_names"][match_ind]
+      if size(data, 2) > 1
+        show_points(imgc, img2, data[1:2, :], shape='o', color=colors[k], t=i)
+        show_lines(imgc, img2, data, color=colors[k], t=i)
+        fontsize = 70
+        show_text(imgc, img2, name, 2*fontsize, 2*fontsize*k, fontsize=fontsize, color=colors[k], t=i)
+      end
+    end
   end
 end
 
-function adjust_fps(imgc, img2, d)
+# function view_annotated_stack(parentfirst::Index, parentlast::Index, firstindex::Index, lastindex::Index, slice=(1:200,1:200);
+#                                         include_reverse=false, perm=[1,2,3])
+#   annotations = compile_annotations(get_name(parentfirst, parentlast), firstindex, lastindex, slice, include_reverse)
+#   stack = make_stack(firstindex, lastindex, slice);
+#   imgc, img2 = view_annotated_stack(stack, annotations)
+#   return stack, imgc, img2, annotations
+# end
+
+function make_stack(annotations)
+  return make_stack(annotations["indices"][1], annotations["indices"][end], annotations["slice"])
+end
+
+function view_annotated_stack(annotations)
+  stack = make_stack(annotations)
+  imgc, img2 = view_annotated_stack(stack, annotations)
+  return stack, imgc, img2
+end
+
+function view_annotated_stack(stack, annotations)
+  offset = get_offset(annotations["bb"])
+  imgc, img2 = view_stack(stack, offset=offset, annotations=annotations)
+  display_annotations(imgc, img2, annotations)
+  return imgc, img2
+end
+
+function adjust_fps(imgc, img2, showframe, d, annotations)
   state = imgc.navigationstate
   fps = state.fps
   fps += d
   if 1 <= fps <= 50
     stop_loop(imgc)
     set_fps!(state, fps)
-    start_loop(imgc, img2, fps)
+    start_loop(imgc, img2, showframe, fps, annotations)
   end
 end
 
@@ -368,5 +344,10 @@ function exit_stack(imgc, img2)
   bind(win, "<Down>", path->path)
   bind(win, "<Destroy>", path->path)
   bind(win, "<Escape>", path->path)
+  bind(win, "<Alt-Right>", path->path)
+  bind(win, "<Alt-Left>", path->path)
+  bind(win, "<Alt-Shift-Right>", path->path)
+  bind(win, "<Alt-Shift-Left>", path->path)
+  bind(c, "<Button-3>", path->path)
   destroy(win)
 end

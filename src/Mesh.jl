@@ -48,6 +48,13 @@ function get_edge_points_post(mesh::Mesh, ind)
 	return mesh.dst_nodes[inds[1]], mesh.dst_nodes[inds[2]]
 end
 
+function get_globalized_edge_lines_post(mesh::Mesh, ind, offset=get_offset(mesh))
+#	src_ind = findfirst(this -> this < 0, mesh.edges[:, ind]);
+#	dst_ind = findfirst(this -> this > 0, mesh.edges[:, ind]);
+	@fastmath @inbounds inds = findnz(mesh.edges[:, ind])[1];
+	return [mesh.dst_nodes[inds[1]] + offset, mesh.dst_nodes[inds[2]] + offset]
+end
+
 # Not sure why this doesn't work
 function isless(meshA::Mesh, meshB::Mesh)
   return get_index(meshA) < get_index(meshB)
@@ -74,6 +81,11 @@ function get_edge_midpoints(mesh::Mesh)
 	return map(get_edge_midpoint, repeated(mesh), collect(1:count_edges(mesh)))
 end
 
+function get_globalized_edge_lines_post(mesh::Mesh)
+	offset = get_offset(mesh)
+	return map(get_globalized_edge_lines_post, repeated(mesh), collect(1:count_edges(mesh)), repeated(offset))
+end
+
 function get_edge_lengths(mesh::Mesh)		return map(get_edge_length, repeated(mesh), collect(1:count_edges(mesh)));		end
 
 function get_edge_lengths_post(mesh::Mesh)		return map(get_edge_length_post, repeated(mesh), collect(1:count_edges(mesh)));		end
@@ -84,6 +96,7 @@ function get_globalized_nodes_h(mesh::Mesh)
 	@fastmath g_src_nodes, g_dst_nodes = get_globalized_nodes(mesh);
     return hcat(g_src_nodes...), hcat(g_dst_nodes...)
 end
+
 function get_globalized_nodes(mesh::Mesh)
     @fastmath g_src_nodes = mesh.src_nodes + fill(get_offset(mesh), count_nodes(mesh));
     @fastmath g_dst_nodes = mesh.dst_nodes + fill(get_offset(mesh), count_nodes(mesh));
