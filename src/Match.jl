@@ -88,6 +88,10 @@ function get_src_and_dst_indices(match::Match)
   return match.src_index, match.dst_index
 end
 
+function get_name(match::Match)
+	return join(get_src_and_dst_indices(match), ",")
+end
+
 function get_correspondences(match::Match; globalized=false)
 	if globalized
 	return match.src_points + fill(get_offset(match.src_index), count_correspondences(match)), match.dst_points + fill(get_offset(match.dst_index), count_correspondences(match))
