@@ -391,7 +391,7 @@ function calculate_post_statistics!(meshset::MeshSet, match_ind)
   end
 end
 
-function rectify_drift(meshset::MeshSet; rectify_aligned = false)
+function rectify_drift(meshset::MeshSet, bias = [0.0, 0.0]; rectify_aligned = false)
   meshes = Dict{Any, Any}();
   for mesh in meshset.meshes
 	meshes[mesh.index] = mesh;
@@ -423,7 +423,7 @@ function rectify_drift(meshset::MeshSet; rectify_aligned = false)
   end
   cum_drift = Point([0,0]);
   for (ind, drift) in enumerate(drifts)
-    cum_drift += (drift);
+    cum_drift += (drift + bias);
     update_offset(get_index(meshset.meshes[ind]), round(Int64, get_offset(get_index(meshset.meshes[ind])) + cum_drift))
     if rectify_aligned
     update_offset(aligned(get_index(meshset.meshes[ind])), round(Int64, get_offset(aligned(get_index(meshset.meshes[ind]))) + cum_drift))
