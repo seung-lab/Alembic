@@ -86,9 +86,9 @@ function get_globalized_edge_lines_post(mesh::Mesh)
 	return map(get_globalized_edge_lines_post, repeated(mesh), collect(1:count_edges(mesh)), repeated(offset))
 end
 
-function get_edge_lengths(mesh::Mesh)		return map(get_edge_length, repeated(mesh), collect(1:count_edges(mesh)));		end
+function get_edge_lengths(mesh::Mesh)		return FloatProperty(map(get_edge_length, repeated(mesh), collect(1:count_edges(mesh))));		end
 
-function get_edge_lengths_post(mesh::Mesh)		return map(get_edge_length_post, repeated(mesh), collect(1:count_edges(mesh)));		end
+function get_edge_lengths_post(mesh::Mesh)		return FloatProperty(map(get_edge_length_post, repeated(mesh), collect(1:count_edges(mesh))));		end
 
 function get_homogenous_edge_lengths(mesh::Mesh)	return fill(get_edge_length(mesh, 1), count_edges(mesh));		end
 
