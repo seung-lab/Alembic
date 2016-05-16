@@ -252,7 +252,6 @@ function get_ranges(pt, src_index, src_offset, src_img_size, dst_index, dst_offs
 	src_range_full = src_pt[1] + block_range, src_pt[2] + block_range;
 	dst_range_full = dst_pt[1] + search_range, dst_pt[2] + search_range;
 
-	
 	range_in_src = intersect(src_range_full[1], 1:src_img_size[1]), intersect(src_range_full[2], 1:src_img_size[2]);
 	range_in_dst = intersect(dst_range_full[1], 1:dst_img_size[1]), intersect(dst_range_full[2], 1:dst_img_size[2]);
 

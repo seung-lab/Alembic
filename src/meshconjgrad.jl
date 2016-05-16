@@ -30,19 +30,15 @@ function Energy(Springs, Stiffnesses, RestLengths)
 end
 
 function get_lengths(Springs)
-   @fastmath @inbounds begin
-    halflen = div(length(Springs), 2);
+    @fastmath halflen = div(length(Springs), 2);
     r1 = 1:halflen
     r2 = halflen + 1:halflen * 2
-    return sqrt(Springs[r1] .* Springs[r1] .+ Springs[r2] .* Springs[r2]) + eps
-  end
+    @fastmath @inbounds return sqrt(Springs[r1] .* Springs[r1] + Springs[r2] .* Springs[r2]) + eps
 end
 
 function Energy_given_lengths(Lengths, Stiffnesses, RestLengths)
-    @fastmath @inbounds begin
-    dLengths = Lengths - RestLengths
-    return sum(Stiffnesses.*(dLengths.*dLengths))/2/length(Lengths)
-  end
+    @fastmath dLengths = Lengths - RestLengths
+    @fastmath return sum(Stiffnesses.*(dLengths.*dLengths))/2/length(Lengths)
 end
 
 #="""
@@ -56,16 +52,16 @@ function Gradient(Springs, Incidence_d, Stiffnesses_d, RestLengths_d)
     return Gradient_given_lengths(Springs, Lengths, Incidence_d, Stiffnesses_d, RestLengths_d)
 end
 
-function Gradient_given_lengths(Springs, Lengths, Incidence_d, Stiffnesses_d, RestLengths_d)
+function Gradient_given_lengths(Springs, Lengths, Incidence_t, Stiffnesses_d, RestLengths_d)
     @fastmath Directions = Springs ./ vcat(Lengths, Lengths);
     #Directions[isnan(Directions)] *= 0
+#    @fastmath Forces = (Springs.-(Directions .* RestLengths_d)) .* Stiffnesses_d
     @fastmath Forces = (Springs-(Directions .* RestLengths_d)) .* Stiffnesses_d
-    @fastmath return (Incidence_d * Forces)
+    @fastmath return (Incidence_t' * Forces)
 end
 
 function SolveMeshConjugateGradient!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, max_iter, ftol)
     # double everything
-    @fastmath @inbounds begin
     Vertices_t = Vertices';
     Vertices_t = vcat(Vertices_t[:, 1], Vertices_t[:, 2])
 
@@ -77,7 +73,6 @@ function SolveMeshConjugateGradient!(Vertices, Fixed, Incidence, Stiffnesses, Re
     Stiffnesses_d = vcat(Stiffnesses, Stiffnesses)
     RestLengths_d = vcat(RestLengths, RestLengths)
 
-  end
 
     function cost(x)
         Vertices_t[Moving] = x[Moving];
@@ -93,15 +88,11 @@ function SolveMeshConjugateGradient!(Vertices, Fixed, Incidence, Stiffnesses, Re
     end
 
     function cost_and_gradient!(x,storage)
-    @fastmath @inbounds begin    
-        Vertices_t[Moving] = x[Moving];
-        Springs = Incidence_t * Vertices_t;
-    	Lengths = get_lengths(Springs);
-	#println(Lengths);
-    	g = Gradient_given_lengths(Springs, Lengths, Incidence_d, Stiffnesses_d, RestLengths_d)
-        storage[:] = g
+        @inbounds Vertices_t[Moving] = x[Moving];
+        @fastmath Springs = Incidence_d' * Vertices_t;
+    	@fastmath Lengths = get_lengths(Springs);
+        @inbounds storage[:] = Gradient_given_lengths(Springs, Lengths, Incidence_t, Stiffnesses_d, RestLengths_d)
         return Energy_given_lengths(Lengths,Stiffnesses,RestLengths)
-      end
     end
 
     df = DifferentiableFunction(cost, cost_gradient!, cost_and_gradient!)
