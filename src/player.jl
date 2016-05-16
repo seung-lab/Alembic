@@ -1,7 +1,7 @@
 """
 Ripped from ImageView > navigation.jl
 """
-function stop_playing!(state::ImageView.NavigationState)
+function stop_playing!(state::ImageView.Navigation.NavigationState)
     if state.timer != nothing
         close(state.timer)
         state.timer = nothing
@@ -229,12 +229,14 @@ function compile_mesh_annotations(mesh::Mesh, bb::BoundingBox)
   offset = get_offset(bb)
   local_bb = translate_bb(bb, -offset)
   edges = [x - [offset, offset] for x in get_globalized_edge_lines_post(mesh)]
-  edges_to_display = hcat(filter_contained_lines(edges, local_bb)...)
+  mask = Bool[map(line_is_contained, repeated(local_bb), edges)...]
+  edges_to_display = hcat(edges[mask]...)
   edges_to_display = transpose_vectors(edges_to_display)
   lengths_pre = get_edge_lengths(mesh)
   lengths_post = get_edge_lengths_post(mesh)
-  strain = lengths_post - lengths_pre
-  return edges_to_display, strain
+  strain = (lengths_post - lengths_pre) ./ lengths_pre
+  strain_to_display = strain[mask]
+  return edges_to_display, strain_to_display
 end
 
 function compile_annotations(parent_name, firstindex::Index, lastindex::Index, slice)
@@ -242,13 +244,15 @@ function compile_annotations(parent_name, firstindex::Index, lastindex::Index, s
   return ms, compile_annotations(ms, firstindex, lastindex, slice)
 end
 
-function compile_annotations(meshset::MeshSet, firstindex::Index, lastindex::Index, center, radius)
+function compile_annotations(meshset::MeshSet, center::Tuple{Int,Int}, radius=1024)
   x, y = center
   slice = (x-radius):(x+radius), (y-radius):(y+radius)
-  return compile_annotations(meshset, firstindex, lastindex, slice)
+  return compile_annotations(meshset, slice)
 end
 
-function compile_annotations(meshset::MeshSet, firstindex::Index, lastindex::Index, slice)
+function compile_annotations(meshset::MeshSet, slice)
+  ms_indices = map(aligned, map(get_index, meshset.meshes))
+  firstindex, lastindex = minimum(ms_indices), maximum(ms_indices)
   indices = get_index_range(firstindex, lastindex)
   bb = slice_to_bb(slice)
   annotations = ["ann" => Dict(), 
@@ -275,16 +279,26 @@ function compile_annotations(meshset::MeshSet, firstindex::Index, lastindex::Ind
     annotations["ann"][index]["mesh"] = Dict("edges" => edges, "strain" => strain)
   end
 
-  annotations["indices"] = indices
+  annotations["indices"] = [indices, reverse(indices)]
   return annotations
 end
 
-function display_annotations(imgc, img2, annotations)
-  colors = [RGB(0,1,0), RGB(1,0,1), RGB(0,0.6,0), RGB(0.6,0,0.6)]
-  for (i, index) in enumerate(annotations["indices"])
+function display_annotations(imgc, img2, annotations; include_reverse=false)
+  colors = [RGB(0,1,0), RGB(1,0,1), RGB(0,0.8,0), RGB(0.8,0,0.8)]
+  bwr = create_bwr_colormap()
+  indices = annotations["indices"]
+  if !include_reverse
+    indices = indices[1:end/2]
+  end
+  for (i, index) in enumerate(indices)
     data = annotations["ann"][index]["mesh"]["edges"]
+    # strain = map(i->RGB(i,i,i), annotations["ann"][index]["mesh"]["strain"])
+    s = copy(annotations["ann"][index]["mesh"]["strain"])
+    s[s.<=0] = round(UInt8, -s[s.<=0]./minimum(s)*127+128)
+    s[s.>0] = round(UInt8, s[s.>0]./maximum(s)*127+128)
+    strain = apply_colormap(s, bwr)
     if size(data, 2) > 1
-      show_lines(imgc, img2, data, color=RGB(0.4, 0.4, 0.4), t=i)
+      show_colored_lines(imgc, img2, data, strain, t=i)
     end
     for (k, match_ind) in enumerate(keys(annotations["ann"][index]["match"]))
       data = annotations["ann"][index]["match"][match_ind]
@@ -292,7 +306,7 @@ function display_annotations(imgc, img2, annotations)
       if size(data, 2) > 1
         show_points(imgc, img2, data[1:2, :], shape='o', color=colors[k], t=i)
         show_lines(imgc, img2, data, color=colors[k], t=i)
-        fontsize = 70
+        fontsize = 40
         show_text(imgc, img2, name, 2*fontsize, 2*fontsize*k, fontsize=fontsize, color=colors[k], t=i)
       end
     end
@@ -308,19 +322,19 @@ end
 # end
 
 function make_stack(annotations)
-  return make_stack(annotations["indices"][1], annotations["indices"][end], annotations["slice"])
+  return make_stack(minimum(annotations["indices"]), maximum(annotations["indices"]), annotations["slice"])
 end
 
-function view_annotated_stack(annotations)
+function view_annotated_stack(annotations; include_reverse=false)
   stack = make_stack(annotations)
-  imgc, img2 = view_annotated_stack(stack, annotations)
+  imgc, img2 = view_annotated_stack(stack, annotations; include_reverse=include_reverse)
   return stack, imgc, img2
 end
 
-function view_annotated_stack(stack, annotations)
+function view_annotated_stack(stack, annotations; include_reverse=false)
   offset = get_offset(annotations["bb"])
-  imgc, img2 = view_stack(stack, offset=offset, annotations=annotations)
-  display_annotations(imgc, img2, annotations)
+  imgc, img2 = view_stack(stack, offset=offset, annotations=annotations, include_reverse=include_reverse)
+  display_annotations(imgc, img2, annotations, include_reverse=include_reverse)
   return imgc, img2
 end
 

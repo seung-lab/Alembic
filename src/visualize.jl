@@ -118,6 +118,15 @@ function show_lines(imgc, img2, lines; color=RGB(0,0,1), linewidth=3.0, t=NaN)
   return an_vectors
 end 
 
+function show_colored_lines(imgc, img2, lines, colors; linewidth=3.0, t=NaN)
+  an_vectors = nothing
+  if length(lines) > 0
+    an_vectors = annotate!(imgc, img2, AnnotationColoredLines(lines, colors, t=t,
+                                            coord_order="xxyy", linewidth=linewidth))
+  end
+  return an_vectors
+end 
+
 function show_text(imgc, img2, str, x, y; color=RGB(0,0,1), fontsize=30, t=NaN)
   return annotate!(imgc, img2, AnnotationText(x, y, str, t=t, color=color, fontsize=fontsize, halign="left"))
 end

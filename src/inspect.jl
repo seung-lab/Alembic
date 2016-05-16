@@ -155,7 +155,6 @@ end
 Display match index match_ind as overlayed images with points
 """
 function view_match(meshset::MeshSet, match_ind)
-  calculate_post_statistics!(meshset, match_ind)
   match = meshset.matches[match_ind]
   indexA = match.src_index
   indexB = match.dst_index
@@ -350,6 +349,11 @@ function create_hot_colormap()
   return vcat(linspace(RGB(0,0,0), RGB(1,0,0), 100), 
               linspace(RGB(1,0,0), RGB(1,1,0), 100), 
               linspace(RGB(1,1,0), RGB(1,1,1), 55))
+end
+
+function create_bwr_colormap()
+  return vcat(linspace(RGB(0,0,1), RGB(1,1,1), 128), 
+              linspace(RGB(0,0,0), RGB(1,0,0), 128))
 end
 
 function apply_colormap{T}(img, colormap::Array{T})
@@ -844,6 +848,7 @@ function view_property_spatial_scatter(match, property_name; filtered=true, fact
 end
 
 function view_inspection_statistics(meshset::MeshSet, match_ind::Int64)
+  calculate_post_statistics!(meshset, match_ind)
   match = meshset.matches[match_ind]
   sr = get_dfs(meshset.properties, "search_r")
   mesh = get_mesh(meshset, get_src_index(match))

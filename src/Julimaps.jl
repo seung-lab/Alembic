@@ -64,7 +64,9 @@ end
 
 PKGS_USED = ["HDF5", "JLD", "Images", "ImageView", "Colors", "FixedPointNumbers", "Cairo", "IterativeSolvers", "Optim", "Distributions", "RegERMs", "PyPlot"]
 
-PKGS_USED_CLONABLE = ["https://github.com/JuliaSparse/MKLSparse.jl.git", "https://github.com/seung-lab/ImageRegistration.git"]
+PKGS_USED_CLONABLE = ["https://github.com/JuliaSparse/MKLSparse.jl.git", 
+                      "https://github.com/seung-lab/ImageRegistration.git", 
+                      "https://github.com/macrintr/ImageView.jl.git"]
 
 using HDF5
 using JLD
@@ -76,6 +78,7 @@ using IterativeSolvers
 using ImageRegistration
 using Optim
 using Distributions
+using Compat
 #using RegERMs
 if USE_PYPLOT
   using PyPlot
@@ -123,7 +126,6 @@ include("visualize.jl")
 include("utilities.jl")
 include("transforms.jl")
 include("draw.jl")
-include("visualize.jl")
 if !(contains(gethostname(), "seunglab") || contains(gethostname(), "seungom"))
   include("player.jl")
   include("inspect.jl")
