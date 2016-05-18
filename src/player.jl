@@ -145,7 +145,7 @@ function view_stack(stack; offset=[0,0], annotations=Dict(), include_reverse=fal
   if include_reverse
     img_stack = cat(3, img_stack, img_stack[:,:,end:-1:1])
   end
-  imgc, img2 = view(Image(img_stack, timedim=3), pixelspacing=DATASET_RESOLUTION[perm[1:2]])
+  imgc, img2 = ImageView.view(Image(img_stack, timedim=3), pixelspacing=DATASET_RESOLUTION[perm[1:2]])
   override_xy_label(imgc, img2, offset, 1.0)
 
   c = canvas(imgc)

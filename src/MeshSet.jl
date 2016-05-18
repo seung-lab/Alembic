@@ -443,7 +443,7 @@ function MeshSet(first_index, last_index; params=get_params(first_index), solve=
 					"split_index" => 0)
 					)
 	meshset = MeshSet(meshes, matches, properties);
-	match!(meshset, params["match"]["depth"]);
+	match!(meshset, params["match"]["depth"]; reflexive = params["match"]["reflexive"]);
 
 	filter!(meshset);
 	check_and_fix!(meshset);
@@ -505,8 +505,8 @@ end
 
 
 ### match
-function get_all_overlaps(meshset::MeshSet, within = 1)	return get_all_overlaps(meshset.meshes, within);	end;
-function get_all_overlaps(meshes::Array{Mesh, 1}, within = 1)
+function get_all_overlaps(meshset::MeshSet, within = 1; reflexive = reflexive)	return get_all_overlaps(meshset.meshes, within; reflexive = reflexive);	end;
+function get_all_overlaps(meshes::Array{Mesh, 1}, within = 1; reflexive = true)
 adjacent_pairs = Pairings(0)
 diagonal_pairs = Pairings(0)
 preceding_pairs = Pairings(0)
@@ -517,7 +517,7 @@ succeeding_pairs = Pairings(0)
     if is_diagonal(get_index(meshes[i]), get_index(meshes[j])) push!(diagonal_pairs, (i, j)); end
     if is_preceding(get_index(meshes[i]), get_index(meshes[j]), within) 
     	push!(preceding_pairs, (i, j)); 
-    	push!(succeeding_pairs, (j, i)); 
+	if reflexive    	push!(succeeding_pairs, (j, i)); end
     end
   end
 
@@ -527,17 +527,18 @@ succeeding_pairs = Pairings(0)
   return pairs
 end
 
-function match!(meshset::MeshSet, within = 1)
+function match!(meshset::MeshSet, within = 1; reflexive = true)
 	params = get_params(meshset);
-	pairs = get_all_overlaps(meshset, within);
-	for i in 1:2:(length(pairs) - 2)
+	pairs = get_all_overlaps(meshset, within; reflexive = reflexive);
+	for i in 1:length(pairs)
+	#for i in 1:2:(length(pairs) - 2)
 	        #prefetched = prefetch(get_index(meshset.meshes[pairs[i+2][2]]), get_params(meshset)["match"]["blockmatch_scale"]);
 		add_match!(meshset, Match(meshset.meshes[pairs[i][1]], meshset.meshes[pairs[i][2]], params));
-		add_match!(meshset, Match(meshset.meshes[pairs[i+1][1]], meshset.meshes[pairs[i+1][2]], params));
+	#	add_match!(meshset, Match(meshset.meshes[pairs[i+1][1]], meshset.meshes[pairs[i+1][2]], params));
 		#load_prefetched(prefetched);
 	end
-	add_match!(meshset, Match(meshset.meshes[pairs[end-1][1]], meshset.meshes[pairs[end-1][2]], params));
-	add_match!(meshset, Match(meshset.meshes[pairs[end][1]], meshset.meshes[pairs[end][2]], params));
+#	add_match!(meshset, Match(meshset.meshes[pairs[end-1][1]], meshset.meshes[pairs[end-1][2]], params));
+#	add_match!(meshset, Match(meshset.meshes[pairs[end][1]], meshset.meshes[pairs[end][2]], params));
 end
 
 function rematch!(meshset::MeshSet, match_ind, params = get_params(meshset))
