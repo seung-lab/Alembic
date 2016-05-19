@@ -417,12 +417,11 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0)
           else
 	  xc_j_len = length(dst_range_full[2]) - length(src_range[2]) 
 	end
-	xc_i_locs = linspace(1, length(dst_range_full[1]), size(xc, 1) + 1)
-	xc_j_locs = linspace(1, length(dst_range_full[2]), size(xc, 2) + 1)
+	xc_i_locs = linspace(1, xc_i_len, size(xc, 1) + 1)
+	xc_j_locs = linspace(1, xc_j_len, size(xc, 2) + 1)
 
 	i_max = (i_max - 0.5) * step(xc_i_locs) + 1
 	j_max = (j_max - 0.5) * step(xc_j_locs) + 1
-
       end
 	di = i_max - (dst_pt_loc_full[1] - src_pt_loc[1] + 1)
 	dj = j_max - (dst_pt_loc_full[2] - src_pt_loc[2] + 1)
