@@ -75,23 +75,23 @@ function SolveMeshConjugateGradient!(Vertices, Fixed, Incidence, Stiffnesses, Re
 
 
     function cost(x)
-        Vertices_t[Moving] = x[Moving];
+        Vertices_t[Moving] = x[:];
         Springs = Incidence_t * Vertices_t;
         return Energy(Springs,Stiffnesses,RestLengths)
     end
 
     function cost_gradient!(x,storage)
-        Vertices_t[Moving] = x[Moving];
+        Vertices_t[Moving] = x[:];
         Springs = Incidence_t * Vertices_t;
         g = Gradient(Springs, Incidence_d, Stiffnesses_d, RestLengths_d)
         storage[:] = g
     end
 
     function cost_and_gradient!(x,storage)
-        @inbounds Vertices_t[Moving] = x[Moving];
+        @inbounds Vertices_t[Moving] = x[:];
         @fastmath Springs = Incidence_d' * Vertices_t;
     	@fastmath Lengths = get_lengths(Springs);
-        @inbounds storage[:] = Gradient_given_lengths(Springs, Lengths, Incidence_t, Stiffnesses_d, RestLengths_d)
+        @inbounds storage[:] = Gradient_given_lengths(Springs, Lengths, Incidence_t, Stiffnesses_d, RestLengths_d)[Moving]
         return Energy_given_lengths(Lengths,Stiffnesses,RestLengths)
     end
 
@@ -107,9 +107,9 @@ function SolveMeshConjugateGradient!(Vertices, Fixed, Incidence, Stiffnesses, Re
     #    end
     #    df = DifferentiableFunction(cost, cost_gradient!, cost_and_gradient!)
 
-    @fastmath res = optimize(df,Vertices_t,method=:cg,show_trace=true,iterations=max_iter,ftol=ftol)
+    @fastmath res = optimize(df,Vertices_t[Moving],method=GradientDescent(),show_trace=true,iterations=max_iter,ftol=ftol)
     # return res
-    Vertices_t[Moving] = res.minimum[Moving];
+    Vertices_t[Moving] = res.minimum[:];
     Vertices[:] = vcat(Vertices_t[1:(length(Vertices_t)/2)]', Vertices_t[1+(length(Vertices_t)/2):end]');
     
 end

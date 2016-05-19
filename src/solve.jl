@@ -417,9 +417,11 @@ function rectify_drift(meshset::MeshSet, bias = [0.0, 0.0]; use_post = true, rec
       end
 
 	if is_preceding(get_index(src_mesh), get_index(dst_mesh), 5)
-	  drifts[find_mesh_index(meshset, get_dst_index(match))] -= avg_drift/2;
+	  #drifts[find_mesh_index(meshset, get_dst_index(match))] -= avg_drift/2;
+	  drifts[find_mesh_index(meshset, get_dst_index(match))] -= avg_drift;
 	else
-	  drifts[find_mesh_index(meshset, get_src_index(match))] += avg_drift/2;
+	  #drifts[find_mesh_index(meshset, get_src_index(match))] += avg_drift/2;
+	  drifts[find_mesh_index(meshset, get_src_index(match))] += avg_drift;
 	end
 
   end
