@@ -88,6 +88,17 @@ function migrate!(meshset)
 	end
   end
 
+  if !haskey(meshset.properties["params"]["match"], "reflexive")
+  	println("MIGRATION: 2016-05-19 MeshSet, Mesh, Match: adding reflexive as a field under params"); 
+	for mesh in meshset.meshes
+	  mesh.properties["params"]["match"]["reflexive"] = true;
+	end
+	for match in meshset.matches
+	  match.properties["params"]["match"]["reflexive"] = true;
+	end
+	  meshset.properties["params"]["match"]["reflexive"] = true;
+  end
+
   return meshset
 end
 
