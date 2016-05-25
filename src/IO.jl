@@ -2,7 +2,7 @@ global const IMG_ELTYPE = UInt8
 #global const IMG_SUP_SIZE = (75000, 75000)
 
 # size in bytes
-global const IMG_CACHE_SIZE = 8 * 2^30 # n * gibibytes
+global const IMG_CACHE_SIZE = 16 * 2^30 # n * gibibytes
 
 if myid() == 1
 	global const IMG_CACHE_DICT = Dict{Any, SharedArray}()
@@ -79,11 +79,11 @@ function clean_cache()
 	if sum(map(Int64, map(length, values(IMG_CACHE_DICT)))) > IMG_CACHE_SIZE && !(length(IMG_CACHE_DICT) < 2)
 	while sum(map(Int64, map(length, values(IMG_CACHE_DICT)))) > IMG_CACHE_SIZE * 0.75 && !(length(IMG_CACHE_DICT) < 2)
 		todelete = shift!(IMG_CACHE_LIST);
-		IMG_CACHE_DICT[todelete] = SharedArray(IMG_ELTYPE, 0, 0);
+		#IMG_CACHE_DICT[todelete] = zeros(IMG_ELTYPE,0,0)
 		delete!(IMG_CACHE_DICT, todelete)
 	end
-	@everywhere gc();
       end
+	@everywhere gc();
 
 	cur_cache_size = sum(map(Int64, map(length, values(IMG_CACHE_DICT))));
 
@@ -97,6 +97,7 @@ function get_image(path::String, scale=1.0, dtype = IMG_ELTYPE)
 
   	if haskey(IMG_CACHE_DICT, (path, scale))
 	  println("$path is in cache at scale $scale - loading from cache...")
+	  gc();
 	  return IMG_CACHE_DICT[(path, scale)]
 	end
 
@@ -105,11 +106,11 @@ function get_image(path::String, scale=1.0, dtype = IMG_ELTYPE)
 	if !haskey(IMG_CACHE_DICT, (path, 1.0))
 	    println("$path is not in cache at full scale - loading into cache...")
 	    img = get_image_disk(path, dtype);
-	 #   shared_img = SharedArray(dtype, size(img)...);
-	 #   shared_img[:,:] = img[:,:];
+	    shared_img = SharedArray(dtype, size(img)...);
+	    shared_img[:,:] = img[:,:];
 
 	    push!(IMG_CACHE_LIST, (path, 1.0))
-	    IMG_CACHE_DICT[(path, 1.0)] = img;
+	    IMG_CACHE_DICT[(path, 1.0)] = shared_img;
 	    img = 0;
 	end
 
@@ -122,9 +123,10 @@ function get_image(path::String, scale=1.0, dtype = IMG_ELTYPE)
 	  push!(IMG_CACHE_LIST, (path, scale))
 	  IMG_CACHE_DICT[(path, scale)] = scaled_img;
 	  scaled_img = 0;
+	  scaled_img = 0;
         end
 
-	@everywhere gc();
+#	@everywhere gc();
 	return IMG_CACHE_DICT[(path, scale)];
 end
 

@@ -107,7 +107,7 @@ function SolveMeshConjugateGradient!(Vertices, Fixed, Incidence, Stiffnesses, Re
     #    end
     #    df = DifferentiableFunction(cost, cost_gradient!, cost_and_gradient!)
 
-    @fastmath res = optimize(df,Vertices_t[Moving],method=GradientDescent(),show_trace=true,iterations=max_iter,ftol=ftol)
+    @fastmath res = optimize(df,Vertices_t[Moving],method=ConjugateGradient(),show_trace=true,iterations=max_iter,ftol=ftol)
     # return res
     Vertices_t[Moving] = res.minimum[:];
     Vertices[:] = vcat(Vertices_t[1:(length(Vertices_t)/2)]', Vertices_t[1+(length(Vertices_t)/2):end]');
