@@ -60,6 +60,14 @@ function Gradient_given_lengths(Springs, Lengths, Incidence_t, Stiffnesses_d, Re
     @fastmath return (Incidence_t' * Forces)
 end
 
+function Gradient_given_lengths!(Springs, Lengths, Incidence_t, Stiffnesses_d, RestLengths_d, storage, Moving)
+    @fastmath Directions = Springs ./ vcat(Lengths, Lengths);
+    #Directions[isnan(Directions)] *= 0
+#    @fastmath Forces = (Springs.-(Directions .* RestLengths_d)) .* Stiffnesses_d
+    @fastmath Forces = (Springs-(Directions .* RestLengths_d)) .* Stiffnesses_d
+    @fastmath @inbounds storage[:] = (Incidence_t' * Forces)[Moving]
+end
+
 function SolveMeshConjugateGradient!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, max_iter, ftol)
     # double everything
     Vertices_t = Vertices';
@@ -75,23 +83,34 @@ function SolveMeshConjugateGradient!(Vertices, Fixed, Incidence, Stiffnesses, Re
 
 
     function cost(x)
+      @time begin
         Vertices_t[Moving] = x[:];
-        Springs = Incidence_t * Vertices_t;
+        Springs = Incidence_d' * Vertices_t;
+	#println("calc_energy")
         return Energy(Springs,Stiffnesses,RestLengths)
+	print("cost: ")
+      end
     end
 
     function cost_gradient!(x,storage)
+      @time begin
         Vertices_t[Moving] = x[:];
-        Springs = Incidence_t * Vertices_t;
+        Springs = Incidence_d' * Vertices_t;
         g = Gradient(Springs, Incidence_d, Stiffnesses_d, RestLengths_d)
         storage[:] = g
+	print("gradient: ")
+      end
     end
 
     function cost_and_gradient!(x,storage)
+      #@time begin
         @inbounds Vertices_t[Moving] = x[:];
         @fastmath Springs = Incidence_d' * Vertices_t;
     	@fastmath Lengths = get_lengths(Springs);
-        @inbounds storage[:] = Gradient_given_lengths(Springs, Lengths, Incidence_t, Stiffnesses_d, RestLengths_d)[Moving]
+        #@inbounds storage[:] = Gradient_given_lengths(Springs, Lengths, Incidence_t, Stiffnesses_d, RestLengths_d)[Moving]
+        @fastmath @inbounds Gradient_given_lengths!(Springs, Lengths, Incidence_t, Stiffnesses_d, RestLengths_d, storage, Moving)
+	#print("cost_and_gradient: ")
+      #end
         return Energy_given_lengths(Lengths,Stiffnesses,RestLengths)
     end
 
