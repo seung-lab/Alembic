@@ -1,6 +1,6 @@
 
 # size in bytes
-global const IMG_CACHE_SIZE = 16 * 2^30 # n * gibibytes
+global const IMG_CACHE_SIZE = 8 * 2^30 # n * gibibytes
 global const IMG_ELTYPE = UInt8
 
 if myid() == 1
@@ -96,7 +96,7 @@ function get_image(path::String, scale=1.0, dtype = IMG_ELTYPE)
 
   	if haskey(IMG_CACHE_DICT, (path, scale))
 	  println("$path is in cache at scale $scale - loading from cache...")
-	   # @everywhere gc();
+	   @everywhere gc();
 	  return IMG_CACHE_DICT[(path, scale)]
 	end
 
@@ -112,7 +112,7 @@ function get_image(path::String, scale=1.0, dtype = IMG_ELTYPE)
 	    #IMG_CACHE_DICT[(path, 1.0)] = img;
 	    push!(IMG_CACHE_DICT, (path, 1.0), get_image_disk(path, dtype))
 	    #img = 0;
-	    #@time @everywhere gc();
+	#    @everywhere gc();
 	end
 
 	if scale != 1.0
@@ -128,6 +128,8 @@ function get_image(path::String, scale=1.0, dtype = IMG_ELTYPE)
 	  scaled_img = 0;
 	  scaled_img = 0;
         end
+
+	    @everywhere gc();
 
 	return IMG_CACHE_DICT[(path, scale)];
 end
