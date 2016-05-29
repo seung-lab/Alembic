@@ -162,6 +162,10 @@ function view_stack(stack; offset=[0,0], annotations=Dict(), include_reverse=fal
   bind(win, "<Alt-Left>", path->stept(-1,ctrls,state,showframe, annotations))
   bind(win, "<Alt-Shift-Right>", path->playt(1,ctrls,state,showframe, annotations))
   bind(win, "<Alt-Shift-Left>", path->playt(-1,ctrls,state,showframe, annotations))
+  bind(c, "<Control-Button-3>", (c, x, y)->get_line_index(imgc, img2, 
+                                                        parse(Int, x), 
+                                                        parse(Int, y), 
+                                                        annotations))
   # bind(c, "<Button-3>", (c, x, y)->inspect_match(imgc, img2, 
   #                                                       parse(Int, x), 
   #                                                       parse(Int, y), 
@@ -212,7 +216,7 @@ function filter_contained_lines(vectors, bb)
   return filter(i->line_is_contained(bb, i), vectors)
 end
 
-function compile_match_annotations(meshset::MeshSet, match::Match, bb::BoundingBox, scale=20)
+function compile_match_annotations(meshset::MeshSet, match::Match, bb::BoundingBox)
   match_ind = find_match_index(meshset, match)
   offset = get_offset(bb)
   local_bb = translate_bb(bb, -offset)
@@ -222,13 +226,15 @@ function compile_match_annotations(meshset::MeshSet, match::Match, bb::BoundingB
   rejected = mask_and_combine_points(src, dst, rejected_inds)
   accepted_vectors = transpose_vectors(hcat(filter_contained_points(accepted, local_bb)...))
   rejected_vectors = transpose_vectors(hcat(filter_contained_points(accepted, local_bb)...))
-  return change_vector_lengths(accepted_vectors, scale), change_vector_lengths(rejected_vectors, scale)
+  return accepted_vectors, rejected_vectors
 end
 
 function compile_mesh_annotations(mesh::Mesh, bb::BoundingBox)
   offset = get_offset(bb)
   local_bb = translate_bb(bb, -offset)
-  edges = [x - [offset, offset] for x in get_globalized_edge_lines_post(mesh)]
+  edges = [x - [offset, offset] for x in get_globalized_edge_lines_post(mesh)] 
+  edge_indices = get_edge_indices(mesh)
+  edges_removed_indices = get_removed_edge_indices(mesh)
   mask = Bool[map(line_is_contained, repeated(local_bb), edges)...]
   edges_to_display = hcat(edges[mask]...)
   edges_to_display = transpose_vectors(edges_to_display)
@@ -236,7 +242,9 @@ function compile_mesh_annotations(mesh::Mesh, bb::BoundingBox)
   lengths_post = get_edge_lengths_post(mesh)
   strain = (lengths_post - lengths_pre) ./ lengths_pre
   strain_to_display = strain[mask]
-  return edges_to_display, strain_to_display
+  edge_indices_included = edge_indices[mask]
+  edges_removed_included = intersect(edge_indices_included, edges_removed_indices)
+  return edges_to_display, strain_to_display, edge_indices_included, edges_removed_included
 end
 
 function compile_annotations(parent_name, firstindex::Index, lastindex::Index, slice)
@@ -259,7 +267,8 @@ function compile_annotations(meshset::MeshSet, slice)
                  "meshset" => meshset, 
                  "indices" => indices,
                  "slice" => slice,
-                 "bb" => bb]
+                 "bb" => bb,
+                 "scale" => 10]
   for index in indices
     annotations["ann"][index] = Dict()
     annotations["ann"][index]["match"] = Dict()
@@ -275,8 +284,12 @@ function compile_annotations(meshset::MeshSet, slice)
       end
     end
     mesh = get_mesh(ms, prealigned(index))
-    edges, strain = compile_mesh_annotations(mesh, bb)
-    annotations["ann"][index]["mesh"] = Dict("edges" => edges, "strain" => strain)
+    edges, strain, edge_indices, edges_removed = compile_mesh_annotations(mesh, bb)
+    edges_removed_mask = Bool[i in edges_removed for i in edge_indices]
+    annotations["ann"][index]["mesh"] = Dict("edges" => edges, 
+                                              "strain" => strain,
+                                              "indices" => edge_indices,
+                                              "removed" => edges_removed_mask)
   end
 
   annotations["indices"] = [indices, reverse(indices)]
@@ -287,21 +300,35 @@ function display_annotations(imgc, img2, annotations; include_reverse=false)
   colors = [RGB(0,1,0), RGB(1,0,1), RGB(0,0.8,0), RGB(0.8,0,0.8)]
   bwr = create_bwr_colormap()
   indices = annotations["indices"]
+  scale = annotations["scale"]
   if !include_reverse
     indices = indices[1:end/2]
   end
+  all_strains = [annotations["ann"][i]["mesh"]["strain"] for i in indices]
+  all_strains = vcat(all_strains...)
+  min_s = minimum(all_strains)
+  max_s = maximum(all_strains)
+  print("\n")
+  println("Min/max mesh strain: $min_s / $max_s")
+  min_s = min_s == 0 ? 1 : min_s
   for (i, index) in enumerate(indices)
+    println("Display annotations for $index")
     data = annotations["ann"][index]["mesh"]["edges"]
     # strain = map(i->RGB(i,i,i), annotations["ann"][index]["mesh"]["strain"])
     s = copy(annotations["ann"][index]["mesh"]["strain"])
-    s[s.<=0] = round(UInt8, -s[s.<=0]./minimum(s)*127+128)
-    s[s.>0] = round(UInt8, s[s.>0]./maximum(s)*127+128)
+    st = annotations["ann"][index]["mesh"]["strain"]
+    s[st.<=0] = round(UInt8, -st[st.<=0]./min_s*127+128)
+    if max_s != 0
+      s[st.>0] = round(UInt8, st[st.>0]./max_s*127+128)
+    end
     strain = apply_colormap(s, bwr)
+    removed_mask = annotations["ann"][index]["mesh"]["removed"]
+    strain[removed_mask] = [RGB(0,0,0) for i in 1:sum(removed_mask)]
     if size(data, 2) > 1
       show_colored_lines(imgc, img2, data, strain, t=i)
     end
     for (k, match_ind) in enumerate(keys(annotations["ann"][index]["match"]))
-      data = annotations["ann"][index]["match"][match_ind]
+      data = change_vector_lengths(annotations["ann"][index]["match"][match_ind], scale)
       name = annotations["ann"][index]["match_names"][match_ind]
       if size(data, 2) > 1
         show_points(imgc, img2, data[1:2, :], shape='o', color=colors[k], t=i)
@@ -323,6 +350,13 @@ end
 
 function make_stack(annotations)
   return make_stack(minimum(annotations["indices"]), maximum(annotations["indices"]), annotations["slice"])
+end
+
+function view_stack(annotations::Dict; include_reverse=false)
+  offset = get_offset(annotations["bb"])
+  stack = make_stack(annotations)
+  imgc, img2 = view_stack(stack, offset=offset, annotations=annotations, include_reverse=include_reverse)
+  return stack, imgc, img2
 end
 
 function view_annotated_stack(annotations; include_reverse=false)
@@ -362,6 +396,73 @@ function exit_stack(imgc, img2)
   bind(win, "<Alt-Left>", path->path)
   bind(win, "<Alt-Shift-Right>", path->path)
   bind(win, "<Alt-Shift-Left>", path->path)
+  bind(c, "<Control-Button-3>", path->path)
   bind(c, "<Button-3>", path->path)
   destroy(win)
+end
+
+function get_line_index(imgc, img2, x, y, annotations, prox=0.0125)
+  # prox: 0.0125 = 100/8000
+  t = imgc.navigationstate.t
+  index = annotations["indices"][t]
+  edges = annotations["ann"][index]["mesh"]["edges"]
+
+  xu, yu = Graphics.device_to_user(Graphics.getgc(imgc.c), x, y)
+  xi, yi = floor(Integer, 1+xu), floor(Integer, 1+yu)
+  limit = (img2.zoombb.xmax - img2.zoombb.xmin) * prox 
+  idx = find_idx_of_nearest_line(edges, [xi, yi], limit)
+  if idx != 0
+    ms = annotations["meshset"]
+    mesh = get_mesh(ms, prealigned(index));
+    remove_edge!(mesh, annotations["ann"][index]["mesh"]["indices"][idx])
+    println(annotations["ann"][index]["mesh"]["indices"][idx])
+  end
+end
+
+"""
+Find index of location in array with point closest to the given point (if there
+exists such a unique point within a certain pixel limit).
+
+Args:
+
+* pts: 2xN array of coordinates
+* pt: 2-element coordinate array of point in interest
+* limit: number of pixels that nearest must be within
+
+Returns:
+
+* index of the nearest point in the pts array
+
+  idx = find_idx_of_nearest_pt(pts, pt, limit)
+"""
+function find_idx_of_nearest_line(lines, pt, limit)
+  pts = lines[1:2, :]
+  idx = 0
+  min_d = Inf
+  for i in 1:size(pts, 2)
+    closest_pt_vector = [Inf, Inf]
+    if lines[3:4, i] == lines[1:2, i]
+      closest_pt_vector = lines[1:2, i]
+    else
+      pt_vector = pt - lines[1:2, i]
+      line_vector = lines[3:4, i] - lines[1:2, i]
+      line_magnitude = norm(line_vector)
+      closest_magnitude = pt_vector'*line_vector / (line_magnitude)^2
+      t = max(0, min(1, closest_magnitude[1]))
+      closest_pt_vector = lines[1:2, i] + t*line_vector
+    end
+    displacement_vector = pt - closest_pt_vector
+    d = norm(displacement_vector)
+    if d < min_d
+      min_d = d
+      idx = i
+    end
+  end
+  if idx != 0
+    line = lines[:, idx]
+    m = @sprintf("%0.2f", min_d)
+    l = round(line, 1)
+    println("$pt is $m px from line $l @ $idx")
+ end
+ return idx
 end
