@@ -198,6 +198,8 @@ function elastic_solve!(meshset; from_current = true)
     end
     edge_lengths[edgeranges[get_index(mesh)]] = get_edge_lengths(mesh);
     edge_spring_coeffs[edgeranges[get_index(mesh)]] = fill(mesh_spring_coeff, count_edges(mesh));
+    removed_edges = get_removed_edge_indices(mesh)
+    edge_spring_coeffs[edgeranges[get_index(mesh)][get_removed_edge_indices(mesh)]] = 0.0
   end
 
   end # @fm @ib 

@@ -55,6 +55,27 @@ function get_globalized_edge_lines_post(mesh::Mesh, ind, offset=get_offset(mesh)
 	return [mesh.dst_nodes[inds[1]] + offset, mesh.dst_nodes[inds[2]] + offset]
 end
 
+function remove_edge!(mesh::Mesh, ind)
+	if !haskey(mesh.properties, "removed_indices")
+		mesh.properties["removed_indices"] = Set{Int64}()
+	end
+	push!(mesh.properties["removed_indices"], ind)
+	# edges_to_keep = get_edge_indices(mesh)
+	# deleteat!(edges_to_keep, ind)
+	# mesh.edges = mesh.edges[:, [edges_to_keep]]
+end
+
+function get_removed_edge_indices(mesh::Mesh)
+	if haskey(mesh.properties, "removed_indices")
+		return collect(mesh.properties["removed_indices"])
+	end
+	return []
+end
+
+function get_edge_indices(mesh::Mesh)
+	return collect(1:count_edges(mesh))
+end
+
 # Not sure why this doesn't work
 function isless(meshA::Mesh, meshB::Mesh)
   return get_index(meshA) < get_index(meshB)
