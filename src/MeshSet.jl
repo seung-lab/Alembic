@@ -309,6 +309,7 @@ function compile_partial_meshset(parent_name, firstindex::Index, lastindex::Inde
   indices = get_index_range(prealigned(firstindex), prealigned(lastindex))
   ind = []
   ms.properties = deepcopy(load_split(parent_name, 1).properties)
+  delete!(ms.properties, "meta")
   for i = 1:count_children(parent_name)
     child_ms = load_split(parent_name, i)
     if length(intersect(map(get_index, child_ms.meshes), indices)) > 0
