@@ -287,6 +287,38 @@ function update_annotations(imgc, img2, match, params)
   ImageView.redraw(imgc)
 end
 
+function view_sigma(match, match_ind, params)
+  src_patch, src_pt, dst_patch, dst_pt, xc, offset = get_correspondence_patches(match, match_ind)
+  N=size(xc, 1)
+  M=size(xc, 2)
+
+  x = linspace(0, N, N)
+  y = linspace(0, M, M)
+  xgrid = repmat(x', N, 1)
+  ygrid = repmat(y, 1, M)
+
+  fig = figure("sigma_filter") #,figsize=(10,10))
+  PyPlot.clf()
+  ax = fig[:add_subplot](1,1,1, projection = "3d") 
+  ax[:plot_surface](xgrid, ygrid, xc, rstride=10, edgecolors="k", 
+                    cstride=10, cmap=ColorMap("hot"), alpha=0.8, linewidth=0,
+                    antialiased=false) 
+  grid("on")
+  title("match $match_ind")
+
+  # s = sigma(xc)
+  # beta = 0.5
+  # xc_beta = xc
+  # xc_beta[xc .< beta*maximum(xc)] = NaN
+  # ax = fig[:add_subplot](2,1,2, projection = "3d") 
+  # ax[:plot_surface](xgrid, ygrid, xc_beta, rstride=10, edgecolors="k", 
+  #                   cstride=10, cmap=ColorMap("hot"), alpha=0.8, linewidth=0,
+  #                   antialiased=false) 
+  # grid("on")
+  # title("correlogram")
+  # title("beta_threshold")
+end
+
 """
 Display the images involved in the blockmatching at one point in a Match object
 """
@@ -301,11 +333,13 @@ function view_blockmatch(match, match_ind, params)
   N=size(xc, 1)
   M=size(xc, 2)
   if USE_PYPLOT
-    fig = figure("correlogram")
-    surf([i for i=1:N, j=1:M], [j for i=1:N, j=1:M], xc, cmap=get_cmap("hot"), 
-                            rstride=10, cstride=10, linewidth=0, antialiased=false)
-    grid("on")
-    title("match $match_ind")
+    view_sigma(match, match_ind, params)
+    # fig = figure("correlogram")
+    # PyPlot.clf()
+    # surf([i for i=1:N, j=1:M], [j for i=1:N, j=1:M], xc, cmap=get_cmap("hot"), 
+    #                         rstride=10, cstride=10, linewidth=0, antialiased=false)
+    # grid("on")
+    # title("match $match_ind")
   end
   println("max r-value: ", maximum(xc))
   xc_image = xcorr2Image(xc)
@@ -353,7 +387,7 @@ end
 
 function create_bwr_colormap()
   return vcat(linspace(RGB(0,0,1), RGB(1,1,1), 128), 
-              linspace(RGB(0,0,0), RGB(1,0,0), 128))
+              linspace(RGB(1,1,1), RGB(1,0,0), 127))
 end
 
 function apply_colormap{T}(img, colormap::Array{T})
