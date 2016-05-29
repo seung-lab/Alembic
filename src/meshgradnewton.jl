@@ -41,6 +41,19 @@ function GradientGD( Springs, Incidence, Stiffnesses, RestLengths)
     Forces*Incidence'
 end
 
+function EnergyGD_given_lengths(Lengths, Stiffnesses, RestLengths)
+    @fastmath dLengths = Lengths - RestLengths
+    @fastmath return sum(Stiffnesses.*(dLengths.*dLengths))/2#/length(Lengths)
+end
+
+function GradientGD_given_lengths(Springs, Lengths, Incidence_t, Stiffnesses_d, RestLengths_d)
+    @fastmath Directions = Springs ./ vcat(Lengths, Lengths);
+    #Directions[isnan(Directions)] *= 0
+#    @fastmath Forces = (Springs.-(Directions .* RestLengths_d)) .* Stiffnesses_d
+    @fastmath Forces = (Springs-(Directions .* RestLengths_d)) .* Stiffnesses_d
+    @fastmath return (Incidence_t' * Forces)
+end
+
 function Hessian( Springs, Incidence, Stiffnesses, RestLengths)
     # Hessian of the potential energy as an Vd x Vd matrix
     # i.e. VxV block matrix of dxd blocks
@@ -121,12 +134,37 @@ function SolveMeshGDNewton!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths
 
     iter = 1;
 
+    Vertices_t = Vertices';
+    Vertices_t = vcat(Vertices_t[:, 1], Vertices_t[:, 2])
+
+    Incidence_t = Incidence'
+    Incidence_t = vcat(hcat(Incidence_t, spzeros(size(Incidence_t)...)), hcat(spzeros(size(Incidence_t)...), Incidence_t))
+    Incidence_d = Incidence_t'
+
+    Moving_d = vcat(~Fixed, ~Fixed)
+    Stiffnesses_d = vcat(Stiffnesses, Stiffnesses)
+    RestLengths_d = vcat(RestLengths, RestLengths)
+
+function get_lengths(Springs)
+    @fastmath halflen = div(length(Springs), 2);
+    r1 = 1:halflen
+    r2 = halflen + 1:halflen * 2
+    @fastmath @inbounds return sqrt(Springs[r1] .* Springs[r1] + Springs[r2] .* Springs[r2]) + eps
+end
+
+
     while true
+        @fastmath Springs = Incidence_t * Vertices_t;
+    	@fastmath Lengths = get_lengths(Springs);
+        @inbounds Vertices_t[Moving_d] = Vertices_t[Moving_d] - eta_gradient * GradientGD_given_lengths(Springs, Lengths, Incidence_t, Stiffnesses_d, RestLengths_d)[Moving_d]
+        push!(U, EnergyGD_given_lengths(Lengths,Stiffnesses,RestLengths))
+        println(iter," ", U[iter])
+      #=
         Springs=Vertices*Incidence
         g=GradientGD(Springs, Incidence, Stiffnesses, RestLengths)
         Vertices[:,Moving]=Vertices[:,Moving]-eta_gradient*g[:,Moving]
         push!(U, EnergyGD(Springs,Stiffnesses,RestLengths))
-        println(iter," ", U[iter])
+        println(iter," ", U[iter])=#
         if iter != 1
     	if abs((U[iter-1] - U[iter]) / U[iter-1]) < ftol_gradient
     		println("Switching to Newton's Method:");    iter += 1; break;
@@ -134,13 +172,14 @@ function SolveMeshGDNewton!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths
     	end
         iter += 1;
     end
+    	Vertices[:] = vcat(Vertices_t[1:(length(Vertices_t)/2)]', Vertices_t[1+(length(Vertices_t)/2):end]');
 
     while true
     	Springs=Vertices*Incidence
     	g=GradientGD(Springs, Incidence, Stiffnesses, RestLengths)
     	H=Hessian2(Springs, Incidence, Stiffnesses, RestLengths)
         #Vertices[:,Moving]=Vertices[:,Moving]-eta_newton*reshape(H[Moving2,Moving2]\g[:,Moving][:],2,length(find(Moving)))
-        Vertices[:,Moving]=Vertices[:,Moving]-eta_newton*reshape(cg(H[Moving2,Moving2],g[:,Moving][:])[1],2,length(find(Moving)))
+        Vertices[:,Moving]=Vertices[:,Moving]-eta_newton*reshape(IterativeSolvers.cg(H[Moving2,Moving2],g[:,Moving][:])[1],2,length(find(Moving)))
     	push!(U, EnergyGD(Springs,Stiffnesses,RestLengths))
         println(iter," ", U[iter])
         if abs((U[iter-1] - U[iter]) / U[iter-1]) < ftol_newton
