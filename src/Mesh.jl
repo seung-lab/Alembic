@@ -240,6 +240,7 @@ function find_mesh_triangle(mesh::Mesh, point::Point)
 
 	indices_raw = point_padded ./ dists
 
+
 	# find which rows the point belongs to
 	i0 = round(Int64, indices_raw[1] + 1);
 	

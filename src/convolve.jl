@@ -108,34 +108,36 @@ function normxcorr2(template,img; shape = "valid")
     end
 
     # sufficient to subtract mean from just one variable
-    dt=template-mean(template)
-    templatevariance=sum(dt.^2)
-    numerator=valid_convolve(img,dt[end:-1:1,end:-1:1])
+    @fastmath @inbounds dt=template-mean(template)
+    @fastmath @inbounds templatevariance=sum(dt.^2)
+    @fastmath @inbounds numerator=valid_convolve(img,dt[end:-1:1,end:-1:1])
     
     ##### local statistics of img
     # zero pad image in first row and column
     # so that cumulative sums will have zeros in the same place
     (m1,m2)=size(img);
-    imgpad=zeros(m1+1,m2+1); imgpad[2:end,2:end]=img;
+    @fastmath @inbounds imgpad=zeros(m1+1,m2+1); @fastmath @inbounds imgpad[2:end,2:end]=img;
     # define four combinations of Small and Large ranges
     (n1,n2)=size(template);
     if templatevariance==0
         return zeros(m1-n1+1,m2-n2+1)*NaN
     end
-    LL=Any[1+(n1:m1),1+(n2:m2)]
-    SL=LL-[n1;0]; LS=LL-[0;n2]
-    SS=LL-[n1;n2]
+    @fastmath @inbounds LL=UnitRange{Int64}[1+(n1:m1),1+(n2:m2)]
+    @fastmath @inbounds SL=LL-[n1;0]; LS=LL-[0;n2]
+    @fastmath @inbounds SS=LL-[n1;n2]
     # sum of img and its square in template-sized neighborhoods
-    s=cumsum2(imgpad)
-    localsum=s[LL...]-s[SL...]-s[LS...]+s[SS...]
-    s2=cumsum2(imgpad.^2)
-    localsum2=s2[LL...]-s2[SL...]-s2[LS...]+s2[SS...]
-    localvariance=localsum2-localsum.^2/prod(size(template))
+    @fastmath @inbounds s=cumsum2(imgpad)
+    @fastmath @inbounds localsum=s[LL...]-s[SL...]-s[LS...]+s[SS...]
+    @fastmath @inbounds s2=cumsum2(imgpad.^2)
+    @fastmath @inbounds localsum2=s2[LL...]-s2[SL...]-s2[LS...]+s2[SS...]
+    @fastmath @inbounds localvariance=localsum2-localsum.^2/prod(size(template))
     # localvariance is zero for image patches that are constant
     # leading to undefined Pearson correlation coefficient
     # should only be negative due to roundoff error
-    localvariance[localvariance.<=0] *= NaN
-    denominator=sqrt(localvariance*templatevariance)
+    #localvariance[localvariance.<=0] *= NaN
+    @fastmath @inbounds denominator=sqrt(localvariance*templatevariance)
+    @fastmath @inbounds numerator[denominator.<=0] = 0
+    @fastmath @inbounds denominator[denominator.<=0] = eps
 
-    numerator./denominator
+    @fastmath @inbounds return (numerator./denominator);
 end

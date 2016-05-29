@@ -55,7 +55,7 @@ else
   global const ON_AWS = true;
 end
 
-if ON_AWS || contains(gethostname(), "seunglab") || contains(gethostname(), "seungom")
+if contains(gethostname(), "seunglab") || contains(gethostname(), "seungom")
   global const USE_PYPLOT = false;
 else
   global const USE_PYPLOT = true;
@@ -66,6 +66,7 @@ PKGS_USED = ["HDF5", "JLD", "Images", "ImageView", "Colors", "FixedPointNumbers"
 
 PKGS_USED_CLONABLE = ["https://github.com/JuliaSparse/MKLSparse.jl.git", 
                       "https://github.com/seung-lab/ImageRegistration.git", 
+		      "https://github.com/madeleineudell/ParallelSparseMatMul.jl.git",
                       "https://github.com/macrintr/ImageView.jl.git"]
 
 using HDF5
@@ -88,6 +89,7 @@ if !(contains(gethostname(), "seunglab") || contains(gethostname(), "seungom"))
   using ImageView
   using MKLSparse
 end
+#using ParallelSparseMatMul
 
 include("author.jl")
 include("Index.jl")
@@ -115,6 +117,7 @@ include("migrate.jl")
 include("evaluate.jl")
 include("parallelism.jl")
 include("meshconjgrad.jl")
+#include("meshconjgrad_parallel.jl")
 include("meshgradnewton.jl")
 include("meshsession.jl")
 include("tiletooverview.jl")

@@ -319,6 +319,15 @@ Template match two image patches to produce point pair correspondence
 """
 function get_match(pt, ranges, src_image, dst_image, scale = 1.0)
 	src_index, src_range, src_pt_loc, dst_index, dst_range, dst_range_full, dst_pt_loc, dst_pt_loc_full, rel_offset = ranges;
+#=
+	#see if any of the edges in the template are fully padded
+	if sum(src_image[src_range[1], first(src_range[2])]) == 0 return nothing end
+	if sum(src_image[src_range[1], last(src_range[2])]) == 0 return nothing end
+	if sum(src_image[first(src_range[1]), src_range[2]]) == 0 return nothing end
+	if sum(src_image[last(src_range[1]), src_range[2]]) == 0 return nothing end
+	if sum(dst_image[dst_range[1], median(dst_range[2])]) == 0 return nothing end
+	if sum(dst_image[median(dst_range[1]), dst_range[2]]) == 0 return nothing end
+	=#
 
 	correspondence_properties = Dict{Any, Any}();
 	correspondence_properties["ranges"] = Dict{Any, Any}();
@@ -328,13 +337,14 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0)
 	correspondence_properties["ranges"]["dst_range"] = dst_range;
 	correspondence_properties["ranges"]["scale"] = scale;
 
-
+#=
 	src_range = ceil(Int64, scale * first(src_range[1])) : ceil(Int64, scale * last(src_range[1])), ceil(Int64, scale * first(src_range[2])) : ceil(Int64, scale * last(src_range[2]))
 	dst_range = ceil(Int64, scale * first(dst_range[1])) : ceil(Int64, scale * last(dst_range[1])), ceil(Int64, scale * first(dst_range[2])) : ceil(Int64, scale * last(dst_range[2]))
 	dst_range_full = ceil(Int64, scale * first(dst_range_full[1])) : ceil(Int64, scale * last(dst_range_full[1])), ceil(Int64, scale * first(dst_range_full[2])) : ceil(Int64, scale * last(dst_range_full[2]))
 	src_pt_loc = ceil(Int64, scale * src_pt_loc);
 	dst_pt_loc = ceil(Int64, scale * dst_pt_loc);
 	dst_pt_loc_full = ceil(Int64, scale * dst_pt_loc_full);
+
 
 	# padding
 	if dst_range != dst_range_full
@@ -349,17 +359,73 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0)
 	else
 	xc = normxcorr2(src_image[src_range[1], src_range[2]], dst_image[dst_range[1], dst_range[2]]);
 	end
+	=#
+	if dst_range != dst_range_full
+		indices_within_range = findin(dst_range_full[1], dst_range[1]), findin(dst_range_full[2], dst_range[2])
+		intersect_img = dst_image[dst_range...];
+		avg = mean(intersect_img);
+		if isnan(avg) return nothing; end
+		avg = round(eltype(dst_image), avg);
+		padded_img = fill(avg, length(dst_range_full[1]), length(dst_range_full[2]));
+		padded_img[indices_within_range...] = intersect_img;
+		if scale == 1.0 
+		xc = normxcorr2(src_image[src_range[1], src_range[2]], padded_img);
+	      else
+		xc = normxcorr2(imscale(src_image[src_range[1], src_range[2]], scale)[1], imscale(padded_img, scale)[1])
+	      end
+	else
+		if scale == 1.0 
+		xc = normxcorr2(src_image[src_range[1], src_range[2]], dst_image[dst_range[1], dst_range[2]]);
+	      else
+		xc = normxcorr2(imscale(src_image[src_range[1], src_range[2]], scale)[1], imscale(dst_image[dst_range[1], dst_range[2]], scale)[1])
+	      end
+	end
 
 	r_max = maximum(xc)
 	if isnan(r_max) return nothing end;
+	if r_max > 1.0 println("rounding error") end
   	ind = findfirst(r_max .== xc)
 	i_max, j_max = rem(ind, size(xc, 1)), cld(ind, size(xc, 1));
   	if i_max == 0 
     		i_max = size(xc, 1)
   	end
 
-	di = (i_max + src_pt_loc[1] - dst_pt_loc_full[1]) / scale;
-	dj = (j_max + src_pt_loc[2] - dst_pt_loc_full[2]) / scale;
+	if i_max != 1 && j_max != 1 && i_max != size(xc, 1) && j_max != size(xc, 2)
+		xc_w = sum(xc[i_max-1:i_max+1, j_max-1:j_max+1])
+		xc_i = sum(xc[i_max+1, j_max-1:j_max+1]) - sum(xc[i_max-1, j_max-1:j_max+1])
+		xc_j = sum(xc[i_max-1:i_max+1, j_max+1]) - sum(xc[i_max-1:i_max+1, j_max-1])
+		i_max += xc_i / xc_w
+		j_max += xc_j / xc_w
+		if isnan(i_max) || isnan(j_max)
+		  println(xc_i)
+		  println(xc_j)
+		  println(xc_w)
+		  println(xc[iorig-1:iorig+1, jorig-1:jorig+1])
+		  return nothing
+		end
+	end
+
+	if scale != 1.0
+	#length of the dst_range_full is always odd, so only need to care about the oddity / evenness of the source to decide the size of the xc in full
+	if isodd(length(src_range[1])) 
+	  xc_i_len = length(dst_range_full[1]) - length(src_range[1]) + 1
+          else
+	  xc_i_len = length(dst_range_full[1]) - length(src_range[1]) 
+	end
+	if isodd(length(src_range[2])) 
+	  xc_j_len = length(dst_range_full[2]) - length(src_range[2]) + 1
+          else
+	  xc_j_len = length(dst_range_full[2]) - length(src_range[2]) 
+	end
+	xc_i_locs = linspace(1, xc_i_len, size(xc, 1) + 1)
+	xc_j_locs = linspace(1, xc_j_len, size(xc, 2) + 1)
+
+	i_max = (i_max - 0.5) * step(xc_i_locs) + 1
+	j_max = (j_max - 0.5) * step(xc_j_locs) + 1
+      end
+	di = i_max - (dst_pt_loc_full[1] - src_pt_loc[1] + 1)
+	dj = j_max - (dst_pt_loc_full[2] - src_pt_loc[2] + 1)
+
 
 
 	#println("src_range: $src_range, dst_range: $dst_range")
@@ -478,7 +544,9 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 		ranges = Array{typeof(ranges[1]), 1}(ranges);
 	end
 
-        dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(get_image(src_index, params["match"]["blockmatch_scale"])), repeated(get_image(dst_index, params["match"]["blockmatch_scale"])), repeated(params["match"]["blockmatch_scale"])) 
+#        dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(get_image(src_index, params["match"]["blockmatch_scale"])), repeated(get_image(dst_index, params["match"]["blockmatch_scale"])), repeated(params["match"]["blockmatch_scale"])) 
+        dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(get_image(src_index)), repeated(get_image(dst_index)), repeated(params["match"]["blockmatch_scale"])) 
+	#@time @everywhere gc();
 
 	matched_inds = find(i -> i != nothing, dst_allpoints);
 	src_points = copy(src_mesh.src_nodes[ranged_inds][matched_inds]);

@@ -392,7 +392,7 @@ function calculate_post_statistics!(meshset::MeshSet, match_ind)
   end
 end
 
-function rectify_drift(meshset::MeshSet, bias = [0.0, 0.0]; rectify_aligned = false)
+function rectify_drift(meshset::MeshSet, bias = [0.0, 0.0]; use_post = true, rectify_aligned = false)
   meshes = Dict{Any, Any}();
   for mesh in meshset.meshes
 	meshes[mesh.index] = mesh;
@@ -408,18 +408,29 @@ function rectify_drift(meshset::MeshSet, bias = [0.0, 0.0]; rectify_aligned = fa
   	if count_filtered_correspondences(match) == 0
   		continue;
   	end
-
+	if use_post
 	g_src_pts_after, g_dst_pts_after, filtered_after = get_globalized_correspondences_post(match, src_mesh, dst_mesh, meshset.properties["params"]["registry"]["global_offsets"])
-
   	residuals_match_post = g_dst_pts_after[filtered_after] - g_src_pts_after[filtered_after]; 
-
 	avg_drift = mean(residuals_match_post);
+      else
+	g_src_pts, g_dst_pts, filtered = get_globalized_correspondences(match, meshset.properties["params"]["registry"]["global_offsets"])
+  	residuals_match = g_dst_pts[filtered] - g_src_pts[filtered]; 
+	avg_drift = mean(residuals_match);
+      end
 
+      if get_params(meshset)["match"]["reflexive"]
 	if is_preceding(get_index(src_mesh), get_index(dst_mesh), 5)
 	  drifts[find_mesh_index(meshset, get_dst_index(match))] -= avg_drift/2;
 	else
 	  drifts[find_mesh_index(meshset, get_src_index(match))] += avg_drift/2;
 	end
+	else
+	if is_preceding(get_index(src_mesh), get_index(dst_mesh), 5)
+	  drifts[find_mesh_index(meshset, get_dst_index(match))] -= avg_drift;
+	else
+	  drifts[find_mesh_index(meshset, get_src_index(match))] += avg_drift;
+	end
+      end
 
   end
   cum_drift = Point([0,0]);

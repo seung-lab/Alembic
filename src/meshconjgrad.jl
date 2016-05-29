@@ -31,14 +31,31 @@ end
 
 function get_lengths(Springs)
     @fastmath halflen = div(length(Springs), 2);
-    r1 = 1:halflen
-    r2 = halflen + 1:halflen * 2
-    @fastmath @inbounds return sqrt(Springs[r1] .* Springs[r1] + Springs[r2] .* Springs[r2]) + eps
+    Lengths = Array{Float64}(halflen);
+    @fastmath @inbounds @simd for ind in 1:halflen
+        @fastmath sec_ind = ind + halflen;
+	@fastmath @inbounds Lengths[ind] = sqrt(Springs[ind]^2 + Springs[sec_ind]^2) + eps
+    end
+   return Lengths; 
+end
+
+function get_lengths!(Springs, Lengths)
+    @fastmath halflen = div(length(Springs), 2);
+    @fastmath @inbounds @simd for ind in 1:halflen
+        @fastmath sec_ind = ind + halflen;
+	@fastmath @inbounds Lengths[ind] = sqrt(Springs[ind]^2 + Springs[sec_ind]^2) + eps
+    end
+   return Lengths; 
 end
 
 function Energy_given_lengths(Lengths, Stiffnesses, RestLengths)
     @fastmath dLengths = Lengths - RestLengths
-    @fastmath return sum(Stiffnesses.*(dLengths.*dLengths))/2/length(Lengths)
+    energy = 0;
+    @fastmath @inbounds @simd for ind in 1:length(Lengths)
+      energy += Stiffnesses[ind] * dLengths[ind]^2
+    end
+    return energy / 2
+    #@fastmath return sum(Stiffnesses.*(dLengths.*dLengths))/2/length(Lengths)
 end
 
 #="""
@@ -47,17 +64,30 @@ returns dxV array, same size as Vertices
 physically, -gradient is spring forces acting on vertices
 """=#
 function Gradient(Springs, Incidence_d, Stiffnesses_d, RestLengths_d)
-    print(".");
     Lengths = get_length(Springs)
     return Gradient_given_lengths(Springs, Lengths, Incidence_d, Stiffnesses_d, RestLengths_d)
 end
 
+# vectorised, but slower because Julia is weird
 function Gradient_given_lengths(Springs, Lengths, Incidence_t, Stiffnesses_d, RestLengths_d)
     @fastmath Directions = Springs ./ vcat(Lengths, Lengths);
     #Directions[isnan(Directions)] *= 0
-#    @fastmath Forces = (Springs.-(Directions .* RestLengths_d)) .* Stiffnesses_d
     @fastmath Forces = (Springs-(Directions .* RestLengths_d)) .* Stiffnesses_d
     @fastmath return (Incidence_t' * Forces)
+end
+
+function Gradient_given_lengths!(Springs, Lengths, Incidence_d, Incidence_t, Stiffnesses_d, RestLengths_d, storage, Moving)
+  # @time begin
+     Forces = Array{Float64}(length(Springs));
+     len = length(Lengths);
+     @fastmath @inbounds @simd for ind in 1:len
+	sec_ind = ind + len;
+	@fastmath @inbounds Forces[ind] = (Springs[ind] - (Springs[ind] / Lengths[ind] * RestLengths_d[ind])) * Stiffnesses_d[ind]
+	@fastmath @inbounds Forces[sec_ind] = (Springs[sec_ind] - (Springs[sec_ind] / Lengths[ind] * RestLengths_d[sec_ind])) * Stiffnesses_d[sec_ind]
+     end
+ #end
+  #print("Storage:")
+    @fastmath @inbounds storage[:] = (Incidence_d * Forces)[Moving]
 end
 
 function SolveMeshConjugateGradient!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, max_iter, ftol)
@@ -69,30 +99,63 @@ function SolveMeshConjugateGradient!(Vertices, Fixed, Incidence, Stiffnesses, Re
     Incidence_t = vcat(hcat(Incidence_t, spzeros(size(Incidence_t)...)), hcat(spzeros(size(Incidence_t)...), Incidence_t))
     Incidence_d = Incidence_t'
 
+    Lengths = Array{Float64}(div(size(Incidence_t, 1), 2));
+
     Moving = vcat(~Fixed, ~Fixed)
     Stiffnesses_d = vcat(Stiffnesses, Stiffnesses)
     RestLengths_d = vcat(RestLengths, RestLengths)
+#=
+    cost_iter = 0;
+    grad_iter = 0;
+    cost_grad_iter = 0;
+
+    cost_time = 0.0;
+    grad_time = 0.0;
+    cost_grad_time = 0.0;
+    =#
 
 
     function cost(x)
-        Vertices_t[Moving] = x[Moving];
+#      @time begin
+#	tic()
+        Vertices_t[Moving] = x[:];
         Springs = Incidence_t * Vertices_t;
-        return Energy(Springs,Stiffnesses,RestLengths)
+	@fastmath get_lengths!(Springs, Lengths);	
+        @fastmath energy = Energy_given_lengths(Lengths,Stiffnesses,RestLengths)
+#	print("cost: ")
+#	cost_iter += 1;
+#	cost_time += toc();
+#      end
+      return energy
     end
 
     function cost_gradient!(x,storage)
-        Vertices_t[Moving] = x[Moving];
+#      @time begin
+#	tic()
+        Vertices_t[Moving] = x[:];
         Springs = Incidence_t * Vertices_t;
         g = Gradient(Springs, Incidence_d, Stiffnesses_d, RestLengths_d)
         storage[:] = g
+#	print("gradient: ")
+#	grad_iter += 1;
+#	grad_time += toc();
+#      end
     end
 
     function cost_and_gradient!(x,storage)
-        @inbounds Vertices_t[Moving] = x[Moving];
-        @fastmath Springs = Incidence_d' * Vertices_t;
-    	@fastmath Lengths = get_lengths(Springs);
-        @inbounds storage[:] = Gradient_given_lengths(Springs, Lengths, Incidence_t, Stiffnesses_d, RestLengths_d)
-        return Energy_given_lengths(Lengths,Stiffnesses,RestLengths)
+#      @time begin
+#	tic()
+        @inbounds Vertices_t[Moving] = x[:];
+	#print("Springs: ")
+        @fastmath Springs = Incidence_t * Vertices_t;
+    	@fastmath get_lengths!(Springs, Lengths);
+        @fastmath @inbounds Gradient_given_lengths!(Springs, Lengths, Incidence_d, Incidence_t, Stiffnesses_d, RestLengths_d, storage, Moving)
+	@fastmath energy = Energy_given_lengths(Lengths,Stiffnesses,RestLengths);
+#	print("cost_and_gradient: ")
+#	cost_grad_iter += 1;
+#	cost_grad_time += toc();
+#      end
+        return energy;
     end
 
     df = DifferentiableFunction(cost, cost_gradient!, cost_and_gradient!)
@@ -107,9 +170,12 @@ function SolveMeshConjugateGradient!(Vertices, Fixed, Incidence, Stiffnesses, Re
     #    end
     #    df = DifferentiableFunction(cost, cost_gradient!, cost_and_gradient!)
 
-    @fastmath res = optimize(df,Vertices_t,method=:cg,show_trace=true,iterations=max_iter,ftol=ftol)
+    @fastmath res = optimize(df,Vertices_t[Moving],method=ConjugateGradient(),show_trace=true,iterations=max_iter,ftol=ftol)
     # return res
-    Vertices_t[Moving] = res.minimum[Moving];
+    Vertices_t[Moving] = res.minimum[:];
     Vertices[:] = vcat(Vertices_t[1:(length(Vertices_t)/2)]', Vertices_t[1+(length(Vertices_t)/2):end]');
+    println("cost_iter: $cost_iter, cost_time: $cost_time")
+    println("grad_iter: $grad_iter, grad_time: $grad_time")
+    println("cost_grad_iter: $cost_grad_iter, cost_grad_time: $cost_grad_time")
     
 end
