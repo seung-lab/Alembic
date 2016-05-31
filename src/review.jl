@@ -97,18 +97,35 @@ function translate_bb(bb::BoundingBox, offset)
   return BoundingBox(bb.i + offset[1], bb.j + offset[2], bb.h, bb.w)
 end
 
+function scale_bb(bb::BoundingBox{Int64}, scale)
+  tform = make_scale_matrix(scale)
+  tbb = tform_bb(bb, tform)
+  return snap_bb(tbb)
+end
+
+function scale_bb(bb::BoundingBox{Float64}, scale)
+  tform = make_scale_matrix(scale)
+  return tform_bb(bb, tform)
+end
+
 """
 Convert bounding box to tuple of ranges for easy array slicing
 """
-function bb_to_slice(bb::BoundingBox)
-  return Int64(bb.i+1) : Int64(bb.i+bb.h), Int64(bb.j+1) : Int64(bb.j+bb.w)
+function bb_to_slice(bb::BoundingBox{Int64})
+  return (bb.i+1):(bb.i+bb.h), (bb.j+1):(bb.j+bb.w)
+end
+
+function bb_to_slice(bb::BoundingBox{Float64})
+  return round(Int64, bb.i+1):round(Int64, bb.i+bb.h), 
+              round(Int64, bb.j+1):round(Int64, bb.j+bb.w)
 end
 
 """
 Convert tuple of ranges to bounding box
 """
 function slice_to_bb(slice)
-  return BoundingBox(slice[1][1], slice[2][1], slice[1][end]-slice[1][1], slice[2][end]-slice[2][1])
+  return BoundingBox(slice[1][1], slice[2][1], 
+                      slice[1][end]-slice[1][1], slice[2][end]-slice[2][1])
 end
 
 """
