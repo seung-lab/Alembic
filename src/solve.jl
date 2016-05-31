@@ -167,7 +167,7 @@ function elastic_solve!(meshset; from_current = true)
 
   @fastmath @inbounds begin
 
-  for (index, mesh) in enumerate(meshset.meshes)
+  @fastmath @inbounds for (index, mesh) in enumerate(meshset.meshes)
   	noderanges[get_index(mesh)] = cum_nodes + (1:count_nodes(mesh))
 	edgeranges[get_index(mesh)] = cum_edges + (1:count_edges(mesh))
 	meshes[get_index(mesh)] = mesh
@@ -178,7 +178,7 @@ function elastic_solve!(meshset; from_current = true)
 	put!(mesh_ref, mesh); push!(meshes_ref, mesh_ref);
   end
 
-  for match in meshset.matches
+  @fastmath @inbounds for match in meshset.matches
 	edgeranges[match] = cum_edges + (1:count_filtered_correspondences(match));
 	cum_edges = cum_edges + count_filtered_correspondences(match);
 	match_ref = RemoteRef(); 
@@ -189,30 +189,30 @@ function elastic_solve!(meshset; from_current = true)
 
   for mesh in meshset.meshes
     if from_current
-      nodes[:, noderanges[get_index(mesh)]] = get_globalized_nodes_h(mesh)[2];
+      @fastmath @inbounds nodes[:, noderanges[get_index(mesh)]] = get_globalized_nodes_h(mesh)[2];
     else
-      nodes[:, noderanges[get_index(mesh)]] = get_globalized_nodes_h(mesh)[1];
+      @fastmath @inbounds nodes[:, noderanges[get_index(mesh)]] = get_globalized_nodes_h(mesh)[1];
     end
     if is_fixed(mesh)
-      nodes_fixed[noderanges[get_index(mesh)]] = fill(true, count_nodes(mesh));
+      @fastmath @inbounds nodes_fixed[noderanges[get_index(mesh)]] = fill(true, count_nodes(mesh));
     end
-    edge_lengths[edgeranges[get_index(mesh)]] = get_edge_lengths(mesh);
-    edge_spring_coeffs[edgeranges[get_index(mesh)]] = fill(mesh_spring_coeff, count_edges(mesh));
+    @inbounds edge_lengths[edgeranges[get_index(mesh)]] = get_edge_lengths(mesh);
+    @inbounds edge_spring_coeffs[edgeranges[get_index(mesh)]] = fill(mesh_spring_coeff, count_edges(mesh));
   end
 
   end # @fm @ib 
 
-  noderange_list = Array{UnitRange, 1}([getindex(noderanges, get_index(mesh)) for mesh in meshset.meshes]);
-  edgerange_list = Array{UnitRange, 1}([getindex(edgeranges, get_index(mesh)) for mesh in meshset.meshes]);
+  @fastmath noderange_list = Array{UnitRange, 1}([getindex(noderanges, get_index(mesh)) for mesh in meshset.meshes]);
+  @fastmath edgerange_list = Array{UnitRange, 1}([getindex(edgeranges, get_index(mesh)) for mesh in meshset.meshes]);
 
   @inbounds @fastmath function make_local_sparse(num_nodes, num_edges)
 	global LOCAL_SPM = spzeros(num_nodes, num_edges)
   end
-
   @sync begin
-    @async for proc in procs() 
-      remotecall_fetch(proc, make_local_sparse, count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset)); 
+    @async for proc in setdiff(procs(), myid())
+      remotecall_wait(proc, make_local_sparse, count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset)); 
     end 
+    make_local_sparse(count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset))
   end
 
   function copy_sparse_matrix(mesh_ref, noderange, edgerange)
@@ -230,8 +230,8 @@ function elastic_solve!(meshset; from_current = true)
   println("meshes collated: $(count_meshes(meshset)) meshes")
 
   for match in meshset.matches
-    	edge_lengths[edgeranges[match]] = fill(0, count_filtered_correspondences(match));
-    	edge_spring_coeffs[edgeranges[match]] = fill(match_spring_coeff, count_filtered_correspondences(match));
+    	@inbounds edge_lengths[edgeranges[match]] = fill(0, count_filtered_correspondences(match));
+    	@inbounds edge_spring_coeffs[edgeranges[match]] = fill(match_spring_coeff, count_filtered_correspondences(match));
   end
 
   function compute_sparse_matrix(match_ref, src_mesh_ref, dst_mesh_ref, noderange_src, noderange_dst, edgerange)
@@ -251,10 +251,10 @@ function elastic_solve!(meshset; from_current = true)
 		if src_pt_triangles[ind] == NO_TRIANGLE || dst_pt_triangles[ind] == NO_TRIANGLE continue; end
 	        for i in 1:3
 		  	if src_pt_weights[ind][i] > eps
-			LOCAL_SPM[noderange_src[src_pt_triangles[ind][i]], edgerange[ind]] = -src_pt_weights[ind][i]
+			@fastmath @inbounds LOCAL_SPM[noderange_src[src_pt_triangles[ind][i]], edgerange[ind]] = -src_pt_weights[ind][i]
 		        end
 		  	if dst_pt_weights[ind][i] > eps
-			LOCAL_SPM[noderange_dst[dst_pt_triangles[ind][i]], edgerange[ind]] = dst_pt_weights[ind][i]
+			@fastmath @inbounds LOCAL_SPM[noderange_dst[dst_pt_triangles[ind][i]], edgerange[ind]] = dst_pt_weights[ind][i]
 		      end
 		end
 	end
@@ -268,7 +268,7 @@ function elastic_solve!(meshset; from_current = true)
   edgerange_list = Array{UnitRange, 1}(map(getindex, repeated(edgeranges), meshset.matches))
 
 
-  pmap(compute_sparse_matrix, matches_ref, meshes_ref[map(getindex, repeated(meshes_order), src_indices)], meshes_ref[map(getindex, repeated(meshes_order), dst_indices)], noderange_src_list, noderange_dst_list, edgerange_list);
+   pmap(compute_sparse_matrix, matches_ref, meshes_ref[map(getindex, repeated(meshes_order), src_indices)], meshes_ref[map(getindex, repeated(meshes_order), dst_indices)], noderange_src_list, noderange_dst_list, edgerange_list);
 
   println("matches collated: $(count_matches(meshset)) matches. populating sparse matrix....")
 
@@ -279,7 +279,7 @@ function elastic_solve!(meshset; from_current = true)
   edges_subarrays = Array{SparseMatrixCSC{Float64, Int64}, 1}(length(procs()))
 
 @sync begin
-   @async for proc in procs() edges_subarrays[proc] = remotecall_fetch(proc, get_local_sparse); end 
+   @async @inbounds for proc in procs() edges_subarrays[proc] = remotecall_fetch(proc, get_local_sparse); end 
  end
 
   function add_local_sparse(sp_a, sp_b)
@@ -297,6 +297,7 @@ function elastic_solve!(meshset; from_current = true)
   end
 
   edges = edges_subarrays[1];
+
 
   if params["solve"]["use_conjugate_gradient"]
     @time SolveMeshConjugateGradient!(nodes, nodes_fixed, edges, edge_spring_coeffs, edge_lengths, max_iters, ftol_cg)
