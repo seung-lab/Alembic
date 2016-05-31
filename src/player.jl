@@ -125,28 +125,28 @@ end
 Cycle through sections of the stack stack, with images staged for easier viewing
 """
 function view_stack(firstindex::Index, lastindex::Index, center, radius;
-                                        include_reverse=false, perm=[1,2,3])
+                                        include_reverse=false, perm=[1,2,3], scale=1.0)
   x, y = center
   slice = (x-radius):(x+radius), (y-radius):(y+radius)
-  return view_stack(firstindex, lastindex, slice, include_reverse=include_reverse, perm=perm)
+  return view_stack(firstindex, lastindex, slice, include_reverse=include_reverse, perm=perm, scale=scale)
 end
 
-function view_stack(firstindex::Index, lastindex::Index, slice=(1:200,1:200); include_reverse=false, perm=[1,2,3])
-  stack = make_stack(firstindex, lastindex, slice)
+function view_stack(firstindex::Index, lastindex::Index, slice=(1:200,1:200); include_reverse=false, perm=[1,2,3], scale=1.0)
+  stack = make_stack(firstindex, lastindex, slice, scale=scale)
   offset = get_offset(slice_to_bb(slice))
   indices = get_index_range(firstindex, lastindex)
   annotations = Dict("indices" => [indices, reverse(indices)])
-  imgc, img2 = view_stack(stack, offset=offset, annotations=annotations, include_reverse=include_reverse, perm=perm)
+  imgc, img2 = view_stack(stack, offset=offset, scale=scale, annotations=annotations, include_reverse=include_reverse, perm=perm)
   return stack, annotations, imgc, img2
 end
 
-function view_stack(stack; offset=[0,0], annotations=Dict(), include_reverse=false, perm=[1,2,3])
+function view_stack(stack; offset=[0,0], scale=1.0, annotations=Dict(), include_reverse=false, perm=[1,2,3])
   img_stack = permutedims(reinterpret(UFixed8, stack), perm)
   if include_reverse
     img_stack = cat(3, img_stack, img_stack[:,:,end:-1:1])
   end
   imgc, img2 = ImageView.view(Image(img_stack, timedim=3), pixelspacing=DATASET_RESOLUTION[perm[1:2]])
-  override_xy_label(imgc, img2, offset, 1.0)
+  override_xy_label(imgc, img2, offset, scale)
 
   c = canvas(imgc)
   win = Tk.toplevel(c)
@@ -252,13 +252,13 @@ function compile_annotations(parent_name, firstindex::Index, lastindex::Index, s
   return ms, compile_annotations(ms, firstindex, lastindex, slice)
 end
 
-function compile_annotations(meshset::MeshSet, center::Tuple{Int,Int}, radius=1024)
+function compile_annotations(meshset::MeshSet, center::Tuple{Int,Int}, radius=1024, scale=1.0)
   x, y = center
   slice = (x-radius):(x+radius), (y-radius):(y+radius)
-  return compile_annotations(meshset, slice)
+  return compile_annotations(meshset, slice, scale)
 end
 
-function compile_annotations(meshset::MeshSet, slice)
+function compile_annotations(meshset::MeshSet, slice, scale=1.0)
   ms_indices = map(aligned, map(get_index, meshset.meshes))
   firstindex, lastindex = minimum(ms_indices), maximum(ms_indices)
   indices = get_index_range(firstindex, lastindex)
@@ -268,7 +268,8 @@ function compile_annotations(meshset::MeshSet, slice)
                  "indices" => indices,
                  "slice" => slice,
                  "bb" => bb,
-                 "scale" => 10]
+                 "scale" => scale,
+                 "vector_scale" => 10]
   for index in indices
     annotations["ann"][index] = Dict()
     annotations["ann"][index]["match"] = Dict()
@@ -300,6 +301,7 @@ function display_annotations(imgc, img2, annotations; include_reverse=false)
   colors = [RGB(0,1,0), RGB(1,0,1), RGB(0,0.8,0), RGB(0.8,0,0.8)]
   bwr = create_bwr_colormap()
   indices = annotations["indices"]
+  vector_scale = annotations["vector_scale"]
   scale = annotations["scale"]
   if !include_reverse
     indices = indices[1:end/2]
@@ -309,14 +311,16 @@ function display_annotations(imgc, img2, annotations; include_reverse=false)
   min_s = minimum(all_strains)
   max_s = maximum(all_strains)
   print("\n")
-  println("Min/max mesh strain: $min_s / $max_s")
   min_s = min_s == 0 ? 1 : min_s
   for (i, index) in enumerate(indices)
     println("Display annotations for $index")
-    data = annotations["ann"][index]["mesh"]["edges"]
+    data = annotations["ann"][index]["mesh"]["edges"]*scale
     # strain = map(i->RGB(i,i,i), annotations["ann"][index]["mesh"]["strain"])
     s = copy(annotations["ann"][index]["mesh"]["strain"])
     st = annotations["ann"][index]["mesh"]["strain"]
+    min_s = minimum(st)
+    max_s = maximum(st)
+    println("Min/max mesh strain: $min_s / $max_s")
     s[st.<=0] = round(UInt8, -st[st.<=0]./min_s*127+128)
     if max_s != 0
       s[st.>0] = round(UInt8, st[st.>0]./max_s*127+128)
@@ -328,10 +332,10 @@ function display_annotations(imgc, img2, annotations; include_reverse=false)
       show_colored_lines(imgc, img2, data, strain, t=i)
     end
     for (k, match_ind) in enumerate(keys(annotations["ann"][index]["match"]))
-      data = change_vector_lengths(annotations["ann"][index]["match"][match_ind], scale)
+      data = change_vector_lengths(annotations["ann"][index]["match"][match_ind], vector_scale)*scale
       name = annotations["ann"][index]["match_names"][match_ind]
       if size(data, 2) > 1
-        show_points(imgc, img2, data[1:2, :], shape='o', color=colors[k], t=i)
+        # show_points(imgc, img2, data[1:2, :], shape='o', color=colors[k], t=i)
         show_lines(imgc, img2, data, color=colors[k], t=i)
         fontsize = 40
         show_text(imgc, img2, name, 2*fontsize, 2*fontsize*k, fontsize=fontsize, color=colors[k], t=i)
@@ -349,13 +353,14 @@ end
 # end
 
 function make_stack(annotations)
-  return make_stack(minimum(annotations["indices"]), maximum(annotations["indices"]), annotations["slice"])
+  return make_stack(minimum(annotations["indices"]), maximum(annotations["indices"]), annotations["slice"], scale=annotations["scale"])
 end
 
 function view_stack(annotations::Dict; include_reverse=false)
   offset = get_offset(annotations["bb"])
-  stack = make_stack(annotations)
-  imgc, img2 = view_stack(stack, offset=offset, annotations=annotations, include_reverse=include_reverse)
+  scale = annotations["scale"]
+  stack = make_stack(annotations, scale=scale)
+  imgc, img2 = view_stack(stack, offset=offset, scale=scale, annotations=annotations, include_reverse=include_reverse)
   return stack, imgc, img2
 end
 
@@ -367,7 +372,8 @@ end
 
 function view_annotated_stack(stack, annotations; include_reverse=false)
   offset = get_offset(annotations["bb"])
-  imgc, img2 = view_stack(stack, offset=offset, annotations=annotations, include_reverse=include_reverse)
+  scale = annotations["scale"]
+  imgc, img2 = view_stack(stack, offset=offset, scale=scale, annotations=annotations, include_reverse=include_reverse)
   display_annotations(imgc, img2, annotations, include_reverse=include_reverse)
   return imgc, img2
 end
