@@ -4,7 +4,7 @@ global const IMG_CACHE_SIZE = 8 * 2^30 # n * gibibytes
 global const IMG_ELTYPE = UInt8
 
 if myid() == 1
-	global const IMG_CACHE_DICT = Dict{Any, SharedArray}()
+	global const IMG_CACHE_DICT = Dict{Tuple{ASCIIString, Float64}, SharedArray}()
 	global const IMG_CACHE_LIST = Array{Any, 1}();
 end
 
