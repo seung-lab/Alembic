@@ -142,10 +142,17 @@ function ufixed8_to_uint8(img)
   reinterpret(UInt8, -img)
 end
 
-function get_slice(path::String, slice)
+function get_slice(path::String, slice, scale=1.0)
   # return reinterpret(Ufixed8, h5read(path, "img", slice))
-  if splitext(path)[2] != ".h5" return get_image(path)[slice...] end
-  return h5read(path, "img", slice)
+  if splitext(path)[2] != ".h5" 
+    img = get_image(path)[slice...]
+  else
+    img = h5read(path, "img", slice)
+  end
+  if scale != 1.0
+    img = imscale(img, scale)[1]
+  end
+  return img
 end
 
 function load_affine(path::String)
@@ -267,27 +274,34 @@ function make_stack_from_finished(firstindex::Index, lastindex::Index, slice=(1:
     return cat(3, imgs...), bb
 end
 
-function make_stack(firstindex::Index, lastindex::Index, slice=(1:255, 1:255))
+function make_stack(firstindex::Index, lastindex::Index, slice=(1:255, 1:255); scale=1.0)
   # dtype = h5read(get_path(firstindex), "dtype")
   dtype = UInt8
-  stack_offset = [slice[1][1], slice[2][1]] - [1,1]
+  stack_offset = [slice[1][1], slice[2][1]] # - [1,1]
   stack_size = map(length, slice)
   global_bb = BoundingBox(stack_offset..., stack_size...)
   imgs = []
+
+  stack_bb = sz_to_bb(stack_size)
+  sbb = scale_bb(stack_bb, scale)
+  scaled_size = sbb.h, sbb.w
+  # scaled_size = round(Int64, stack_size[1]*scale+1), round(Int64, stack_size[2]*scale+1)
+
   for index in get_index_range(firstindex, lastindex)
     print(string(join(index[1:2], ",") ,"|"))
-    img = zeros(dtype, stack_size...)
+    img = zeros(dtype, scaled_size...)
     offset = get_offset(index)
     sz = get_image_size(index)
     bb = BoundingBox(offset..., sz...)
     if intersects(bb, global_bb)
       shared_bb = global_bb - bb
       img_roi = translate_bb(shared_bb, -offset)
-      stack_roi = translate_bb(shared_bb, -stack_offset)
+      stack_roi = snap_bb(scale_bb(translate_bb(shared_bb, -stack_offset), scale))
       h5_slice = bb_to_slice(img_roi)
       img_slice = bb_to_slice(stack_roi)
+
       # println(h5_slice, " " , img_slice)
-      img[img_slice...] = get_slice(get_path(index), h5_slice) 
+      img[img_slice...] = get_slice(get_path(index), h5_slice, scale) 
     end
     push!(imgs, img)
   end
