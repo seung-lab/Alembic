@@ -57,8 +57,12 @@ end
 Create rotation transform and apply to image (degrees)
 """
 function imrotate(img, angle)
-  tform = [cos(angle) -sin(angle) 0; sin(angle) cos(angle) 0; 0 0 1];
+  tform = make_rotation_matrix(angle)
   return imwarp(img, tform);
+end
+
+function make_rotation_matrix(angle)
+  return [cos(angle) -sin(angle) 0; sin(angle) cos(angle) 0; 0 0 1]
 end
 
 function make_translation_matrix(offset)
