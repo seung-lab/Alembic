@@ -544,9 +544,9 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 		ranges = Array{typeof(ranges[1]), 1}(ranges);
 	end
 
+	@everywhere gc();
 #        dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(get_image(src_index, params["match"]["blockmatch_scale"])), repeated(get_image(dst_index, params["match"]["blockmatch_scale"])), repeated(params["match"]["blockmatch_scale"])) 
         dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(get_image(src_index)), repeated(get_image(dst_index)), repeated(params["match"]["blockmatch_scale"])) 
-	#@time @everywhere gc();
 
 	matched_inds = find(i -> i != nothing, dst_allpoints);
 	src_points = copy(src_mesh.src_nodes[ranged_inds][matched_inds]);
