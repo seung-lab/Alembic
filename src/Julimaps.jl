@@ -109,6 +109,7 @@ else
 end
 include("IO.jl")
 include("convolve.jl")
+include("convolve_inplace.jl")
 include("imagecovariance.jl")
 include("Mesh.jl")
 include("Match.jl")
