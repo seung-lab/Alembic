@@ -126,8 +126,7 @@ Cycle through sections of the stack stack, with images staged for easier viewing
 """
 function view_stack(firstindex::Index, lastindex::Index, center, radius;
                                         include_reverse=false, perm=[1,2,3], scale=1.0)
-  x, y = center
-  slice = (x-radius):(x+radius), (y-radius):(y+radius)
+  slice = make_slice(center, radius)
   return view_stack(firstindex, lastindex, slice, include_reverse=include_reverse, perm=perm, scale=scale)
 end
 
@@ -135,7 +134,7 @@ function view_stack(firstindex::Index, lastindex::Index, slice=(1:200,1:200); in
   stack = make_stack(firstindex, lastindex, slice, scale=scale)
   offset = get_offset(slice_to_bb(slice))
   indices = get_index_range(firstindex, lastindex)
-  annotations = Dict("indices" => [indices, reverse(indices)])
+  annotations = Dict("indices" => [indices, reverse(indices)], "slice"=>slice)
   imgc, img2 = view_stack(stack, offset=offset, scale=scale, annotations=annotations, include_reverse=include_reverse, perm=perm)
   return stack, annotations, imgc, img2
 end
@@ -146,7 +145,7 @@ function view_stack(stack; offset=[0,0], scale=1.0, annotations=Dict(), include_
     img_stack = cat(3, img_stack, img_stack[:,:,end:-1:1])
   end
   imgc, img2 = ImageView.view(Image(img_stack, timedim=3), pixelspacing=DATASET_RESOLUTION[perm[1:2]])
-  override_xy_label(imgc, img2, offset, scale)
+  override_xy_label(imgc, img2, offset, 1/scale)
 
   c = canvas(imgc)
   win = Tk.toplevel(c)
@@ -335,7 +334,7 @@ function display_annotations(imgc, img2, annotations; include_reverse=false)
       data = change_vector_lengths(annotations["ann"][index]["match"][match_ind], vector_scale)*scale
       name = annotations["ann"][index]["match_names"][match_ind]
       if size(data, 2) > 1
-        # show_points(imgc, img2, data[1:2, :], shape='o', color=colors[k], t=i)
+        show_points(imgc, img2, data[1:2, :], shape='o', color=colors[k], t=i)
         show_lines(imgc, img2, data, color=colors[k], t=i)
         fontsize = 40
         show_text(imgc, img2, name, 2*fontsize, 2*fontsize*k, fontsize=fontsize, color=colors[k], t=i)
