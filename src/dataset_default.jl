@@ -191,7 +191,9 @@ end
 =#
 
 datasets_dir_path = "research/Julimaps/datasets"
-cur_dataset = "piriform"
+# cur_dataset = "piriform"
+cur_dataset = "AIBS_practice_234251S6R_01_01_aligned_01"
+# cur_dataset = "align_net"
 in_alignment_test = false
 test_dataset = "piriform_finer_mesh"
 #cur_dataset = "zebrafish"

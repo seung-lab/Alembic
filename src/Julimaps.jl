@@ -84,7 +84,7 @@ using Compat
 if USE_PYPLOT
   using PyPlot
 end
-if !(contains(gethostname(), "seunglab") || contains(gethostname(), "seungom"))
+if !(contains(gethostname(), "seunglab"))
   using Images
   using ImageView
   using MKLSparse
@@ -130,7 +130,7 @@ include("visualize.jl")
 include("utilities.jl")
 include("transforms.jl")
 include("draw.jl")
-if !(contains(gethostname(), "seunglab") || contains(gethostname(), "seungom"))
+if !(contains(gethostname(), "seunglab"))
   include("player.jl")
   include("inspect.jl")
   include("check.jl")
