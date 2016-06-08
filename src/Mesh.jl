@@ -370,11 +370,28 @@ function get_triangle_weights(mesh::Mesh, point::Point, triangle::Triangle)
 	return (V[1], V[2], V[3]);
 end
 
-function get_triangle_weights(mesh::Mesh, points::Points, triangles::Triangles)
+function get_triangle_weights!(mesh::Mesh, point::Point, triangle::Triangle, R, r)
 
-	return Weights(map(get_triangle_weights, repeated(mesh), points, triangles))
+	if triangle == NO_TRIANGLE::Triangle return NO_WEIGHTS::Weight; end
 
+	@inbounds R[1:2, 1] = mesh.src_nodes[triangle[1]];
+	@inbounds R[1:2, 2] = mesh.src_nodes[triangle[2]];
+	@inbounds R[1:2, 3] = mesh.src_nodes[triangle[3]];
+	
+	@inbounds r[1:2] = point;
+
+	@fastmath V = R \ r;
+
+	return (V[1], V[2], V[3]);
 end
+
+function get_triangle_weights(mesh::Mesh, points::Points, triangles::Triangles)
+  	R = ones(Float64, 3, 3)
+  	r = ones(Float64, 3)
+
+	return Weights(map(get_triangle_weights!, repeated(mesh), points, triangles, repeated(R), repeated(r)))
+end
+
 
 function get_tripoint_dst(mesh::Mesh, triangles::Triangles, weights::Weights)
 	return Points(map(get_tripoint_dst, repeated(mesh), triangles, weights))

@@ -53,6 +53,15 @@ function imscale(img, scale_factor)
   return imwarp(img, tform);
 end
 
+function imscale!(result, img, scale_factor)
+  tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
+  bb = BoundingBox{Float64}(offset..., size(img, 1), size(img, 2))
+  wbb = tform_bb(bb, tform)
+  tbb = snap_bb(wbb)
+  warped_img = zeros(T, tbb.h, tbb.w)
+  return imwarp!(result, img, tform);
+end
+
 """
 Create rotation transform and apply to image (degrees)
 """
@@ -79,3 +88,10 @@ function user_approves(m="Are you sure?")
   a = readline()
   return chomp(a) == "yes"
 end
+#=
+function flatten_dict(dict::Dict)
+	for key in keys(dict)
+		if typeof(key) :< Dict
+
+	end
+end=#

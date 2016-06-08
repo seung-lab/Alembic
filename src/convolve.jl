@@ -32,12 +32,12 @@ function convolve_Float64(A,B)
     rangesB=[1:x for x in size(B)]
     pA[rangesA...]=A
     pB[rangesB...]=B
-    
     irfft(rfft(pA).*rfft(pB),common_size[1])
 end
 
 function valid_convolve(A,B)
     ranges=[min(a,b):max(a,b) for (a,b) in zip(size(A),size(B))]
+    #convolve_Float64(A,B)[ranges...]
     convolve_Float64(A,B)[ranges...]
 end
 
@@ -111,6 +111,7 @@ function normxcorr2(template,img; shape = "valid")
     @fastmath @inbounds dt=template-mean(template)
     @fastmath @inbounds templatevariance=sum(dt.^2)
     @fastmath @inbounds numerator=valid_convolve(img,dt[end:-1:1,end:-1:1])
+
     
     ##### local statistics of img
     # zero pad image in first row and column
@@ -129,6 +130,7 @@ function normxcorr2(template,img; shape = "valid")
     @fastmath @inbounds s=cumsum2(imgpad)
     @fastmath @inbounds localsum=s[LL...]-s[SL...]-s[LS...]+s[SS...]
     @fastmath @inbounds s2=cumsum2(imgpad.^2)
+
     @fastmath @inbounds localsum2=s2[LL...]-s2[SL...]-s2[LS...]+s2[SS...]
     @fastmath @inbounds localvariance=localsum2-localsum.^2/prod(size(template))
     # localvariance is zero for image patches that are constant

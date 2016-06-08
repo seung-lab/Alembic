@@ -32,11 +32,11 @@ MONOBLOCK_PADDING_PREALIGNMENT = 0.0
 # MAX_ITERS_PREALIGNMENT = 1000
 # USE_CONJUGATE_GRADIENT_ALIGNMENT = false
 
-MESH_LENGTH_ALIGNMENT = 200
+MESH_LENGTH_ALIGNMENT = 500
 GLOBAL_OFFSETS_ALIGNMENT = true
 BLOCKMATCH_SCALE_ALIGNMENT = 0.5
-BLOCK_R_ALIGNMENT = 620
-SEARCH_R_ALIGNMENT = 404
+BLOCK_R_ALIGNMENT = 800
+SEARCH_R_ALIGNMENT = 450
 #BLOCK_R_ALIGNMENT = 122
 #SEARCH_R_ALIGNMENT = 350
 MONOBLOCK_SCALE_ALIGNMENT = 1
@@ -168,8 +168,8 @@ global PARAMS_ALIGNMENT = Dict(
 			     	"eta_newton" => ETA_NEWTON_ALIGNMENT,
 			     	"ftol_newton" => FTOL_NEWTON_ALIGNMENT),
 			     "filter" => Dict(
-			     		"sigma_filter" => (:get_properties, >, 15, 0.8),
-			     		"r_filter" => (:get_properties, <, 0.05, "r_max"),
+			     		"sigma_filter" => (:get_properties, >, 30, 0.8),
+			     		"r_filter" => (:get_properties, <, 0.15, "r_max"),
 			     		"norm_filter" => (:get_norms_std_sigmas, >, 5)
 					      ),
 			     "render" => Dict(

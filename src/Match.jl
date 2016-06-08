@@ -224,7 +224,7 @@ function get_correspondence_patches(match::Match, ind)
 		src_pt = src_pt_loc
 		dst_pt = dst_pt_loc
 
-	xc = normxcorr2(src_patch, dst_patch);
+	xc = normxcorr2_preallocated(src_patch, dst_patch);
 	dv = ceil(Int64, props["vects"]["dv"] * scale)
 
 	return src_patch, src_pt, dst_patch, dst_pt, xc, dst_pt-src_pt+dv
@@ -298,7 +298,7 @@ function monoblock_match(src_index, dst_index, src_image, dst_image, params=get_
 		#=view(src_image_scaled[range_in_src...]/255)
 		view(dst_image_scaled[range_in_dst...]/255)
 		println(dst_pt_locs + dv)
-		img = normxcorr2(src_image_scaled[range_in_src...], dst_image_scaled[range_in_dst...]);
+		img = normxcorr2_preallocated(src_image_scaled[range_in_src...], dst_image_scaled[range_in_dst...]);
 		view(img / maximum(img)) =#
 		if params["registry"]["global_offsets"]
 		offset = get_offset(dst_index) + dv / scale
@@ -355,12 +355,16 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0)
 		avg = round(eltype(dst_image), avg);
 		padded_img = fill(avg, length(dst_range_full[1]), length(dst_range_full[2]));
 		padded_img[indices_within_range...] = intersect_img;
-		xc = normxcorr2(src_image[src_range[1], src_range[2]], padded_img);
+		xc = normxcorr2_preallocated(src_image[src_range[1], src_range[2]], padded_img);
 	else
-	xc = normxcorr2(src_image[src_range[1], src_range[2]], dst_image[dst_range[1], dst_range[2]]);
+	xc = normxcorr2_preallocated(src_image[src_range[1], src_range[2]], dst_image[dst_range[1], dst_range[2]]);
 	end
 	=#
+  stack_bb = sz_to_bb(stack_size)
+  sbb = scale_bb(stack_bb, scale)
+  scaled_size = sbb.h, sbb.w
 	if dst_range != dst_range_full
+	  return nothing
 		indices_within_range = findin(dst_range_full[1], dst_range[1]), findin(dst_range_full[2], dst_range[2])
 		intersect_img = dst_image[dst_range...];
 		avg = mean(intersect_img);
@@ -369,15 +373,15 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0)
 		padded_img = fill(avg, length(dst_range_full[1]), length(dst_range_full[2]));
 		padded_img[indices_within_range...] = intersect_img;
 		if scale == 1.0 
-		xc = normxcorr2(src_image[src_range[1], src_range[2]], padded_img);
+		xc = normxcorr2_preallocated(src_image[src_range[1], src_range[2]], padded_img);
 	      else
-		xc = normxcorr2(imscale(src_image[src_range[1], src_range[2]], scale)[1], imscale(padded_img, scale)[1])
+		xc = normxcorr2_preallocated(imscale(src_image[src_range[1], src_range[2]], scale)[1], imscale(padded_img, scale)[1])
 	      end
 	else
 		if scale == 1.0 
-		xc = normxcorr2(src_image[src_range[1], src_range[2]], dst_image[dst_range[1], dst_range[2]]);
+		xc = normxcorr2_preallocated(src_image[src_range[1], src_range[2]], dst_image[dst_range[1], dst_range[2]]);
 	      else
-		xc = normxcorr2(imscale(src_image[src_range[1], src_range[2]], scale)[1], imscale(dst_image[dst_range[1], dst_range[2]], scale)[1])
+		xc = normxcorr2_preallocated(imscale(src_image[src_range[1], src_range[2]], scale)[1], imscale(dst_image[dst_range[1], dst_range[2]], scale)[1])
 	      end
 	end
 
@@ -532,8 +536,8 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 	if params["match"]["monoblock_match"]
 	monoblock_match(src_index, dst_index, get_image(src_index, params["match"]["monoblock_scale"]), get_image(dst_index, params["match"]["monoblock_scale"]), params);
         end
-
-	ranges = pmap(get_ranges, src_mesh.src_nodes, repeated(src_index), repeated(get_offset(src_index)), repeated(get_image_size(src_index)), repeated(dst_index), repeated(get_offset(dst_index)), repeated(get_image_size(dst_index)), repeated(params["match"]["block_r"]), repeated(params["match"]["search_r"]), repeated(params["registry"]["global_offsets"]));
+	print("computing ranges:")
+	@time ranges = pmap(get_ranges, src_mesh.src_nodes, repeated(src_index), repeated(get_offset(src_index)), repeated(get_image_size(src_index)), repeated(dst_index), repeated(get_offset(dst_index)), repeated(get_image_size(dst_index)), repeated(params["match"]["block_r"]), repeated(params["match"]["search_r"]), repeated(params["registry"]["global_offsets"]));
 	ranged_inds = find(i -> i != nothing, ranges);
 	ranges = ranges[ranged_inds];
 	print("    ")
@@ -544,9 +548,10 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 		ranges = Array{typeof(ranges[1]), 1}(ranges);
 	end
 
+	#@everywhere gc();
 #        dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(get_image(src_index, params["match"]["blockmatch_scale"])), repeated(get_image(dst_index, params["match"]["blockmatch_scale"])), repeated(params["match"]["blockmatch_scale"])) 
-        dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(get_image(src_index)), repeated(get_image(dst_index)), repeated(params["match"]["blockmatch_scale"])) 
-	#@time @everywhere gc();
+	print("computing matches:")
+        @time dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(get_image(src_index)), repeated(get_image(dst_index)), repeated(params["match"]["blockmatch_scale"])) 
 
 	matched_inds = find(i -> i != nothing, dst_allpoints);
 	src_points = copy(src_mesh.src_nodes[ranged_inds][matched_inds]);
