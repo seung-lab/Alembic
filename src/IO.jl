@@ -308,6 +308,17 @@ function make_stack(firstindex::Index, lastindex::Index, slice=(1:255, 1:255); s
   return cat(3, imgs...)
 end
 
+function make_slice(center, radius)
+  x, y = center
+  return (x-radius):(x+radius), (y-radius):(y+radius)
+end
+
+function save_stack(firstindex::Index, lastindex::Index, center, radius)
+  slice = make_slice(center, radius)
+  stack = make_stack(firstindex, lastindex, slice)
+  return save_stack(stack, firstindex, lastindex, slice)
+end
+
 function save_stack(firstindex::Index, lastindex::Index, slice=(1:200, 1:200))
   stack = make_stack(firstindex, lastindex, slice)
   return save_stack(stack, firstindex, lastindex, slice)
@@ -322,7 +333,7 @@ function save_stack(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, 
   origin = [0,0]
   x_slice = [slice[1][1], slice[1][end]] + origin
   y_slice = [slice[2][1], slice[2][end]] + origin
-  z_slice = [find_in_registry(aligned(firstindex)), find_in_registry(aligned(lastindex))]
+  z_slice = [find_in_registry(firstindex), find_in_registry(lastindex)]
   filename = string(cur_dataset, "_", join([join(x_slice, "-"), join(y_slice, "-"), join(z_slice,"-")], "_"), ".h5")
   filepath = joinpath(FINISHED_DIR, filename)
   println("\nSaving stack to ", filepath)
@@ -345,6 +356,25 @@ function save_stack(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, 
   close(f)
 end
 
+# function save_tif(filepath::AbstractString, img::Array{UInt8,2})
+#   println("Saving to $filepath")
+#   imwrite(img, filepath)
+# end
+
+# function save_stack_into_tifs(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, slice::Tuple{UnitRange{Int64},UnitRange{Int64}}; dst_dir=FINISHED_DIR)
+#   assert(isdir(dst_dir))
+#   origin = [0,0]
+#   x_slice = [slice[1][1], slice[1][end]] + origin
+#   y_slice = [slice[2][1], slice[2][end]] + origin
+#   z_slice = [find_in_registry(firstindex), find_in_registry(lastindex)]
+#   stack_name = string(cur_dataset, "_", join([join(x_slice, "-"), join(y_slice, "-"), join(z_slice,"-")], "_"))
+#   for i = 1:size(stack, 3)
+#     img = stack[:, :, i]
+#     filepath = joinpath(dst_dir, string(stack_name, "_$i.tif"))
+#     save_tif(filepath, img)
+#   end
+# end
+
 function build_range(origin, cube_dim, overlap, grid_dim, i)
   return origin[i] : cube_dim[i]-overlap[i] : origin[i] + (cube_dim[i]-overlap[i]) * grid_dim[i]-1
 end
@@ -354,11 +384,11 @@ Save out a grid of cubes starting from the orgin
 
 All dimensions in i,j,k format
 """
-function save_cubes(origin::Tuple{Int64, Int64, Int64}, cube_dims::Tuple{Int64, Int64, Int64}, overlap::Tuple{Int64, Int64, Int64}, grid_dims::Tuple{Int64, Int64, Int64})
+function save_cubes(cube_origin::Tuple{Int64, Int64, Int64}, cube_dims::Tuple{Int64, Int64, Int64}, overlap::Tuple{Int64, Int64, Int64}, grid_dims::Tuple{Int64, Int64, Int64})
   indices = get_indices(aligned(1,2))
-  start_i = build_range(origin, cube_dims, overlap, grid_dims, 1)
-  start_j = build_range(origin, cube_dims, overlap, grid_dims, 2)
-  start_k = build_range(origin, cube_dims, overlap, grid_dims, 3)
+  start_i = build_range(cube_origin, cube_dims, overlap, grid_dims, 1)
+  start_j = build_range(cube_origin, cube_dims, overlap, grid_dims, 2)
+  start_k = build_range(cube_origin, cube_dims, overlap, grid_dims, 3)
   x,y,z = cube_dims
   n = 1
   for i in start_i
