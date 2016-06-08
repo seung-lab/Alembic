@@ -1,6 +1,6 @@
 
 # size in bytes
-global const IMG_CACHE_SIZE = 8 * 2^30 # n * gibibytes
+global const IMG_CACHE_SIZE = 16 * 2^30 # n * gibibytes
 global const IMG_ELTYPE = UInt8
 
 if myid() == 1
@@ -81,6 +81,7 @@ function clean_cache()
 		#IMG_CACHE_DICT[todelete] = zeros(IMG_ELTYPE,0,0)
 		delete!(IMG_CACHE_DICT, todelete)
 	end
+	print("cache garbage collection:")
 	@time @everywhere gc();
       end
 
@@ -108,10 +109,16 @@ function get_image(path::String, scale=1.0, dtype = IMG_ELTYPE)
 	#    shared_img = SharedArray(dtype, size(img)...);
 	#    shared_img[:,:] = img[:,:];
 
+            #print("Getting image from disk:") 	
+
 	    push!(IMG_CACHE_LIST, (path, 1.0))
 	    #IMG_CACHE_DICT[(path, 1.0)] = img;
-	    push!(IMG_CACHE_DICT, (path, 1.0), get_image_disk(path, dtype))
-	    #img = 0;
+            print("image retrieval:")
+	    @time img = get_image_disk(path, dtype)
+            print("image share and store to cache:")
+	    @time IMG_CACHE_DICT[(path, 1.0)] = get_image_disk(path, dtype)
+	    img = 0;
+	    img = 0;
 	#    @everywhere gc();
 	end
 

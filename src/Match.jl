@@ -360,9 +360,6 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0)
 	xc = normxcorr2_preallocated(src_image[src_range[1], src_range[2]], dst_image[dst_range[1], dst_range[2]]);
 	end
 	=#
-  stack_bb = sz_to_bb(stack_size)
-  sbb = scale_bb(stack_bb, scale)
-  scaled_size = sbb.h, sbb.w
 	if dst_range != dst_range_full
 	  return nothing
 		indices_within_range = findin(dst_range_full[1], dst_range[1]), findin(dst_range_full[2], dst_range[2])
@@ -375,13 +372,13 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0)
 		if scale == 1.0 
 		xc = normxcorr2_preallocated(src_image[src_range[1], src_range[2]], padded_img);
 	      else
-		xc = normxcorr2_preallocated(imscale(src_image[src_range[1], src_range[2]], scale)[1], imscale(padded_img, scale)[1])
+		xc = normxcorr2_preallocated(imscale_register_a!(src_image[src_range[1], src_range[2]], scale)[1], imscale_register_b!(padded_img, scale)[1])
 	      end
 	else
 		if scale == 1.0 
 		xc = normxcorr2_preallocated(src_image[src_range[1], src_range[2]], dst_image[dst_range[1], dst_range[2]]);
 	      else
-		xc = normxcorr2_preallocated(imscale(src_image[src_range[1], src_range[2]], scale)[1], imscale(dst_image[dst_range[1], dst_range[2]], scale)[1])
+		xc = normxcorr2_preallocated(imscale_register_a!(src_image[src_range[1], src_range[2]], scale)[1], imscale_register_b!(dst_image[dst_range[1], dst_range[2]], scale)[1])
 	      end
 	end
 
@@ -537,7 +534,7 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 	monoblock_match(src_index, dst_index, get_image(src_index, params["match"]["monoblock_scale"]), get_image(dst_index, params["match"]["monoblock_scale"]), params);
         end
 	print("computing ranges:")
-	@time ranges = pmap(get_ranges, src_mesh.src_nodes, repeated(src_index), repeated(get_offset(src_index)), repeated(get_image_size(src_index)), repeated(dst_index), repeated(get_offset(dst_index)), repeated(get_image_size(dst_index)), repeated(params["match"]["block_r"]), repeated(params["match"]["search_r"]), repeated(params["registry"]["global_offsets"]));
+	@time ranges = map(get_ranges, src_mesh.src_nodes, repeated(src_index), repeated(get_offset(src_index)), repeated(get_image_size(src_index)), repeated(dst_index), repeated(get_offset(dst_index)), repeated(get_image_size(dst_index)), repeated(params["match"]["block_r"]), repeated(params["match"]["search_r"]), repeated(params["registry"]["global_offsets"]));
 	ranged_inds = find(i -> i != nothing, ranges);
 	ranges = ranges[ranged_inds];
 	print("    ")
@@ -550,6 +547,9 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 
 	#@everywhere gc();
 #        dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(get_image(src_index, params["match"]["blockmatch_scale"])), repeated(get_image(dst_index, params["match"]["blockmatch_scale"])), repeated(params["match"]["blockmatch_scale"])) 
+
+@everywhere global REGISTER_A = Array(Float64, 10, 10);
+@everywhere global REGISTER_B = Array(Float64, 10, 10);
 	print("computing matches:")
         @time dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(get_image(src_index)), repeated(get_image(dst_index)), repeated(params["match"]["blockmatch_scale"])) 
 
