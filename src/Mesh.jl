@@ -404,3 +404,24 @@ end
 function reset!(mesh::Mesh)
 	mesh.dst_nodes = copy(mesh.src_nodes)
 end
+
+function refine(mesh::Mesh, triangle::Triangle)
+	edges = get_edges(mesh, triangle)
+	
+end
+
+function find_midpoint(pointA::Point, pointB::Point)
+	return (pointA + pointB) / 2
+end
+
+function get_edges(mesh::Mesh, node_index)
+	return findnz(mesh.edges[node_index, :])
+end
+
+function get_edges(mesh::Mesh, triangle::Triangle)
+	edges = Set()
+	for node in triangle
+		edges = intersect(edges, get_edges(mesh, node))
+	end
+	return edges
+end
