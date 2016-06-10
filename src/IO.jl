@@ -1,6 +1,6 @@
 
 # size in bytes
-global const IMG_CACHE_SIZE = 16 * 2^30 # n * gibibytes
+global const IMG_CACHE_SIZE = 8 * 2^30 # n * gibibytes
 global const IMG_ELTYPE = UInt8
 
 if myid() == 1
@@ -116,7 +116,7 @@ function get_image(path::String, scale=1.0, dtype = IMG_ELTYPE)
             print("image retrieval:")
 	    @time img = get_image_disk(path, dtype)
             print("image share and store to cache:")
-	    @time IMG_CACHE_DICT[(path, 1.0)] = get_image_disk(path, dtype)
+	    @time IMG_CACHE_DICT[(path, 1.0)] = img
 	    img = 0;
 	    img = 0;
 	#    @everywhere gc();
