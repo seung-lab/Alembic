@@ -207,19 +207,53 @@ function count_flags(meshset::MeshSet)
   return sum(map(is_flagged, meshset.matches))
 end
 
+function flag!(meshset::MeshSet, match_ind)
+  flag!(meshset.matches[match_ind])
+end
+
+function unflag!(meshset::MeshSet, match_ind)
+  unflag!(meshset.matches[match_ind])
+end
+
+function unflag!(meshset::MeshSet)
+  map(unflag!, meshset.matches)
+end
+
+function is_flagged(meshset::MeshSet, match_ind)
+  return is_flagged(meshset.matches[match_ind])
+end
+
+function is_flagged(meshset::MeshSet)
+  return |(map(is_flagged, meshset.matches)...)
+end
+
+function check!(meshset::MeshSet, crits = Base.values(meshset.properties["params"]["review"]))
+  unflag!(meshset)
+  return |(map(check!, meshset.matches, repeated(crits))...)
+end
+
 function filter!(meshset::MeshSet, filters = Base.values(meshset.properties["params"]["filter"]))
   for filter in filters
-  	filter!(meshset, filter)
+    filter!(meshset, filter)
   end
+  passed = !check!(meshset)
+  passed ? println("check passed") : println("check failed")
 end
 
 function filter!(meshset::MeshSet, filter::Tuple)
-	total = sum(map(filter!, meshset.matches, repeated(filter)))
-	println("$total / $(count_correspondences(meshset)) correspondences filtered on $filter")
+  total = sum(map(filter!, meshset.matches, repeated(filter)))
+  println("$total / $(count_correspondences(meshset)) correspondences filtered on $filter")
 end
 
-function check!(meshset::MeshSet, crits = Base.values(meshset.properties["params"]["review"])) 
-  return |(map(check!, meshset.matches, repeated(crits))...)
+function clear_filters!(meshset::MeshSet)
+  for match in meshset.matches
+    clear_filters!(match)
+  end
+end
+
+function refilter!(meshset::MeshSet, filters=Base.values(meshset.properties["params"]["filter"]))
+  clear_filters!(meshset)
+  filter!(meshset::MeshSet)
 end
 
 function check_and_fix!(meshset::MeshSet, crits = Base.values(meshset.properties["params"]["review"]), filters = Base.values(meshset.properties["params"]["filter"])) 
@@ -242,12 +276,6 @@ function check_and_fix!(meshset::MeshSet, crits = Base.values(meshset.properties
         end
       end
     end
-  end
-end
-
-function clear_filters!(meshset::MeshSet)
-  for match in meshset.matches
-    clear_filters!(match)
   end
 end
 
@@ -380,26 +408,6 @@ function concat!(meshset_one::MeshSet, meshset_two::MeshSet)
 	return meshset_one;
 end
 
-function flag!(meshset::MeshSet, match_ind)
-	flag!(meshset.matches[match_ind])
-end
-
-function unflag!(meshset::MeshSet, match_ind)
-	unflag!(meshset.matches[match_ind])
-end
-
-function unflag!(meshset::MeshSet)
-  map(unflag!, meshset.matches)
-end
-
-function is_flagged(meshset::MeshSet, match_ind)
-	return is_flagged(meshset.matches[match_ind])
-end
-
-function is_flagged(meshset::MeshSet)
-	return |(map(is_flagged, meshset.matches)...)
-end
-
 ### initialise
 function MeshSet()
  	meshes = Array{Mesh, 1}(0)
@@ -417,8 +425,8 @@ function prealign(index::Index; params=get_params(index), to_fixed=false)
 	meshset = MeshSet();
 	meshset.properties["params"] = params;
 	meshset.properties["meta"] = Dict{Any, Any}();
-	push!(meshset.meshes, Mesh(src_index, params))
-	push!(meshset.meshes, Mesh(dst_index, params, to_fixed))
+	push!(meshset.meshes, make_mesh(src_index, params))
+	push!(meshset.meshes, make_mesh(dst_index, params, to_fixed))
 	push!(meshset.matches, Match(meshset.meshes[1], meshset.meshes[2], params))
 	filter!(meshset);
 	check_and_fix!(meshset);
@@ -435,7 +443,8 @@ end
 function MeshSet(first_index, last_index; params=get_params(first_index), solve=true, solve_method="elastic")
 	ind_range = get_index_range(first_index, last_index);
 	if length(ind_range) == 0 return nothing; end
-	meshes = map(Mesh, ind_range, repeated(params))
+	meshes = pmap(make_mesh, ind_range, repeated(params))
+  sort!(meshes; by=get_index)
  	matches = Array{Match, 1}(0)		
 	properties = Dict{Any, Any}(	"params"  => params,
 					"author" => author(),
@@ -467,7 +476,8 @@ function MeshSet(firstindex::Index, lastindex::Index, fixed_meshes::Array{Mesh,1
   if length(indices) == 0 
     return nothing; 
   end
-  meshes = map(Mesh, indices, repeated(params));
+  meshes = pmap(make_mesh, indices, repeated(params));
+  sort!(meshes; by=get_index)
   map(fix!, fixed_meshes)
   merge_meshes!(meshes, fixed_meshes) # merge meshes into fixed_meshes
   matches = Array{Match, 1}(0)
@@ -908,7 +918,8 @@ function autoblockmatch(index::Index; params=get_params(index))
   if length(indices) == 0 
     return nothing; 
   end
-  meshes = map(Mesh, indices, repeated(params));
+  meshes = pmap(make_mesh, indices, repeated(params));
+  sort!(meshes; by=get_index)
   matches = Array{Match, 1}(0)
   properties = Dict{Any, Any}(  
           "params"  => params,
