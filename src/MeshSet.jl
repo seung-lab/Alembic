@@ -457,16 +457,13 @@ function MeshSet(first_index, last_index; params=get_params(first_index), solve=
 
 	filter!(meshset);
 	check_and_fix!(meshset);
-#=	
-	if check!(meshset)
-		save(meshset); return meshset;
-	end =#
+  save(meshset);
 
 	if solve == true
-	solve!(meshset, method=solve_method);
+  	solve!(meshset, method=solve_method);
+    save(meshset);
 	end
 
-	save(meshset);
 	return meshset;
 end
 
@@ -645,11 +642,13 @@ end
 
 function get_filename(firstindex::Index, lastindex::Index)
   filename = string(get_name(firstindex, lastindex), ".jls")
-  if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_aligned(lastindex))
+  if (((is_montaged(firstindex) || is_prealigned(firstindex) || is_aligned(firstindex)) 
+        && is_montaged(lastindex))) && (firstindex != lastindex)
     filepath = PREALIGNED_DIR
-  elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex)) || (is_prealigned(firstindex) && is_aligned(lastindex))
+  elseif (is_prealigned(firstindex) || is_aligned(firstindex)) &&
+          (is_prealigned(lastindex) || is_aligned(lastindex))
     filepath = ALIGNED_DIR
-  elseif is_premontaged(firstindex) && is_premontaged(lastindex) && firstindex == lastindex
+  elseif is_premontaged(firstindex) && is_premontaged(lastindex) && (firstindex == lastindex)
     filepath = PREMONTAGED_DIR
   else 
     filepath = MONTAGED_DIR
@@ -674,11 +673,13 @@ end
 
 function get_name(firstindex::Index, lastindex::Index)
   name = ""
-  if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_aligned(lastindex))
+  if (((is_montaged(firstindex) || is_prealigned(firstindex) || is_aligned(firstindex)) 
+        && is_montaged(lastindex))) && (firstindex != lastindex)
     name = string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned")
-  elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex)) || (is_prealigned(firstindex) && is_aligned(lastindex))
+  elseif (is_prealigned(firstindex) || is_aligned(firstindex)) &&
+          (is_prealigned(lastindex) || is_aligned(lastindex))
     name = string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned")
-  elseif is_premontaged(firstindex) && is_premontaged(lastindex) && firstindex == lastindex
+  elseif is_premontaged(firstindex) && is_premontaged(lastindex) && (firstindex == lastindex)
     name = string(join(firstindex[1:2], ","), "_premontaged")
   else 
     name = string(join(firstindex[1:2], ","), "_montaged")
@@ -702,32 +703,6 @@ function get_split_index(meshset::MeshSet)
 	return meshset.properties["meta"]["split_index"];
 end
 
-"""
-Load montaged meshset for given wafer and section
-
-`load_montaged(wafer_num, sec_num)`
-"""
-function load_montaged(wafer_num, sec_num)
-  index = (wafer_num, sec_num, 1, 1)
-	return load(index, index)
-end
-
-"""
-Load prealigned meshset for given wafer and section
-
-`load_prealigned(wafer_num, sec_num)`
-"""
-function load_prealigned(wafer_num, sec_num)
-  lastindex = (wafer_num, sec_num, MONTAGED_INDEX, MONTAGED_INDEX)
-  if sec_num == 1
-    if wafer_num == 1 println("Error loading 1,1-prealigned.jld - the first section is the identity"); return Void
-  else firstindex = MONTAGED_OFFSETS[findlast(i->MONTAGED_OFFSETS[i,2][1] == wafer_num -1, 1:size(MONTAGED_OFFSETS, 1)), 2]
-  end
-  else firstindex = (wafer_num, sec_num-1, MONTAGED_INDEX, MONTAGED_INDEX)
-  end
-	return load(firstindex, lastindex)
-end
-
 function load(firstindex, lastindex)
   filename = get_filename(firstindex, lastindex)
   println("Loading meshset from ", filename)
@@ -749,7 +724,7 @@ end
 
 function load(index)
   if is_montaged(index)
-	  return load_montaged(index[1:2]...)
+	  return load(index, index)
   elseif is_prealigned(index)
 	  return load(montaged(index), (get_preceding(montaged(index)))) 
   end
