@@ -110,6 +110,22 @@ function solve_align(firstindex::Index, lastindex::Index)
   split_meshset(ms)
 end
 
+function refilter!(firstindex::Index, lastindex::Index, params=get_params(firstindex))
+  parent_name = get_name(firstindex, lastindex)
+  for i = 1:count_children(parent_name)
+    refilter!(firstindex, lastindex, i, params)
+  end
+end
+
+function refilter!(firstindex::Index, lastindex::Index, ind::Int64, params=get_params(firstindex))
+  parent_name = get_name(firstindex, lastindex)
+  ms = load_split(parent_name, ind)
+  ms.properties["params"]["filter"] = params["filter"]
+  ms.properties["params"]["review"] = params["review"]
+  refilter!(ms)
+  save(ms)
+end
+
 function copy_through_first_section(index::Index)
   img = get_image(montaged(index))
 
