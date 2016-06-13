@@ -42,7 +42,7 @@ function render_montaged(meshset::MeshSet; render_full=false, render_review=true
   # try
     new_fn = get_filename(index)
     println("Rendering ", new_fn)
-    warps = pmap(meshwarp_mesh, meshset.meshes);
+    warps = map(meshwarp_mesh, meshset.meshes);
     imgs = [x[1][1] for x in warps];
     offsets = [x[1][2] for x in warps];
     indices = [x[2] for x in warps];
