@@ -191,8 +191,9 @@ function view_match(meshset::MeshSet, match_ind)
   params["meshset"] = meshset
 
   if USE_PYPLOT
-    view_inspection_statistics(meshset, match_ind)
-    # view_inspection_statistics(match, params["search_r"])
+    try
+      view_inspection_statistics(meshset, match_ind)
+    end
   end
 
   imgc, img2 = view(img, pixelspacing=[1,1])
@@ -333,13 +334,9 @@ function view_blockmatch(match, match_ind, params)
   N=size(xc, 1)
   M=size(xc, 2)
   if USE_PYPLOT
-    view_sigma(match, match_ind, params)
-    # fig = figure("correlogram")
-    # PyPlot.clf()
-    # surf([i for i=1:N, j=1:M], [j for i=1:N, j=1:M], xc, cmap=get_cmap("hot"), 
-    #                         rstride=10, cstride=10, linewidth=0, antialiased=false)
-    # grid("on")
-    # title("match $match_ind")
+    try
+      view_sigma(match, match_ind, params)
+    end
   end
   println("max r-value: ", maximum(xc))
   xc_image = xcorr2Image(xc)
