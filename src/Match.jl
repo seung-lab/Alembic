@@ -360,11 +360,8 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0)
 	xc = normxcorr2_preallocated(src_image[src_range[1], src_range[2]], dst_image[dst_range[1], dst_range[2]]);
 	end
 	=#
-  stack_bb = sz_to_bb(stack_size)
-  sbb = scale_bb(stack_bb, scale)
-  scaled_size = sbb.h, sbb.w
+
 	if dst_range != dst_range_full
-	  return nothing
 		indices_within_range = findin(dst_range_full[1], dst_range[1]), findin(dst_range_full[2], dst_range[2])
 		intersect_img = dst_image[dst_range...];
 		avg = mean(intersect_img);
