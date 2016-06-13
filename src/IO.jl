@@ -313,19 +313,18 @@ function make_slice(center, radius)
   return (x-radius):(x+radius), (y-radius):(y+radius)
 end
 
-function save_stack(firstindex::Index, lastindex::Index, center, radius)
+function save_stack(firstindex::Index, lastindex::Index, center, radius, scale=1.0)
   slice = make_slice(center, radius)
-  stack = make_stack(firstindex, lastindex, slice)
-  return save_stack(stack, firstindex, lastindex, slice)
+  stack = make_stack(firstindex, lastindex, slice, scale=scale)
+  return save_stack(stack, firstindex, lastindex, slice, scale=scale)
 end
 
-function save_stack(firstindex::Index, lastindex::Index, slice=(1:200, 1:200))
-  stack = make_stack(firstindex, lastindex, slice)
-  return save_stack(stack, firstindex, lastindex, slice)
+function save_stack(firstindex::Index, lastindex::Index, slice=(1:200, 1:200); scale=1.0)
+  stack = make_stack(firstindex, lastindex, slice, scale=scale)
+  return save_stack(stack, firstindex, lastindex, slice, scale=scale)
 end
 
-function save_stack(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, slice=(1:200, 1:200))
-  scale = 1.0
+function save_stack(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, slice=(1:200, 1:200); scale=scale)
   # perm = [3,2,1]
   # stack = permutedims(stack, perm)
   orientation = "zyx"
