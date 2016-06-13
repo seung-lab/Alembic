@@ -1,6 +1,3 @@
-global ROI_FIRST = (1,2,0,0);
-global ROI_LAST = (8,173,0,0);
-
 function get_name(index)
     if is_overview(index)
         if cur_dataset == "zebrafish"
@@ -46,10 +43,13 @@ function get_path(index, ext = ".h5")
     else
         if cur_dataset == "zebrafish"
             section_folder = string("W00", index[1], "_Sec", index[2], "_Montage")
-        else
+            path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ext))
+        elseif cur_dataset == "piriform"
             section_folder = string("S2-W00", index[1], "_Sec", index[2], "_Montage")
+            path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ext))
+        else
+            path = joinpath(BUCKET, RAW_DIR, string(name, ext))
         end
-        path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ext))
     end
     # println(path)
     return path
@@ -58,27 +58,6 @@ end
 function get_path(name::String)
     return get_path(parse_name(name))
 end
-
-function get_image(index::Index)
-    return get_image(get_path(index))
-end
-
-function get_thumbnail_path(index::Index)
-  fn = string(join(index[1:2], ","), "_thumb.jpg")
-  println(fn)
-  return joinpath(MONTAGED_DIR, "review", fn) 
-end
-
-function get_thumbnail_path(indexA::Index, indexB::Index)
-  fn = string(join(indexA[1:2],","), "-", join(indexB[1:2],","), "_thumb.png")
-  println(fn)
-  if is_prealigned(indexA)
-    return joinpath(PREALIGNED_DIR, "review", fn) 
-  else
-    return joinpath(ALIGNED_DIR, "review", fn) 
-  end
-end
-
 
 function waferpaths_to_dict(waferpath_filename)
     wdict = Dict()
@@ -192,10 +171,11 @@ end
 
 datasets_dir_path = "research/Julimaps/datasets"
 # cur_dataset = "piriform"
-cur_dataset = "AIBS_practice_234251S6R_01_01_aligned_01"
+# cur_dataset = "AIBS_practice_234251S6R_01_01_aligned_01"
+cur_dataset = "AIBS_pilot_v1"
 # cur_dataset = "align_net"
 in_alignment_test = false
-test_dataset = "piriform_finer_mesh"
+test_dataset = "AIBS_pilot_v1_finer_mesh"
 #cur_dataset = "zebrafish"
 affine_dir_path = "~"
 
@@ -259,3 +239,20 @@ global REGISTRY_EXPUNGED = parse_registry(expunged_registry_path)
 
 show_plot = false
 
+function create_new_dataset_dir(dataset_name)
+    mkdir(joinpath(bucket_dir_path, datasets_dir_path, dataset_name))
+    mkdir(joinpath(bucket_dir_path, datasets_dir_path, dataset_name, raw_dir_path))
+    mkdir(joinpath(bucket_dir_path, datasets_dir_path, dataset_name, premontaged_dir_path))
+    mkdir(joinpath(bucket_dir_path, datasets_dir_path, dataset_name, montaged_dir_path))
+    mkdir(joinpath(bucket_dir_path, datasets_dir_path, dataset_name, prealigned_dir_path))
+    mkdir(joinpath(bucket_dir_path, datasets_dir_path, dataset_name, aligned_dir_path))
+    mkdir(joinpath(bucket_dir_path, datasets_dir_path, dataset_name, finished_dir_path))
+end
+
+if cur_dataset == "piriform"
+    global ROI_FIRST = (1,2,0,0);
+    global ROI_LAST = (8,173,0,0);
+else
+    global ROI_FIRST = (1,1,0,0);
+    global ROI_LAST = (1,102,0,0);
+end

@@ -1,8 +1,8 @@
-MESH_LENGTH_MONTAGE = 2000
+MESH_LENGTH_MONTAGE = 400
 GLOBAL_OFFSETS_MONTAGE = true
 BLOCKMATCH_SCALE_MONTAGE = 1.0
 BLOCK_R_MONTAGE = 60
-SEARCH_R_MONTAGE = 182
+SEARCH_R_MONTAGE = 500
 MONOBLOCK_SCALE_MONTAGE = 1
 MONOBLOCK_MATCH_MONTAGE = false
 MONOBLOCK_RATIO_MONTAGE = 0.4
@@ -32,7 +32,7 @@ MONOBLOCK_PADDING_PREALIGNMENT = 0.0
 # MAX_ITERS_PREALIGNMENT = 1000
 # USE_CONJUGATE_GRADIENT_ALIGNMENT = false
 
-MESH_LENGTH_ALIGNMENT = 500
+MESH_LENGTH_ALIGNMENT = 100
 GLOBAL_OFFSETS_ALIGNMENT = true
 BLOCKMATCH_SCALE_ALIGNMENT = 0.5
 BLOCK_R_ALIGNMENT = 600
@@ -82,8 +82,8 @@ global PARAMS_MONTAGE = Dict(
 			     	"ftol_newton" => FTOL_NEWTON_MONTAGE),
 			     "filter" => Dict(
 			     		"sigma_filter" => (:get_properties, >, 7.5, 0.5),
-			     		"r_filter" => (:get_properties, <, 0.15, "r_max"),
-			     		"norm_filter" => (:get_norms_std_sigmas, >, 2.5)
+			     		"r_filter" => (:get_properties, <, 0.12, "r_max")
+			     		# "norm_filter" => (:get_norms_std_sigmas, >, 2.5)
 					      ),
 			     "render" => Dict(
 					      ),
@@ -114,7 +114,8 @@ global PARAMS_PREALIGNMENT = Dict(
 					"monoblock_scale" => MONOBLOCK_SCALE_PREALIGNMENT, 
 					"monoblock_ratio" => MONOBLOCK_RATIO_PREALIGNMENT, 
 					"monoblock_match" => MONOBLOCK_MATCH_PREALIGNMENT,
-					"depth" => 1),
+					"depth" => 1,
+					"reflexive" => false),
 			     "solve" => Dict(
 					"method" => "regularized",
 					"lambda" => 0.9),
@@ -169,17 +170,18 @@ global PARAMS_ALIGNMENT = Dict(
 			     	"eta_newton" => ETA_NEWTON_ALIGNMENT,
 			     	"ftol_newton" => FTOL_NEWTON_ALIGNMENT),
 			     "filter" => Dict(
-			     		"sigma_filter" => (:get_properties, >, 30, 0.8),
-			     		"r_filter" => (:get_properties, <, 0.15, "r_max"),
-			     		"norm_filter" => (:get_norms_std_sigmas, >, 5)
+			     		"sigma_filter" => (:get_properties, >, 50, 0.8),
+			     		"r_filter" => (:get_properties, <, 0.10, "r_max"),
+			     		# "norm_filter" => (:get_norms_std_sigmas, >, 5),
+			     		"kurtosis_filter" => (:get_properties, >, 10, "src_kurtosis")
 					      ),
 			     "render" => Dict(
 					      ),
 			     "review" => Dict(
 			     		"too_few_corresps" => (:count_correspondences, <, 100),
-						"rejected_ratio" => (:get_ratio_rejected, >, 0.25),
+						"rejected_ratio" => (:get_ratio_rejected, >, 0.50),
 						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.95),
-						"norm_outliers" => (:count_outlier_norms, >, 0, 4),
+						# "norm_outliers" => (:count_outlier_norms, >, 0, 4),
 						"centered_norm" => (:get_maximum_centered_norm, >, BLOCK_R_ALIGNMENT*0.5)
 					      ),
 			     "registry" => Dict(

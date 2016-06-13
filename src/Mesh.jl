@@ -144,8 +144,8 @@ function get_dims_and_dists(mesh::Mesh)
 end
 
 ### INIT
-function Mesh(index, params = get_params(index), fixed=false)
-	
+function make_mesh(index, params = get_params(index), fixed=false)
+	println("Creating mesh for $index")
 	# mesh lengths in each dimension
 	dists = [params["mesh"]["mesh_length"] * sin(pi / 3); params["mesh"]["mesh_length"]];
 

@@ -134,7 +134,7 @@ function view_stack(firstindex::Index, lastindex::Index, slice=(1:200,1:200); in
   stack = make_stack(firstindex, lastindex, slice, scale=scale)
   offset = get_offset(slice_to_bb(slice))
   indices = get_index_range(firstindex, lastindex)
-  annotations = Dict("indices" => [indices, reverse(indices)], "slice"=>slice)
+  annotations = Dict("indices" => [indices, reverse(indices)], "slice"=>slice, "scale"=>scale)
   imgc, img2 = view_stack(stack, offset=offset, scale=scale, annotations=annotations, include_reverse=include_reverse, perm=perm)
   return stack, annotations, imgc, img2
 end
@@ -262,13 +262,13 @@ function compile_annotations(meshset::MeshSet, slice, scale=1.0)
   firstindex, lastindex = minimum(ms_indices), maximum(ms_indices)
   indices = get_index_range(firstindex, lastindex)
   bb = slice_to_bb(slice)
-  annotations = ["ann" => Dict(), 
+  annotations = Dict("ann" => Dict(), 
                  "meshset" => meshset, 
                  "indices" => indices,
                  "slice" => slice,
                  "bb" => bb,
                  "scale" => scale,
-                 "vector_scale" => 10]
+                 "vector_scale" => 10)
   for index in indices
     annotations["ann"][index] = Dict()
     annotations["ann"][index]["match"] = Dict()
@@ -320,7 +320,9 @@ function display_annotations(imgc, img2, annotations; include_reverse=false)
     min_s = minimum(st)
     max_s = maximum(st)
     println("Min/max mesh strain: $min_s / $max_s")
-    s[st.<=0] = round(UInt8, -st[st.<=0]./min_s*127+128)
+    if min_s != 0
+      s[st.<=0] = round(UInt8, -st[st.<=0]./min_s*127+128)
+    end
     if max_s != 0
       s[st.>0] = round(UInt8, st[st.>0]./max_s*127+128)
     end
@@ -331,14 +333,14 @@ function display_annotations(imgc, img2, annotations; include_reverse=false)
       show_colored_lines(imgc, img2, data, strain, t=i)
     end
     for (k, match_ind) in enumerate(keys(annotations["ann"][index]["match"]))
-      data = change_vector_lengths(annotations["ann"][index]["match"][match_ind], vector_scale)*scale
-      name = annotations["ann"][index]["match_names"][match_ind]
-      if size(data, 2) > 1
-        show_points(imgc, img2, data[1:2, :], shape='o', color=colors[k], t=i)
-        show_lines(imgc, img2, data, color=colors[k], t=i)
-        fontsize = 40
-        show_text(imgc, img2, name, 2*fontsize, 2*fontsize*k, fontsize=fontsize, color=colors[k], t=i)
-      end
+      # data = change_vector_lengths(annotations["ann"][index]["match"][match_ind], vector_scale)*scale
+      # name = annotations["ann"][index]["match_names"][match_ind]
+      # if size(data, 2) > 1
+      #   show_points(imgc, img2, data[1:2, :], shape='o', color=colors[k], t=i)
+      #   show_lines(imgc, img2, data, color=colors[k], t=i)
+      #   fontsize = 40
+      #   show_text(imgc, img2, name, 2*fontsize, 2*fontsize*k, fontsize=fontsize, color=colors[k], t=i)
+      # end
     end
   end
 end
