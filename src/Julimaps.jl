@@ -91,6 +91,7 @@ if !(contains(gethostname(), "seunglab"))
 end
 #using ParallelSparseMatMul
 
+include("parallelism.jl")
 include("author.jl")
 include("Index.jl")
 include("registry.jl")
@@ -116,7 +117,7 @@ include("Match.jl")
 include("MeshSet.jl")
 include("migrate.jl")
 include("evaluate.jl")
-include("parallelism.jl")
+#include("parallelism.jl")
 include("meshconjgrad.jl")
 #include("meshconjgrad_parallel.jl")
 include("meshgradnewton.jl")

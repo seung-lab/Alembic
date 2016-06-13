@@ -319,15 +319,14 @@ Template match two image patches to produce point pair correspondence
 """
 function get_match(pt, ranges, src_image, dst_image, scale = 1.0)
 	src_index, src_range, src_pt_loc, dst_index, dst_range, dst_range_full, dst_pt_loc, dst_pt_loc_full, rel_offset = ranges;
-#=
+
 	#see if any of the edges in the template are fully padded
 	if sum(src_image[src_range[1], first(src_range[2])]) == 0 return nothing end
 	if sum(src_image[src_range[1], last(src_range[2])]) == 0 return nothing end
 	if sum(src_image[first(src_range[1]), src_range[2]]) == 0 return nothing end
 	if sum(src_image[last(src_range[1]), src_range[2]]) == 0 return nothing end
-	if sum(dst_image[dst_range[1], median(dst_range[2])]) == 0 return nothing end
-	if sum(dst_image[median(dst_range[1]), dst_range[2]]) == 0 return nothing end
-	=#
+	#if sum(dst_image[dst_range[1], median(dst_range[2])]) == 0 return nothing end
+	#if sum(dst_image[median(dst_range[1]), dst_range[2]]) == 0 return nothing end
 
 	correspondence_properties = Dict{Any, Any}();
 	correspondence_properties["ranges"] = Dict{Any, Any}();
@@ -361,7 +360,6 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0)
 	end
 	=#
 	if dst_range != dst_range_full
-	  return nothing
 		indices_within_range = findin(dst_range_full[1], dst_range[1]), findin(dst_range_full[2], dst_range[2])
 		intersect_img = dst_image[dst_range...];
 		avg = mean(intersect_img);
@@ -533,6 +531,8 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 	if params["match"]["monoblock_match"]
 	monoblock_match(src_index, dst_index, get_image(src_index, params["match"]["monoblock_scale"]), get_image(dst_index, params["match"]["monoblock_scale"]), params);
         end
+	src_img = get_image(src_index);
+	dst_img = get_image(dst_index);
 	print("computing ranges:")
 	@time ranges = map(get_ranges, src_mesh.src_nodes, repeated(src_index), repeated(get_offset(src_index)), repeated(get_image_size(src_index)), repeated(dst_index), repeated(get_offset(dst_index)), repeated(get_image_size(dst_index)), repeated(params["match"]["block_r"]), repeated(params["match"]["search_r"]), repeated(params["registry"]["global_offsets"]));
 	ranged_inds = find(i -> i != nothing, ranges);
@@ -548,17 +548,18 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 	#@everywhere gc();
 #        dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(get_image(src_index, params["match"]["blockmatch_scale"])), repeated(get_image(dst_index, params["match"]["blockmatch_scale"])), repeated(params["match"]["blockmatch_scale"])) 
 
-@everywhere global REGISTER_A = Array(Float64, 10, 10);
-@everywhere global REGISTER_B = Array(Float64, 10, 10);
+@everywhere global REGISTER_A = Array(Float64, 0, 0);
+@everywhere global REGISTER_B = Array(Float64, 0, 0);
+
 	print("computing matches:")
-        @time dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(get_image(src_index)), repeated(get_image(dst_index)), repeated(params["match"]["blockmatch_scale"])) 
+        @time dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(src_img), repeated(dst_img), repeated(params["match"]["blockmatch_scale"])) 
 
 	matched_inds = find(i -> i != nothing, dst_allpoints);
 	src_points = copy(src_mesh.src_nodes[ranged_inds][matched_inds]);
-	filters = Array{Dict{Any, Any}}(0);
-
 	dst_points = [convert(Point, dst_allpoints[ind][1:2]) for ind in matched_inds]
 	correspondence_properties = [dst_allpoints[ind][3] for ind in matched_inds]
+
+	filters = Array{Dict{Any, Any}}(0);
   	properties = Dict{Any, Any}(
 		"params" => params,
 		"review" => Dict{Any, Any}(
@@ -567,6 +568,8 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 				"author" => null_author()
 				) 
 			);
+@everywhere global REGISTER_A = Array(Float64, 0, 0);
+@everywhere global REGISTER_B = Array(Float64, 0, 0);
 
 	return Match(src_index, dst_index, src_points, dst_points, correspondence_properties, filters, properties);
 end

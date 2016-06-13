@@ -52,3 +52,12 @@ function Base.eltype(r::RemoteRef, args...)
 		    end
 	return remotecall_fetch(r.where, eltype, r, args...)
       end
+
+function get_proc_range(idx, arr::Array)
+        worker_procs = setdiff(procs(), myid());
+	nchunks = length(worker_procs);
+if nchunks == 0 return 1:length(arr); end
+if idx == myid() return 1:0; end
+	splits = [round(Int64, s) for s in linspace(0, length(arr), nchunks + 1)];
+	return splits[findfirst(worker_procs, idx)]+1:splits[findfirst(worker_procs, idx) + 1]
+	end
