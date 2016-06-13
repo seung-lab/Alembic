@@ -52,14 +52,37 @@ function imscale(img, scale_factor)
   tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
   return imwarp(img, tform);
 end
-
+#=
 function imscale!(result, img, scale_factor)
   tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
   bb = BoundingBox{Float64}(offset..., size(img, 1), size(img, 2))
+  sbb = scale_bb(stack_bb, scale)
+  scaled_size = sbb.h, sbb.w
+  warped_img = zeros(T, tbb.h, tbb.w)
+
+  return imwarp!(result, img, tform);
+end=#
+
+function imscale_register_a!(img, scale_factor)
+  tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
+  bb = BoundingBox{Float64}(0,0, size(img, 1), size(img, 2))
   wbb = tform_bb(bb, tform)
   tbb = snap_bb(wbb)
-  warped_img = zeros(T, tbb.h, tbb.w)
-  return imwarp!(result, img, tform);
+  if size(REGISTER_A) != (tbb.h, tbb.w)
+   global REGISTER_A = zeros(eltype(img), tbb.h, tbb.w)
+   end
+  return ImageRegistration.imwarp!(REGISTER_A, img, tform);
+end
+
+function imscale_register_b!(img, scale_factor)
+  tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
+  bb = BoundingBox{Float64}(0,0, size(img, 1), size(img, 2))
+  wbb = tform_bb(bb, tform)
+  tbb = snap_bb(wbb)
+  if size(REGISTER_B) != (tbb.h, tbb.w)
+   global REGISTER_B = zeros(eltype(img), tbb.h, tbb.w)
+   end
+  return ImageRegistration.imwarp!(REGISTER_B, img, tform);
 end
 
 """
