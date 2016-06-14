@@ -1,37 +1,19 @@
+module Daemon
 import AWS
+using QueueService
 
-function main()
-    # Load AWS credentials via AWS library (either through environment
-    # variables or ~/.awssecret or query permissions server)
-    env = AWS.AWSEnv();
 
-    if length(ARGS) < 3
-        error("Not enough arguments given, sample usage:
-            -- julia daemon.jl queue_name bucket_name base_directory")
-    end
+function run(queue::QueueService, bucket::BucketService,
+    poll_frequency_seconds::Int)
 
-    eventsAndFunctions
-    queue_name = ASCIIString(ARGS[1])
-    bucket_name = ASCIIString(ARGS[2])
-    base_directory = ARGS[3]
+    while true
+        message = pop_message(queue)
+        task = parse_task(message)
+        print("Task is $(task.name) with indicies $(task.indices)")
 
-    # detect queue
-    queue_url = get_queue_url(env, queue_name)
-
-    # detect base directory
-    verify_directory(env, bucket_name, base_directory)
-
+        sleep(poll_frequency_seconds)
 end
 
-function get_queue_url(env::AWS.AWSEnv, queue_name::AbstractString)
-    # try creating it anyway, does not overwrite existing queue
-    response = AWS.SQS.CreateQueue(env, queueName=queue_name)
-    if response.http_code != 200
-        error("Unable to find queue: $queue_name, response:
-            ($(response.http_code)), creating a new one")
-    end
-    return response.obj.queueUrl
-end
 
 function verify_directory(env::AWS.AWSEnv, bucket_name::AbstractString,
     base_directory::AbstractString)
@@ -49,4 +31,4 @@ function verify_directory(env::AWS.AWSEnv, bucket_name::AbstractString,
     end
 end
 
-main()
+end # end module Daemon

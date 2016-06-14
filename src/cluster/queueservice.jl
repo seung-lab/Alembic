@@ -1,46 +1,50 @@
-import JSON
-import AWS
-import task
+module QueueService
 
-type QueueService
+import AWS
+
+abstract QueueService
+
+type AWSQueueService <: QueueService
     name::ASCIIString
     url::ASCIIString
+    env::AWS.AWSEnv
+
+    function AWSQueueService(env::AWS.AWSEnv, name::ASCIIString)
+        this = new()
+        this.name = name
+        this.env = env
+        this.url = get_queue_url(env, name)
+    end
 end
 
-function receive_message(queue::GCSQueueService)
-    error("NOT IMPLEMENTED")
+function get_queue_url(env::AWS.AWSEnv, queue_name::AbstractString)
+    response = AWS.SQS.CreateQueue(env, queueName=queue_name)
+
+    # try creating a queue, does not overwrite existing queue so it's safe
+    if response.http_code != 200
+        error("Unable to create/get queue: $queue_name, response:
+            ($(response.http_code))")
+    end
+
+    return response.obj.queueUrl
 end
 
 # Pops message off the given queue service and returns a task
-function pop_task(queue::AWSQueueService)
-    receive_response = receive_message(queue)
+function pop_message(queue::AWSQueueService)
+    receive_response = AWS.SQS.ReceiveMessage(queue.env, queue.url)
 
     if receive_response.http_code != 200
         error("Unable to retrieve task from $(queue.name) from $(queue.url)")
     end
 
     if length(receive_response.obj.messageSet) < 1
-        || length(strip(receive_response.obj.messageSet.body))
         error("Invalid message received from $(queue.name) from $(queue.url)")
     end
 
     delete_response = AWS.SQS.DeleteMessage(env, queue.url,
     receiptHandle=receive_response.obj.messageSet[1].receiptHandle)
-    task = parse_task(strip(receive_response.obj.messageSet[1].body))
-    return task
+
+    return strip(receive_response.obj.messageSet[1].body)
 end
 
-function parse_task(message::ASCIIString)
-    if length(strip(sqs_response.obj.messageSet.body))
-        || !haskey(message, "name")  || !haskey(message, "indices")
-        error("Invalid message body retrieved")
-    end
-
-
-    dictionary = JSON.parse(recieve_response.obj.messageSet.body)
-    return task(dictionary["name"], dictionary["indicies"])
-end
-
-
-function get_task(queue::QueueService)
-    return task;
+end # end module QueueService
