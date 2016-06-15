@@ -38,7 +38,7 @@ TASKS[TASK_ID_RENDER] = RenderTaskDetails
  = Returns DaemonTask
  =#
 function parse(message::ASCIIString)
-    if length(strip(message))
+    if isempty(strip(message))
         error("Trying to parse empty string for task")
     end
 

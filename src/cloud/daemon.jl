@@ -2,6 +2,7 @@ module Daemon
 
 import Julimaps.Cloud.Queue
 import Julimaps.Cloud.Bucket
+import Julimaps.Cloud.DaemonTask
 
 export DaemonService
 export run
