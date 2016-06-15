@@ -1,6 +1,11 @@
 module QueueService
 
 import AWS
+import AWS.SQS
+
+export QueueService
+export AWSQueueService
+export pop_message
 
 abstract QueueService
 
@@ -17,8 +22,9 @@ type AWSQueueService <: QueueService
     end
 end
 
+# Given our aws environment and bucket name, find the correct url
 function get_queue_url(env::AWS.AWSEnv, queue_name::AbstractString)
-    response = AWS.SQS.CreateQueue(env, queueName=queue_name)
+    response = SQS.CreateQueue(env, queueName=queue_name)
 
     # try creating a queue, does not overwrite existing queue so it's safe
     if response.http_code != 200
@@ -31,7 +37,7 @@ end
 
 # Pops message off the given queue service and returns a task
 function pop_message(queue::AWSQueueService)
-    receive_response = AWS.SQS.ReceiveMessage(queue.env, queue.url)
+    receive_response = SQS.ReceiveMessage(queue.env, queue.url)
 
     if receive_response.http_code != 200
         error("Unable to retrieve task from $(queue.name) from $(queue.url)")
@@ -41,7 +47,7 @@ function pop_message(queue::AWSQueueService)
         error("Invalid message received from $(queue.name) from $(queue.url)")
     end
 
-    delete_response = AWS.SQS.DeleteMessage(env, queue.url,
+    delete_response = SQS.DeleteMessage(env, queue.url,
     receiptHandle=receive_response.obj.messageSet[1].receiptHandle)
 
     return strip(receive_response.obj.messageSet[1].body)

@@ -8,7 +8,6 @@ import QueueService
 type RunConfig
     queue_name::ASCIIString
     bucket_name::ASCIIString
-    base_directory::ASCIIString
     poll_frequency_seconds::Int
 end
 
@@ -24,10 +23,11 @@ function main()
 
     queue = QueueService.AWSQueueService(env, run_config.queue_name)
 
-    bucket = BucketService.AWSBucketService(env, run_config.bucket_name,
-        run_config.base_directory)
+    bucket = BucketService.AWSBucketService(env, run_config.bucket_name)
 
-    Daemon.run(queue, bucket, poll_frequency_seconds)
+    daemon = Daemon.Daemon(queue, bucket, run_config.poll_frequency_seconds)
+
+    daemon.run()
 end
 
 #=
@@ -37,13 +37,12 @@ end
 function parse_args()
     if length(ARGS) < 3
         error("Not enough arguments given, sample usage:
-            -- julia daemon.jl queue_name bucket_name base_directory")
+            -- julia daemon.jl queue_name bucket_name")
     end
 
     return RunConfig(
         queue_name=ASCIIString(ARGS[1]),
         bucket_name = ASCIIString(ARGS[2])
-        base_directory = ASCIIString(ARGS[3])
     )
 end
 
