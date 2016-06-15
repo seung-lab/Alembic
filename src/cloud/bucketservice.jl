@@ -11,19 +11,11 @@ export upload
 abstract BucketService
 
 type AWSBucketService <: BucketService
-    prefix::ASCIIString
-    name::ASCIIString
     env::AWS.AWSEnv
+    name::ASCIIString
 
-    function AWSBucketService(env::AWS.AWSEnv, name::ASCIIString)
-        this = new()
-        this.env = env
-        this.name = name
-        this.prefix = "s3://"
-
-        # Check to make sure bucket is reachable
-        check_reachable(env, name)
-    end
+    AWSBucketService(env::AWS.AWSEnv, name::ASCIIString) =
+        check_reachable(env, name) && new(env, name)
 end
 
 function check_reachable(env::AWS.AWSEnv, bucket_name::AbstractString)
@@ -33,6 +25,8 @@ function check_reachable(env::AWS.AWSEnv, bucket_name::AbstractString)
         error("Unable to access bucket: $bucket_name, response:
             ($(bucket_response.http_code))")
     end
+
+    return true
 end
 
 function download(bucket::AWSBucketService, remote_file::ASCIIString,

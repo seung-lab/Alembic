@@ -22,7 +22,7 @@ function main()
 
     # Load AWS credentials via AWS library (either through environment
     # variables or ~/.awssecret or query permissions server)
-    env = AWS.AWSEnv();
+    env = AWS.AWSEnv()
 
     queue = Queue.AWSQueueService(env, run_config.queue_name)
 
