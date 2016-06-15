@@ -1,21 +1,21 @@
-module BucketService
+module Bucket
 
 import AWS
 import AWS.S3
 
 export BucketService
-export AWSQueueService
+export AWSBucketService
 export download
 export upload
 
 abstract BucketService
+
 type AWSBucketService <: BucketService
     prefix::ASCIIString
     name::ASCIIString
     env::AWS.AWSEnv
 
-    function AWSBucketService(env::AWSBucketService, name::ASCIIString,
-        base_directory::ASCIIString)
+    function AWSBucketService(env::AWS.AWSEnv, name::ASCIIString)
         this = new()
         this.env = env
         this.name = name

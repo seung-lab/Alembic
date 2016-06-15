@@ -1,4 +1,4 @@
-module QueueService
+module Queue
 
 import AWS
 import AWS.SQS

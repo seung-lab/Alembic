@@ -1,3 +1,6 @@
+import Graphics
+import Tk
+
 # Pulled from ImageView:rubberband.jl
 # https://github.com/timholy/ImageView.jl/blob/master/src/rubberband.jl
 #

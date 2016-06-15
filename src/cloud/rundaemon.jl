@@ -1,14 +1,17 @@
-#=Pkg.clone("git@github.com:JuliaParallel/AWS.jl.git")=#
-#=Pkg.clone("git@github.com:JuliaLang/JSON.jl.git")=#
+include("../Julimaps.jl")
+
 module RunDaemon
 
-import Daemon
-import QueueService
+import Julimaps
+import Julimaps.Cloud.Daemon
+import Julimaps.Cloud.Queue
+import Julimaps.Cloud.Bucket
+import AWS
 
 type RunConfig
     queue_name::ASCIIString
     bucket_name::ASCIIString
-    poll_frequency_seconds::Int
+    poll_frequency_seconds::Int64
 end
 
 #=
@@ -21,13 +24,13 @@ function main()
     # variables or ~/.awssecret or query permissions server)
     env = AWS.AWSEnv();
 
-    queue = QueueService.AWSQueueService(env, run_config.queue_name)
+    queue = Queue.AWSQueueService(env, run_config.queue_name)
 
-    bucket = BucketService.AWSBucketService(env, run_config.bucket_name)
+    bucket = Bucket.AWSBucketService(env, run_config.bucket_name)
 
-    daemon = Daemon.Daemon(queue, bucket, run_config.poll_frequency_seconds)
+    daemon = Daemon.DaemonService(queue, bucket, run_config.poll_frequency_seconds)
 
-    daemon.run()
+    Daemon.run(daemon)
 end
 
 #=
@@ -36,14 +39,16 @@ end
  =#
 function parse_args()
     if length(ARGS) < 3
-        error("Not enough arguments given, sample usage:
+        error("Not enough arguments given, (given $ARGS) sample usage:
             -- julia daemon.jl queue_name bucket_name")
     end
 
-    return RunConfig(
-        queue_name=ASCIIString(ARGS[1]),
-        bucket_name = ASCIIString(ARGS[2])
+    run_config = RunConfig(
+        ASCIIString(ARGS[1]),
+        ASCIIString(ARGS[2]),
+        parse(Int64, ARGS[3])
     )
+    return run_config
 end
 
 #Run main!

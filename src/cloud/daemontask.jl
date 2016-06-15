@@ -2,21 +2,21 @@ module DaemonTask
 
 import JSON
 
-export DaemonTask
+export DaemonTaskDetails
 export BlockMatchTask
 export RenderTask
 export parse_task
 
 # These types identify the task that we like to perform
-abstract DaemonTask
+abstract DaemonTaskDetails
 
-type BlockMatchTask <: DaemonTask
+type BlockMatchTaskDetails <: DaemonTaskDetails
     taskId::AbstractString
     indices::AbstractString
     base_directory::AbstractString
 end
 
-type RenderTask <: DaemonTask
+type RenderTaskDetails <: DaemonTaskDetails
     taskId::AbstractString
     indices::AbstractString
     base_directory::AbstractString
@@ -30,8 +30,8 @@ end
 const TASK_ID_BLOCK_MATCH = "BLOCK_MATCH"
 const TASK_ID_RENDER = "RENDER"
 const TASKS = Dict()
-TASKS[TASK_ID_BLOCK_MATCH] = BlockMatchTask
-TASKS[TASK_ID_RENDER] = RenderTask
+TASKS[TASK_ID_BLOCK_MATCH] = BlockMatchTaskDetails
+TASKS[TASK_ID_RENDER] = RenderTaskDetails
 
 #=
  = Given a task in json form, convert it into the correct type
@@ -47,18 +47,22 @@ function parse(message::ASCIIString)
     end
 
     dictionary = JSON.parse(recieve_response.obj.messageSet.body)
-    return TASKS[json.taskId](taskId=dictionary["taskId"],
-        task=dictionary["name"], indices=dictionary["indicies"])
+    return TASKS[json.taskId](
+        dictionary["taskId"],
+        dictionary["name"],
+        dictionary["indicies"]
+    )
 end
 
-function execute(block_match_task::BlockMatchTask)
-    print("Running BlockMatching with indicies $(block_match_task.indices) for
-        $(block_match_task.base_directory)")
+function execute(block_match_task_details::BlockMatchTaskDetails)
+    print("Running BlockMatching with indicies
+        $(block_match_task_details.indices) for 
+        $(block_match_task_details.base_directory)")
 end
 
-function execute(render_task::RenderTask)
-    print("Running Rendering with indicies $(render_task.indices) for
-        $(render_task.base_directory)")
+function execute(render_task_details::RenderTaskDetails)
+    print("Running Rendering with indicies $(render_task_details.indices) for
+        $(render_task_details.base_directory)")
 end
 
 end # end module Task

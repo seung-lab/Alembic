@@ -1,3 +1,4 @@
+module Julimaps
 # TypeAliases
 export Index
 export Triangle, Triangles
@@ -130,6 +131,7 @@ include("visualize.jl")
 include("utilities.jl")
 include("transforms.jl")
 include("draw.jl")
+include("cloud/index.jl")
 if !(contains(gethostname(), "seunglab"))
   include("player.jl")
   include("inspect.jl")
@@ -137,4 +139,4 @@ if !(contains(gethostname(), "seunglab"))
   include("brushtool.jl")
 end
 
-
+end #end module Julimaps
