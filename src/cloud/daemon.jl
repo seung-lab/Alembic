@@ -7,8 +7,8 @@ export DaemonService
 export run
 
 type DaemonService
-    queue::Queue.AWSQueueService
-    bucket::Bucket.AWSBucketService
+    queue::Queue.QueueService
+    bucket::Bucket.BucketService
     poll_frequency_seconds::Int64
 end
 

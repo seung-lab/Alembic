@@ -14,12 +14,8 @@ type AWSQueueService <: QueueService
     url::ASCIIString
     env::AWS.AWSEnv
 
-    function AWSQueueService(env::AWS.AWSEnv, name::ASCIIString)
-        this = new()
-        this.name = name
-        this.env = env
-        this.url = get_queue_url(env, name)
-    end
+    AWSQueueService(env::AWS.AWSEnv, name::ASCIIString) =
+        new(name, get_queue_url(env, name), env)
 end
 
 # Given our aws environment and bucket name, find the correct url
