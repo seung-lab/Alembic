@@ -15,15 +15,20 @@ end
 
 function run(daemon::DaemonService)
     while true
-        message = Queue.pop_message(daemon.queue)
+        try
+            message = Queue.pop_message(daemon.queue)
 
-        task = DaemonTask.parse(message)
+            task = DaemonTask.parse(message)
 
-        print("Task is $(task.taskId)")
+            print("Task is $(task.taskId)")
 
-        #=DaemonTask.execute(task)=#
+            #=DaemonTask.execute(task)=#
+        catch e
+            showerror(STDERR, e, catch_backtrace(); backtrace = true)
+            print(STDERR, "\n") #looks like showerror doesn't include a newline
+        end
 
-        sleep(poll_frequency_seconds)
+        sleep(daemon.poll_frequency_seconds)
     end
 end
 

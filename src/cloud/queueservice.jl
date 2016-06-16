@@ -40,7 +40,7 @@ function pop_message(queue::AWSQueueService)
     end
 
     if length(receive_response.obj.messageSet) < 1
-        error("Invalid message received from $(queue.name) from $(queue.url)")
+        error("No messages found in $(queue.name) from $(queue.url)")
     end
 
     receiptHandle=receive_response.obj.messageSet[1].receiptHandle
