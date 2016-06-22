@@ -38,19 +38,25 @@ TASKS[TASK_ID_RENDER] = RenderTaskDetails
  = Returns DaemonTask
  =#
 function parse(message::ASCIIString)
-    if isempty(strip(message))
+    message = strip(message)
+    if isempty(message)
         error("Trying to parse empty string for task")
     end
 
-    if !haskey(message, "taskId")  || !haskey(message, "indices")
+    json = JSON.parse(message)
+
+    if !haskey(json, "taskId")  || !haskey(json, "indices")
         error("Missing task parameters")
     end
 
-    dictionary = JSON.parse(recieve_response.obj.messageSet.body)
-    return TASKS[json.taskId](
-        dictionary["taskId"],
-        dictionary["name"],
-        dictionary["indicies"]
+    if !haskey(TASKS, json["taskId"])
+        error("Unknown task : $(json["taskId"])")
+    end
+
+    return TASKS[json["taskId"]](
+        json["taskId"],
+        json["name"],
+        json["indices"]
     )
 end
 

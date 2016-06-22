@@ -15,6 +15,10 @@ type AWSQueueService <: QueueService
     env::AWS.AWSEnv
 end
 
+function Base.string(queue::AWSQueueService)
+    return "$(queue.name) from $(queue.url)"
+end
+
 AWSQueueService(env::AWS.AWSEnv, name::ASCIIString) =
         AWSQueueService(name, get_queue_url(env, name), env)
 
@@ -36,11 +40,11 @@ function pop_message(queue::AWSQueueService)
     receive_response = SQS.ReceiveMessage(queue.env; queueUrl = queue.url)
 
     if receive_response.http_code != 200
-        error("Unable to retrieve task from $(queue.name) from $(queue.url)")
+        error("Unable to retrieve task from $queue")
     end
 
     if length(receive_response.obj.messageSet) < 1
-        error("No messages found in $(queue.name) from $(queue.url)")
+        return ""
     end
 
     receiptHandle=receive_response.obj.messageSet[1].receiptHandle

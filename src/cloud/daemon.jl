@@ -18,11 +18,15 @@ function run(daemon::DaemonService)
         try
             message = Queue.pop_message(daemon.queue)
 
-            task = DaemonTask.parse(message)
+            if isempty(message)
+                println("No messages found in $(Queue.string(daemon.queue))")
+            else
+                task = DaemonTask.parse(message)
 
-            print("Task is $(task.taskId)")
+                println("Task is $(task.taskId)")
 
-            #=DaemonTask.execute(task)=#
+                #=DaemonTask.execute(task)=#
+            end
         catch e
             showerror(STDERR, e, catch_backtrace(); backtrace = true)
             print(STDERR, "\n") #looks like showerror doesn't include a newline
