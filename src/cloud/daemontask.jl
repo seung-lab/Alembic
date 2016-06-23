@@ -10,16 +10,19 @@ export parse_task
 # These types identify the task that we like to perform
 abstract DaemonTaskDetails
 
-type BlockMatchTaskDetails <: DaemonTaskDetails
-    taskId::AbstractString
-    indices::AbstractString
-    base_directory::AbstractString
+type Details
+    taskType::AbstractString
+    baseDirectory::AbstractString
+    files::Array{AbstractString}
+    indices::Array{Tuple{Int64,Int64,Int64,Int64}}
 end
 
-type RenderTaskDetails <: DaemonTaskDetails
-    taskId::AbstractString
-    indices::AbstractString
-    base_directory::AbstractString
+type BlockMatchTask <: DaemonTaskDetails
+    details::Details
+end
+
+type RenderTask <: DaemonTaskDetails
+    details::Details
 end
 
 #=
@@ -27,11 +30,11 @@ end
  =Use these names to create a lookup table for each constructor of the
  =corresponding task
  =#
-const TASK_ID_BLOCK_MATCH = "BLOCK_MATCH"
-const TASK_ID_RENDER = "RENDER"
+const TASK_TYPE_BLOCK_MATCH = "BLOCK_MATCH"
+const TASK_TYPE_RENDER = "RENDER"
 const TASKS = Dict()
-TASKS[TASK_ID_BLOCK_MATCH] = BlockMatchTaskDetails
-TASKS[TASK_ID_RENDER] = RenderTaskDetails
+TASKS[TASK_TYPE_BLOCK_MATCH] = BlockMatchTask
+TASKS[TASK_TYPE_RENDER] = RenderTask
 
 #=
  = Given a task in json form, convert it into the correct type
@@ -45,30 +48,44 @@ function parse(message::ASCIIString)
 
     json = JSON.parse(message)
 
-    if !haskey(json, "taskId")  || !haskey(json, "indices")
-        error("Missing task parameters")
-    end
-
-    if !haskey(TASKS, json["taskId"])
-        error("Unknown task : $(json["taskId"])")
-    end
-
-    return TASKS[json["taskId"]](
-        json["taskId"],
-        json["name"],
-        json["indices"]
-    )
+    return to_daemon_task(json)
 end
 
-function execute(block_match_task_details::BlockMatchTaskDetails)
+function execute(block_match_task_details::BlockMatchTask)
     print("Running BlockMatching with indicies
         $(block_match_task_details.indices) for 
         $(block_match_task_details.base_directory)")
 end
 
-function execute(render_task_details::RenderTaskDetails)
+function execute(render_task_details::RenderTask)
     print("Running Rendering with indicies $(render_task_details.indices) for
         $(render_task_details.base_directory)")
 end
 
-end # end module Task
+function to_daemon_task(dictionary::Dict)
+    if !haskey(dictionary, "details")
+        error("Missing details")
+    end
+
+    details = dictionary["details"]
+
+    if !haskey(TASKS, details["taskType"])
+        error("Unknown task : $(details["taskType"])")
+    end
+
+    indices = []
+    for index in details["indices"]
+        push!(indices, (index[1],index[2],index[3],index[4]))
+    end
+
+    return TASKS[details["taskType"]](
+        Details(
+            details["taskType"],
+            details["baseDirectory"],
+            details["files"],
+            indices
+        )
+    )
+end
+
+end # module Task
