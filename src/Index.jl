@@ -93,19 +93,19 @@ function is_preceding(A_index, B_index, within = 1)
 	return false;
 end
 
-function index_rank(index::Index)
+function index_rank(index)
   return index[1]*10^3 + index[2]
 end
 
-function index_to_int(index::Index)
+function index_to_int(index)
   return index[1]*10^7 + index[2]*10^4 + index[3]*10^2 + index[4] 
 end
 
-function isless(indexA::Index, indexB::Index)
+function isless(indexA, indexB)
   return Base.isless(index_rank(indexA), index_rank(indexB))
 end
 
-function isequal(indexA::Index, indexB::Index)
+function isequal(indexA, indexB)
   return Base.isequal(index_rank(indexA), index_rank(indexB))
 end
 
@@ -123,7 +123,7 @@ function get_registry(index)
   return registry; 
 end
 
-function get_indices(index::Index)
+function get_indices(index)
   return get_registry(index)[:,2]
 end
 
@@ -144,7 +144,7 @@ end
 """
 Remove index from registry file & reload that registry
 """
-function purge_from_registry!(index::Index)
+function purge_from_registry!(index)
   # assert(is_premontaged(index))
   registry_path = get_registry_path(index)
   registry = readdlm(registry_path)
@@ -169,7 +169,7 @@ function get_offset(index)
 	return Point(metadata[3:4]);
 end
 
-function get_image_size(index::Index)
+function get_image_size(index)
 	metadata = get_metadata(index);
 	return Array{Int64, 1}(metadata[5:6]);
 end
@@ -194,11 +194,11 @@ function get_succeeding(index, num = 1)
   return registry[loc_in_reg + num, 2];
 end
 
-function in_same_wafer(indexA::Index, indexB::Index)
+function in_same_wafer(indexA, indexB)
   return indexB[1] == indexA[1]
 end
 
-function get_succeeding_in_wafer(index::Index)
+function get_succeeding_in_wafer(index)
   new_index = get_succeeding(index)
   if in_same_wafer(new_index, index)
     return new_index
@@ -207,7 +207,7 @@ function get_succeeding_in_wafer(index::Index)
   end
 end
 
-function get_preceding_in_wafer(index::Index)
+function get_preceding_in_wafer(index)
   new_index = get_preceding(index)
   if in_same_wafer(new_index, index)
     return new_index
@@ -216,7 +216,7 @@ function get_preceding_in_wafer(index::Index)
   end
 end
 
-function get_index_range(firstindex::Index, lastindex::Index)
+function get_index_range(firstindex, lastindex)
   firstindex, lastindex = match_index_stages(firstindex, lastindex)
   if is_premontaged(firstindex)
     get_registry(firstindex)[get_range_in_registry(firstindex, lastindex), 2]
@@ -288,11 +288,11 @@ function indices_to_string(indexA, indexB)
   end
 end
 
-function get_filename(index::Index, ext="h5")
+function get_filename(index, ext="h5")
   return string(get_name(index), ".", ext)
 end
 
-function get_dir(index::Index, )
+function get_dir(index, )
   dir = ""
   if is_premontaged(index)
     dir = PREMONTAGED_DIR
@@ -310,21 +310,21 @@ function get_dir(index::Index, )
   return dir
 end
 
-# function get_path(index::Index, ext="h5")
+# function get_path(index, ext="h5")
 #   return joinpath(get_dir(index), get_filename(index, ext))
 # end
 
-function get_review_name(src_index::Index, dst_index::Index)
+function get_review_name(src_index, dst_index)
   prefix = "review"
   ind = indices_to_string(src_index, dst_index)
   return string(prefix, "_", ind)
 end
 
-function get_review_filename(src_index::Index, dst_index::Index, ext="h5")
+function get_review_filename(src_index, dst_index, ext="h5")
   return string(get_review_name(src_index, dst_index), ".", ext)
 end
 
-function get_review_dir(index::Index, )
+function get_review_dir(index, )
   dir = ""
   if is_premontaged(index)
     dir = MONTAGED_DIR
@@ -342,7 +342,7 @@ function get_review_dir(index::Index, )
   return joinpath(dir, "review")
 end
 
-function get_review_path(src_index::Index, dst_index::Index, ext="h5")
+function get_review_path(src_index, dst_index, ext="h5")
   dir = get_review_dir(src_index)
   fn = get_review_filename(src_index, dst_index, ext)
   return joinpath(dir, fn)
@@ -367,7 +367,7 @@ end
 #   return joinpath(dir, "review", fn)
 # end
 
-function reset_offset(index::Index)
+function reset_offset(index)
   update_offset(index, [0,0])
 end
 
@@ -378,7 +378,7 @@ index: 4-element tuple for section identifier
 offset: 2-element collection for the i,j offset
 sz: 2-element collection for the i,j height and width
 """
-function update_offset(index::Index, offset::Array, sz=[0, 0], needs_render=false)
+function update_offset(index, offset::Array, sz=[0, 0], needs_render=false)
   registry_fp = get_registry_path(index)
   update_offset(index, registry_fp, offset, sz, needs_render)
 end
@@ -387,7 +387,7 @@ function update_offset(name::String, offset::Array, sz=[0, 0], needs_render=fals
   update_offset(parse_name(name), offset, sz, needs_render);
 end
 
-function update_offset(index::Index, registry_fp::String, offset::Array, sz=[0,0], needs_render=false)
+function update_offset(index, registry_fp::String, offset::Array, sz=[0,0], needs_render=false)
   image_fn = string(get_name(index));
 
   println("Updating registry for ", image_fn, " in:\n", registry_fp, ": offset is now ", offset)
@@ -415,7 +415,7 @@ function update_offset(index::Index, registry_fp::String, offset::Array, sz=[0,0
   remotecall_fetch(IO_PROC, reload_registry, index)
 end
 
-function get_registry_path(index::Index)
+function get_registry_path(index)
   if is_montaged(index) registry_fp = montaged_registry_path;
   elseif is_prealigned(index) registry_fp = prealigned_registry_path;
   elseif is_aligned(index) registry_fp = aligned_registry_path;
@@ -423,7 +423,7 @@ function get_registry_path(index::Index)
   return registry_fp
 end
 
-function reload_registry(index::Index)
+function reload_registry(index)
   registry_fp = get_registry_path(index)
   if is_montaged(index) global REGISTRY_MONTAGED = parse_registry(registry_fp);
   elseif is_prealigned(index) global REGISTRY_PREALIGNED = parse_registry(registry_fp);

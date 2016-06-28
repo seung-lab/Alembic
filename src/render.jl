@@ -27,6 +27,7 @@ function render_montaged(firstindex::Index, lastindex::Index;
   firstindex = montaged(firstindex)
   lastindex = montaged(lastindex)
   for index in get_index_range(firstindex, lastindex)
+    println(index);
     meshset = load(index)
     render_montaged(meshset; render_full=render_full, render_review=render_review)
   end 
@@ -43,6 +44,7 @@ function render_montaged(meshset::MeshSet; render_full=false, render_review=true
     new_fn = get_filename(index)
     println("Rendering ", new_fn)
     warps = map(meshwarp_mesh, meshset.meshes);
+      println(warps[1][1][1][1:10])
     imgs = [x[1][1] for x in warps];
     offsets = [x[1][2] for x in warps];
     indices = [x[2] for x in warps];
@@ -51,7 +53,11 @@ function render_montaged(meshset::MeshSet; render_full=false, render_review=true
       write_seams(meshset, imgs, offsets, indices, flagged_only)
     end
     if render_full
-      println(typeof(imgs))
+    println(typeof(imgs));
+    println(typeof(imgs[1]));
+    println(size(imgs[1]));
+    println(imgs[1][1:10]);
+      println("test1")
       img, offset = merge_images(imgs, offsets)
       println("Writing ", new_fn)
       f = h5open(get_path(index), "w")

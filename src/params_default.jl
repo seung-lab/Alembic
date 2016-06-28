@@ -17,10 +17,10 @@ FTOL_GD_MONTAGE = 1e-8
 ETA_NEWTON_MONTAGE = 0.6
 FTOL_NEWTON_MONTAGE = 1e-16
 
-MESH_LENGTH_PREALIGNMENT = 2500
+MESH_LENGTH_PREALIGNMENT = 1500
 GLOBAL_OFFSETS_PREALIGNMENT = false
-BLOCKMATCH_SCALE_PREALIGNMENT = 0.5
-BLOCK_R_PREALIGNMENT = 300
+BLOCKMATCH_SCALE_PREALIGNMENT = 0.1
+BLOCK_R_PREALIGNMENT = 800
 SEARCH_R_PREALIGNMENT = 3000
 MONOBLOCK_SCALE_PREALIGNMENT = 0.25
 MONOBLOCK_MATCH_PREALIGNMENT = true
@@ -32,11 +32,11 @@ MONOBLOCK_PADDING_PREALIGNMENT = 0.0
 # MAX_ITERS_PREALIGNMENT = 1000
 # USE_CONJUGATE_GRADIENT_ALIGNMENT = false
 
-MESH_LENGTH_ALIGNMENT = 100
+MESH_LENGTH_ALIGNMENT = 400
 GLOBAL_OFFSETS_ALIGNMENT = true
 BLOCKMATCH_SCALE_ALIGNMENT = 0.5
 BLOCK_R_ALIGNMENT = 600
-SEARCH_R_ALIGNMENT = 350
+SEARCH_R_ALIGNMENT = 275
 #BLOCK_R_ALIGNMENT = 122
 #SEARCH_R_ALIGNMENT = 350
 MONOBLOCK_SCALE_ALIGNMENT = 1
@@ -170,10 +170,10 @@ global PARAMS_ALIGNMENT = Dict(
 			     	"eta_newton" => ETA_NEWTON_ALIGNMENT,
 			     	"ftol_newton" => FTOL_NEWTON_ALIGNMENT),
 			     "filter" => Dict(
-			     		"sigma_filter" => (:get_properties, >, 50, 0.8),
-			     		"r_filter" => (:get_properties, <, 0.10, "r_max"),
+			     		"sigma_filter" => (:get_properties, >, 25, 0.8),
+			     		"r_filter" => (:get_properties, <, 0.05, "r_max"),
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 5),
-			     		"kurtosis_filter" => (:get_properties, >, 10, "src_kurtosis")
+			     		"kurtosis_filter" => (:get_properties, >, 50, "src_kurtosis")
 					      ),
 			     "render" => Dict(
 					      ),
