@@ -113,7 +113,7 @@ end
 function solve!(meshset; method="elastic")
 	sanitize!(meshset);
   assert(count_matches(meshset) != 0)
-  assert(count_filtered_correspondences(meshset) != 0)
+  assert(count_filtered_correspondences(meshset) >= 3)
 
 	if method == "elastic" return elastic_solve!(meshset); end
 	if method == "translate" return translate_solve!(meshset); end
@@ -200,9 +200,11 @@ function elastic_solve!(meshset; from_current = true)
     #@inbounds edge_spring_coeffs[edgeranges[get_index(mesh)]] = fill(mesh_spring_coeff, count_edges(mesh));
 
     edge_lengths[edgeranges[get_index(mesh)]] = get_edge_lengths(mesh);
-    edge_spring_coeffs[edgeranges[get_index(mesh)]] = fill(mesh_spring_coeff, count_edges(mesh));
+    edge_spring_coeffs[edgeranges[get_index(mesh)]] = mesh_spring_coeff
     removed_edges = get_removed_edge_indices(mesh)
-    edge_spring_coeffs[edgeranges[get_index(mesh)][get_removed_edge_indices(mesh)]] = 0.0
+    edge_spring_coeffs[edgeranges[get_index(mesh)][removed_edges]] = 0
+    fixed_edges = get_fixed_edge_indices(mesh)
+    edge_spring_coeffs[edgeranges[get_index(mesh)][fixed_edges]] = 10000
   end
 
   end # @fm @ib 
