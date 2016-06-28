@@ -48,6 +48,13 @@ function get_edge_points_post(mesh::Mesh, ind)
 	return mesh.dst_nodes[inds[1]], mesh.dst_nodes[inds[2]]
 end
 
+function get_globalized_edge_lines(mesh::Mesh, ind, offset=get_offset(mesh))
+#	src_ind = findfirst(this -> this < 0, mesh.edges[:, ind]);
+#	dst_ind = findfirst(this -> this > 0, mesh.edges[:, ind]);
+	@fastmath @inbounds inds = findnz(mesh.edges[:, ind])[1];
+	return [mesh.src_nodes[inds[1]] + offset, mesh.src_nodes[inds[2]] + offset]
+end
+
 function get_globalized_edge_lines_post(mesh::Mesh, ind, offset=get_offset(mesh))
 #	src_ind = findfirst(this -> this < 0, mesh.edges[:, ind]);
 #	dst_ind = findfirst(this -> this > 0, mesh.edges[:, ind]);
@@ -68,6 +75,13 @@ end
 function get_removed_edge_indices(mesh::Mesh)
 	if haskey(mesh.properties, "removed_indices")
 		return collect(mesh.properties["removed_indices"])
+	end
+	return []
+end
+
+function get_fixed_edge_indices(mesh::Mesh)
+	if haskey(mesh.properties, "fixed_indices")
+		return collect(mesh.properties["fixed_indices"])
 	end
 	return []
 end
@@ -100,6 +114,11 @@ end
 
 function get_edge_midpoints(mesh::Mesh)
 	return map(get_edge_midpoint, repeated(mesh), collect(1:count_edges(mesh)))
+end
+
+function get_globalized_edge_lines(mesh::Mesh)
+	offset = get_offset(mesh)
+	return map(get_globalized_edge_lines, repeated(mesh), collect(1:count_edges(mesh)), repeated(offset))
 end
 
 function get_globalized_edge_lines_post(mesh::Mesh)
