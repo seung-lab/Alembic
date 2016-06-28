@@ -38,9 +38,7 @@ function get_image_disk(path::String, dtype = IMG_ELTYPE; shared = false)
 		if shared
 		 img = convert(Array{dtype, 2}, round(convert(Array, img)*255))
 		 shared_img = SharedArray(dtype, size(img)...);
-		 for i in 1:length(img)
-		   shared_img[i] = img[i]
-		 end
+		  @inbounds shared_img.s[:,:] = img[:,:]
 		 return shared_img;
 		else
   		return convert(Array{dtype, 2}, round(convert(Array, img)*255))
@@ -49,9 +47,7 @@ function get_image_disk(path::String, dtype = IMG_ELTYPE; shared = false)
 		if shared
  		img = convert(Array{dtype, 2}, h5read(path, "img"))
 		 shared_img = SharedArray(dtype, size(img)...);
-		 for i in 1:length(img)
-		   shared_img[i] = img[i]
-		 end
+		  @inbounds shared_img.s[:,:] = img[:,:]
 		 return shared_img;
 	       else
  		return convert(Array{dtype, 2}, h5read(path, "img"))
@@ -115,7 +111,7 @@ function get_image(path::String, scale=1.0, dtype = IMG_ELTYPE)
 
   	if haskey(IMG_CACHE_DICT, (path, scale))
 	  println("$path is in cache at scale $scale - loading from cache...")
-	   @everywhere gc();
+	  # @everywhere gc();
 	  return IMG_CACHE_DICT[(path, scale)]
 	end
 
@@ -131,8 +127,6 @@ function get_image(path::String, scale=1.0, dtype = IMG_ELTYPE)
 
 	    push!(IMG_CACHE_LIST, (path, 1.0))
 	    #IMG_CACHE_DICT[(path, 1.0)] = img;
-            print("image retrieval as a sharedarray:")
-	    #@time img = get__shared_image_disk(path, dtype)
 	    @time IMG_CACHE_DICT[(path, 1.0)] = get_image_disk(path, dtype; shared = true)
             #print("image share and store to cache:")
 	    #@time IMG_CACHE_DICT[(path, 1.0)] = img
@@ -155,7 +149,7 @@ function get_image(path::String, scale=1.0, dtype = IMG_ELTYPE)
 	  scaled_img = 0;
         end
 
-	    @everywhere gc();
+	    #@everywhere gc();
 
 	return IMG_CACHE_DICT[(path, scale)];
 end
