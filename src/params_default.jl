@@ -137,7 +137,7 @@ global PARAMS_PREALIGNMENT = Dict(
 			     "review" => Dict(
 				     	# "r_below" => (:count_filtered_properties, >, 0, "r_max", <, 0.2),
 			     		"too_few_corresps" => (:count_correspondences, <, 3),
-						"rejected_ratio" => (:get_ratio_rejected, >, 0.5, 0),
+						"rejected_ratio" => (:get_ratio_rejected, >, 0.15, 0),
 						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.95),
 						"norm_outliers" => (:count_outlier_norms, >, 0, 3),
 						"centered_norm" => (:get_maximum_centered_norm, >, BLOCK_R_PREALIGNMENT/2)
@@ -170,10 +170,11 @@ global PARAMS_ALIGNMENT = Dict(
 			     	"eta_newton" => ETA_NEWTON_ALIGNMENT,
 			     	"ftol_newton" => FTOL_NEWTON_ALIGNMENT),
 			     "filter" => Dict(
-			     		"sigma_filter" => (:get_properties, >, 25, 0.8),
-			     		"r_filter" => (:get_properties, <, 0.05, "r_max"),
+			     		"sigma_filter" => (:get_properties, >, 20, 0.8),
+			     		"r_filter" => (:get_properties, <, 0.25, "r_max"),
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 5),
-			     		"kurtosis_filter" => (:get_properties, >, 50, "src_kurtosis")
+			     		"kurtosis_filter" => (:get_properties, >, 50, "src_kurtosis"),
+					"centered_norm_filter" => (:get_centered_norms, >, 250)
 					      ),
 			     "render" => Dict(
 					      ),

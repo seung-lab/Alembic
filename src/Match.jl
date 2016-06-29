@@ -53,6 +53,17 @@ function get_maximum_centered_norm(match::Match)
 	return maximum(norms)
 end
 
+function get_centered_norms(match::Match)
+	if count_filtered_correspondences(match) == 0 
+		return nothing
+	end
+	dvs = get_properties(match, "dv")
+	x, y = [dv[1] for dv in dvs], [dv[2] for dv in dvs]
+	med = [median(x), median(y)]
+	norms = map(norm, [dv - med for dv in dvs])
+	return norms
+end
+
 function get_norm_std(match::Match)
 	if count_filtered_correspondences(match) == 0 
 		return 0.0
