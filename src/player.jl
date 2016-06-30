@@ -228,12 +228,14 @@ function compile_match_annotations(meshset::MeshSet, match::Match, bb::BoundingB
   return accepted_vectors, rejected_vectors
 end
 
-function compile_mesh_annotations(mesh::Mesh, bb::BoundingBox)
+function compile_mesh_annotations(mesh::Mesh, bb::BoundingBox, use_prealigned::Bool)
   offset = get_offset(bb)
   local_bb = translate_bb(bb, -offset)
-  edges = [x - [offset, offset] for x in get_globalized_edge_lines_post(mesh)] 
+  get_edges_func = use_prealigned ? get_globalized_edge_lines : get_globalized_edge_lines_post
+  edges = [x - [offset, offset] for x in get_edges_func(mesh)] 
   edge_indices = get_edge_indices(mesh)
   edges_removed_indices = get_removed_edge_indices(mesh)
+  edges_fixed_indices = get_fixed_edge_indices(mesh)
   mask = Bool[map(line_is_contained, repeated(local_bb), edges)...]
   edges_to_display = hcat(edges[mask]...)
   edges_to_display = transpose_vectors(edges_to_display)
@@ -243,7 +245,8 @@ function compile_mesh_annotations(mesh::Mesh, bb::BoundingBox)
   strain_to_display = strain[mask]
   edge_indices_included = edge_indices[mask]
   edges_removed_included = intersect(edge_indices_included, edges_removed_indices)
-  return edges_to_display, strain_to_display, edge_indices_included, edges_removed_included
+  edges_fixed_included = intersect(edge_indices_included, edges_fixed_indices)
+  return edges_to_display, strain_to_display, edge_indices_included, edges_removed_included, edges_fixed_included
 end
 
 function compile_annotations(parent_name, firstindex::Index, lastindex::Index, slice)
@@ -257,8 +260,11 @@ function compile_annotations(meshset::MeshSet, center::Tuple{Int,Int}, radius=10
   return compile_annotations(meshset, slice, scale)
 end
 
-function compile_annotations(meshset::MeshSet, slice, scale=1.0)
-  ms_indices = map(aligned, map(get_index, meshset.meshes))
+function compile_annotations(meshset::MeshSet, 
+                              slice::Tuple{UnitRange{Int64},UnitRange{Int64}}, 
+                              scale::Float64=1.0, use_prealigned::Bool=false)
+  index_func = use_prealigned ? prealigned : aligned
+  ms_indices = map(index_func, map(get_index, meshset.meshes))
   firstindex, lastindex = minimum(ms_indices), maximum(ms_indices)
   indices = get_index_range(firstindex, lastindex)
   bb = slice_to_bb(slice)
@@ -268,7 +274,8 @@ function compile_annotations(meshset::MeshSet, slice, scale=1.0)
                  "slice" => slice,
                  "bb" => bb,
                  "scale" => scale,
-                 "vector_scale" => 10)
+                 "vector_scale" => 10,
+                 "use_prealigned" => use_prealigned)
   for index in indices
     annotations["ann"][index] = Dict()
     annotations["ann"][index]["match"] = Dict()
@@ -276,20 +283,22 @@ function compile_annotations(meshset::MeshSet, slice, scale=1.0)
     match_inds = find_match_indices(meshset, prealigned(index))
     for i in match_inds
       src_index, dst_index = get_src_and_dst_indices(ms.matches[i])
-      if (firstindex <= aligned(src_index) <= lastindex) && 
-                  (firstindex <= aligned(dst_index) <= lastindex)
+      if (firstindex <= index_func(src_index) <= lastindex) && 
+                  (firstindex <= index_func(dst_index) <= lastindex)
         vectors, _ = compile_match_annotations(ms, ms.matches[i], bb)
         annotations["ann"][index]["match"][i] = vectors
         annotations["ann"][index]["match_names"][i] = get_name(ms.matches[i])
       end
     end
     mesh = get_mesh(ms, prealigned(index))
-    edges, strain, edge_indices, edges_removed = compile_mesh_annotations(mesh, bb)
+    edges, strain, edge_indices, edges_removed, edges_fixed = compile_mesh_annotations(mesh, bb, use_prealigned)
     edges_removed_mask = Bool[i in edges_removed for i in edge_indices]
+    edges_fixed_mask = Bool[i in edges_fixed for i in edge_indices]
     annotations["ann"][index]["mesh"] = Dict("edges" => edges, 
                                               "strain" => strain,
                                               "indices" => edge_indices,
-                                              "removed" => edges_removed_mask)
+                                              "removed" => edges_removed_mask,
+                                              "fixed" => edges_fixed_mask)
   end
 
   annotations["indices"] = [indices, reverse(indices)]
@@ -328,19 +337,21 @@ function display_annotations(imgc, img2, annotations; include_reverse=false)
     end
     strain = apply_colormap(s, bwr)
     removed_mask = annotations["ann"][index]["mesh"]["removed"]
+    fixed_mask = annotations["ann"][index]["mesh"]["fixed"]
     strain[removed_mask] = [RGB(0,0,0) for i in 1:sum(removed_mask)]
+    strain[fixed_mask] = [RGB(1,0,1) for i in 1:sum(fixed_mask)]
     if size(data, 2) > 1
       show_colored_lines(imgc, img2, data, strain, t=i)
     end
     for (k, match_ind) in enumerate(keys(annotations["ann"][index]["match"]))
-      # data = change_vector_lengths(annotations["ann"][index]["match"][match_ind], vector_scale)*scale
-      # name = annotations["ann"][index]["match_names"][match_ind]
-      # if size(data, 2) > 1
-      #   show_points(imgc, img2, data[1:2, :], shape='o', color=colors[k], t=i)
-      #   show_lines(imgc, img2, data, color=colors[k], t=i)
-      #   fontsize = 40
-      #   show_text(imgc, img2, name, 2*fontsize, 2*fontsize*k, fontsize=fontsize, color=colors[k], t=i)
-      # end
+      data = change_vector_lengths(annotations["ann"][index]["match"][match_ind], vector_scale)*scale
+      name = annotations["ann"][index]["match_names"][match_ind]
+      if size(data, 2) > 1
+        show_points(imgc, img2, data[1:2, :], shape='o', color=colors[k], t=i)
+        show_lines(imgc, img2, data, color=colors[k], t=i)
+        fontsize = 40
+        show_text(imgc, img2, name, 2*fontsize, 2*fontsize*k, fontsize=fontsize, color=colors[k], t=i)
+      end
     end
   end
 end
