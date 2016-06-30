@@ -26,6 +26,13 @@ function save(path::String, img::Array)
       close(f)
     end
 
+function save(filename::String, data)
+  println("Saving meshset to ", filename)
+  open(filename, "w") do file
+    serialize(file, data)
+  end
+end
+
 # extensions:
 # Mesh.jl	get_image(mesh::Mesh)
 # filesystem.jl	get_image() 
