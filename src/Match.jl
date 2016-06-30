@@ -271,7 +271,6 @@ end
 Template match two images & record translation for source image - already scaled
 """
 function monoblock_match(src_index, dst_index, src_image, dst_image, params=get_params(src_index))
-  println("meshwarp:")
 	if params["match"]["monoblock_match"] == false return; end
 	scale = params["match"]["monoblock_scale"];
 	ratio = params["match"]["monoblock_ratio"];
@@ -485,14 +484,13 @@ function check(match::Match, function_name, compare, threshold, vars...)
 end
 
 function check!(match::Match, crits) 
-     unflag!(match);
-     for crit in crits
-       if check(match, crit...) 
-       		flag!(match, crit);
-       end
-     end
-
-     return is_flagged(match);
+	unflag!(match);
+	for crit in crits
+		if check(match, crit...) 
+			flag!(match, crit);
+		end
+	end
+	return is_flagged(match);
 end
 
 ### ADD MANUAL FILTER
