@@ -1,4 +1,4 @@
-function get_name(index)
+function get_name(index::Index)
     if is_overview(index)
         if cur_dataset == "zebrafish"
             return string("MontageOverviewImage_W00", index[1], "_sec", index[2])
@@ -172,10 +172,24 @@ end
 datasets_dir_path = "research/Julimaps/datasets"
 # cur_dataset = "piriform"
 # cur_dataset = "AIBS_practice_234251S6R_01_01_aligned_01"
-cur_dataset = "AIBS_pilot_v1"
 # cur_dataset = "align_net"
+# cur_dataset = "AIBS_pilot_v1"
+# cur_dataset = "align_net"
+# cur_dataset = "elastic_test_crack"
+cur_dataset = "elastic_real_crack_with_cropping"
 in_alignment_test = false
-test_dataset = "AIBS_pilot_v1_finer_mesh"
+# test_dataset = "AIBS_practice_spring_constants"
+# test_dataset = "AIBS_practice_broken_springs"
+# test_dataset = "AIBS_practice_broken_springs_no_bug"
+# test_dataset = "AIBS_practice_broken_springs_spring_constants"
+# test_dataset = "AIBS_practice_broken_springs_fixed_springs"
+# test_dataset = "AIBS_practice_broken_section"
+# test_dataset = "AIBS_practice_broken_section_no_bug"
+# test_dataset = "elastic_test_crack_removed_matches"
+# test_dataset = "elastic_test_crack_broken_springs"
+test_dataset = "elastic_test_crack_removed_matches_broken_springs"
+# test_dataset = "elastic_test_crack_removed_matches_broken_springs_zeros"
+# test_dataset = "elastic_test_crack_removed_matches_broken_springs_finer_mesh"
 #cur_dataset = "zebrafish"
 affine_dir_path = "~"
 
@@ -196,6 +210,27 @@ prealigned_registry_filename = "registry_prealigned.txt"
 aligned_registry_filename = "registry_aligned.txt"
 expunged_registry_filename = "expunged_aligned.txt"
 
+function check_dataset_dir(dataset_name)
+    
+    function setup_dir(dir)
+        if !isdir(dir)
+            println("Creating $dir")
+            mkdir(dir)
+        end
+    end
+
+    dataset_dir = joinpath(bucket_dir_path, datasets_dir_path, dataset_name)
+    dirs = [raw_dir_path, premontaged_dir_path, montaged_dir_path, 
+                prealigned_dir_path, aligned_dir_path, finished_dir_path]
+    setup_dir(dataset_dir)
+    for d in dirs
+        path = joinpath(dataset_dir, d)
+        setup_dir(path)
+        review_path = joinpath(path, "review")
+        setup_dir(review_path)
+    end
+end
+
 export BUCKET, DATASET_DIR, AFFINE_DIR, WAFER_DIR_DICT, PREMONTAGED_OFFSETS, PREMONTAGE_DIR, ALIGNMENT_DIR, INSPECTION_DIR
 
 global BUCKET = bucket_dir_path
@@ -206,12 +241,14 @@ global PREMONTAGED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_datase
 global MONTAGED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, montaged_dir_path)
 global PREALIGNED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, prealigned_dir_path)
 if in_alignment_test
+    check_dataset_dir(test_dataset)
     global ALIGNED_DIR = joinpath(bucket_dir_path, datasets_dir_path, test_dataset, aligned_dir_path)
     global FINISHED_DIR = joinpath(bucket_dir_path, datasets_dir_path, test_dataset, finished_dir_path)
     global STACKS_DIR = joinpath(bucket_dir_path, datasets_dir_path, test_dataset, finished_dir_path, stack_dir)
     aligned_registry_path = joinpath(bucket_dir_path, datasets_dir_path, test_dataset, aligned_dir_path, aligned_registry_filename)
     global REGISTRY_ALIGNED = parse_registry(aligned_registry_path)
 else
+    check_dataset_dir(cur_dataset)
     global ALIGNED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, aligned_dir_path)
     global FINISHED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, finished_dir_path)
     global STACKS_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, finished_dir_path, stack_dir)
@@ -238,16 +275,6 @@ expunged_registry_path = joinpath(bucket_dir_path, datasets_dir_path, cur_datase
 global REGISTRY_EXPUNGED = parse_registry(expunged_registry_path)
 
 show_plot = false
-
-function create_new_dataset_dir(dataset_name)
-    mkdir(joinpath(bucket_dir_path, datasets_dir_path, dataset_name))
-    mkdir(joinpath(bucket_dir_path, datasets_dir_path, dataset_name, raw_dir_path))
-    mkdir(joinpath(bucket_dir_path, datasets_dir_path, dataset_name, premontaged_dir_path))
-    mkdir(joinpath(bucket_dir_path, datasets_dir_path, dataset_name, montaged_dir_path))
-    mkdir(joinpath(bucket_dir_path, datasets_dir_path, dataset_name, prealigned_dir_path))
-    mkdir(joinpath(bucket_dir_path, datasets_dir_path, dataset_name, aligned_dir_path))
-    mkdir(joinpath(bucket_dir_path, datasets_dir_path, dataset_name, finished_dir_path))
-end
 
 if cur_dataset == "piriform"
     global ROI_FIRST = (1,2,0,0);
