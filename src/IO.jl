@@ -26,18 +26,39 @@ function save(path::String, img::Array)
       close(f)
     end
 
+function save(filename::String, data)
+  println("Saving meshset to ", filename)
+  open(filename, "w") do file
+    serialize(file, data)
+  end
+end
+
 # extensions:
 # Mesh.jl	get_image(mesh::Mesh)
 # filesystem.jl	get_image() 
-function get_image_disk(path::String, dtype = IMG_ELTYPE)
+function get_image_disk(path::String, dtype = IMG_ELTYPE; shared = false)
 	ext = splitext(path)[2];
   	if ext == ".tif"
   		img = data(FileIO.load(path))
   		img = img[:, :, 1]'
    		#img.properties["timedim"] = 0
+		if shared
+		 img = convert(Array{dtype, 2}, round(convert(Array, img)*255))
+		 shared_img = SharedArray(dtype, size(img)...);
+		  @inbounds shared_img.s[:,:] = img[:,:]
+		 return shared_img;
+		else
   		return convert(Array{dtype, 2}, round(convert(Array, img)*255))
+	      end
 	elseif ext == ".h5"
+		if shared
+ 		img = convert(Array{dtype, 2}, h5read(path, "img"))
+		 shared_img = SharedArray(dtype, size(img)...);
+		  @inbounds shared_img.s[:,:] = img[:,:]
+		 return shared_img;
+	       else
  		return convert(Array{dtype, 2}, h5read(path, "img"))
+	      end
 	end
 end
 
@@ -97,7 +118,7 @@ function get_image(path::String, scale=1.0, dtype = IMG_ELTYPE)
 
   	if haskey(IMG_CACHE_DICT, (path, scale))
 	  println("$path is in cache at scale $scale - loading from cache...")
-	   @everywhere gc();
+	  # @everywhere gc();
 	  return IMG_CACHE_DICT[(path, scale)]
 	end
 
@@ -113,12 +134,11 @@ function get_image(path::String, scale=1.0, dtype = IMG_ELTYPE)
 
 	    push!(IMG_CACHE_LIST, (path, 1.0))
 	    #IMG_CACHE_DICT[(path, 1.0)] = img;
-            print("image retrieval:")
-	    @time img = get_image_disk(path, dtype)
-            print("image share and store to cache:")
-	    @time IMG_CACHE_DICT[(path, 1.0)] = img
-	    img = 0;
-	    img = 0;
+	    @time IMG_CACHE_DICT[(path, 1.0)] = get_image_disk(path, dtype; shared = true)
+            #print("image share and store to cache:")
+	    #@time IMG_CACHE_DICT[(path, 1.0)] = img
+	    #img = 0;
+	    #img = 0;
 	#    @everywhere gc();
 	end
 
@@ -136,7 +156,7 @@ function get_image(path::String, scale=1.0, dtype = IMG_ELTYPE)
 	  scaled_img = 0;
         end
 
-	    @everywhere gc();
+	    #@everywhere gc();
 
 	return IMG_CACHE_DICT[(path, scale)];
 end

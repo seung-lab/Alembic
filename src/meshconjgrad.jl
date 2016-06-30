@@ -44,7 +44,10 @@ function get_lengths!(Springs, Lengths)
     sec_ind = 0;
     @fastmath @inbounds @simd for ind in 1:halflen
         @fastmath sec_ind = ind + halflen;
-	@fastmath @inbounds Lengths[ind] = sqrt(Springs[ind]^2 + Springs[sec_ind]^2) + eps
+	@fastmath @inbounds spring_first_sq = Springs[ind]^2;
+	@fastmath @inbounds spring_second_sq = Springs[sec_ind]^2;
+	@fastmath len = sqrt(spring_first_sq + spring_second_sq);
+	@fastmath @inbounds Lengths[ind] = len + eps
     end
    return Lengths; 
 end

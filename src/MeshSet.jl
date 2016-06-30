@@ -28,17 +28,17 @@ function count_correspondences(meshset::MeshSet)	return sum(map(count_correspond
 
 function count_filtered_correspondences(meshset::MeshSet)	return sum(map(count_filtered_correspondences, meshset.matches));		end
 
-function get_mesh(meshset::MeshSet, index::Index)
+function get_mesh(meshset::MeshSet, index)
   return meshset.meshes[find_mesh_index(meshset, index)]
 end
 
-function get_matches(meshset::MeshSet, index::Index)
+function get_matches(meshset::MeshSet, index)
   k = find(i -> (index == get_src_index(i)) || (index == get_dst_index(i)), meshset.matches)
   return meshset.matches[k]
 end
 
 ### finding
-function find_mesh_index(meshset::MeshSet, index::Index)
+function find_mesh_index(meshset::MeshSet, index)
   return findfirst(this -> index == get_index(this), meshset.meshes)
 end
 
@@ -46,7 +46,7 @@ function find_mesh_index(meshset::MeshSet, mesh::Mesh)
   return find_mesh_index(meshset, get_index(mesh))
 end
 
-function contains_mesh(meshset::MeshSet, index::Index)
+function contains_mesh(meshset::MeshSet, index)
   return !(find_mesh_index(meshset, index) == 0)
 end
 
@@ -54,7 +54,7 @@ function contains_mesh(meshset::MeshSet, mesh::Mesh)
   return contains_mesh(meshset, get_index(mesh))
 end
 
-function find_match_index(meshset::MeshSet, src_index::Index, dst_index::Index)
+function find_match_index(meshset::MeshSet, src_index, dst_index)
   return findfirst(this -> (src_index == get_src_index(this)) && (dst_index == get_dst_index(this)), meshset.matches)
 end
 
@@ -62,7 +62,7 @@ function find_match_index(meshset::MeshSet, match::Match)
   return find_match_index(meshset, get_src_and_dst_indices(match)...);
 end
 
-function find_match_indices(meshset::MeshSet, index::Index)
+function find_match_indices(meshset::MeshSet, index)
   indices = []
   indices = [indices, find(this->index==get_src_index(this), meshset.matches)]
   indices = [indices, find(this->index==get_dst_index(this), meshset.matches)]
@@ -147,12 +147,12 @@ function add_match!(meshset::MeshSet, match::Match)
   sort!(meshset.matches; by=get_src_and_dst_indices)
 end
 
-function remove_match!(meshset::MeshSet, src_index::Index, dst_index::Index)
+function remove_match!(meshset::MeshSet, src_index, dst_index)
   i = find_match_index(meshset, src_index, dst_index)
   deleteat!(meshset.matches, i)
 end
 
-function remove_mesh!(meshset::MeshSet, index::Index)
+function remove_mesh!(meshset::MeshSet, index)
   i = find_mesh_index(meshset, index)
   if i != 0
     deleteat!(meshset.meshes, i)
@@ -333,7 +333,7 @@ end
 """
 Create partial meshset of a meshset split into children
 """
-function compile_partial_meshset(parent_name, firstindex::Index, lastindex::Index)
+function compile_partial_meshset(parent_name, firstindex, lastindex)
   ms = MeshSet()
   indices = get_index_range(prealigned(firstindex), prealigned(lastindex))
   ind = []
@@ -348,12 +348,12 @@ function compile_partial_meshset(parent_name, firstindex::Index, lastindex::Inde
   return ms
 end
 
-function find_mesh_indices(firstindex::Index, lastindex::Index, i::Int64)
+function find_mesh_indices(firstindex, lastindex, i::Int64)
   indices = get_index_range(firstindex, lastindex)
   return find_mesh_indices(firstindex, lastindex, indices[i])
 end
 
-function find_mesh_indices(firstindex::Index, lastindex::Index, index::Index)
+function find_mesh_indices(firstindex, lastindex, index)
   parent_name = get_name(firstindex, lastindex)
   ind = []
   for i in 1:count_children(parent_name)
@@ -417,7 +417,7 @@ function MeshSet()
 	return MeshSet(meshes, matches, properties)
 end
 
-function prealign(index::Index; params=get_params(index), to_fixed=false)
+function prealign(index; params=get_params(index), to_fixed=false)
 	src_index = index;
 	dst_index = get_preceding(src_index)
 	if to_fixed
@@ -470,7 +470,7 @@ function MeshSet(first_index, last_index; params=get_params(first_index), solve=
 	return meshset;
 end
 
-function MeshSet(firstindex::Index, lastindex::Index, fixed_meshes::Array{Mesh,1}; params=get_params(firstindex))
+function MeshSet(firstindex, lastindex, fixed_meshes::Array{Mesh,1}; params=get_params(firstindex))
   println("Using ", length(fixed_meshes), " fixed meshes to build meshset")
   indices = get_index_range(firstindex, lastindex)
   if length(indices) == 0 
@@ -643,10 +643,10 @@ function get_filename(meshset::MeshSet)
   end
 end
 
-function get_filename(firstindex::Index, lastindex::Index)
+function get_filename(firstindex, lastindex)
   filename = string(get_name(firstindex, lastindex), ".jls")
-  if (((is_montaged(firstindex) || is_prealigned(firstindex) || is_aligned(firstindex)) 
-        && is_montaged(lastindex))) && (firstindex != lastindex)
+  if (((is_montaged(firstindex) || is_prealigned(firstindex) || is_aligned(firstindex)) && is_montaged(lastindex)) ||
+  ((is_montaged(lastindex) || is_prealigned(lastindex) || is_aligned(lastindex)) && is_montaged(firstindex))) && (firstindex != lastindex)
     filepath = PREALIGNED_DIR
   elseif (is_prealigned(firstindex) || is_aligned(firstindex)) &&
           (is_prealigned(lastindex) || is_aligned(lastindex))
@@ -674,13 +674,12 @@ function get_name(meshset::MeshSet)
   end
 end
 
-function get_name(firstindex::Index, lastindex::Index)
+function get_name(firstindex, lastindex)
   name = ""
-  if (((is_montaged(firstindex) || is_prealigned(firstindex) || is_aligned(firstindex)) 
-        && is_montaged(lastindex))) && (firstindex != lastindex)
+  if (((is_montaged(firstindex) || is_prealigned(firstindex) || is_aligned(firstindex)) && is_montaged(lastindex))) && (firstindex != lastindex)
     name = string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned")
   elseif (is_prealigned(firstindex) || is_aligned(firstindex)) &&
-          (is_prealigned(lastindex) || is_aligned(lastindex))
+          (is_prealigned(lastindex) || is_aligned(lastindex)) 
     name = string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned")
   elseif is_premontaged(firstindex) && is_premontaged(lastindex) && (firstindex == lastindex)
     name = string(join(firstindex[1:2], ","), "_premontaged")
@@ -865,7 +864,7 @@ function get_param(meshset::MeshSet, property_name)
   return property
 end =#
 
-function calculate_depth(firstindex::Index, lastindex::Index, num_tiles=16)
+function calculate_depth(firstindex, lastindex, num_tiles=16)
   index_depth = []
   firstsection = NO_INDEX
   lastsection = NO_INDEX
@@ -891,7 +890,7 @@ function calculate_depth(firstindex::Index, lastindex::Index, num_tiles=16)
   return index_depth
 end
 
-function autoblockmatch(index::Index; params=get_params(index))
+function autoblockmatch(index; params=get_params(index))
   indices = get_index_range(index, index)
   if length(indices) == 0 
     return nothing; 
@@ -930,7 +929,7 @@ function get_correspondence_stats(ms::MeshSet, key)
   return Dict("index"=>indices, "count"=>l, "min"=>mn, "med"=>m, "max"=>mx, "std"=>sd)
 end
 
-function compile_correspondence_stats(firstindex::Index, lastindex::Index, key)
+function compile_correspondence_stats(firstindex, lastindex, key)
   s = []
   for index in get_index_range(montaged(firstindex), montaged(lastindex))
     ms = load(premontaged(index), premontaged(index))
