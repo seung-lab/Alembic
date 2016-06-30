@@ -124,3 +124,23 @@ function clean_up_nicks_data(src_folder, dst_folder)
 		update_offset(parse_name(fn), [0, 0], [size(img)...])
 	end
 end
+
+function import_tif_as_h5s_sample()
+
+tuples = Array{Any}(0)
+for i in 1:15, j in 1:200, k in 1:10, l in 1:10
+       push!(tuples, (i,j,k,l))
+       end
+@parallel for tuple in tuples
+       path = get_path(tuple, ".tif");
+       if isfile(path) println(path);
+           img = get_image(path);
+           f = h5open(joinpath(homedir(), "datasets", "zfish", string(get_name(tuple), ".h5")), "w")
+           @time f["img", "chunk", (1000, 1000)] = img
+           close(f)
+	   #run(`aws s3 cp path s3://seunglab/datasets/zfish_10-12/`)
+       end
+end
+end
+
+
