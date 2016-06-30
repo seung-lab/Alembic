@@ -134,22 +134,27 @@ function render_prealigned(firstindex::Index, lastindex::Index;
     src_index, dst_index, cumulative_tform, tform = prepare_prealignment(index, startindex)
     println("Loading src_image for rendering")
     src_img = get_image(src_index)
-    if dst_img == nothing
-      println("Loading dst_image for rendering")
-      dst_img = get_image(dst_index)
+    if render_full && montaged(index) == montaged(startindex)
+      render_prealigned(src_index, dst_index, src_img, [], eye(3), 
+                      eye(3); render_full=true, render_review=false)
+    else
+      if dst_img == nothing
+        println("Loading dst_image for rendering")
+        dst_img = get_image(dst_index)
+      end
+      render_prealigned(src_index, dst_index, src_img, dst_img, cumulative_tform, 
+                      tform; render_full=render_full, render_review=render_review)
+
+      println(index, " ", firstindex, " ", align && montaged(index) > montaged(firstindex))
+      if align && montaged(index) > montaged(firstindex)
+        println("Aligning meshes between $dst_index, $src_index")
+        reload_registry(prealigned(src_index))
+        ms = MeshSet(prealigned(dst_index), prealigned(src_index); solve=false, fix_first=(dst_index==startindex))
+        render_aligned_review(ms)
+      end
     end
-    render_prealigned(src_index, dst_index, src_img, dst_img, cumulative_tform, 
-                    tform; render_full=render_full, render_review=render_review)
     println("Swapping src_image to dst_image")
     dst_img = copy(src_img)
-
-    println(index, " ", firstindex, " ", align && montaged(index) > montaged(firstindex))
-    if align && montaged(index) > montaged(firstindex)
-      println("Aligning meshes between $dst_index, $src_index")
-      reload_registry(prealigned(src_index))
-      ms = MeshSet(prealigned(dst_index), prealigned(src_index); solve=false, fix_first=(dst_index==startindex))
-      render_aligned_review(ms)
-    end
   end
 end
 
@@ -222,14 +227,13 @@ end
 """
 Render aligned images
 """
-function render_aligned_review(firstindex::Index, lastindex::Index, start=1, finish=0)
+function render_aligned_review(firstindex::Index, lastindex::Index, start=1, finish=0; scale=0.05)
   firstindex, lastindex = prealigned(firstindex), prealigned(lastindex)
   meshset = load(firstindex, lastindex)
-  render_aligned_review(meshset, start, finish)
+  render_aligned_review(meshset, start, finish, scale=scale)
 end
 
-function render_aligned_review(meshset, start=1, finish=length(meshset.matches); images=Dict())
-  scale = 0.05
+function render_aligned_review(meshset, start=1, finish=length(meshset.matches); images=Dict(), scale=0.05)
   s = make_scale_matrix(scale)
 
   for (k, match) in enumerate(meshset.matches[start:finish])
