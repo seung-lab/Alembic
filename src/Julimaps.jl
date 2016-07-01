@@ -58,8 +58,8 @@ end
 if contains(gethostname(), "seunglab") || contains(gethostname(), "seungom")
   global const USE_PYPLOT = false;
 else
-  #global const USE_PYPLOT = true;
-  global const USE_PYPLOT = false;
+  global const USE_PYPLOT = true;
+ # global const USE_PYPLOT = false;
 end
 
 

@@ -583,12 +583,13 @@ function sanitize!(meshset::MeshSet)
 end
 
 # JLS SAVE
+#=
 function save(filename::String, meshset::MeshSet)
   println("Saving meshset to ", filename)
   open(filename, "w") do file
     serialize(file, meshset)
   end
-end
+end=#
 
 function save(meshset::MeshSet)
   if has_parent(meshset)
@@ -769,42 +770,6 @@ function crop_center(image, rad_ratio)
 	range_i = round(Int64, size_i / 2) + (-rad:rad);
 	range_j = round(Int64, size_j / 2) + (-rad:rad);
 	return image[range_i, range_j];
-end
-
-function affine_load_section_pair(src_index, dst_index)
-  i_src = find_in_registry(src_index); 
-  i_dst = find_in_registry(dst_index); 
-
-  registry = get_registry(src_index);
-
-  name_dst = registry[i_dst, 1];
-  name_src = registry[i_src, 1];
-
-  @time dst_image = get_uint8_image(get_path(name_dst))
-  @time src_image = get_uint8_image(get_path(name_src))
- 
-  dst_scaled = imscale(dst_image, SCALING_FACTOR_TRANSLATE)[1]; 
-  src_scaled = imscale(src_image, SCALING_FACTOR_TRANSLATE)[1]; 
-
-  src_cropped = crop_center(src_scaled, 0.33);
-  dst_cropped = crop_center(dst_scaled, 0.66);
-  offset_vect, xc = get_max_xc_vector(src_cropped, dst_cropped);
-
-  offset_unscaled = round(Int64, offset_vect[1:2] / SCALING_FACTOR_TRANSLATE);
-
-  view(xc * 40);
-
-  println(offset_vect[1:2]);
-  println("Offsets from scaled blockmatches: $offset_unscaled");
-  println("r: $(offset_vect[3])");
-  update_offsets(name_src, offset_unscaled); 
-  return src_image, dst_image;
-end
-
-function load_section_pair(Ms, a, b)
-  @time A_image = get_h5_image(get_h5_path(Ms.meshes[find_index(Ms,a)].index))
-  @time B_image = get_h5_image(get_h5_path(Ms.meshes[find_index(Ms,b)].index))
-  return A_image, B_image; 
 end
 
 function load_stack(offsets, wafer_num, section_range)

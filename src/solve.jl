@@ -281,9 +281,7 @@ function elastic_collate(meshset; from_current = true, write = false)
   
   edges_subarrays = Array{SparseMatrixCSC{Float64, Int64}, 1}(length(procs()))
 
-@sync begin
-   @async @inbounds for proc in procs() edges_subarrays[proc] = remotecall_fetch(proc, get_local_sparse); end 
- end
+   @sync for proc in procs() @async @inbounds edges_subarrays[proc] = remotecall_fetch(proc, get_local_sparse); end 
 
   function add_local_sparse(sp_a, sp_b)
     global LOCAL_SPM = 0;
