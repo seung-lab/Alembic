@@ -1,7 +1,27 @@
 #NORMALIZER = Array{Float64, 2}(readdlm("calib"))
 using StatsBase
 
-function import_AIBS_pilot_v1()
+function construct_adjustment_image(meta)
+	function read(fn)
+		return Array{Float64, 2}(Images.load(fn).data')
+	end
+
+	println("Constructing contrast adjustment image")
+	adj_count = 1
+	j = 50
+	filepath = joinpath(RAW_DIR, meta[j,5])
+	img_adj = read(filepath)
+	for i in 92:90:size(meta,1)
+		filepath = joinpath(RAW_DIR, meta[i,5])
+		img_adj += read(filepath)
+		adj_count += 1
+	end
+	img_adj /= adj_count
+	fn = joinpath(RAW_DIR, "adjustment_image.txt")
+	writedlm(fn, img_adj)
+end
+
+function import_AIBS_pilot_v1(construct=false)
 	meta_fn = joinpath(RAW_DIR, "2342516R01_ribbonordered.txt")
 	meta = readdlm(meta_fn)
 	meta_new_fn = joinpath(RAW_DIR, "meta.txt")
@@ -23,26 +43,40 @@ function import_AIBS_pilot_v1()
 	meta = hcat(meta, [path path_new_fn row col])
 	writedlm(meta_new_fn, meta)
 
-	for i in 1:size(meta, 1)
-		old_filepath = joinpath(RAW_DIR, meta[i,5])
-		new_filepath = joinpath(RAW_DIR, meta[i,6])
-		index = (1, meta[i,4]+1, meta[i,7], meta[i,8])
-		offset = [meta[i,3], meta[i,2]]
+	function read(fn)
+		return Array{Float64, 2}(Images.load(fn).data')
+	end
 
-		println(old_filepath)
-		img = Array{Float64, 2}(Images.load(old_filepath).data')
-		#	  img = img ./ NORMALIZER;
-		#	  distr = nquantile(img[:], 16)
-		#	  minval = distr[2]; maxval = distr[16];
-		#	  img = min(1, max(0, (img - minval) / (maxval-minval)))
-		img = Array{UInt8, 2}(round(UInt8, img * 255));
-		#f = h5open(joinpath(to, import_frame_tif_to_wafer_section_h5(tif, wafer_num, sec_num)), "w")
-		f = h5open(new_filepath, "w")
-		#    	chunksize = div(min(size(img)...), 4);
-		chunksize = 1000;
-		@time f["img", "chunk", (chunksize,chunksize)] = img
-		close(f)
-		update_offset(index, offset, [size(img)...])		
+	function auto_adjust(img)
+		distr = nquantile(img[:], 16)
+		minval = distr[2]; maxval = distr[16];
+		return min(1, max(0, (img-minval) / (maxval-minval)))
+	end
+
+	if construct
+		construct_adjustment_image(meta)
+	end
+	fn = joinpath(RAW_DIR, "adjustment_image.txt")
+	img_adj = Array{Float64, 2}(readdlm(fn))
+
+	for i in 1:size(meta, 1)
+		if 9 < meta[i,4]+1 < 13
+			old_filepath = joinpath(RAW_DIR, meta[i,5])
+			new_filepath = joinpath(RAW_DIR, meta[i,6])
+			index = (1, meta[i,4]+1, meta[i,7], meta[i,8])
+			offset = [meta[i,3], meta[i,2]]
+
+			println(old_filepath)
+			img = auto_adjust(read(old_filepath) ./ img_adj)
+			img = Array{UInt8, 2}(round(UInt8, img * 255))
+			#f = h5open(joinpath(to, import_frame_tif_to_wafer_section_h5(tif, wafer_num, sec_num)), "w")
+			f = h5open(new_filepath, "w")
+			#    	chunksize = div(min(size(img)...), 4);
+			chunksize = 1000;
+			@time f["img", "chunk", (chunksize,chunksize)] = img
+			close(f)
+			update_offset(index, offset, [size(img)...])
+		end		
 	end
 end
 

@@ -227,13 +227,14 @@ function is_flagged(meshset::MeshSet)
   return |(map(is_flagged, meshset.matches)...)
 end
 
-function check!(meshset::MeshSet, crits = Base.values(meshset.properties["params"]["review"]))
+function check!(meshset::MeshSet, crits=meshset.properties["params"]["review"])
   unflag!(meshset)
-  return |(map(check!, meshset.matches, repeated(crits))...)
+  meshset.properties["params"]["review"] = crits
+  return |(map(check!, meshset.matches, repeated(Base.values(crits)))...)
 end
 
-function filter!(meshset::MeshSet, filters = Base.values(meshset.properties["params"]["filter"]))
-  for filter in filters
+function filter!(meshset::MeshSet, filters=meshset.properties["params"]["filter"])
+  for filter in Base.values(filters)
     filter!(meshset, filter)
   end
   passed = !check!(meshset)
@@ -251,9 +252,9 @@ function clear_filters!(meshset::MeshSet)
   end
 end
 
-function refilter!(meshset::MeshSet, filters=Base.values(meshset.properties["params"]["filter"]))
+function refilter!(meshset::MeshSet, filters=meshset.properties["params"]["filter"])
   clear_filters!(meshset)
-  filter!(meshset::MeshSet)
+  filter!(meshset, filters)
 end
 
 function check_and_fix!(meshset::MeshSet, crits = Base.values(meshset.properties["params"]["review"]), filters = Base.values(meshset.properties["params"]["filter"])) 
@@ -429,8 +430,10 @@ function prealign(index; params=get_params(index), to_fixed=false)
 	push!(meshset.meshes, make_mesh(dst_index, params, to_fixed))
 	push!(meshset.matches, Match(meshset.meshes[1], meshset.meshes[2], params))
 	filter!(meshset);
-	check_and_fix!(meshset);
-	solve!(meshset, method=params["solve"]["method"]);
+	check!(meshset);
+  try
+  	solve!(meshset, method=params["solve"]["method"]);
+  end
 	save(meshset);
 	return meshset;
 end
@@ -456,7 +459,7 @@ function MeshSet(first_index, last_index; params=get_params(first_index), solve=
 	match!(meshset, params["match"]["depth"]; reflexive = params["match"]["reflexive"]);
 
 	filter!(meshset);
-	check_and_fix!(meshset);
+	check!(meshset);
   save(meshset);
 
 	if solve == true

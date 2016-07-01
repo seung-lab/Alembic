@@ -192,10 +192,10 @@ function write_seams(meshset, imgs, offsets, indices, flagged_only=true)
   end
   overlap_tuples = find_overlaps(bbs) # could include tag for asymmetric list
   total_seams = flagged_only ? count_flags(meshset) : length(overlap_tuples)
-  for (i,j) in overlap_tuples
+  for (k, (i,j)) in enumerate(overlap_tuples)
     src_index, dst_index = indices[i], indices[j]
-    k = find_match_index(meshset, src_index, dst_index)
-    if !flagged_only || is_flagged(meshset.matches[k])
+    ind = find_match_index(meshset, src_index, dst_index)
+    if !flagged_only || is_flagged(meshset.matches[ind])
       println("Writing match #", k, " of ", total_seams, " seams")
       path = get_review_path(src_index, dst_index)
       img, fuse_offset = imfuse(imgs[i], offsets[i], imgs[j], offsets[j])

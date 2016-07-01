@@ -496,14 +496,13 @@ function check(match::Match, function_name, compare, threshold, vars...)
 end
 
 function check!(match::Match, crits) 
-     unflag!(match);
-     for crit in crits
-       if check(match, crit...) 
-       		flag!(match, crit);
-       end
-     end
-
-     return is_flagged(match);
+	unflag!(match);
+	for crit in crits
+		if check(match, crit...) 
+			flag!(match, crit);
+		end
+	end
+	return is_flagged(match);
 end
 
 ### ADD MANUAL FILTER

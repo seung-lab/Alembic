@@ -183,11 +183,12 @@ function view_match(meshset::MeshSet, match_ind)
   params["vector_scale"] = 40
   params["dist"] = 90
   params["sigma"] = 20
+  params["post_matches"] = false # is_prealigned(indexA)
   if is_montaged(meshset)
     params["vector_scale"] = 4
     params["sigma"] = 7
+    params["post_matches"] = true
   end
-  params["post_matches"] = false # is_prealigned(indexA)
   params["meshset"] = meshset
 
   if USE_PYPLOT
@@ -288,15 +289,15 @@ function update_annotations(imgc, img2, match, params)
   ImageView.redraw(imgc)
 end
 
-function view_sigma(match, match_ind, params)
+function view_sigma(match, match_ind)
   src_patch, src_pt, dst_patch, dst_pt, xc, offset = get_correspondence_patches(match, match_ind)
   N=size(xc, 1)
   M=size(xc, 2)
 
   x = linspace(0, N, N)
   y = linspace(0, M, M)
-  xgrid = repmat(x', N, 1)
-  ygrid = repmat(y, 1, M)
+  xgrid = repmat(x, 1, M)
+  ygrid = repmat(y', N, 1)
 
   fig = figure("sigma_filter") #,figsize=(10,10))
   PyPlot.clf()
@@ -334,9 +335,9 @@ function view_blockmatch(match, match_ind, params)
   N=size(xc, 1)
   M=size(xc, 2)
   if USE_PYPLOT
-    try
-      view_sigma(match, match_ind, params)
-    end
+    # try
+      view_sigma(match, match_ind)
+    # end
   end
   println("max r-value: ", maximum(xc))
   xc_image = xcorr2Image(xc)
@@ -898,17 +899,17 @@ function view_inspection_statistics(meshset::MeshSet, match_ind::Int64)
   view_dv_dispersion(match, sr; filtered=false)
   view_dv_dispersion(match, sr; filtered=true)
   subplot(234)
-  # view_property_histogram(match, "norm_post"; filtered=false, nbins=20)
+  view_property_histogram(match, "norm_post"; filtered=false, nbins=20)
   view_property_histogram(match, "norm_post"; filtered=true, nbins=20)
   subplot(235)
-  # view_property_spatial_scatter(match, "norm_post"; filtered=false, factor=1)
+  view_property_spatial_scatter(match, "norm_post"; filtered=false, factor=1)
   view_property_spatial_scatter(match, "norm_post"; filtered=true, factor=5)
   subplot(236)
-  # view_property_spatial_scatter(match, 0.8; filtered=false, factor=1)
-  # view_property_spatial_scatter(match, 0.8; filtered=true, factor=1)
+  view_property_spatial_scatter(match, 0.8; filtered=false, factor=1)
+  view_property_spatial_scatter(match, 0.8; filtered=true, factor=1)
   # view_dv_dispersion(match, sr; filtered=false, property_name="dv_post")
   # view_dv_dispersion(match, sr; filtered=true, property_name="dv_post")
-  view_mesh_strain(mesh)
+  # view_mesh_strain(mesh)
 
   src_index = get_src_index(match)
   dst_index = get_dst_index(match)
