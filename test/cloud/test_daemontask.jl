@@ -1,4 +1,3 @@
-
 module TestDaemonTask
 
 using Base.Test

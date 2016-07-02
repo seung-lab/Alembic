@@ -168,6 +168,7 @@ if isdefined(:omni)
         bucket_dir_path = joinpath(homedir(), "seungmount/Omni/alignment/datasets/")
     end
 end  
+bucket_dir_path = "/"
 
 #=if isfile("bucket_dir_path.txt")
     bucket_dir_path = rstrip(readall("bucket_dir_path.txt"), '\n')
