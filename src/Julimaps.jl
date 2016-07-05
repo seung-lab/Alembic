@@ -1,3 +1,7 @@
+module Julimaps
+include("cloud/index.jl")
+end
+
 # TypeAliases
 export Index
 export Triangle, Triangles
