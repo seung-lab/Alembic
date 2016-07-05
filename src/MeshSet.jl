@@ -28,17 +28,17 @@ function count_correspondences(meshset::MeshSet)	return sum(map(count_correspond
 
 function count_filtered_correspondences(meshset::MeshSet)	return sum(map(count_filtered_correspondences, meshset.matches));		end
 
-function get_mesh(meshset::MeshSet, index::Index)
+function get_mesh(meshset::MeshSet, index)
   return meshset.meshes[find_mesh_index(meshset, index)]
 end
 
-function get_matches(meshset::MeshSet, index::Index)
+function get_matches(meshset::MeshSet, index)
   k = find(i -> (index == get_src_index(i)) || (index == get_dst_index(i)), meshset.matches)
   return meshset.matches[k]
 end
 
 ### finding
-function find_mesh_index(meshset::MeshSet, index::Index)
+function find_mesh_index(meshset::MeshSet, index)
   return findfirst(this -> index == get_index(this), meshset.meshes)
 end
 
@@ -46,7 +46,7 @@ function find_mesh_index(meshset::MeshSet, mesh::Mesh)
   return find_mesh_index(meshset, get_index(mesh))
 end
 
-function contains_mesh(meshset::MeshSet, index::Index)
+function contains_mesh(meshset::MeshSet, index)
   return !(find_mesh_index(meshset, index) == 0)
 end
 
@@ -54,7 +54,7 @@ function contains_mesh(meshset::MeshSet, mesh::Mesh)
   return contains_mesh(meshset, get_index(mesh))
 end
 
-function find_match_index(meshset::MeshSet, src_index::Index, dst_index::Index)
+function find_match_index(meshset::MeshSet, src_index, dst_index)
   return findfirst(this -> (src_index == get_src_index(this)) && (dst_index == get_dst_index(this)), meshset.matches)
 end
 
@@ -62,7 +62,7 @@ function find_match_index(meshset::MeshSet, match::Match)
   return find_match_index(meshset, get_src_and_dst_indices(match)...);
 end
 
-function find_match_indices(meshset::MeshSet, index::Index)
+function find_match_indices(meshset::MeshSet, index)
   indices = []
   indices = [indices, find(this->index==get_src_index(this), meshset.matches)]
   indices = [indices, find(this->index==get_dst_index(this), meshset.matches)]
@@ -147,12 +147,12 @@ function add_match!(meshset::MeshSet, match::Match)
   sort!(meshset.matches; by=get_src_and_dst_indices)
 end
 
-function remove_match!(meshset::MeshSet, src_index::Index, dst_index::Index)
+function remove_match!(meshset::MeshSet, src_index, dst_index)
   i = find_match_index(meshset, src_index, dst_index)
   deleteat!(meshset.matches, i)
 end
 
-function remove_mesh!(meshset::MeshSet, index::Index)
+function remove_mesh!(meshset::MeshSet, index)
   i = find_mesh_index(meshset, index)
   if i != 0
     deleteat!(meshset.meshes, i)
@@ -207,19 +207,54 @@ function count_flags(meshset::MeshSet)
   return sum(map(is_flagged, meshset.matches))
 end
 
-function filter!(meshset::MeshSet, filters = Base.values(meshset.properties["params"]["filter"]))
-  for filter in filters
-  	filter!(meshset, filter)
+function flag!(meshset::MeshSet, match_ind)
+  flag!(meshset.matches[match_ind])
+end
+
+function unflag!(meshset::MeshSet, match_ind)
+  unflag!(meshset.matches[match_ind])
+end
+
+function unflag!(meshset::MeshSet)
+  map(unflag!, meshset.matches)
+end
+
+function is_flagged(meshset::MeshSet, match_ind)
+  return is_flagged(meshset.matches[match_ind])
+end
+
+function is_flagged(meshset::MeshSet)
+  return |(map(is_flagged, meshset.matches)...)
+end
+
+function check!(meshset::MeshSet, crits=meshset.properties["params"]["review"])
+  unflag!(meshset)
+  meshset.properties["params"]["review"] = crits
+  return |(map(check!, meshset.matches, repeated(Base.values(crits)))...)
+end
+
+function filter!(meshset::MeshSet, filters=meshset.properties["params"]["filter"])
+  for filter in Base.values(filters)
+    filter!(meshset, filter)
   end
+  passed = !check!(meshset)
+  passed ? println("check passed") : println("check failed")
 end
 
 function filter!(meshset::MeshSet, filter::Tuple)
-	total = sum(map(filter!, meshset.matches, repeated(filter)))
-	println("$total / $(count_correspondences(meshset)) correspondences filtered on $filter")
+  total = sum(map(filter!, meshset.matches, repeated(filter)))
+  println("$total / $(count_correspondences(meshset)) correspondences filtered on $filter")
 end
 
-function check!(meshset::MeshSet, crits = Base.values(meshset.properties["params"]["review"])) 
-  return |(map(check!, meshset.matches, repeated(crits))...)
+function clear_filters!(meshset::MeshSet)
+  for match in meshset.matches
+    clear_filters!(match)
+  end
+end
+
+function refilter!(meshset::MeshSet, filters=meshset.properties["params"]["filter"])
+  clear_filters!(meshset)
+  filter!(meshset, filters)
 end
 
 function check_and_fix!(meshset::MeshSet, crits = Base.values(meshset.properties["params"]["review"]), filters = Base.values(meshset.properties["params"]["filter"])) 
@@ -242,12 +277,6 @@ function check_and_fix!(meshset::MeshSet, crits = Base.values(meshset.properties
         end
       end
     end
-  end
-end
-
-function clear_filters!(meshset::MeshSet)
-  for match in meshset.matches
-    clear_filters!(match)
   end
 end
 
@@ -304,7 +333,7 @@ end
 """
 Create partial meshset of a meshset split into children
 """
-function compile_partial_meshset(parent_name, firstindex::Index, lastindex::Index)
+function compile_partial_meshset(parent_name, firstindex, lastindex)
   ms = MeshSet()
   indices = get_index_range(prealigned(firstindex), prealigned(lastindex))
   ind = []
@@ -319,12 +348,12 @@ function compile_partial_meshset(parent_name, firstindex::Index, lastindex::Inde
   return ms
 end
 
-function find_mesh_indices(firstindex::Index, lastindex::Index, i::Int64)
+function find_mesh_indices(firstindex, lastindex, i::Int64)
   indices = get_index_range(firstindex, lastindex)
   return find_mesh_indices(firstindex, lastindex, indices[i])
 end
 
-function find_mesh_indices(firstindex::Index, lastindex::Index, index::Index)
+function find_mesh_indices(firstindex, lastindex, index)
   parent_name = get_name(firstindex, lastindex)
   ind = []
   for i in 1:count_children(parent_name)
@@ -380,26 +409,6 @@ function concat!(meshset_one::MeshSet, meshset_two::MeshSet)
 	return meshset_one;
 end
 
-function flag!(meshset::MeshSet, match_ind)
-	flag!(meshset.matches[match_ind])
-end
-
-function unflag!(meshset::MeshSet, match_ind)
-	unflag!(meshset.matches[match_ind])
-end
-
-function unflag!(meshset::MeshSet)
-  map(unflag!, meshset.matches)
-end
-
-function is_flagged(meshset::MeshSet, match_ind)
-	return is_flagged(meshset.matches[match_ind])
-end
-
-function is_flagged(meshset::MeshSet)
-	return |(map(is_flagged, meshset.matches)...)
-end
-
 ### initialise
 function MeshSet()
  	meshes = Array{Mesh, 1}(0)
@@ -408,7 +417,7 @@ function MeshSet()
 	return MeshSet(meshes, matches, properties)
 end
 
-function prealign(index::Index; params=get_params(index), to_fixed=false)
+function prealign(index; params=get_params(index), to_fixed=false)
 	src_index = index;
 	dst_index = get_preceding(src_index)
 	if to_fixed
@@ -417,12 +426,14 @@ function prealign(index::Index; params=get_params(index), to_fixed=false)
 	meshset = MeshSet();
 	meshset.properties["params"] = params;
 	meshset.properties["meta"] = Dict{Any, Any}();
-	push!(meshset.meshes, Mesh(src_index, params))
-	push!(meshset.meshes, Mesh(dst_index, params, to_fixed))
+	push!(meshset.meshes, make_mesh(src_index, params))
+	push!(meshset.meshes, make_mesh(dst_index, params, to_fixed))
 	push!(meshset.matches, Match(meshset.meshes[1], meshset.meshes[2], params))
 	filter!(meshset);
-	check_and_fix!(meshset);
-	solve!(meshset, method=params["solve"]["method"]);
+	check!(meshset);
+  try
+  	solve!(meshset, method=params["solve"]["method"]);
+  end
 	save(meshset);
 	return meshset;
 end
@@ -435,7 +446,8 @@ end
 function MeshSet(first_index, last_index; params=get_params(first_index), solve=true, solve_method="elastic")
 	ind_range = get_index_range(first_index, last_index);
 	if length(ind_range) == 0 return nothing; end
-	meshes = map(Mesh, ind_range, repeated(params))
+	meshes = pmap(make_mesh, ind_range, repeated(params))
+  sort!(meshes; by=get_index)
  	matches = Array{Match, 1}(0)		
 	properties = Dict{Any, Any}(	"params"  => params,
 					"author" => author(),
@@ -447,27 +459,25 @@ function MeshSet(first_index, last_index; params=get_params(first_index), solve=
 	match!(meshset, params["match"]["depth"]; reflexive = params["match"]["reflexive"]);
 
 	filter!(meshset);
-	check_and_fix!(meshset);
-#=	
-	if check!(meshset)
-		save(meshset); return meshset;
-	end =#
+	check!(meshset);
+  save(meshset);
 
 	if solve == true
-	solve!(meshset, method=solve_method);
+  	solve!(meshset, method=solve_method);
+    save(meshset);
 	end
 
-	save(meshset);
 	return meshset;
 end
 
-function MeshSet(firstindex::Index, lastindex::Index, fixed_meshes::Array{Mesh,1}; params=get_params(firstindex))
+function MeshSet(firstindex, lastindex, fixed_meshes::Array{Mesh,1}; params=get_params(firstindex))
   println("Using ", length(fixed_meshes), " fixed meshes to build meshset")
   indices = get_index_range(firstindex, lastindex)
   if length(indices) == 0 
     return nothing; 
   end
-  meshes = map(Mesh, indices, repeated(params));
+  meshes = pmap(make_mesh, indices, repeated(params));
+  sort!(meshes; by=get_index)
   map(fix!, fixed_meshes)
   merge_meshes!(meshes, fixed_meshes) # merge meshes into fixed_meshes
   matches = Array{Match, 1}(0)
@@ -576,12 +586,13 @@ function sanitize!(meshset::MeshSet)
 end
 
 # JLS SAVE
+#=
 function save(filename::String, meshset::MeshSet)
   println("Saving meshset to ", filename)
   open(filename, "w") do file
     serialize(file, meshset)
   end
-end
+end=#
 
 function save(meshset::MeshSet)
   if has_parent(meshset)
@@ -633,13 +644,15 @@ function get_filename(meshset::MeshSet)
   end
 end
 
-function get_filename(firstindex::Index, lastindex::Index)
+function get_filename(firstindex, lastindex)
   filename = string(get_name(firstindex, lastindex), ".jls")
-  if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_aligned(lastindex))
+  if (((is_montaged(firstindex) || is_prealigned(firstindex) || is_aligned(firstindex)) && is_montaged(lastindex)) ||
+  ((is_montaged(lastindex) || is_prealigned(lastindex) || is_aligned(lastindex)) && is_montaged(firstindex))) && (firstindex != lastindex)
     filepath = PREALIGNED_DIR
-  elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex)) || (is_prealigned(firstindex) && is_aligned(lastindex))
+  elseif (is_prealigned(firstindex) || is_aligned(firstindex)) &&
+          (is_prealigned(lastindex) || is_aligned(lastindex))
     filepath = ALIGNED_DIR
-  elseif is_premontaged(firstindex) && is_premontaged(lastindex) && firstindex == lastindex
+  elseif is_premontaged(firstindex) && is_premontaged(lastindex) && (firstindex == lastindex)
     filepath = PREMONTAGED_DIR
   else 
     filepath = MONTAGED_DIR
@@ -662,13 +675,14 @@ function get_name(meshset::MeshSet)
   end
 end
 
-function get_name(firstindex::Index, lastindex::Index)
+function get_name(firstindex, lastindex)
   name = ""
-  if (is_prealigned(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_montaged(lastindex)) || (is_montaged(firstindex) && is_aligned(lastindex))
+  if (((is_montaged(firstindex) || is_prealigned(firstindex) || is_aligned(firstindex)) && is_montaged(lastindex))) && (firstindex != lastindex)
     name = string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned")
-  elseif (is_prealigned(firstindex) && is_prealigned(lastindex)) || (is_aligned(firstindex) && is_prealigned(lastindex)) || (is_prealigned(firstindex) && is_aligned(lastindex))
+  elseif (is_prealigned(firstindex) || is_aligned(firstindex)) &&
+          (is_prealigned(lastindex) || is_aligned(lastindex)) 
     name = string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned")
-  elseif is_premontaged(firstindex) && is_premontaged(lastindex) && firstindex == lastindex
+  elseif is_premontaged(firstindex) && is_premontaged(lastindex) && (firstindex == lastindex)
     name = string(join(firstindex[1:2], ","), "_premontaged")
   else 
     name = string(join(firstindex[1:2], ","), "_montaged")
@@ -692,32 +706,6 @@ function get_split_index(meshset::MeshSet)
 	return meshset.properties["meta"]["split_index"];
 end
 
-"""
-Load montaged meshset for given wafer and section
-
-`load_montaged(wafer_num, sec_num)`
-"""
-function load_montaged(wafer_num, sec_num)
-  index = (wafer_num, sec_num, 1, 1)
-	return load(index, index)
-end
-
-"""
-Load prealigned meshset for given wafer and section
-
-`load_prealigned(wafer_num, sec_num)`
-"""
-function load_prealigned(wafer_num, sec_num)
-  lastindex = (wafer_num, sec_num, MONTAGED_INDEX, MONTAGED_INDEX)
-  if sec_num == 1
-    if wafer_num == 1 println("Error loading 1,1-prealigned.jld - the first section is the identity"); return Void
-  else firstindex = MONTAGED_OFFSETS[findlast(i->MONTAGED_OFFSETS[i,2][1] == wafer_num -1, 1:size(MONTAGED_OFFSETS, 1)), 2]
-  end
-  else firstindex = (wafer_num, sec_num-1, MONTAGED_INDEX, MONTAGED_INDEX)
-  end
-	return load(firstindex, lastindex)
-end
-
 function load(firstindex, lastindex)
   filename = get_filename(firstindex, lastindex)
   println("Loading meshset from ", filename)
@@ -739,7 +727,7 @@ end
 
 function load(index)
   if is_montaged(index)
-	  return load_montaged(index[1:2]...)
+	  return load(index, index)
   elseif is_prealigned(index)
 	  return load(montaged(index), (get_preceding(montaged(index)))) 
   end
@@ -785,42 +773,6 @@ function crop_center(image, rad_ratio)
 	range_i = round(Int64, size_i / 2) + (-rad:rad);
 	range_j = round(Int64, size_j / 2) + (-rad:rad);
 	return image[range_i, range_j];
-end
-
-function affine_load_section_pair(src_index, dst_index)
-  i_src = find_in_registry(src_index); 
-  i_dst = find_in_registry(dst_index); 
-
-  registry = get_registry(src_index);
-
-  name_dst = registry[i_dst, 1];
-  name_src = registry[i_src, 1];
-
-  @time dst_image = get_uint8_image(get_path(name_dst))
-  @time src_image = get_uint8_image(get_path(name_src))
- 
-  dst_scaled = imscale(dst_image, SCALING_FACTOR_TRANSLATE)[1]; 
-  src_scaled = imscale(src_image, SCALING_FACTOR_TRANSLATE)[1]; 
-
-  src_cropped = crop_center(src_scaled, 0.33);
-  dst_cropped = crop_center(dst_scaled, 0.66);
-  offset_vect, xc = get_max_xc_vector(src_cropped, dst_cropped);
-
-  offset_unscaled = round(Int64, offset_vect[1:2] / SCALING_FACTOR_TRANSLATE);
-
-  view(xc * 40);
-
-  println(offset_vect[1:2]);
-  println("Offsets from scaled blockmatches: $offset_unscaled");
-  println("r: $(offset_vect[3])");
-  update_offsets(name_src, offset_unscaled); 
-  return src_image, dst_image;
-end
-
-function load_section_pair(Ms, a, b)
-  @time A_image = get_h5_image(get_h5_path(Ms.meshes[find_index(Ms,a)].index))
-  @time B_image = get_h5_image(get_h5_path(Ms.meshes[find_index(Ms,b)].index))
-  return A_image, B_image; 
 end
 
 function load_stack(offsets, wafer_num, section_range)
@@ -877,7 +829,7 @@ function get_param(meshset::MeshSet, property_name)
   return property
 end =#
 
-function calculate_depth(firstindex::Index, lastindex::Index, num_tiles=16)
+function calculate_depth(firstindex, lastindex, num_tiles=16)
   index_depth = []
   firstsection = NO_INDEX
   lastsection = NO_INDEX
@@ -903,12 +855,13 @@ function calculate_depth(firstindex::Index, lastindex::Index, num_tiles=16)
   return index_depth
 end
 
-function autoblockmatch(index::Index; params=get_params(index))
+function autoblockmatch(index; params=get_params(index))
   indices = get_index_range(index, index)
   if length(indices) == 0 
     return nothing; 
   end
-  meshes = map(Mesh, indices, repeated(params));
+  meshes = pmap(make_mesh, indices, repeated(params));
+  sort!(meshes; by=get_index)
   matches = Array{Match, 1}(0)
   properties = Dict{Any, Any}(  
           "params"  => params,
@@ -941,7 +894,7 @@ function get_correspondence_stats(ms::MeshSet, key)
   return Dict("index"=>indices, "count"=>l, "min"=>mn, "med"=>m, "max"=>mx, "std"=>sd)
 end
 
-function compile_correspondence_stats(firstindex::Index, lastindex::Index, key)
+function compile_correspondence_stats(firstindex, lastindex, key)
   s = []
   for index in get_index_range(montaged(firstindex), montaged(lastindex))
     ms = load(premontaged(index), premontaged(index))

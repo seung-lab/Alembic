@@ -26,18 +26,39 @@ function save(path::String, img::Array)
       close(f)
     end
 
+function save(filename::String, data)
+  println("Saving $(typeof(data)) to ", filename)
+  open(filename, "w") do file
+    serialize(file, data)
+  end
+end
+
 # extensions:
 # Mesh.jl	get_image(mesh::Mesh)
 # filesystem.jl	get_image() 
-function get_image_disk(path::String, dtype = IMG_ELTYPE)
+function get_image_disk(path::String, dtype = IMG_ELTYPE; shared = false)
 	ext = splitext(path)[2];
   	if ext == ".tif"
   		img = data(FileIO.load(path))
   		img = img[:, :, 1]'
    		#img.properties["timedim"] = 0
+		if shared
+		 img = convert(Array{dtype, 2}, round(convert(Array, img)*255))
+		 shared_img = SharedArray(dtype, size(img)...);
+		  @inbounds shared_img.s[:,:] = img[:,:]
+		 return shared_img;
+		else
   		return convert(Array{dtype, 2}, round(convert(Array, img)*255))
+	      end
 	elseif ext == ".h5"
+		if shared
+ 		img = convert(Array{dtype, 2}, h5read(path, "img"))
+		 shared_img = SharedArray(dtype, size(img)...);
+		  @inbounds shared_img.s[:,:] = img[:,:]
+		 return shared_img;
+	       else
  		return convert(Array{dtype, 2}, h5read(path, "img"))
+	      end
 	end
 end
 
@@ -97,7 +118,7 @@ function get_image(path::String, scale=1.0, dtype = IMG_ELTYPE)
 
   	if haskey(IMG_CACHE_DICT, (path, scale))
 	  println("$path is in cache at scale $scale - loading from cache...")
-	   @everywhere gc();
+	  # @everywhere gc();
 	  return IMG_CACHE_DICT[(path, scale)]
 	end
 
@@ -113,12 +134,11 @@ function get_image(path::String, scale=1.0, dtype = IMG_ELTYPE)
 
 	    push!(IMG_CACHE_LIST, (path, 1.0))
 	    #IMG_CACHE_DICT[(path, 1.0)] = img;
-            print("image retrieval:")
-	    @time img = get_image_disk(path, dtype)
-            print("image share and store to cache:")
-	    @time IMG_CACHE_DICT[(path, 1.0)] = img
-	    img = 0;
-	    img = 0;
+	    @time IMG_CACHE_DICT[(path, 1.0)] = get_image_disk(path, dtype; shared = true)
+            #print("image share and store to cache:")
+	    #@time IMG_CACHE_DICT[(path, 1.0)] = img
+	    #img = 0;
+	    #img = 0;
 	#    @everywhere gc();
 	end
 
@@ -136,7 +156,7 @@ function get_image(path::String, scale=1.0, dtype = IMG_ELTYPE)
 	  scaled_img = 0;
         end
 
-	    @everywhere gc();
+	    #@everywhere gc();
 
 	return IMG_CACHE_DICT[(path, scale)];
 end
@@ -320,19 +340,18 @@ function make_slice(center, radius)
   return (x-radius):(x+radius), (y-radius):(y+radius)
 end
 
-function save_stack(firstindex::Index, lastindex::Index, center, radius)
+function save_stack(firstindex::Index, lastindex::Index, center, radius; scale=1.0)
   slice = make_slice(center, radius)
-  stack = make_stack(firstindex, lastindex, slice)
-  return save_stack(stack, firstindex, lastindex, slice)
+  stack = make_stack(firstindex, lastindex, slice, scale=scale)
+  return save_stack(stack, firstindex, lastindex, slice, scale=scale)
 end
 
-function save_stack(firstindex::Index, lastindex::Index, slice=(1:200, 1:200))
-  stack = make_stack(firstindex, lastindex, slice)
-  return save_stack(stack, firstindex, lastindex, slice)
+function save_stack(firstindex::Index, lastindex::Index, slice=(1:200, 1:200); scale=1.0)
+  stack = make_stack(firstindex, lastindex, slice, scale=scale)
+  return save_stack(stack, firstindex, lastindex, slice, scale=scale)
 end
 
-function save_stack(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, slice=(1:200, 1:200))
-  scale = 1.0
+function save_stack(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, slice=(1:200, 1:200); scale=scale)
   # perm = [3,2,1]
   # stack = permutedims(stack, perm)
   orientation = "zyx"
@@ -341,13 +360,15 @@ function save_stack(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, 
   x_slice = [slice[1][1], slice[1][end]] + origin
   y_slice = [slice[2][1], slice[2][end]] + origin
   z_slice = [find_in_registry(firstindex), find_in_registry(lastindex)]
-  filename = string(cur_dataset, "_", join([join(x_slice, "-"), join(y_slice, "-"), join(z_slice,"-")], "_"), ".h5")
+  phasename = is_prealigned(firstindex) ? "prealigned" : "aligned"
+  filename = string(cur_dataset, "_", phasename, "_", join([join(x_slice, "-"), join(y_slice, "-"), join(z_slice,"-")], "_"), ".h5")
   filepath = joinpath(FINISHED_DIR, filename)
   println("\nSaving stack to ", filepath)
   f = h5open(filepath, "w")
-  chunksize = min(512, min(size(stack)...))
-  @time f["main", "chunk", (chunksize,chunksize,chunksize)] = stack
-  # f = Dict()
+  # Omni can't handle chunked channel data
+  # chunksize = min(512, min(size(stack)...))
+  # @time f["main", "chunk", (chunksize,chunksize,chunksize)] = stack
+  f["main"] = stack
   f["orientation"] = orientation
   f["origin"] = origin
   f["x_slice"] = x_slice

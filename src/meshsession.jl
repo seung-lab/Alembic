@@ -1,5 +1,7 @@
 function montage(firstindex::Index, lastindex::Index)
-  for index in get_index_range(montaged(firstindex), montaged(lastindex))
+  ind_range = get_index_range(premontaged(firstindex), premontaged(lastindex))
+  ind_range = unique([montaged(i[1:2]...) for i in ind_range])
+  for index in ind_range
     ms = MeshSet(index)
     if is_flagged(ms)
       render_montaged(ms; render_full=false, render_review=true, flagged_only=true)
@@ -9,12 +11,19 @@ function montage(firstindex::Index, lastindex::Index)
   end
 end
 
-function render_flagged_montages(firstindex::Index, lastindex::Index)
-  for index in get_index_range(montaged(firstindex), montaged(lastindex))
+function fix_montages(firstindex::Index, lastindex::Index)
+  ind_range = get_index_range(premontaged(firstindex), premontaged(lastindex))
+  ind_range = unique([montaged(i[1:2]...) for i in ind_range])
+  for index in ind_range
+    params = get_params(premontaged(index))
     ms = load(index)
+    ms.properties["params"]["filter"] = params["filter"]
+    ms.properties["params"]["review"] = params["review"]
+    refilter!(ms);
+    save(ms);
     if is_flagged(ms)
-      unflag!(ms)
-      save(ms)
+      render_montaged(ms; render_full=false, render_review=true, flagged_only=true)
+    else
       render_montaged(ms; render_full=true, render_review=false)
     end
   end
@@ -80,8 +89,8 @@ function reprealign(firstindex::Index, lastindex::Index, params)
   end
 end
 
-function align(firstindex::Index, lastindex::Index; fix_first=false)
-  ms = MeshSet(firstindex, lastindex; solve=false, fix_first=fix_first)
+function align(firstindex::Index, lastindex::Index)
+  ms = MeshSet(firstindex, lastindex; solve=false)
   render_aligned_review(ms)
   split_meshset(ms)
 end
@@ -108,6 +117,22 @@ function solve_align(firstindex::Index, lastindex::Index)
   solve!(ms)
   save(ms)
   split_meshset(ms)
+end
+
+function refilter!(firstindex::Index, lastindex::Index, params=get_params(firstindex))
+  parent_name = get_name(firstindex, lastindex)
+  for i = 1:count_children(parent_name)
+    refilter!(firstindex, lastindex, i, params)
+  end
+end
+
+function refilter!(firstindex::Index, lastindex::Index, ind::Int64, params=get_params(firstindex))
+  parent_name = get_name(firstindex, lastindex)
+  ms = load_split(parent_name, ind)
+  ms.properties["params"]["filter"] = params["filter"]
+  ms.properties["params"]["review"] = params["review"]
+  refilter!(ms)
+  save(ms)
 end
 
 function copy_through_first_section(index::Index)

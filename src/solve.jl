@@ -113,7 +113,7 @@ end
 function solve!(meshset; method="elastic")
 	sanitize!(meshset);
   assert(count_matches(meshset) != 0)
-  assert(count_filtered_correspondences(meshset) != 0)
+  assert(count_filtered_correspondences(meshset) >= 3)
 
 	if method == "elastic" return elastic_solve!(meshset); end
 	if method == "translate" return translate_solve!(meshset); end
@@ -130,10 +130,8 @@ function elastic_solve_piecewise!(meshset::MeshSet; from_current = true)
 	end
 	return meshset;
 end
-"""
-Elastic solve
-"""
-function elastic_solve!(meshset; from_current = true)
+
+function elastic_collate(meshset; from_current = true, write = false)
   params = get_params(meshset)
   #fixed = get_fixed(meshset)
   match_spring_coeff = params["solve"]["match_spring_coeff"]
@@ -179,7 +177,7 @@ function elastic_solve!(meshset; from_current = true)
   end
 
   @fastmath @inbounds for match in meshset.matches
-	edgeranges[match] = cum_edges + (1:count_filtered_correspondences(match));
+	edgeranges[get_src_and_dst_indices(match)] = cum_edges + (1:count_filtered_correspondences(match));
 	cum_edges = cum_edges + count_filtered_correspondences(match);
 	match_ref = RemoteRef(); 
 	put!(match_ref, match); push!(matches_ref, match_ref);
@@ -200,9 +198,11 @@ function elastic_solve!(meshset; from_current = true)
     #@inbounds edge_spring_coeffs[edgeranges[get_index(mesh)]] = fill(mesh_spring_coeff, count_edges(mesh));
 
     edge_lengths[edgeranges[get_index(mesh)]] = get_edge_lengths(mesh);
-    edge_spring_coeffs[edgeranges[get_index(mesh)]] = fill(mesh_spring_coeff, count_edges(mesh));
+    edge_spring_coeffs[edgeranges[get_index(mesh)]] = mesh_spring_coeff
     removed_edges = get_removed_edge_indices(mesh)
-    edge_spring_coeffs[edgeranges[get_index(mesh)][get_removed_edge_indices(mesh)]] = 0.0
+    edge_spring_coeffs[edgeranges[get_index(mesh)][removed_edges]] = 0
+    fixed_edges = get_fixed_edge_indices(mesh)
+    edge_spring_coeffs[edgeranges[get_index(mesh)][fixed_edges]] = 10000
   end
 
   end # @fm @ib 
@@ -235,8 +235,8 @@ function elastic_solve!(meshset; from_current = true)
   println("meshes collated: $(count_meshes(meshset)) meshes")
 
   for match in meshset.matches
-    	@inbounds edge_lengths[edgeranges[match]] = fill(0, count_filtered_correspondences(match));
-    	@inbounds edge_spring_coeffs[edgeranges[match]] = fill(match_spring_coeff, count_filtered_correspondences(match));
+    	@inbounds edge_lengths[edgeranges[get_src_and_dst_indices(match)]] = fill(0, count_filtered_correspondences(match));
+    	@inbounds edge_spring_coeffs[edgeranges[get_src_and_dst_indices(match)]] = fill(match_spring_coeff, count_filtered_correspondences(match));
   end
 
   function compute_sparse_matrix(match_ref, src_mesh_ref, dst_mesh_ref, noderange_src, noderange_dst, edgerange)
@@ -270,7 +270,7 @@ function elastic_solve!(meshset; from_current = true)
   noderange_src_list = Array{UnitRange, 1}(map(getindex, repeated(noderanges), src_indices))
   noderange_dst_list = Array{UnitRange, 1}(map(getindex, repeated(noderanges), dst_indices))
   
-  edgerange_list = Array{UnitRange, 1}(map(getindex, repeated(edgeranges), meshset.matches))
+  edgerange_list = Array{UnitRange, 1}(map(getindex, repeated(edgeranges), map(get_src_and_dst_indices,meshset.matches)))
 
 
    pmap(compute_sparse_matrix, matches_ref, meshes_ref[map(getindex, repeated(meshes_order), src_indices)], meshes_ref[map(getindex, repeated(meshes_order), dst_indices)], noderange_src_list, noderange_dst_list, edgerange_list);
@@ -283,9 +283,7 @@ function elastic_solve!(meshset; from_current = true)
   
   edges_subarrays = Array{SparseMatrixCSC{Float64, Int64}, 1}(length(procs()))
 
-@sync begin
-   @async @inbounds for proc in procs() edges_subarrays[proc] = remotecall_fetch(proc, get_local_sparse); end 
- end
+   @sync for proc in procs() @async @inbounds edges_subarrays[proc] = remotecall_fetch(proc, get_local_sparse); end 
 
   function add_local_sparse(sp_a, sp_b)
     global LOCAL_SPM = 0;
@@ -303,13 +301,33 @@ function elastic_solve!(meshset; from_current = true)
 
   edges = edges_subarrays[1];
 
+  collation = nodes, nodes_fixed, edges, edge_spring_coeffs, edge_lengths, max_iters, ftol_cg
+  collation_with_ranges = collation, noderanges, edgeranges
 
-  if params["solve"]["use_conjugate_gradient"]
-    @time SolveMeshConjugateGradient!(nodes, nodes_fixed, edges, edge_spring_coeffs, edge_lengths, max_iters, ftol_cg)
-  else
-    @time SolveMeshGDNewton!(nodes, nodes_fixed, edges, edge_spring_coeffs, edge_lengths, eta_gd, ftol_gd, eta_newton, ftol_newton)
+  if write 
+    save(string(splitext(get_filename(meshset))[1], "_collated.jls"), collation_with_ranges)
   end
+
+  return collation_with_ranges;
+end
+"""
+Elastic solve
+"""
+function elastic_solve!(meshset; from_current = true, use_saved = false, write = false)
+  if use_saved
+	collation, noderanges, edgeranges = load(string(splitext(get_filename(meshset))[1], "_collated.jls"))
+      else
+	collation, noderanges, edgeranges = elastic_collate(meshset; from_current = from_current, write = write)
+  end
+
+  @time SolveMeshConjugateGradient!(collation...)
+
+  if write 
+    save(string(splitext(get_filename(meshset))[1], "_collated.jls"), (collation, noderanges, edgeranges))
+  end
+
   dst_nodes = Points(0)
+  nodes = collation[1]
   for i in 1:size(nodes, 2)
           push!(dst_nodes, vec(nodes[:, i]))
         end
@@ -396,7 +414,7 @@ function calculate_post_statistics!(meshset::MeshSet, match_ind)
   end
 end
 
-function rectify_drift(meshset::MeshSet, bias = [0.0, 0.0]; use_post = true, rectify_aligned = false)
+function rectify_drift(meshset::MeshSet, start_ind = 1, final_ind = count_meshes(meshset), bias = [0.0, 0.0]; use_post = true, rectify_aligned = false)
   meshes = Dict{Any, Any}();
   for mesh in meshset.meshes
 	meshes[mesh.index] = mesh;
@@ -438,6 +456,7 @@ function rectify_drift(meshset::MeshSet, bias = [0.0, 0.0]; use_post = true, rec
 
   end
   cum_drift = Point([0,0]);
+  for i in setdiff(1:length(drifts), start_ind:final_ind) drifts[i] = Point([0,0]); end
   for (ind, drift) in enumerate(drifts)
     cum_drift += (drift + bias);
     update_offset(get_index(meshset.meshes[ind]), round(Int64, get_offset(get_index(meshset.meshes[ind])) + cum_drift))
