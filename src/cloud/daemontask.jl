@@ -12,8 +12,7 @@ abstract DaemonTaskDetails
 
 type Details
     id::Int
-    taskType::AbstractString
-    payload::AbstractString
+    name::AbstractString
 end
 
 type RenderTask <: DaemonTaskDetails

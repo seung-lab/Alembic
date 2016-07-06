@@ -1,11 +1,18 @@
 module BlockMatchTask
 import DaemonTask
 
+export BlockMatchTask
+export name, execute, task_type
+
+name = "BLOCK_MATCH"
+
 type AlignmentDetails
     baseDirectory::AbstractString
     files::Array{AbstractString}
     indices::Array{Tuple{Int64,Int64,Int64,Int64}}
 end
+
+typealias task_type BlockMatchTask
 
 type BlockMatchTask <: DaemonTask.DaemonTaskDetails
     details::DaemonTask.TaskDetails
@@ -21,8 +28,7 @@ function to_daemon_task(dictionary::Dict, tasks::Dict{AbstractString, Module})
 
     if !haskey(TASKS, details["taskType"])
         error("Unknown task : $(details["taskType"])")
-    end
-
+    end 
     indices = []
     for index in details["indices"]
         push!(indices, (index[1],index[2],index[3],index[4]))
