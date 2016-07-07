@@ -3,6 +3,7 @@ module Daemon
 import Julimaps.Cloud.Queue
 import Julimaps.Cloud.Bucket
 import Julimaps.Cloud.DaemonTask
+import JSON
 
 export DaemonService
 export run
@@ -11,13 +12,19 @@ type DaemonService
     queue::Queue.QueueService
     bucket::Bucket.BucketService
     poll_frequency_seconds::Int64
-    tasks::Dict{AbstractString, Module}
+    tasks::Dict{AbstractString, Type}
+    DaemonService(queue::Queue.QueueService, bucket::Bucket.BucketService,
+        poll_frequency_seconds::Int64) = 
+            new(queue, bucket, poll_frequency_seconds,
+                Dict{AbstractString, Module}())
 end
 
 function run(daemon::DaemonService)
     while true
         try
             message = Queue.pop_message(daemon.queue)
+
+            print("Message received is$(message)")
 
             if isempty(message)
                 println("No messages found in $(Queue.string(daemon.queue))")
@@ -49,21 +56,11 @@ end
 
 Register a module as a task to perform for input daemon.
 
-# Arguments
-* `daemon::DaemonService`: the daemon we are registering to
-* `task_module::Module`: Module we are registering. Module **must implement**
-the following interface:
-** `task_type::Type`: type that includes payload
-** `name::AbstractString`: name of this task
-** `function execute(task::task_type)`:  function that executes task_type
-*** returns Bool - true on success
-** `function parse(message::any)`: function that takes expected payload and convert
-*** returns task_type
-*** throws ErrorException on parse error
-# Returns
-* task_module::Module module that implements this interface
 """
-function register(daemon::DaemonService, task_module::Module)
+function register(daemon::DaemonService, task_type::Type)
+    println("$(methodswith(task_type, DaemonTask))")
+    a = task_type()
+    DaemonTask.execute(a)
     symbols = names(task_module, true)
 
     # Much rather use :in, but doesn't seem to work with array of symbols

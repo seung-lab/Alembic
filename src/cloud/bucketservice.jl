@@ -15,7 +15,7 @@ type AWSBucketService <: BucketService
     name::ASCIIString
 
     AWSBucketService(env::AWS.AWSEnv, name::ASCIIString) =
-        check_reachable(env, name) && new(env, name)
+        check_reachable(env, name) && new(env, name, Bucket)
 end
 
 function check_reachable(env::AWS.AWSEnv, bucket_name::AbstractString)

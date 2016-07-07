@@ -10,17 +10,17 @@ export pop_message
 abstract QueueService
 
 type AWSQueueService <: QueueService
+    env::AWS.AWSEnv
     name::ASCIIString
     url::ASCIIString
-    env::AWS.AWSEnv
 end
+
+AWSQueueService(env::AWS.AWSEnv, name::ASCIIString) =
+        AWSQueueService(env, name, get_queue_url(env, name), Queue)
 
 function Base.string(queue::AWSQueueService)
     return "$(queue.name) from $(queue.url)"
 end
-
-AWSQueueService(env::AWS.AWSEnv, name::ASCIIString) =
-        AWSQueueService(name, get_queue_url(env, name), env)
 
 # Given our aws environment and bucket name, find the correct url
 function get_queue_url(env::AWS.AWSEnv, queue_name::AbstractString)
