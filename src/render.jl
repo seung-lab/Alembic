@@ -3,9 +3,8 @@ Multiple dispatch for meshwarp on Mesh object
 """
 function meshwarp_mesh(mesh::Mesh)
   img = get_image(mesh)
-  src_nodes, dst_nodes = get_globalized_nodes_h(mesh);
-  src_nodes = src_nodes'
-  dst_nodes = dst_nodes'
+  src_nodes = hcat(get_nodes(mesh; globalized = true, use_post = false)...)'
+  dst_nodes = hcat(get_nodes(mesh; globalized = true, use_post = true)...)'
   offset = get_offset(mesh);
   node_dict = incidence_to_dict(mesh.edges')
   triangles = dict_to_triangles(node_dict)

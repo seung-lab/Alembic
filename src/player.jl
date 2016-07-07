@@ -231,16 +231,15 @@ end
 function compile_mesh_annotations(mesh::Mesh, bb::BoundingBox, use_prealigned::Bool)
   offset = get_offset(bb)
   local_bb = translate_bb(bb, -offset)
-  get_edges_func = use_prealigned ? get_globalized_edge_lines : get_globalized_edge_lines_post
-  edges = [x - [offset, offset] for x in get_edges_func(mesh)] 
+  edges = [[x[1] - offset, x[2] - offset] for x in get_edges_endpoints(mesh; use_post = use_prealigned)] 
   edge_indices = get_edge_indices(mesh)
   edges_removed_indices = get_removed_edge_indices(mesh)
   edges_fixed_indices = get_fixed_edge_indices(mesh)
   mask = Bool[map(line_is_contained, repeated(local_bb), edges)...]
   edges_to_display = hcat(edges[mask]...)
   edges_to_display = transpose_vectors(edges_to_display)
-  lengths_pre = get_edge_lengths(mesh)
-  lengths_post = get_edge_lengths_post(mesh)
+  lengths_pre = get_edge_lengths(mesh; use_post = false)
+  lengths_post = get_edge_lengths(mesh; use_post = true)
   strain = (lengths_post - lengths_pre) ./ lengths_pre
   strain_to_display = strain[mask]
   edge_indices_included = edge_indices[mask]

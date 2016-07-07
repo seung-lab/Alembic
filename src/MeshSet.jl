@@ -879,7 +879,7 @@ function autoblockmatch(index; params=get_params(index))
   return meshset;
 end
 
-function get_correspondence_property(meshset::MeshSet, key)
+function get_correspondence_properties(meshset::MeshSet, key)
   return map(get_properties, meshset.matches, repeated(key))
 end
 
