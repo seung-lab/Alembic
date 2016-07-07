@@ -198,7 +198,7 @@ end
 
 
 function make_vectors(meshset::MeshSet, match_ind::Int, offset, scale=10)
-  src_points, dst_points, filtered_inds = get_globalized_correspondences_post(meshset, match_ind)
+  src_points, dst_points, filtered_inds = get_correspondences(meshset, match_ind; globalized = true, use_post = true)
   return offset_points(src_points, dst_points, offset), filtered_inds
 end
 
