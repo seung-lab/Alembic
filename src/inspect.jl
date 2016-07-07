@@ -221,9 +221,9 @@ function make_vectors!(params)
   match_ind = params["match_index"]
   scale = params["scale"]
   offset = params["offset"]
-  src_points, dst_points, filtered_inds = get_globalized_correspondences(meshset, match_ind)
+  src_points, dst_points, filtered_inds = get_correspondences(meshset, match_ind; globalized = true)
   if params["post_matches"]
-    src_points, dst_points, filtered_inds = get_globalized_correspondences_post(meshset, match_ind)
+    src_points, dst_points, filtered_inds = get_correspondences(meshset, match_ind; globalized, use_post = true)
   end
   vectorsA = scale_matches(src_points, scale)
   vectorsB = scale_matches(dst_points, scale)
@@ -841,8 +841,8 @@ end
 
 function view_mesh_strain(mesh, factor=10)
   pts = hcat(get_edge_midpoints(mesh)...)
-  lengths_pre = get_edge_lengths(mesh)
-  lengths_post = get_edge_lengths_post(mesh)
+  lengths_pre = get_edge_lengths(mesh; use_post = false)
+  lengths_post = get_edge_lengths(mesh; use_post = true)
   strain = lengths_post - lengths_pre
   # strain = (lengths_post - lengths_pre) ./ lengths_pre
   # colors = [s <= 0 ? "#000099" : "#990000" for s in strain]

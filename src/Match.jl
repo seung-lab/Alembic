@@ -20,6 +20,22 @@ function count_filtered_properties(match::Match, property_name, compare, thresho
  return sum(compare(get_filtered_properties(match::Match, property_name), threshold))
 end
 
+function get_src_index(match::Match)
+  return match.src_index
+end
+
+function get_dst_index(match::Match)
+  return match.dst_index
+end
+
+function get_src_and_dst_indices(match::Match)
+  return match.src_index, match.dst_index
+end
+
+function get_name(match::Match)
+	return join(get_src_and_dst_indices(match), ",")
+end
+
 function get_ratio_filtered(match::Match, min_corresps = 0) 
   if count_correspondences(match) < min_corresps return 1.0 end # ignore low match cases
 return count_filtered_correspondences(match) / max(count_correspondences(match), 1); end
@@ -32,6 +48,10 @@ function get_ratio_edge_proximity(match::Match)
      if count_filtered_correspondences(match) == 0 return 0.0 end
      norms = map(norm, get_filtered_properties(match, "dv"))
 return maximum(norms) / match.properties["params"]["match"]["search_r"]; end
+
+function count_outlier_norms(match::Match, sigma=3)
+	return sum(get_norms_std_sigmas(match) .> sigma)
+end
 
 function get_median_dv(match::Match)
 	if count_filtered_correspondences(match) == 0 
@@ -83,37 +103,21 @@ function get_norms_std_sigmas(match::Match)
 	return (norms - mu) / stdev
 end
 
-function count_outlier_norms(match::Match, sigma=3)
-	return sum(get_norms_std_sigmas(match) .> sigma)
-end
-
-function get_src_index(match::Match)
-  return match.src_index
-end
-
-function get_dst_index(match::Match)
-  return match.dst_index
-end
-
-function get_src_and_dst_indices(match::Match)
-  return match.src_index, match.dst_index
-end
-
-function get_name(match::Match)
-	return join(get_src_and_dst_indices(match), ",")
-end
-
-function get_correspondences(match::Match; globalized=false)
-	if globalized
-	return match.src_points + fill(get_offset(match.src_index), count_correspondences(match)), match.dst_points + fill(get_offset(match.dst_index), count_correspondences(match))
-	else
-	return match.src_points, match.dst_points;
+function get_correspondences(match::Match; globalized::Bool=false, global_offsets::Bool=true, filtered::Bool=false, use_post::Bool=false, src_mesh = nothing, dst_mesh = nothing)
+  	if filtered
+	  src_pts = match.src_points[get_filtered_indices(match)]; dst_pts = match.dst_points[get_filtered_incides(match)];
 	end
-end
-
-function get_filtered_correspondences(match::Match; globalized=false)
-	src_pts, dst_pts = get_correspondences(match; globalized = globalized);
-	return src_pts[get_filtered_indices(match)], dst_pts[get_filtered_indices(match)];
+  	src_pts = copy(match.src_points); dst_pts = copy(match.dst_points);
+	if use_post
+	  src_pts = deform(src_pts, src_mesh);
+	  dst_pts = deform(dst_pts, dst_mesh);
+	end
+	if globalized
+	  globalize!(src_pts, get_offset(match.src_index)); 
+	  global_offsets ? globalize!(dst_pts, get_offset(match.dst_index)) : nothing
+	end
+	filtered ? ret = (src_pts, dst_pts) : ret = (src_pts, dst_pts, get_filtered_indices(match));
+	return ret;
 end
 
 function get_filtered_correspondence_properties(match::Match)

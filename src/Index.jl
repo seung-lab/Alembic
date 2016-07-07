@@ -1,78 +1,31 @@
-function overview(index)
-	return (index[1], index[2], OVERVIEW_INDEX, OVERVIEW_INDEX);
-end
+# functions to get indices in different pipeline stages
+# index -> index
+function overview(index)		return (index[1], index[2], OVERVIEW_INDEX, OVERVIEW_INDEX);		end
+function premontaged(index)		return (index[1], index[2], PREMONTAGED_INDEX, PREMONTAGED_INDEX);	end
+function montaged(index)		return (index[1], index[2], MONTAGED_INDEX, MONTAGED_INDEX);		end
+function prealigned(index)		return (index[1], index[2], PREALIGNED_INDEX, PREALIGNED_INDEX);	end
+function subsection(index, num)		return (index[1], index[2], PREALIGNED_INDEX, num);			end
+function aligned(index)			return (index[1], index[2], ALIGNED_INDEX, ALIGNED_INDEX);		end
+function finished(index)		return (index[1], index[2], FINISHED_INDEX, FINISHED_INDEX);		end
+# wafer, sec -> index
+function overview(wafer, section)	return (wafer, section, OVERVIEW_INDEX, OVERVIEW_INDEX);		end
+function premontaged(wafer, section) 	return (wafer, section, PREMONTAGED_INDEX, PREMONTAGED_INDEX);		end
+function montaged(wafer, section)	return (wafer, section, MONTAGED_INDEX, MONTAGED_INDEX);		end
+function prealigned(wafer, section)	return (wafer, section, PREALIGNED_INDEX, PREALIGNED_INDEX);		end
+function subsection(wafer, section, num) return (wafer, section, PREALIGNED_INDEX, num);			end
+function aligned(wafer, section)	return (wafer, section, ALIGNED_INDEX, ALIGNED_INDEX);			end
+function finished(wafer, section)	return (wafer, section, FINISHED_INDEX, FINISHED_INDEX);		end
 
-function premontaged(index)
-	return (index[1], index[2], PREMONTAGED_INDEX, PREMONTAGED_INDEX);
-end
+# functions for checking whether an index belongs to a particular pipeline stage
+function is_overview(index)	 	return index[3:4] == (OVERVIEW_INDEX, OVERVIEW_INDEX);			end
+function is_premontaged(index)	 	return index[3:4] == (PREMONTAGED_INDEX, PREMONTAGED_INDEX);		end
+function is_montaged(index)	 	return index[3:4] == (MONTAGED_INDEX, MONTAGED_INDEX);			end
+function is_prealigned(index)	 	return index[3] == PREALIGNED_INDEX;					end
+function is_subsection(index)		return index[3] == PREALIGNED_INDEX && index[4] >= 0; 			end
+function is_aligned(index)	 	return index[3:4] == (ALIGNED_INDEX, ALIGNED_INDEX);			end
+function is_finished(index)	 	return index[3:4] == (FINISHED_INDEX, FINISHED_INDEX);			end
 
-function montaged(index)
-	return (index[1], index[2], MONTAGED_INDEX, MONTAGED_INDEX);
-end
-
-function prealigned(index)
-	return (index[1], index[2], PREALIGNED_INDEX, PREALIGNED_INDEX);
-end
-
-function aligned(index)
-	return (index[1], index[2], ALIGNED_INDEX, ALIGNED_INDEX);
-end
-
-function finished(index)
-  return (index[1], index[2], FINISHED_INDEX, FINISHED_INDEX);
-end
-###
-
-function overview(wafer, section)
-	return (wafer, section, OVERVIEW_INDEX, OVERVIEW_INDEX);
-end
-
-function premontaged(wafer, section)
-	return (wafer, section, PREMONTAGED_INDEX, PREMONTAGED_INDEX);
-end
-
-function montaged(wafer, section)
-	return (wafer, section, MONTAGED_INDEX, MONTAGED_INDEX);
-end
-
-function prealigned(wafer, section)
-	return (wafer, section, PREALIGNED_INDEX, PREALIGNED_INDEX);
-end
-
-function aligned(wafer, section)
-	return (wafer, section, ALIGNED_INDEX, ALIGNED_INDEX);
-end
-
-function finished(wafer, section)
-  return (wafer, section, FINISHED_INDEX, FINISHED_INDEX);
-end
-
-###
-
-function is_overview(index)
-    if index[3:4] == (OVERVIEW_INDEX, OVERVIEW_INDEX)   return true else return false end
-end
-
-function is_premontaged(index)
-    if index[3] >= 0 && index[4] >= 0 return true else return false end
-end
-
-function is_montaged(index)
-    if index[3:4] == (MONTAGED_INDEX, MONTAGED_INDEX)   return true else return false end
-end
-
-function is_prealigned(index)
-    if index[3:4] == (PREALIGNED_INDEX, PREALIGNED_INDEX)   return true else return false end
-end
-
-function is_aligned(index)
-    if index[3:4] == (ALIGNED_INDEX, ALIGNED_INDEX) return true else return false end
-end
-
-function is_finished(index)
-    if index[3:4] == (FINISHED_INDEX, FINISHED_INDEX) return true else return false end
-end
-
+# functions for checking whether two indices are next to each other
 function is_adjacent(A_index, B_index)
   if !(is_premontaged(A_index)) || !(is_premontaged(B_index))	return false end
   if abs(A_index[3] - B_index[3]) + abs(A_index[4] - B_index[4])  == 1 return true; end
@@ -87,10 +40,8 @@ end
 
 function is_preceding(A_index, B_index, within = 1)
   if (is_premontaged(A_index)) || (is_premontaged(B_index))	return false end
-  	for i in 1:within
-	if A_index[1:2] == get_preceding(B_index, i)[1:2] return true; end
-      end
-	return false;
+  for i in 1:within if A_index[1:2] == get_preceding(B_index, i)[1:2] return true; end end
+  return false;
 end
 
 function index_rank(index)
@@ -182,8 +133,18 @@ end
 function get_preceding(index, num = 1)
   registry = get_registry(index);
   loc_in_reg = find_in_registry(index);
+  if loc_in_reg == 0 return NO_INDEX; end
   if loc_in_reg <= num return NO_INDEX; end
-  return registry[loc_in_reg - num, 2];
+  cur_sec = registry[loc_in_reg, 2][2]
+  ind_num = 0;
+  for sec_num in 1:num
+    while cur_sec == registry[loc_in_reg - ind_num, 2][2]
+	ind_num += 1;
+	if loc_in_reg == ind_num return NO_INDEX end
+    end
+    cur_sec = registry[loc_in_reg - ind_num, 2][2];
+  end
+  return registry[loc_in_reg - ind_num, 2];
 end
 
 function get_succeeding(index, num = 1)
@@ -191,7 +152,16 @@ function get_succeeding(index, num = 1)
   loc_in_reg = find_in_registry(index);
   if loc_in_reg == 0 return NO_INDEX; end
   if loc_in_reg > size(registry, 1) - num return NO_INDEX; end
-  return registry[loc_in_reg + num, 2];
+  cur_sec = registry[loc_in_reg, 2]
+  ind_num = 0;
+  for sec_num in 1:num
+    while cur_sec == registry[loc_in_reg + ind_num, 2][2]
+	ind_num += 1;
+	if loc_in_reg == ind_num return NO_INDEX end
+    end
+    cur_sec = registry[loc_in_reg + ind_num, 2][2];
+  end
+  return registry[loc_in_reg + ind_num, 2];
 end
 
 function in_same_wafer(indexA, indexB)
@@ -216,13 +186,22 @@ function get_preceding_in_wafer(index)
   end
 end
 
-function get_index_range(firstindex, lastindex)
-  firstindex, lastindex = match_index_stages(firstindex, lastindex)
+function get_index_range(firstindex, lastindex; exclude_wholes_when_subs_exist = true)
+  #firstindex, lastindex = match_index_stages(firstindex, lastindex)
   if is_premontaged(firstindex)
-    get_registry(firstindex)[get_range_in_registry(firstindex, lastindex), 2]
-  else
-    return filter(i->firstindex <= i <= lastindex, get_indices(firstindex))
+    return get_registry(firstindex)[get_range_in_registry(firstindex, lastindex), 2]
   end
+    inds = filter(i->index_rank(firstindex) <= index_rank(i) <= index_rank(lastindex), get_indices(firstindex));
+    if exclude_wholes_when_subs_exist
+      inds_to_exclude = similar(inds, 0)
+      for ind in inds
+	if is_subsection(ind)
+		push!(inds_to_exclude, prealigned(ind))
+	end
+      end
+      inds = setdiff(inds, inds_to_exclude)
+    end
+    return inds
 end
 
 function match_index_stages(indexA, indexB)
@@ -430,4 +409,8 @@ function reload_registry(index)
   elseif is_aligned(index) global REGISTRY_ALIGNED = parse_registry(registry_fp);
   else global REGISTRY_PREMONTAGED = parse_registry(registry_fp);
   end
+end
+
+function globalize!(pts::Points, offset::Point)
+  @simd for i in 1:length(pts) @fastmath @inbounds pts[i] = pts[i] + offset; end
 end

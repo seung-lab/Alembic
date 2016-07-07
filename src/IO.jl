@@ -27,7 +27,7 @@ function save(path::String, img::Array)
     end
 
 function save(filename::String, data)
-  println("Saving meshset to ", filename)
+  println("Saving $(typeof(data)) to ", filename)
   open(filename, "w") do file
     serialize(file, data)
   end

@@ -187,9 +187,9 @@ function elastic_collate(meshset; from_current = true, write = false)
 
   for mesh in meshset.meshes
     if from_current
-      @fastmath @inbounds nodes[:, noderanges[get_index(mesh)]] = get_globalized_nodes_h(mesh)[2];
+      @fastmath @inbounds nodes[:, noderanges[get_index(mesh)]] = hcat(get_nodes(mesh; globalized = true, use_post = true)...);
     else
-      @fastmath @inbounds nodes[:, noderanges[get_index(mesh)]] = get_globalized_nodes_h(mesh)[1];
+      @fastmath @inbounds nodes[:, noderanges[get_index(mesh)]] = hcat(get_nodes(mesh; globalized = true, use_post = false)...);
     end
     if is_fixed(mesh)
       @fastmath @inbounds nodes_fixed[noderanges[get_index(mesh)]] = fill(true, count_nodes(mesh));
@@ -283,9 +283,7 @@ function elastic_collate(meshset; from_current = true, write = false)
   
   edges_subarrays = Array{SparseMatrixCSC{Float64, Int64}, 1}(length(procs()))
 
-@sync begin
-   @async @inbounds for proc in procs() edges_subarrays[proc] = remotecall_fetch(proc, get_local_sparse); end 
- end
+   @sync for proc in procs() @async @inbounds edges_subarrays[proc] = remotecall_fetch(proc, get_local_sparse); end 
 
   function add_local_sparse(sp_a, sp_b)
     global LOCAL_SPM = 0;
@@ -342,64 +340,18 @@ function elastic_solve!(meshset; from_current = true, use_saved = false, write =
 
 end
 
-function get_globalized_correspondences(meshset::MeshSet, ind::Int64)
-  match = meshset.matches[ind];
-  src_mesh = meshset.meshes[find_mesh_index(meshset, get_src_index(match))];
-  dst_mesh = meshset.meshes[find_mesh_index(meshset, get_dst_index(match))];
-	return get_globalized_correspondences(match, meshset.properties["params"]["registry"]["global_offsets"])
-end
-
-# may be invalid as well
-function get_globalized_correspondences(match::Match, global_offsets::Bool = true)
-  
-	src_pts, dst_pts = get_correspondences(match);
-	filtered_inds = get_filtered_indices(match);
-
-	if !global_offsets
-	@fastmath g_src_pts = src_pts + fill(get_offset(get_src_index(match)), length(src_pts));
-	g_dst_pts = dst_pts;
-	else
-	@fastmath g_src_pts = src_pts + fill(get_offset(get_src_index(match)), length(src_pts));
-	@fastmath g_dst_pts = dst_pts + fill(get_offset(get_dst_index(match)), length(dst_pts));
-	end
-
-	return g_src_pts, g_dst_pts, filtered_inds;
-end
-
-function get_globalized_correspondences_post(match::Match, src_mesh::Mesh, dst_mesh::Mesh, global_offsets::Bool = true)
-	src_pts, dst_pts = get_correspondences(match);
-	filtered_inds = get_filtered_indices(match);
-
-	src_pt_triangles = find_mesh_triangle(src_mesh, src_pts);
-	dst_pt_triangles = find_mesh_triangle(dst_mesh, dst_pts);
-
-	src_pt_weights = get_triangle_weights(src_mesh, src_pts, src_pt_triangles);
-	dst_pt_weights = get_triangle_weights(dst_mesh, dst_pts, dst_pt_triangles);
-
-	src_pts_after = get_tripoint_dst(src_mesh, src_pt_triangles, src_pt_weights);
-	dst_pts_after = get_tripoint_dst(dst_mesh, dst_pt_triangles, dst_pt_weights);
-
-	if !global_offsets
-	@fastmath g_src_pts_after = src_pts_after + fill(get_offset(get_src_index(match)), length(src_pts));
-	g_dst_pts_after = dst_pts_after;
-	else
-	@fastmath g_src_pts_after = src_pts_after + fill(get_offset(get_src_index(match)), length(src_pts));
-	@fastmath g_dst_pts_after = dst_pts_after + fill(get_offset(get_dst_index(match)), length(dst_pts));
-	end
-
-	return g_src_pts_after, g_dst_pts_after, filtered_inds;
-end
-
 # invalids set to NO_POINT
-function get_globalized_correspondences_post(meshset::MeshSet, ind)
-  match = meshset.matches[ind];
-  src_mesh = meshset.meshes[find_mesh_index(meshset, get_src_index(match))];
-  dst_mesh = meshset.meshes[find_mesh_index(meshset, get_dst_index(match))];
-	return get_globalized_correspondences_post(match, src_mesh, dst_mesh, meshset.properties["params"]["registry"]["global_offsets"])
+function get_correspondences(meshset::MeshSet, ind::Int64; filtered=false, globalized::Bool=false, global_offsets=meshset.properties["params"]["registry"]["global_offsets"], use_post = false)
+  	if use_post
+	  src_mesh = meshset.meshes[find_mesh_index(get_src_index(meshset.matches[ind]))]
+	  dst_mesh = meshset.meshes[find_mesh_index(get_dst_index(meshset.matches[ind]))]
+	  return get_correspondences(meshset.matches[ind]; filtered=filtered, globalized=globalized, global_offsets=global_offsets, use_post = use_post, src_mesh=src_mesh, dst_mesh=dst_mesh)
+	end
+	return get_correspondences(meshset.matches[ind]; filtered=filtered, globalized=globalized, global_offsets=global_offsets, use_post = use_post)
 end
 
 function get_displacements_post(meshset::MeshSet, ind)
-  src_nodes, dst_nodes, filtered_inds = get_globalized_correspondences_post(meshset, ind)
+  src_nodes, dst_nodes, filtered_inds = get_correspondences_post(meshset, ind; globalized = true, use_post = true)
   return src_nodes - dst_nodes, filtered_inds
 end
 
@@ -433,11 +385,11 @@ function rectify_drift(meshset::MeshSet, start_ind = 1, final_ind = count_meshes
   		continue;
   	end
 	if use_post
-	g_src_pts_after, g_dst_pts_after, filtered_after = get_globalized_correspondences_post(match, src_mesh, dst_mesh, meshset.properties["params"]["registry"]["global_offsets"])
+	g_src_pts_after, g_dst_pts_after, filtered_after = get_correspondences(match; src_mesh = src_mesh, dst_mesh = dst_mesh, global_offsets = meshset.properties["params"]["registry"]["global_offsets"], use_post = true)
   	residuals_match_post = g_dst_pts_after[filtered_after] - g_src_pts_after[filtered_after]; 
 	avg_drift = mean(residuals_match_post);
       else
-	g_src_pts, g_dst_pts, filtered = get_globalized_correspondences(match, meshset.properties["params"]["registry"]["global_offsets"])
+	g_src_pts, g_dst_pts, filtered = get_correspondences(match; global_offsets = meshset.properties["params"]["registry"]["global_offsets"])
   	residuals_match = g_dst_pts[filtered] - g_src_pts[filtered]; 
 	avg_drift = mean(residuals_match);
       end
@@ -536,8 +488,8 @@ println(join(fill('-', 190)))
   		continue;
   	end
 
-	g_src_pts, g_dst_pts, filtered = get_globalized_correspondences(match, params["registry"]["global_offsets"])
-	g_src_pts_after, g_dst_pts_after, filtered_after = get_globalized_correspondences_post(match, src_mesh, dst_mesh, params["registry"]["global_offsets"])
+	g_src_pts, g_dst_pts, filtered = get_correspondences(match; global_offsets = params["registry"]["global_offsets"], globalized = true)
+	g_src_pts_after, g_dst_pts_after, filtered_after = get_correspondences(match; global_offsets = params["registry"]["global_offsets"], src_mesh = src_mesh, dst_mesh = dst_mesh, globalized = true, use_post = true)
 
   	props = get_filtered_correspondence_properties(match);
   	r_maxs_match = Array{Float64}(map(get_dfs, props, repeated("r_max")));

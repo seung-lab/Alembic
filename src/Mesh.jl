@@ -1,5 +1,5 @@
 type Mesh
-	index::Index							# any sort of index associated with the mesh - by default a 4-tuple
+	index::Index						# any sort of index associated with the mesh - by default a 4-tuple
 
 	# all coordinates are taken with the image associated with the mesh having its left top corner at (0, 0) 
 	src_nodes::Points					# nodes as array of [i, j] coordinates, sorted in i, j order
@@ -10,56 +10,117 @@ type Mesh
 end
 
 ### INDEX.jl EXTENSIONS
-function is_adjacent(Am::Mesh, Bm::Mesh)	return is_adjacent(Am.index, Bm.index);		end
-function is_diagonal(Am::Mesh, Bm::Mesh)	return is_diagonal(Am.index, Bm.index);		end
+function is_adjacent(Am::Mesh, Bm::Mesh)		return is_adjacent(Am.index, Bm.index);			end
+function is_diagonal(Am::Mesh, Bm::Mesh)		return is_diagonal(Am.index, Bm.index);			end
 function is_preceding(Am::Mesh, Bm::Mesh, within = 1)	return is_preceding(Am.index, Bm.index, within);	end
 
 ### PARAMS.jl EXTENSIONS
-function get_params(mesh::Mesh)			return get_params(mesh.index);		end
+function get_params(mesh::Mesh)				return get_params(mesh.index);				end
+function globalize!(pts::Points, mesh::Mesh)
+  offset = get_offset(mesh)
+  @simd for i in 1:length(pts) @fastmath @inbounds pts[i] = pts[i] + offset; end
+end
 	     
 ### META.jl EXTENSIONS
-function get_offset(mesh::Mesh)		return get_offset(mesh.index);		end
-function get_image_size(mesh::Mesh)		return get_image_size(get_metadata(mesh.index));	end
-function get_metadata(mesh::Mesh)		return get_metadata(mesh.index);	end
+function get_offset(mesh::Mesh)				return get_offset(mesh.index);				end
+function get_image_size(mesh::Mesh)			return get_image_size(get_metadata(mesh.index));	end
+function get_metadata(mesh::Mesh)			return get_metadata(mesh.index);			end
 
 ### IO.jl EXTENSIONS
-function get_path(mesh::Mesh)			return get_path(mesh.index);		end
-function get_image(mesh::Mesh, scale=1.0, dtype = IMG_ELTYPE)	return get_image(mesh.index, scale, dtype);	end
+function get_path(mesh::Mesh)				return get_path(mesh.index);				end
+function get_image(mesh::Mesh; kwargs...)		return get_image(mesh.index; kwargs...);		end
+
+### retrieval
+function get_index(mesh::Mesh)				return mesh.index;					end
+function get_nodes(mesh::Mesh; globalized::Bool = false, use_post::Bool=false)
+	nodes = use_post ? copy(mesh.src_nodes) : copy(mesh.dst_nodes);
+	globalized ? globalize!(nodes, mesh) : nothing
+	return nodes
+end
+
 
 ### counting
-function count_nodes(mesh::Mesh)		return size(mesh.src_nodes, 1);		end
-function count_edges(mesh::Mesh)		return size(mesh.edges, 2);		end
-
-function get_index(mesh::Mesh)		return mesh.index;		end
+function count_nodes(mesh::Mesh)			return size(mesh.src_nodes, 1);				end
+function count_edges(mesh::Mesh)			return size(mesh.edges, 2);				end
 
 ### internal
-function get_topleft_offset(mesh::Mesh)		return mesh.src_nodes[1];		end
-function get_edge_points(mesh::Mesh, ind)
-#	src_ind = findfirst(this -> this < 0, mesh.edges[:, ind]);
-#	dst_ind = findfirst(this -> this > 0, mesh.edges[:, ind]);
-	@fastmath @inbounds inds = findnz(mesh.edges[:, ind])[1];
-	return mesh.src_nodes[inds[1]], mesh.src_nodes[inds[2]]
+function get_topleft_offset(mesh::Mesh)			return mesh.src_nodes[1];				end
+
+function get_dims_and_dists(mesh::Mesh)
+	n = count_nodes(mesh);
+	@fastmath @inbounds begin
+	i_dist = 0;
+	j_dist = mesh.src_nodes[2][2] - mesh.src_nodes[1][2];
+	j_dim = 0;
+
+	# calculate j-dim by iterating until i changes
+	for ind in 2:count_nodes(mesh)
+		i_dif = mesh.src_nodes[ind][1] - mesh.src_nodes[ind-1][1]
+		if i_dif == 0 j_dim = ind; else i_dist = i_dif; break; end
+	end
+	i_dim = round(Int64, 1 + (mesh.src_nodes[count_nodes(mesh)][1] - mesh.src_nodes[1][1]) / i_dist);
+      end #fmib
+	return (i_dim, j_dim), [i_dist, j_dist];
 end
 
-function get_edge_points_post(mesh::Mesh, ind)
-#	src_ind = findfirst(this -> this < 0, mesh.edges[:, ind]);
-#	dst_ind = findfirst(this -> this > 0, mesh.edges[:, ind]);
-	@fastmath @inbounds inds = findnz(mesh.edges[:, ind])[1];
-	return mesh.dst_nodes[inds[1]], mesh.dst_nodes[inds[2]]
+function get_mesh_index(dims, i, j)
+	ind = 0;
+	if iseven(i) && (j == dims[2]) return ind; end
+	if ((i < 1) || (j < 1) || (i > dims[1]) || (j > dims[2])) return ind; end
+	@fastmath @inbounds ind += div(i-1, 2) * (dims[2] - 1); #even rows
+	@fastmath @inbounds ind += div(i, 2) * dims[2]; #odd rows
+	ind += j;
+	ind = convert(Int64, ind);
+	return ind;
 end
 
-function get_globalized_edge_lines(mesh::Mesh, ind, offset=get_offset(mesh))
-#	src_ind = findfirst(this -> this < 0, mesh.edges[:, ind]);
-#	dst_ind = findfirst(this -> this > 0, mesh.edges[:, ind]);
-	@fastmath @inbounds inds = findnz(mesh.edges[:, ind])[1];
-	return [mesh.src_nodes[inds[1]] + offset, mesh.src_nodes[inds[2]] + offset]
+function get_mesh_coord(dims, total_offset, dists, i, j)
+	if iseven(i) && (j == dims[2]) return (0, 0); end
+	@fastmath @inbounds pi = (i-1) * dists[1] + total_offset[1];
+	if iseven(i)	@fastmath @inbounds pj = (j-0.5) * dists[2] + total_offset[2];
+	else		@fastmath @inbounds pj = (j-1) * dists[2] + total_offset[2];
+	end
+	return [pi; pj];
 end
 
-function get_globalized_edge_lines_post(mesh::Mesh, ind, offset=get_offset(mesh))
-#	src_ind = findfirst(this -> this < 0, mesh.edges[:, ind]);
-#	dst_ind = findfirst(this -> this > 0, mesh.edges[:, ind]);
-	@fastmath @inbounds inds = findnz(mesh.edges[:, ind])[1];
-	return [mesh.dst_nodes[inds[1]] + offset, mesh.dst_nodes[inds[2]] + offset]
+### edge-length related
+
+# returns the endpoints of the edges for all edges - returns two Points arrays, where each edge runs from endpoint_a[i] to endpoint_b[i]
+function get_edge_endpoints(mesh::Mesh; globalized::Bool = false, use_post::Bool = false)
+	num_edges = count_edges(mesh);
+	endpoints_a = Points(num_edges);
+	endpoints_b = Points(num_edges);
+
+  	for ind in 1:num_edges
+	@inbounds node_inds = findnz(mesh.edges[:, ind])[1];
+	@inbounds endpoints_a[ind] = use_post ? mesh.src_nodes[node_inds[1]] : mesh.dst_nodes[node_inds[1]]
+	@inbounds endpoints_b[ind] = use_post ? mesh.src_nodes[node_inds[2]] : mesh.dst_nodes[node_inds[2]]
+      	end
+
+	globalized ? globalize!(endpoints_a, mesh) : nothing
+	globalized ? globalize!(endpoints_b, mesh) : nothing
+	return endpoints_a, endpoints_b
+end
+
+# returns the midpoints of the edges for all edges - kwargs are parsed to get_edge_endpoints
+function get_edge_midpoints(mesh::Mesh; kwargs...)
+  	endpoints_a, endpoints_b = get_edge_endpoints(mesh; kwargs...);
+	@simd for i in 1:length(endpoints_a)
+		@fastmath @inbounds endpoints_a[i] = endpoints_a[i] + endpoints_b[i]
+		@fastmath @inbounds endpoints_a[i] = endpoints_a[i] / 2
+	end
+      return endpoints_a;
+end
+
+# returns the lengths of the edges for all edges - kwargs are parsed to get_edge_endpoints, though globalized should not matter at all
+function get_edge_lengths(mesh::Mesh; kwargs...)
+  	endpoints_a, endpoints_b = get_edge_endpoints(mesh; kwargs...);
+        edgelengths = similar(endpoints_a, Float64)
+	@simd for i in 1:length(endpoints_a)
+		@fastmath @inbounds endpoints_a[i] = endpoints_a[i] - endpoints_b[i]
+	        @fastmath @inbounds edgelengths[i] = norm(endpoints_a[i])
+	end
+      return edgelengths
 end
 
 function remove_edge!(mesh::Mesh, ind)
@@ -99,68 +160,6 @@ function isequal(meshA::Mesh, meshB::Mesh)
   return get_index(meshA) == get_index(meshB)
 end
 
-function get_edge_length(mesh::Mesh, ind)	start_pt, end_pt = get_edge_points(mesh, ind);
-      @fastmath return norm(start_pt - end_pt);
-end
-
-function get_edge_length_post(mesh::Mesh, ind)	start_pt, end_pt = get_edge_points_post(mesh, ind);
-      @fastmath return norm(start_pt - end_pt);
-end
-
-function get_edge_midpoint(mesh::Mesh, ind)
-	start_pt, end_pt = get_edge_points(mesh, ind);
-	return (start_pt + end_pt) / 2
-end
-
-function get_edge_midpoints(mesh::Mesh)
-	return map(get_edge_midpoint, repeated(mesh), collect(1:count_edges(mesh)))
-end
-
-function get_globalized_edge_lines(mesh::Mesh)
-	offset = get_offset(mesh)
-	return map(get_globalized_edge_lines, repeated(mesh), collect(1:count_edges(mesh)), repeated(offset))
-end
-
-function get_globalized_edge_lines_post(mesh::Mesh)
-	offset = get_offset(mesh)
-	return map(get_globalized_edge_lines_post, repeated(mesh), collect(1:count_edges(mesh)), repeated(offset))
-end
-
-function get_edge_lengths(mesh::Mesh)		return FloatProperty(map(get_edge_length, repeated(mesh), collect(1:count_edges(mesh))));		end
-
-function get_edge_lengths_post(mesh::Mesh)		return FloatProperty(map(get_edge_length_post, repeated(mesh), collect(1:count_edges(mesh))));		end
-
-function get_homogenous_edge_lengths(mesh::Mesh)	return fill(get_edge_length(mesh, 1), count_edges(mesh));		end
-
-function get_globalized_nodes_h(mesh::Mesh)
-	@fastmath g_src_nodes, g_dst_nodes = get_globalized_nodes(mesh);
-    return hcat(g_src_nodes...), hcat(g_dst_nodes...)
-end
-
-function get_globalized_nodes(mesh::Mesh)
-    @fastmath g_src_nodes = mesh.src_nodes + fill(get_offset(mesh), count_nodes(mesh));
-    @fastmath g_dst_nodes = mesh.dst_nodes + fill(get_offset(mesh), count_nodes(mesh));
-    return g_src_nodes, g_dst_nodes
-end
-
-function get_dims_and_dists(mesh::Mesh)
-	n = count_nodes(mesh);
-	@fastmath @inbounds begin
-	i_dist = 0;
-	j_dist = mesh.src_nodes[2][2] - mesh.src_nodes[1][2];
-	j_dim = 0;
-
-	# calculate j-dim by iterating until i changes
-	for ind in 2:count_nodes(mesh)
-		i_dif = mesh.src_nodes[ind][1] - mesh.src_nodes[ind-1][1]
-		if i_dif == 0 j_dim = ind;
-		else i_dist = i_dif; break;
-		end
-	end
-	i_dim = round(Int64, 1 + (mesh.src_nodes[count_nodes(mesh)][1] - mesh.src_nodes[1][1]) / i_dist);
-      end #fmib
-	return (i_dim, j_dim), [i_dist, j_dist];
-end
 
 ### INIT
 function make_mesh(index, params = get_params(index), fixed=false)
@@ -219,35 +218,7 @@ function make_mesh(index, params = get_params(index), fixed=false)
 end
 
 
-function get_mesh_index(dims, i, j)
-  @fastmath @inbounds begin
-	ind = 0;
-	
-	if iseven(i) && (j == dims[2]) return ind; end
-	if ((i < 1) || (j < 1) || (i > dims[1]) || (j > dims[2])) return ind; end
-	
-	ind += div(i-1, 2) * (dims[2] - 1); #even rows
-	ind += div(i, 2) * dims[2]; #odd rows
-	ind += j;
-	ind = convert(Int64, ind);
-      end#fmib
-	return ind;
-end
 
-function get_mesh_coord(dims, total_offset, dists, i, j)
-  @fastmath @inbounds begin
-	if iseven(i) && (j == dims[2]) return (0, 0); end
-	
-	pi = (i-1) * dists[1] + total_offset[1];
-
-	if iseven(i)	pj = (j-0.5) * dists[2] + total_offset[2];
-	else		pj = (j-1) * dists[2] + total_offset[2];
-	end
-
-      end#fmib
-
-	return [pi; pj];
-end
 
 
 
@@ -425,6 +396,12 @@ function get_tripoint_dst(mesh::Mesh, triangle::Triangle, weight::Weight)
 	return dst_point;
 end
 
+function deform(points::Points, mesh::Mesh)
+  	triangles = find_mesh_triangle(mesh, points);
+	weights = get_triangle_weights(mesh, points, triangles);
+	return get_tripoint_dst(mesh, triangles, weights);
+end
+
 function fix!(mesh::Mesh)
 	mesh.properties["fixed"] = true;
 end
@@ -439,15 +416,6 @@ end
 
 function reset!(mesh::Mesh)
 	mesh.dst_nodes = copy(mesh.src_nodes)
-end
-
-function refine(mesh::Mesh, triangle::Triangle)
-	edges = get_edges(mesh, triangle)
-	
-end
-
-function find_midpoint(pointA::Point, pointB::Point)
-	return (pointA + pointB) / 2
 end
 
 function get_edges(mesh::Mesh, node_index)
