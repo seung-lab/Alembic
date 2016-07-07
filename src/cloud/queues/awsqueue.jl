@@ -1,28 +1,28 @@
-module Queue
+module AWSQueue
 
-import AWS
-import AWS.SQS
+import AWS, AWS.SQS
+import Julimaps.Cloud.Queues.Queue
 
-export QueueService
 export AWSQueueService
-export pop_message
 
-abstract QueueService
-
-type AWSQueueService <: QueueService
+type AWSQueueService <: Queue.QueueService
     env::AWS.AWSEnv
     name::ASCIIString
     url::ASCIIString
 end
 
 AWSQueueService(env::AWS.AWSEnv, name::ASCIIString) =
-        AWSQueueService(env, name, get_queue_url(env, name), Queue)
+        AWSQueueService(env, name, get_queue_url(env, name))
 
 function Base.string(queue::AWSQueueService)
     return "$(queue.name) from $(queue.url)"
 end
 
-# Given our aws environment and bucket name, find the correct url
+"""
+    get_queue_url(env::AWS.AWSEnv, queue_name::AbstractString)
+
+Find the correct url with our aws environment and bucket name
+"""
 function get_queue_url(env::AWS.AWSEnv, queue_name::AbstractString)
     response = SQS.CreateQueue(env, queueName=queue_name)
 
@@ -35,8 +35,12 @@ function get_queue_url(env::AWS.AWSEnv, queue_name::AbstractString)
     return response.obj.queueUrl
 end
 
-# Pops message off the given queue service and returns a task
-function pop_message(queue::AWSQueueService)
+"""
+    Queue.pop_message(queue::AWSQueueService)
+
+Pop a message of the aws queue. Supplied to Queue for multi dispatch
+"""
+function Queue.pop_message(queue::AWSQueueService)
     receive_response = SQS.ReceiveMessage(queue.env; queueUrl = queue.url)
 
     if receive_response.http_code != 200
@@ -55,4 +59,4 @@ function pop_message(queue::AWSQueueService)
     return strip(receive_response.obj.messageSet[1].body)
 end
 
-end # end module QueueService
+end # module AWSQueue

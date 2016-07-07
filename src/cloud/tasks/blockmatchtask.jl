@@ -1,47 +1,28 @@
+"""
+    BlockMatchTask
+
+This module includes the composite type BlockMatchDetails which includes both
+the generic DaemonTask.Details and AlignmentTask.Details.
+"""
 module BlockMatchTask
-import DaemonTask
 
-export BlockMatchTask
-export name, execute, task_type
+import Julimaps.Cloud.Tasks.DaemonTask
+import Julimaps.Cloud.Tasks.AlignmentTask
 
-name = "BLOCK_MATCH"
+export BlockMatchTask, name, execute
 
-type AlignmentDetails
-    baseDirectory::AbstractString
-    files::Array{AbstractString}
-    indices::Array{Tuple{Int64,Int64,Int64,Int64}}
+type BlockMatchTaskDetails <: DaemonTask.DaemonTaskDetails
+    details::DaemonTask.Details
+    payload::AlignmentTask.Details
+    BlockMatchTask(details::DaemonTask.Details,
+        dict::Dict{AbstractString, Any}) =
+            new(details, AlignmentTask.Details(dict))
 end
 
-typealias task_type BlockMatchTask
+const name = "BLOCK_MATCH"
 
-type BlockMatchTask <: DaemonTask.DaemonTaskDetails
-    details::DaemonTask.TaskDetails
-    payload::AlignmentDetails
-end
-
-function to_daemon_task(dictionary::Dict, tasks::Dict{AbstractString, Module})
-    if !haskey(dictionary, "details")
-        error("Missing details")
-    end
-
-    details = dictionary["details"]
-
-    if !haskey(TASKS, details["taskType"])
-        error("Unknown task : $(details["taskType"])")
-    end 
-    indices = []
-    for index in details["indices"]
-        push!(indices, (index[1],index[2],index[3],index[4]))
-    end
-
-    return TASKS[details["taskType"]](
-        Details(
-            details["taskType"],
-            details["baseDirectory"],
-            details["files"],
-            indices
-        )
-    )
+function DaemonTask.execute(task::BlockMatchTaskDetails)
+    println("BlockMatchTask")
 end
 
 end # module BlockMatchTask

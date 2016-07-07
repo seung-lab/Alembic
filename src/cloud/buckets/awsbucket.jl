@@ -1,16 +1,11 @@
-module Bucket
+module AWSBucket
 
-import AWS
-import AWS.S3
+import AWS, AWS.S3
+import Julimaps.Cloud.Buckets.Bucket
 
-export BucketService
 export AWSBucketService
-export download
-export upload
 
-abstract BucketService
-
-type AWSBucketService <: BucketService
+type AWSBucketService <: Bucket.BucketService
     env::AWS.AWSEnv
     name::ASCIIString
 
@@ -58,7 +53,6 @@ function upload(bucket::AWSBucketService, local_file::Union{ASCIIString, IO},
         end
     end
 
-    # TODO FIX THIS
     put_response = S3.put_object(bucket.env, bucket.name, local_file)
 
     if put_response != 200
@@ -67,4 +61,5 @@ function upload(bucket::AWSBucketService, local_file::Union{ASCIIString, IO},
     end
 
 end
-end # end module BucketService
+
+end # module AWSBucket

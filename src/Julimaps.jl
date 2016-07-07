@@ -1,5 +1,5 @@
 module Julimaps
-include("cloud/index.jl")
+include("cloud/include.jl")
 end
 
 

@@ -1,8 +1,8 @@
 module Daemon
 
-import Julimaps.Cloud.Queue
-import Julimaps.Cloud.Bucket
-import Julimaps.Cloud.DaemonTask
+import Julimaps.Cloud.Queues.Queue
+import Julimaps.Cloud.Buckets.Bucket
+import Julimaps.Cloud.Tasks.DaemonTask
 import JSON
 
 export DaemonService
@@ -29,18 +29,16 @@ function run(daemon::DaemonService)
             if isempty(message)
                 println("No messages found in $(Queue.string(daemon.queue))")
             else
-                #=task = DaemonTask.parse(message)=#
-                task_module = parse(daemon, message)
+                task = DaemonTask.parse(message)
 
-                task = task_module.parse(message)
+                println("Task is $(task.details.id), $(task.details.name)")
 
-                success = task_module.execute(task)
+                success = DaemonTask.execute(task)
 
-                task = parse(daemon, message)
-
-                println("Task is $(task.taskId)")
-
-                #=DaemonTask.execute(task)=#
+                if !success
+                    println("Task $(task.details.id), $(task.details.name) was
+                    not successful")
+                end
             end
         catch e
             showerror(STDERR, e, catch_backtrace(); backtrace = true)
@@ -54,36 +52,20 @@ end
 """
     register(daemon::DaemonService, task_module::Module)
 
-Register a module as a task to perform for input daemon.
+Register the task type generation for the given task_name
 
 """
-function register(daemon::DaemonService, task_type::Type)
-    println("$(methodswith(task_type, DaemonTask))")
-    a = task_type()
-    DaemonTask.execute(a)
-    symbols = names(task_module, true)
-
-    # Much rather use :in, but doesn't seem to work with array of symbols
-    if findfirst(symbols, :task_type) <= 0
-        error("Module $task_module does not contain :task_type defined")
+function register!(daemon::DaemonService, task_name::AbstractString, task_type::Type)
+    if length(methods(DaemonTask.execute, Any[task_type])) == 0
+        error("Can not register $task_type to execute in DaemonTask!")
     end
 
-    if findfirst(symbols, :execute) <= 0
-        error("Module $task_module does not contain an :execute function")
+    if haskey(daemon.tasks, task_name)
+        warn("Daemon has already registered $task_name with
+        $(daemon.tasks[task_name])")
     end
 
-    if findfirst(symbols, :name) <= 0
-        error("Module $task_module does not contain a task :name")
-    end
-
-    #=
-     =if !task_module.task_type <: DaemonTask.DaemonTaskDetails
-     =    error("Module $task_module's task type does not subtype
-     =        DaemonTaskDetails")
-     =end
-     =#
-
-    return daemon.tasks[task_module.name]
+    daemon.tasks[task_name] = task_type
 end
 
 function parse(daemon::DaemonService, text::ASCIIString)
@@ -99,31 +81,17 @@ function parse(daemon::DaemonService, text::ASCIIString)
         error("Could not find task details from parsing message ($text)")
     end
 
-    if !haskey(message["details"], "id")
-        error("Could not find task id from parsing message ($text)")
-    end
-
-    if !haskey(message["details"], "name")
-        error("Could not find task name from parsing message ($text)")
-    end
-
-    task_name = message["details"]["name"]
-
-    if !haskey(daemon.tasks, task_name)
-        error("Task $task_name is not registered with the daemon")
-    end
-
-    task_module = daemon.tasks[task_name]
+    details = DaemonTask.Details(message["details"])
 
     if !haskey(message, "payload")
         error("Could not find task payload from parsing message ($text)")
     end
 
-    task = task_module.to_daemon_task(message["payload"])
+    if !haskey(daemon.tasks, details.name)
+        error("Task $(details.name) is not registered with the daemon")
+    end
 
-    #=task_module.execute(task)=#
-
-    return task
+    return daemon.tasks[task_name](details, message["payload"])
 end
 
 end # end module Daemon
