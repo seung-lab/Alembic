@@ -21,7 +21,7 @@ function is_overview(index)	 	return index[3:4] == (OVERVIEW_INDEX, OVERVIEW_IND
 function is_premontaged(index)	 	return index[3:4] == (PREMONTAGED_INDEX, PREMONTAGED_INDEX);		end
 function is_montaged(index)	 	return index[3:4] == (MONTAGED_INDEX, MONTAGED_INDEX);			end
 function is_prealigned(index)	 	return index[3] == PREALIGNED_INDEX;					end
-function is_subsection(index)		return index[3] == PREALIGNED_INDEX && index[4] => 0; 			end
+function is_subsection(index)		return index[3] == PREALIGNED_INDEX && index[4] >= 0; 			end
 function is_aligned(index)	 	return index[3:4] == (ALIGNED_INDEX, ALIGNED_INDEX);			end
 function is_finished(index)	 	return index[3:4] == (FINISHED_INDEX, FINISHED_INDEX);			end
 
