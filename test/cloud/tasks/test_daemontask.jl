@@ -50,6 +50,13 @@ function test_daemon_task_details_good()
     @test detail.name == "FAKE_TASK"
 end
 
+type NewTask <: DaemonTask.DaemonTaskDetails end
+
+function test_execute_undefined_task()
+    task = NewTask()
+    @test_throws ErrorException DaemonTask.execute(task)
+end
+
 #=
  =function test_parse_empty()
  =    message = ""
@@ -121,6 +128,8 @@ function __init__()
     test_daemon_task_details_no_name()
     test_daemon_task_details_empty_name()
     test_daemon_task_details_good()
+
+    test_execute_undefined_task()
     #=@test test_parse_empty()=#
     #=@test test_parse_bad_convert()=#
     #=@test test_to_daemon_task_good()=#
