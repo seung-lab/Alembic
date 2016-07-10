@@ -4,15 +4,7 @@ import Julimaps.Cloud.Tasks.AlignmentTask
 import JSON
 
 using Base.Test
-
-const TEST_BASE_DIRECTORY = "base_directory"
-const TEST_FILES = ["file_1", "file_2"]
-const TEST_INDICES = [(1, 2, 3, 4), ( 5, 6, 7, 8)]
-
-function make_valid_alignment_task()
-    return AlignmentTask.Details(TEST_BASE_DIRECTORY,
-        TEST_FILES, TEST_INDICES)
-end
+using MockTasks
 
 function test_no_base_directory()
     task = make_valid_alignment_task()
