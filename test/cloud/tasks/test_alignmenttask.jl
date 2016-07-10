@@ -66,7 +66,17 @@ end
 function test_good_alignment_task()
     task = make_valid_alignment_task()
     dict = JSON.parse(JSON.json(task))
-    @test nothing != AlignmentTask.Details(dict)
+    new_task = AlignmentTask.Details(dict)
+    @test nothing != new_task
+    @test new_task.baseDirectory == TEST_BASE_DIRECTORY
+    @test length(new_task.files) == length(TEST_FILES)
+    for index in 1:length(TEST_FILES)
+        @test new_task.files[index] == TEST_FILES[index]
+    end
+    @test length(new_task.indices) == length(TEST_INDICES)
+    for index in 1:length(TEST_INDICES)
+        @test new_task.indices[index] == TEST_INDICES[index]
+    end
 end
 
 function __init__()
@@ -80,4 +90,5 @@ function __init__()
 
     test_good_alignment_task()
 end
+
 end # module TestAlignmentTask
