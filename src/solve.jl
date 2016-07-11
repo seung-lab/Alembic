@@ -282,8 +282,11 @@ function elastic_collate(meshset; from_current = true, write = false)
   end
   
   edges_subarrays = Array{SparseMatrixCSC{Float64, Int64}, 1}(length(procs()))
+  edges_subarrays_tofetch = Array{Any, 1}(length(procs()))
 
-   @sync for proc in procs() @async @inbounds edges_subarrays[proc] = remotecall_fetch(proc, get_local_sparse); end 
+  # hacky
+    for proc in procs() @inbounds edges_subarrays_tofetch[proc] = remotecall(proc, get_local_sparse); end 
+    for proc in procs() @inbounds edges_subarrays_fetch[proc] = fetch(edges_subarrays_tofetch[proc]); end
 
   function add_local_sparse(sp_a, sp_b)
     global LOCAL_SPM = 0;
@@ -343,15 +346,15 @@ end
 # invalids set to NO_POINT
 function get_correspondences(meshset::MeshSet, ind::Int64; filtered=false, globalized::Bool=false, global_offsets=meshset.properties["params"]["registry"]["global_offsets"], use_post = false)
   	if use_post
-	  src_mesh = meshset.meshes[find_mesh_index(get_src_index(meshset.matches[ind]))]
-	  dst_mesh = meshset.meshes[find_mesh_index(get_dst_index(meshset.matches[ind]))]
+	  src_mesh = meshset.meshes[find_mesh_index(meshset,get_src_index(meshset.matches[ind]))]
+	  dst_mesh = meshset.meshes[find_mesh_index(meshset,get_dst_index(meshset.matches[ind]))]
 	  return get_correspondences(meshset.matches[ind]; filtered=filtered, globalized=globalized, global_offsets=global_offsets, use_post = use_post, src_mesh=src_mesh, dst_mesh=dst_mesh)
 	end
 	return get_correspondences(meshset.matches[ind]; filtered=filtered, globalized=globalized, global_offsets=global_offsets, use_post = use_post)
 end
 
 function get_displacements_post(meshset::MeshSet, ind)
-  src_nodes, dst_nodes, filtered_inds = get_correspondences_post(meshset, ind; globalized = true, use_post = true)
+  src_nodes, dst_nodes, filtered_inds = get_correspondences(meshset, ind; globalized = true, use_post = true)
   return src_nodes - dst_nodes, filtered_inds
 end
 
