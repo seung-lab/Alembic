@@ -285,8 +285,8 @@ function elastic_collate(meshset; from_current = true, write = false)
   edges_subarrays_tofetch = Array{Any, 1}(length(procs()))
 
   # hacky
-    for proc in procs() @inbounds edges_subarrays_tofetch[proc] = remotecall(proc, get_local_sparse); end 
-    for proc in procs() @inbounds edges_subarrays_fetch[proc] = fetch(edges_subarrays_tofetch[proc]); end
+    @sync for proc in procs() @inbounds edges_subarrays[proc] = remotecall_fetch(proc, get_local_sparse); end 
+    #for proc in procs() @inbounds edges_subarrays[proc] = fetch(edges_subarrays_tofetch[proc]); end
 
   function add_local_sparse(sp_a, sp_b)
     global LOCAL_SPM = 0;
