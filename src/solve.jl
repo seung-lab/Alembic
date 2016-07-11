@@ -246,7 +246,7 @@ function elastic_collate(meshset; from_current = true, write = false)
   	src_mesh = fetch(src_mesh_ref)
   	dst_mesh = fetch(dst_mesh_ref)
 
-	src_pts, dst_pts = get_filtered_correspondences(match);
+	src_pts, dst_pts = get_correspondences(match; filtered = true);
 	src_pt_triangles = find_mesh_triangle(src_mesh, src_pts);
 	dst_pt_triangles = find_mesh_triangle(dst_mesh, dst_pts);
 	src_pt_weights = get_triangle_weights(src_mesh, src_pts, src_pt_triangles);
@@ -273,7 +273,7 @@ function elastic_collate(meshset; from_current = true, write = false)
   edgerange_list = Array{UnitRange, 1}(map(getindex, repeated(edgeranges), map(get_src_and_dst_indices,meshset.matches)))
 
 
-   pmap(compute_sparse_matrix, matches_ref, meshes_ref[map(getindex, repeated(meshes_order), src_indices)], meshes_ref[map(getindex, repeated(meshes_order), dst_indices)], noderange_src_list, noderange_dst_list, edgerange_list);
+  pmap(compute_sparse_matrix, matches_ref, meshes_ref[map(getindex, repeated(meshes_order), src_indices)], meshes_ref[map(getindex, repeated(meshes_order), dst_indices)], noderange_src_list, noderange_dst_list, edgerange_list);
 
   println("matches collated: $(count_matches(meshset)) matches. populating sparse matrix....")
 
@@ -282,11 +282,8 @@ function elastic_collate(meshset; from_current = true, write = false)
   end
   
   edges_subarrays = Array{SparseMatrixCSC{Float64, Int64}, 1}(length(procs()))
-  edges_subarrays_tofetch = Array{Any, 1}(length(procs()))
 
-  # hacky
-    for proc in procs() @inbounds edges_subarrays_tofetch[proc] = remotecall(proc, get_local_sparse); end 
-    for proc in procs() @inbounds edges_subarrays_fetch[proc] = fetch(edges_subarrays_tofetch[proc]); end
+   @sync for proc in procs() @async @inbounds edges_subarrays[proc] = remotecall_fetch(proc, get_local_sparse); end 
 
   function add_local_sparse(sp_a, sp_b)
     global LOCAL_SPM = 0;
