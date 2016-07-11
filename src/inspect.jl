@@ -194,6 +194,8 @@ function view_match(meshset::MeshSet, match_ind)
   if USE_PYPLOT
     try
       view_inspection_statistics(meshset, match_ind)
+    catch e
+      println("view_inspection_statistics failed:\n$e")
     end
   end
 
@@ -859,14 +861,12 @@ end
 
 function view_property_spatial_scatter(match, property_name; filtered=true, factor=1)
   color="#990000"
-  correspondences_func = get_correspondences
   properties_func = get_properties
   if filtered
-    correspondences_func = get_filtered_correspondences
     properties_func = get_filtered_properties
     color="#009900"
   end
-  pts = hcat(correspondences_func(match)[1]...)
+  pts = hcat(get_correspondences(match, filtered=filtered)[1]...)
   attr = properties_func(match, property_name)
   if length(attr) > 1
     p = plt[:scatter](pts[2,:], -pts[1,:], s=attr*factor, color=color, alpha=0.5)

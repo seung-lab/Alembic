@@ -343,15 +343,15 @@ end
 # invalids set to NO_POINT
 function get_correspondences(meshset::MeshSet, ind::Int64; filtered=false, globalized::Bool=false, global_offsets=meshset.properties["params"]["registry"]["global_offsets"], use_post = false)
   	if use_post
-	  src_mesh = meshset.meshes[find_mesh_index(get_src_index(meshset.matches[ind]))]
-	  dst_mesh = meshset.meshes[find_mesh_index(get_dst_index(meshset.matches[ind]))]
+	  src_mesh = meshset.meshes[find_mesh_index(meshset, get_src_index(meshset.matches[ind]))]
+	  dst_mesh = meshset.meshes[find_mesh_index(meshset, get_dst_index(meshset.matches[ind]))]
 	  return get_correspondences(meshset.matches[ind]; filtered=filtered, globalized=globalized, global_offsets=global_offsets, use_post = use_post, src_mesh=src_mesh, dst_mesh=dst_mesh)
 	end
 	return get_correspondences(meshset.matches[ind]; filtered=filtered, globalized=globalized, global_offsets=global_offsets, use_post = use_post)
 end
 
 function get_displacements_post(meshset::MeshSet, ind)
-  src_nodes, dst_nodes, filtered_inds = get_correspondences_post(meshset, ind; globalized = true, use_post = true)
+  src_nodes, dst_nodes, filtered_inds = get_correspondences(meshset, ind; globalized = true, use_post = true)
   return src_nodes - dst_nodes, filtered_inds
 end
 

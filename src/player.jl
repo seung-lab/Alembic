@@ -220,18 +220,23 @@ function compile_match_annotations(meshset::MeshSet, match::Match, bb::BoundingB
   offset = get_offset(bb)
   local_bb = translate_bb(bb, -offset)
   (src, dst), accepted_inds = make_vectors(meshset::MeshSet, match_ind::Int, offset)
-  rejected_inds = collect(setdiff(1:length(src), accepted_inds))
-  accepted = mask_and_combine_points(src, dst, accepted_inds)
-  rejected = mask_and_combine_points(src, dst, rejected_inds)
-  accepted_vectors = transpose_vectors(hcat(filter_contained_points(accepted, local_bb)...))
-  rejected_vectors = transpose_vectors(hcat(filter_contained_points(accepted, local_bb)...))
-  return accepted_vectors, rejected_vectors
+  if length(src) > 0
+    rejected_inds = collect(setdiff(1:length(src), accepted_inds))
+    accepted = mask_and_combine_points(src, dst, accepted_inds)
+    rejected = mask_and_combine_points(src, dst, rejected_inds)
+    accepted_vectors = transpose_vectors(hcat(filter_contained_points(accepted, local_bb)...))
+    rejected_vectors = transpose_vectors(hcat(filter_contained_points(accepted, local_bb)...))
+    return accepted_vectors, rejected_vectors
+  else
+    return [], []
+  end
 end
 
 function compile_mesh_annotations(mesh::Mesh, bb::BoundingBox, use_prealigned::Bool)
   offset = get_offset(bb)
   local_bb = translate_bb(bb, -offset)
-  edges = [[x[1] - offset, x[2] - offset] for x in get_edges_endpoints(mesh; use_post = use_prealigned)] 
+  endpoints_a, endpoints_b = get_edge_endpoints(mesh; use_post = !use_prealigned)
+  edges = [[endpoints_a[i] - offset, endpoints_b[i] - offset] for i in 1:length(endpoints_a)]
   edge_indices = get_edge_indices(mesh)
   edges_removed_indices = get_removed_edge_indices(mesh)
   edges_fixed_indices = get_fixed_edge_indices(mesh)
@@ -253,23 +258,20 @@ function compile_annotations(parent_name, firstindex::Index, lastindex::Index, s
   return ms, compile_annotations(ms, firstindex, lastindex, slice)
 end
 
-function compile_annotations(meshset::MeshSet, center::Tuple{Int,Int}, radius=1024, scale=1.0)
+function compile_annotations(meshset::MeshSet, center::Tuple{Int,Int}, radius=1024; scale=1.0, use_prealigned=false)
   x, y = center
   slice = (x-radius):(x+radius), (y-radius):(y+radius)
   return compile_annotations(meshset, slice, scale)
 end
 
 function compile_annotations(meshset::MeshSet, 
-                              slice::Tuple{UnitRange{Int64},UnitRange{Int64}}, 
+                              slice::Tuple{UnitRange{Int64},UnitRange{Int64}};
                               scale::Float64=1.0, use_prealigned::Bool=false)
-  index_func = use_prealigned ? prealigned : aligned
-  ms_indices = map(index_func, map(get_index, meshset.meshes))
-  firstindex, lastindex = minimum(ms_indices), maximum(ms_indices)
-  indices = get_index_range(firstindex, lastindex)
+  indices = map(get_index, meshset.meshes)
+  firstindex, lastindex = minimum(indices), maximum(indices)
   bb = slice_to_bb(slice)
   annotations = Dict("ann" => Dict(), 
                  "meshset" => meshset, 
-                 "indices" => indices,
                  "slice" => slice,
                  "bb" => bb,
                  "scale" => scale,
@@ -279,17 +281,17 @@ function compile_annotations(meshset::MeshSet,
     annotations["ann"][index] = Dict()
     annotations["ann"][index]["match"] = Dict()
     annotations["ann"][index]["match_names"] = Dict()
-    match_inds = find_match_indices(meshset, prealigned(index))
+    match_inds = find_match_indices(meshset, index)
     for i in match_inds
-      src_index, dst_index = get_src_and_dst_indices(ms.matches[i])
-      if (firstindex <= index_func(src_index) <= lastindex) && 
-                  (firstindex <= index_func(dst_index) <= lastindex)
-        vectors, _ = compile_match_annotations(ms, ms.matches[i], bb)
+      src_index, dst_index = get_src_and_dst_indices(meshset.matches[i])
+      if (firstindex <= src_index <= lastindex) && 
+                  (firstindex <= dst_index <= lastindex)
+        vectors, _ = compile_match_annotations(meshset, meshset.matches[i], bb)
         annotations["ann"][index]["match"][i] = vectors
-        annotations["ann"][index]["match_names"][i] = get_name(ms.matches[i])
+        annotations["ann"][index]["match_names"][i] = get_name(meshset.matches[i])
       end
     end
-    mesh = get_mesh(ms, prealigned(index))
+    mesh = get_mesh(meshset, index)
     edges, strain, edge_indices, edges_removed, edges_fixed = compile_mesh_annotations(mesh, bb, use_prealigned)
     edges_removed_mask = Bool[i in edges_removed for i in edge_indices]
     edges_fixed_mask = Bool[i in edges_fixed for i in edge_indices]
@@ -299,7 +301,9 @@ function compile_annotations(meshset::MeshSet,
                                               "removed" => edges_removed_mask,
                                               "fixed" => edges_fixed_mask)
   end
-
+  if !use_prealigned
+    indices = get_index_range(aligned(firstindex), aligned(lastindex))
+  end
   annotations["indices"] = [indices, reverse(indices)]
   return annotations
 end
@@ -343,13 +347,15 @@ function display_annotations(imgc, img2, annotations; include_reverse=false)
       show_colored_lines(imgc, img2, data, strain, t=i)
     end
     for (k, match_ind) in enumerate(keys(annotations["ann"][index]["match"]))
-      data = change_vector_lengths(annotations["ann"][index]["match"][match_ind], vector_scale)*scale
-      name = annotations["ann"][index]["match_names"][match_ind]
-      if size(data, 2) > 1
-        show_points(imgc, img2, data[1:2, :], shape='o', color=colors[k], t=i)
-        show_lines(imgc, img2, data, color=colors[k], t=i)
-        fontsize = 40
-        show_text(imgc, img2, name, 2*fontsize, 2*fontsize*k, fontsize=fontsize, color=colors[k], t=i)
+      if length(annotations["ann"][index]["match"][match_ind]) > 0
+        data = change_vector_lengths(annotations["ann"][index]["match"][match_ind], vector_scale)*scale
+        name = annotations["ann"][index]["match_names"][match_ind]
+        if size(data, 2) > 1
+          show_points(imgc, img2, data[1:2, :], shape='o', color=colors[k], t=i)
+          show_lines(imgc, img2, data, color=colors[k], t=i)
+          fontsize = 40
+          show_text(imgc, img2, name, 2*fontsize, 2*fontsize*k, fontsize=fontsize, color=colors[k], t=i)
+        end
       end
     end
   end
@@ -370,7 +376,7 @@ end
 function view_stack(annotations::Dict; include_reverse=false)
   offset = get_offset(annotations["bb"])
   scale = annotations["scale"]
-  stack = make_stack(annotations, scale=scale)
+  stack = make_stack(annotations)
   imgc, img2 = view_stack(stack, offset=offset, scale=scale, annotations=annotations, include_reverse=include_reverse)
   return stack, imgc, img2
 end
