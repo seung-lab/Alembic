@@ -1,11 +1,11 @@
 module AWSQueue
 
 import AWS, AWS.SQS
-import Julimaps.Cloud.Queues.Queue
+import Julimaps.Cloud.Services.Queue
 
 export AWSQueueService
 
-type AWSQueueService <: Queue.QueueService
+type AWSQueueService <: Queue.Service
     env::AWS.AWSEnv
     name::ASCIIString
     url::ASCIIString

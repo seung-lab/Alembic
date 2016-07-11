@@ -1,21 +1,21 @@
 module AlignmentTask
 
-export Details
+export Info
 
 """
-    AlignmentTask.Details
+    AlignmentTask.Info
 
 This module is meant as a composable type for Alignment tasks such
 BlockMatchTask and RenderTask
 
 """
-type Details
+type Info
     baseDirectory::AbstractString
     files::Array{AbstractString, 1}
     indices::Array{Tuple{Int64,Int64,Int64,Int64}}
 end
 
-function Details(dict::Dict{AbstractString, Any})
+function Info(dict::Dict{AbstractString, Any})
     # parse base directory
     if isempty(strip(dict["baseDirectory"]))
         throw(ArgumentError("Payload does not include a baseDirectory"))
@@ -41,7 +41,7 @@ function Details(dict::Dict{AbstractString, Any})
         push!(indices, (index[1], index[2], index[3], index[4]))
     end
 
-    return Details(dict["baseDirectory"], dict["files"], indices)
+    return Info(dict["baseDirectory"], dict["files"], indices)
 end
 
 end # module AlignmentTask

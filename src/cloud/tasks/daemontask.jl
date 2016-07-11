@@ -2,39 +2,39 @@ module DaemonTask
 
 import JSON
 
-export DaemonTaskDetails, Details, execute
-
-"""
-    DaemonTask
-
-This is the base composite abstract class used to compose Details and Payload
-i.e. compose a task with
-```julia
-type YourDaemonTask <: DaemonTaskDetails
-    details::Details
-    payload::YourTaskDetails
-end
-```
-"""
-abstract DaemonTaskDetails
+export Details, Info, execute
 
 """
     DaemonTask.Details
 
-Type contains basic information for a daemon task
-
-"""
-type Details
-    id::Int64
-    name::AbstractString
+This is the base composite abstract class used to compose Details and Payload
+i.e. compose a task with
+```julia
+type YourDaemonTaskDetails <: DaemonTask.Details
+    basicInfo::BasicTask.Info
+    taskInfo::YourTaskDetails
 end
+```
+"""
+abstract Details
 
-function Details(dict::Dict{AbstractString, Any}) 
-    id = typeof(dict["id"]) <: Int ?  dict["id"] : parse(Int64, dict["id"])
-    if isempty(strip(dict["name"]))
-        throw(ArgumentError("Task name can not be empty"))
+# Test to see if the execute function exists for this type
+function can_execute(task_type::Type)
+    if !(task_type <: Details)
+        return false
     end
-    return Details(id, dict["name"])
+
+    execute_methods = methods(DaemonTask.execute, Any[task_type])
+    if length(execute_methods) == 0
+        return false
+    end
+    for execute_method in execute_methods
+        sig_types = execute_method.sig.types
+        if  length(sig_types) > 0 && sig_types[1] == task_type
+            return true
+        end
+    end
+    return false
 end
 
 """
@@ -42,7 +42,7 @@ end
 
 Executes the given task. Must be overriden for new tasks
 """
-function execute(task::DaemonTaskDetails)
+function execute(task::Details)
     error("Execute is unimplemented for this task $task")
 end
 

@@ -1,11 +1,11 @@
 module AWSBucket
 
 import AWS, AWS.S3
-import Julimaps.Cloud.Buckets.Bucket
+import Julimaps.Cloud.Services.Bucket
 
 export AWSBucketService
 
-type AWSBucketService <: Bucket.BucketService
+type AWSBucketService <: Bucket.Service
     env::AWS.AWSEnv
     name::ASCIIString
 

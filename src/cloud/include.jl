@@ -1,7 +1,5 @@
 module Cloud
     include("tasks/include.jl")
-    include("queues/include.jl")
-    include("buckets/include.jl")
+    include("services/include.jl")
     include("daemonservice.jl")
-end
-
+end # module Cloud

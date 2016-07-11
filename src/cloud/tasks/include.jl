@@ -1,5 +1,6 @@
 module Tasks
     include("daemontask.jl")
-    include("alignmenttask.jl")
+    include("basictaskinfo.jl")
+    include("alignmenttaskinfo.jl")
     include("blockmatchtask.jl")
 end

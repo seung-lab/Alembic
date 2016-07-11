@@ -2,27 +2,28 @@
     BlockMatchTask
 
 This module includes the composite type BlockMatchDetails which includes both
-the generic DaemonTask.Details and AlignmentTask.Details.
+the generic DaemonTask.Info and AlignmentTask.Info.
 """
 module BlockMatchTask
 
 import Julimaps.Cloud.Tasks.DaemonTask
+import Julimaps.Cloud.Tasks.BasicTask
 import Julimaps.Cloud.Tasks.AlignmentTask
 
-export BlockMatchTask, name, execute
+export BlockMatchTaskDetails, name, execute
 
-type BlockMatchTaskDetails <: DaemonTask.DaemonTaskDetails
-    details::DaemonTask.Details
-    payload::AlignmentTask.Details
-    BlockMatchTask(details::DaemonTask.Details,
-        dict::Dict{AbstractString, Any}) =
-            new(details, AlignmentTask.Details(dict))
+type BlockMatchTaskDetails <: DaemonTask.Details
+    basicInfo::BasicTask.Info
+    payloadInfo::AlignmentTask.Info
 end
+
+BlockMatchTaskDetails(info::BasicTask.Info, dict::Dict{AbstractString, Any}) =
+    new(info, AlignmentTask.Info(dict))
 
 const name = "BLOCK_MATCH"
 
 function DaemonTask.execute(task::BlockMatchTaskDetails)
-    println("BlockMatchTask")
+    println("Executing BlockMatchTask")
 end
 
 end # module BlockMatchTask

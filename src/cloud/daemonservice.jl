@@ -1,19 +1,18 @@
 module Daemon
 
-import Julimaps.Cloud.Queues.Queue
-import Julimaps.Cloud.Buckets.Bucket
+import Julimaps.Cloud.Services.Queue
+import Julimaps.Cloud.Services.Bucket
 import Julimaps.Cloud.Tasks.DaemonTask
 import JSON
 
-export DaemonService
-export run
+export DaemonService, register, run
 
 type DaemonService
-    queue::Queue.QueueService
-    bucket::Bucket.BucketService
+    queue::Queue.Service
+    bucket::Bucket.Service
     poll_frequency_seconds::Int64
     tasks::Dict{AbstractString, Type}
-    DaemonService(queue::Queue.QueueService, bucket::Bucket.BucketService,
+    DaemonService(queue::Queue.Service, bucket::Bucket.Service,
         poll_frequency_seconds::Int64) = 
             new(queue, bucket, poll_frequency_seconds,
                 Dict{AbstractString, Module}())
@@ -29,7 +28,7 @@ function run(daemon::DaemonService)
             if isempty(message)
                 println("No messages found in $(Queue.string(daemon.queue))")
             else
-                task = DaemonTask.parse(message)
+                task = parse(message)
 
                 println("Task is $(task.details.id), $(task.details.name)")
 
@@ -55,14 +54,16 @@ end
 Register the task type generation for the given task_name
 
 """
-function register!(daemon::DaemonService, task_name::AbstractString, task_type::Type)
-    if length(methods(DaemonTask.execute, Any[task_type])) == 0
-        error("Can not register $task_type to execute in DaemonTask!")
+function register!(daemon::DaemonService, task_name::AbstractString,
+        task_type::Type)
+    if !DaemonTask.can_execute(task_type)
+        error("Can not register $task_type with name $task_name " *
+            " in Daemon. Could not find a registered method to execute")
     end
 
     if haskey(daemon.tasks, task_name)
-        warn("Daemon has already registered $task_name with
-        $(daemon.tasks[task_name])")
+        warn("Daemon has already registered $task_name with " *
+            "$(daemon.tasks[task_name])")
     end
 
     daemon.tasks[task_name] = task_type
