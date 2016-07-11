@@ -187,6 +187,8 @@ datasets_dir_path = "research/Julimaps/datasets"
 # cur_dataset = "elastic_test_crack"
 # cur_dataset = "elastic_real_crack_with_cropping"
 cur_dataset = "elastic_real_compression"
+# cur_dataset = "elastic_no_crack"
+# cur_dataset = "elastic_compression_automated"
 in_alignment_test = false
 # test_dataset = "AIBS_practice_spring_constants"
 # test_dataset = "AIBS_practice_broken_springs"
@@ -238,6 +240,8 @@ function check_dataset_dir(dataset_name)
         setup_dir(path)
         review_path = joinpath(path, "review")
         setup_dir(review_path)
+        mask_path = joinpath(path, "mask")
+        setup_dir(mask_path)
     end
 end
 

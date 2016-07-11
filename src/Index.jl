@@ -267,27 +267,27 @@ function indices_to_string(indexA, indexB)
   end
 end
 
-function get_filename(index, ext="h5")
+function get_filename(index::Index, ext="h5")
   return string(get_name(index), ".", ext)
 end
 
-function get_dir(index, )
-  dir = ""
-  if is_premontaged(index)
-    dir = PREMONTAGED_DIR
-  elseif is_montaged(index)
-    dir = MONTAGED_DIR
-  elseif is_prealigned(index)
-    dir = PREALIGNED_DIR
-  elseif is_aligned(index)
-    dir = ALIGNED_DIR
-  elseif is_finished(index)
-    dir = FINISHED_DIR
-  else
-    dir = PREMONTAGED_DIR
-  end
-  return dir
-end
+# function get_dir(index, )
+#   dir = ""
+#   if is_premontaged(index)
+#     dir = PREMONTAGED_DIR
+#   elseif is_montaged(index)
+#     dir = MONTAGED_DIR
+#   elseif is_prealigned(index)
+#     dir = PREALIGNED_DIR
+#   elseif is_aligned(index)
+#     dir = ALIGNED_DIR
+#   elseif is_finished(index)
+#     dir = FINISHED_DIR
+#   else
+#     dir = PREMONTAGED_DIR
+#   end
+#   return dir
+# end
 
 # function get_path(index, ext="h5")
 #   return joinpath(get_dir(index), get_filename(index, ext))
@@ -303,7 +303,7 @@ function get_review_filename(src_index, dst_index, ext="h5")
   return string(get_review_name(src_index, dst_index), ".", ext)
 end
 
-function get_review_dir(index, )
+function get_review_dir(index::Index)
   dir = ""
   if is_premontaged(index)
     dir = MONTAGED_DIR
@@ -321,9 +321,25 @@ function get_review_dir(index, )
   return joinpath(dir, "review")
 end
 
-function get_review_path(src_index, dst_index, ext="h5")
+function get_review_path(src_index::Index, dst_index::Index, ext="h5")
   dir = get_review_dir(src_index)
   fn = get_review_filename(src_index, dst_index, ext)
+  return joinpath(dir, fn)
+end
+
+function get_mask_name(index::Index)
+  suffix = "mask"
+  return string(join(index[1:2], ","), "_", suffix)
+end
+
+function get_mask_filename(index::Index; ext="jpg")
+  return string(get_mask_name(index), ".", ext)
+end
+
+function get_mask_path(index::Index; ext="jpg")
+  assert(is_prealigned(index))
+  dir = joinpath(PREALIGNED_DIR, "mask")
+  fn = get_mask_filename(index, ext=ext)
   return joinpath(dir, fn)
 end
 

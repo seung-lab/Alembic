@@ -52,11 +52,11 @@ function render_montaged(meshset::MeshSet; render_full=false, render_review=true
       write_seams(meshset, imgs, offsets, indices, flagged_only)
     end
     if render_full
-    println(typeof(imgs));
-    println(typeof(imgs[1]));
-    println(size(imgs[1]));
-    println(imgs[1][1:10]);
-      println("test1")
+      # println(typeof(imgs));
+      # println(typeof(imgs[1]));
+      # println(size(imgs[1]));
+      # println(imgs[1][1:10]);
+      # println("test1")
       img, offset = merge_images(imgs, offsets)
       println("Writing ", new_fn)
       f = h5open(get_path(index), "w")
@@ -252,62 +252,83 @@ function render_aligned_review(meshset, start=1, finish=length(meshset.matches);
   end
 end
 
-"""
-Render aligned images
-"""
-function render_aligned(firstindex::Index, lastindex::Index, start=1, finish=0)
-  firstindex, lastindex = prealigned(firstindex), prealigned(lastindex)
-  meshset = load(firstindex, lastindex)
-  render_aligned(meshset, start, finish)
-end
-
 @fastmath @inbounds function render_aligned(meshset::MeshSet, start=1, finish=length(meshset.meshes))
-  scale = 0.05
-  s = make_scale_matrix(scale)
-  images = Dict()
-  for mesh_ind in start:finish
-    #=if mesh_ind != finish
-      prefetched = prefetch(get_index(meshset.meshes[mesh_ind + 1]));
-    end=#
-    mesh = meshset.meshes[mesh_ind];
-    index = aligned(mesh.index)
-    println("Warping ", mesh.index)
-    @time (img, offset), _ = meshwarp_mesh(mesh)
-    println("Writing ", get_name(index))
-    f = h5open(get_path(index), "w")
-    @time f["img", "chunk", (1000,1000)] = img
-    f["dtype"] = string(typeof(img[1]))
-    f["offset"] = offset
-    f["size"] = [size(img)...]
-    close(f)
-    # Log image offsets
-    update_offset(index, offset, size(img))
-    #images[index] = imwarp(img, s) 
-    # Rescope the image & save
-    #write_finished(index, img, offset, GLOBAL_BB)
-    #=if mesh_ind != finish
-      load_prefetched(prefetched);
-    end=#
+  sort!(meshset.meshes; by=get_index)
+  subsection_imgs = []
+  subsection_offsets = []
+  for (k, mesh) in enumerate(meshset.meshes)
+    if start <= k <= finish
+      index = get_index(mesh)
+      println("Warping ", index)
+      @time (img, offset), _ = meshwarp_mesh(mesh)
+      if is_subsection(index)
+        println("$index is a subsection")
+        push!(subsection_imgs, img)
+        push!(subsection_offsets, offset)
+      end
+      # determine if subsections should be merged 
+      is_last_subsection = true
+      if k != length(meshset.meshes)
+        next_index = get_index(meshset.meshes[k+1])
+        if prealigned(index) == prealigned(next_index)
+          is_last_subsection = false
+          println("Wait to merge...")
+        end
+      end
+      if length(subsection_imgs) > 1 && is_last_subsection
+        println("Merge subsections")
+        img, offset = merge_images(subsection_imgs, subsection_offsets)
+        subsection_imgs = []
+        subsection_offsets = []
+      end
+      # render if subsections have been merged or is not a split section
+      if is_last_subsection || !is_subsection(index)
+        println("Writing ", get_name(aligned(index)))
+        f = h5open(get_path(aligned(index)), "w")
+        chunksize = min(1000, min(size(img)...))
+        @time f["img", "chunk", (chunksize, chunksize)] = img
+        f["dtype"] = string(typeof(img[1]))
+        f["offset"] = offset
+        f["size"] = [size(img)...]
+        close(f)
+        # Log image offsets
+        update_offset(aligned(index), offset, size(img))
+      end
+    end
   end
-  # render_aligned_review(meshset; images=images)
 end
 
-# function render_finished(firstindex::Index, lastindex::Index)
-#   for index in get_index_range(aligned(firstindex), aligned(lastindex))
-#     img = get_image(index)
-#     offset = get_offset(index)
-#     write_finished(index, img, offset)
-#   end
-# end
+function split_prealigned(index::Index)
+  mask_path = get_mask_path(index)
+  if isfile(mask_path)
+    println("Splitting $index with mask")
+    mask = load_mask(mask_path)
+    img = get_image(index)
+    subimgs = segment_by_mask(img, mask)
+    offset = get_offset(index)
+    for (i, subimg) in subimgs
+      n = length(subimgs)
+      subindex = subsection(index, i)
+      path = get_path(subindex)
+      println("Saving subsection $subindex: $i / $n")
+      f = h5open(path, "w")
+      chunksize = min(1000, min(size(subimg)...))
+      @time f["img", "chunk", (chunksize,chunksize)] = subimg
+      f["dtype"] = string(typeof(subimg[1]))
+      f["offset"] = offset
+      f["size"] = [size(subimg)...]
+      close(f)
+      # Log image offsets
+      update_offset(subindex, offset, size(subimg))
+    end
+  end
+end
 
-# @fastmath @inbounds function write_finished(index::Index, img, offset, BB=GLOBAL_BB)
-#   println("Rescoping ", get_name(index))
-#   @time img = rescopeimage(img, offset, BB)
-#   index = finished(index)
-#   println("Writing ", get_name(index))
-#   f = h5open(get_path(index), "w")
-#   @time f["img", "chunk", (1000,1000)] = img
-#   f["offset"] = offset
-#   f["bb"] = [BB.i, BB.j, BB.w, BB.h]
-#   close(f)
-# end
+function split_prealigned(firstindex::Index, lastindex::Index)
+  for index in get_index_range(firstindex, lastindex)
+    mask_path = get_mask_path(index)
+    if isfile(mask_path)
+      split_prealigned(index)
+    end
+  end
+end

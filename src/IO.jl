@@ -182,6 +182,20 @@ function get_slice(path::String, slice, scale=1.0)
   return img
 end
 
+function load_mask(index::Index; clean=true)
+    path = get_mask_path(index)
+    return load_mask(path, clean=clean)
+end
+
+function load_mask(path; clean=true)
+    img = Images.load(path).data'
+    mask = reinterpret(UInt8, img)
+    if clean
+        clean_mask!(mask)
+    end
+    return mask
+end
+
 function load_affine(path::String)
   affinePath = joinpath(AFFINE_DIR, string(path, ".csv"))
   return readcsv(path)
