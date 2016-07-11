@@ -139,7 +139,7 @@ end
 ### adding
 function add_mesh!(meshset::MeshSet, mesh::Mesh)
   push!(meshset.meshes, mesh);
-  sort!(ms.meshes; by=get_index)
+  sort!(meshset.meshes; by=get_index)
 end
 
 function add_match!(meshset::MeshSet, match::Match)
@@ -644,7 +644,7 @@ function get_filename(meshset::MeshSet)
   end
 end
 
-function get_filename(firstindex, lastindex)
+function get_filename(firstindex::Index, lastindex::Index)
   filename = string(get_name(firstindex, lastindex), ".jls")
   if (((is_montaged(firstindex) || is_prealigned(firstindex) || is_aligned(firstindex)) && is_montaged(lastindex)) ||
   ((is_montaged(lastindex) || is_prealigned(lastindex) || is_aligned(lastindex)) && is_montaged(firstindex))) && (firstindex != lastindex)
@@ -675,7 +675,7 @@ function get_name(meshset::MeshSet)
   end
 end
 
-function get_name(firstindex, lastindex)
+function get_name(firstindex::Index, lastindex::Index)
   name = ""
   if (((is_montaged(firstindex) || is_prealigned(firstindex) || is_aligned(firstindex)) && is_montaged(lastindex))) && (firstindex != lastindex)
     name = string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned")
