@@ -866,7 +866,7 @@ function view_property_spatial_scatter(match, property_name; filtered=true, fact
     properties_func = get_filtered_properties
     color="#009900"
   end
-  pts = hcat(get_correspondences(match, filtered=filtered)[1]...)
+  pts = hcat(get_correspondences(match; filtered=filtered)[1]...)
   attr = properties_func(match, property_name)
   if length(attr) > 1
     p = plt[:scatter](pts[2,:], -pts[1,:], s=attr*factor, color=color, alpha=0.5)
@@ -888,9 +888,11 @@ function view_inspection_statistics(meshset::MeshSet, match_ind::Int64)
   fig = figure("image pair statistics", figsize=(20,20))
   PyPlot.clf()
   subplot(231)
-  # view_property_histogram(match, "r_max"; filtered=false, nbins=20)
-  # view_property_histogram(match, "r_max"; filtered=true, nbins=20)
-  view_property_histogram(match, "norm"; filtered=true, nbins=20)
+   view_property_histogram(match, "r_max"; filtered=false, nbins=20)
+   view_property_histogram(match, "r_max"; filtered=true, nbins=20)
+#   view_property_spatial_scatter(match, "r_max"; filtered=false, factor=15)
+#   view_property_spatial_scatter(match, "r_max"; filtered=true, factor=15)
+  #view_property_histogram(match, "norm"; filtered=true, nbins=20)
   subplot(232)
   view_property_spatial_scatter(match, "norm"; filtered=true, factor=1)
   subplot(233)
