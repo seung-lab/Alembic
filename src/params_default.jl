@@ -34,9 +34,9 @@ MONOBLOCK_PADDING_PREALIGNMENT = 0.0
 
 MESH_LENGTH_ALIGNMENT = 400
 GLOBAL_OFFSETS_ALIGNMENT = true
-BLOCKMATCH_SCALE_ALIGNMENT = 0.5
-BLOCK_R_ALIGNMENT = 600
-SEARCH_R_ALIGNMENT = 275
+BLOCKMATCH_SCALE_ALIGNMENT = 1.0
+BLOCK_R_ALIGNMENT = 400
+SEARCH_R_ALIGNMENT = 300
 #BLOCK_R_ALIGNMENT = 122
 #SEARCH_R_ALIGNMENT = 350
 MONOBLOCK_SCALE_ALIGNMENT = 1
@@ -174,7 +174,7 @@ global PARAMS_ALIGNMENT = Dict(
 			     		"r_filter" => (:get_properties, <, 0.185, "r_max"),
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 5),
 			     		"kurtosis_filter" => (:get_properties, >, 50, "src_kurtosis"),
-					"centered_norm_filter" => (:get_centered_norms, >, 250)
+						"centered_norm_filter" => (:get_centered_norms, >, 250)
 					      ),
 			     "render" => Dict(
 					      ),
@@ -188,4 +188,4 @@ global PARAMS_ALIGNMENT = Dict(
 			     "registry" => Dict(
 					"global_offsets" => GLOBAL_OFFSETS_ALIGNMENT
 					)
-			     )
+)

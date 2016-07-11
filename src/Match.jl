@@ -437,8 +437,8 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0)
 	i_max = (i_max - 0.5) * step(xc_i_locs) + 1
 	j_max = (j_max - 0.5) * step(xc_j_locs) + 1
       end
-	di = i_max - (dst_pt_loc_full[1] - src_pt_loc[1] + 1)
-	dj = j_max - (dst_pt_loc_full[2] - src_pt_loc[2] + 1)
+	di = Float64(i_max - (dst_pt_loc_full[1] - src_pt_loc[1] + 1))
+	dj = Float64(j_max - (dst_pt_loc_full[2] - src_pt_loc[2] + 1))
 
 
 
