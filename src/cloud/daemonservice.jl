@@ -5,20 +5,21 @@ import Julimaps.Cloud.Services.Bucket
 import Julimaps.Cloud.Tasks.DaemonTask
 import JSON
 
-export DaemonService, register, run
+export Service, register, run
 
-type DaemonService
+type Service
     queue::Queue.Service
     bucket::Bucket.Service
+    cache::Cache.Service
     poll_frequency_seconds::Int64
     tasks::Dict{AbstractString, Type}
-    DaemonService(queue::Queue.Service, bucket::Bucket.Service,
+    Service(queue::Queue.Service, bucket::Bucket.Service,
         poll_frequency_seconds::Int64) = 
             new(queue, bucket, poll_frequency_seconds,
                 Dict{AbstractString, Module}())
 end
 
-function run(daemon::DaemonService)
+function run(daemon::Service)
     while true
         try
             message = Queue.pop_message(daemon.queue)
@@ -32,12 +33,12 @@ function run(daemon::DaemonService)
 
                 println("Task is $(task.details.id), $(task.details.name)")
 
-                success = DaemonTask.execute(task)
+                prepareTask(daemon, task)
 
-                if !success
-                    println("Task $(task.details.id), $(task.details.name) was
-                    not successful")
-                end
+                result = DaemonTask.execute(task)
+
+                finalizeTask(daemon, task, result)
+
             end
         catch e
             showerror(STDERR, e, catch_backtrace(); backtrace = true)
@@ -49,12 +50,12 @@ function run(daemon::DaemonService)
 end
 
 """
-    register(daemon::DaemonService, task_module::Module)
+    register(daemon::Service, task_module::Module)
 
 Register the task type generation for the given task_name
 
 """
-function register!(daemon::DaemonService, task_name::AbstractString,
+function register!(daemon::Service, task_name::AbstractString,
         task_type::Type)
     if !DaemonTask.can_execute(task_type)
         error("Can not register $task_type with name $task_name " *
@@ -69,7 +70,7 @@ function register!(daemon::DaemonService, task_name::AbstractString,
     daemon.tasks[task_name] = task_type
 end
 
-function parse(daemon::DaemonService, text::ASCIIString)
+function parse(daemon::Service, text::ASCIIString)
     text = strip(text)
 
     if isempty(text)
@@ -93,6 +94,21 @@ function parse(daemon::DaemonService, text::ASCIIString)
     end
 
     return daemon.tasks[task_name](details, message["payload"])
+end
+
+function prepare_input(daemon::Service, task::DaemonTask)
+    basic_info = task.basicInfo
+    for file in task.basicInfo.files
+        if Cache.exists(daemon.cache, file)
+
+end
+
+function finalize_output(daemon::Service, task::DaemonTask,
+    result::DaemonTask.Result)
+    if !result.success
+        println("Task $(task.details.id), $(task.details.name) was
+        not successful")
+    end
 end
 
 end # end module Daemon

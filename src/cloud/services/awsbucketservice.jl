@@ -24,7 +24,7 @@ function check_reachable(env::AWS.AWSEnv, bucket_name::AbstractString)
     return true
 end
 
-function download(bucket::AWSBucketService, remote_file::ASCIIString,
+function Bucket.download(bucket::AWSBucketService, remote_file::ASCIIString,
     local_file::Union{ASCIIString, IO})
     get_response = S3.get_object(bucket.env, bucket.name, remote_file)
 
@@ -40,8 +40,8 @@ function download(bucket::AWSBucketService, remote_file::ASCIIString,
     write(local_file, get_response.obj)
 end
 
-function upload(bucket::AWSBucketService, local_file::Union{ASCIIString, IO},
-    remote_file::ASCIIString)
+function Bucket.upload(bucket::AWSBucketService,
+        local_file::Union{ASCIIString, IO}, remote_file::ASCIIString)
     folder = remote_file[1:rsearch(remote_file, "/").stop]
 
     #check to make sure folder exists TODO does it matter?!
@@ -59,7 +59,6 @@ function upload(bucket::AWSBucketService, local_file::Union{ASCIIString, IO},
         error("Unable to put object $local_file in bucket $(bucket.name),
             response was $(put_response.http_code)")
     end
-
 end
 
 end # module AWSBucket
