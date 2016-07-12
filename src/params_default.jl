@@ -78,7 +78,7 @@ global PARAMS_MONTAGE = Dict(
 			     	"ftol_newton" => FTOL_NEWTON_MONTAGE),
 			     "filter" => Dict(
 			     		"sigma_filter" => (:get_properties, >, 5, 0.8),
-			     		"r_filter" => (:get_properties, <, 0.2, "r_max")
+			     		"r_filter" => (:get_properties, <, 0.2, "r_max"),
 					"centered_norm_filter" => (:get_centered_norms, >, 50)
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 2.5)
 					      ),
