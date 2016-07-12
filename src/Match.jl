@@ -106,8 +106,9 @@ end
 function get_correspondences(match::Match; globalized::Bool=false, global_offsets::Bool=true, filtered::Bool=false, use_post::Bool=false, src_mesh = nothing, dst_mesh = nothing)
   	if filtered
 	  src_pts = match.src_points[get_filtered_indices(match)]; dst_pts = match.dst_points[get_filtered_indices(match)];
+	else
+  	  src_pts = copy(match.src_points); dst_pts = copy(match.dst_points);
 	end
-  	src_pts = copy(match.src_points); dst_pts = copy(match.dst_points);
 	if use_post
 	  src_pts = deform(src_pts, src_mesh);
 	  dst_pts = deform(dst_pts, dst_mesh);
