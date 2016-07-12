@@ -88,8 +88,8 @@ global PARAMS_MONTAGE = Dict(
 						# "too_few_corresps" => (:count_correspondences, <, 10),
 						"rejected_ratio" => (:get_ratio_rejected, >, 0.66, 8),
 						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.95),
-						"norm_outliers" => (:count_outlier_norms, >, 0, 3),
-						# "centered_norm" => (:get_maximum_centered_norm, >, SEARCH_R_MONTAGE/2)
+						#"norm_outliers" => (:count_outlier_norms, >, 0, 3), # too useless because they're so close to each other to begin with
+						"centered_norm" => (:get_maximum_centered_norm, >, 10)
 					      ),
 			     "registry" => Dict(
 					"global_offsets" => GLOBAL_OFFSETS_MONTAGE
