@@ -223,9 +223,9 @@ function make_vectors!(params)
   match_ind = params["match_index"]
   scale = params["scale"]
   offset = params["offset"]
-  src_points, dst_points, filtered_inds = get_correspondences(meshset, match_ind; globalized = true)
+  src_points, dst_points, filtered_inds = get_correspondences(meshset, match_ind; globalized=true)
   if params["post_matches"]
-    src_points, dst_points, filtered_inds = get_correspondences(meshset, match_ind; globalized, use_post = true)
+    src_points, dst_points, filtered_inds = get_correspondences(meshset, match_ind; globalized=true, use_post=true)
   end
   vectorsA = scale_matches(src_points, scale)
   vectorsB = scale_matches(dst_points, scale)
