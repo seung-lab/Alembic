@@ -256,15 +256,22 @@ function is_first_section(index)
   return get_registry(index)[1,2] == index
 end
 
+function index_to_string(index::Index)
+  if is_premontaged(index)
+    return join(index, ",")
+  elseif is_subsection(index)
+    return join(index[[1,2,4]], ",")
+  else
+    return join(index[1:2], ",")
+  end
+end
+
 """
 Convert two indices into a name
 """
 function indices_to_string(indexA, indexB)
-  if is_premontaged(indexA)
-    return string(join(indexA, ","), "-", join(indexB, ","))
-  else
-    return string(join(indexA[1:2], ","), "-", join(indexB[1:2], ","))
-  end
+  strA, strB = index_to_string(indexA), index_to_string(indexB)
+  return string(strA, "-", strB)
 end
 
 function get_filename(index::Index, ext="h5")
