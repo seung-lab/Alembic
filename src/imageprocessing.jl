@@ -16,8 +16,9 @@ function merge_images(imgs, offsets)
     end
     global_ref = sum(bbs)
     merged_img = zeros(T, global_ref.h, global_ref.w)
+    no_imgs = length(imgs)
     for (idx, (img, bb)) in enumerate(zip(imgs, bbs))
-        println("Merging tile ", idx)
+        println("Merging image # ", idx , " / ", no_imgs)
         i = bb.i - global_ref.i+1
         j = bb.j - global_ref.j+1
         w = bb.w-1
