@@ -2,7 +2,7 @@ MESH_LENGTH_MONTAGE = 500
 GLOBAL_OFFSETS_MONTAGE = true
 BLOCKMATCH_SCALE_MONTAGE = 1.0
 BLOCK_R_MONTAGE = 100
-SEARCH_R_MONTAGE = 250
+SEARCH_R_MONTAGE = 150
 MONOBLOCK_SCALE_MONTAGE = 1
 MONOBLOCK_MATCH_MONTAGE = false
 MONOBLOCK_RATIO_MONTAGE = 0.4
@@ -79,7 +79,7 @@ global PARAMS_MONTAGE = Dict(
 			     "filter" => Dict(
 			     		"sigma_filter" => (:get_properties, >, 5, 0.8),
 			     		"r_filter" => (:get_properties, <, 0.2, "r_max"),
-					"centered_norm_filter" => (:get_centered_norms, >, 50)
+					"centered_norm_filter" => (:get_centered_norms, >, 20)
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 2.5)
 					      ),
 			     "render" => Dict(
@@ -89,7 +89,7 @@ global PARAMS_MONTAGE = Dict(
 						"rejected_ratio" => (:get_ratio_rejected, >, 0.66, 8),
 						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.95),
 						#"norm_outliers" => (:count_outlier_norms, >, 0, 3), # too useless because they're so close to each other to begin with
-						"centered_norm" => (:get_maximum_centered_norm, >, 10)
+						#"centered_norm" => (:get_maximum_centered_norm, >, 45)
 					      ),
 			     "registry" => Dict(
 					"global_offsets" => GLOBAL_OFFSETS_MONTAGE
