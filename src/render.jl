@@ -247,7 +247,7 @@ function render_aligned_review(meshset, start=1, finish=length(meshset.matches);
 
     src_img, src_offset = retrieve_image(images, src_index; tform=s)
     dst_img, dst_offset = retrieve_image(images, dst_index; tform=s)
-    path = get_review_path(prealigned(src_index), prealigned(dst_index))
+    path = get_review_path(src_index, dst_index)
     write_review_image(path, src_img, src_offset, dst_img, dst_offset, scale, s)
   end
 end
