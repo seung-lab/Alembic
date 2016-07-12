@@ -452,11 +452,10 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0)
 	correspondence_properties["patches"]["src_kurtosis"] = kurtosis(src_image[src_range...]);
 	correspondence_properties["xcorr"] = Dict{Any, Any}();
 	correspondence_properties["xcorr"]["r_max"] = r_max;
-	correspondence_properties["xcorr"]["sigmas"] = Dict{Any, Any}();
-	correspondence_properties["xcorr"]["sigmas"][.5] = sigma(xc, .5) / scale;
-	correspondence_properties["xcorr"]["sigmas"][.6] = sigma(xc, .6) / scale;
-	correspondence_properties["xcorr"]["sigmas"][.7] = sigma(xc, .7) / scale;
-	correspondence_properties["xcorr"]["sigmas"][.8] = sigma(xc, .8) / scale;
+	correspondence_properties["xcorr"]["sigmas"] = Dict{Float64, Any}();
+	for beta in 0.5:0.05:0.95
+	correspondence_properties["xcorr"]["sigmas"][beta] = sigma(xc, beta) / scale;
+        end
 	correspondence_properties["vects"] = Dict{Any, Any}();
 	correspondence_properties["vects"]["dv"] = [di, dj];
 	correspondence_properties["vects"]["norm"] = norm([di, dj]);
