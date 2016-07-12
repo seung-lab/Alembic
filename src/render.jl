@@ -40,7 +40,7 @@ function render_montaged(meshset::MeshSet; render_full=false, render_review=true
   end
 
   # try
-    new_fn = get_filename(index)
+    new_fn = get_name(index)
     println("Rendering ", new_fn)
     warps = map(meshwarp_mesh, meshset.meshes);
       println(warps[1][1][1][1:10])

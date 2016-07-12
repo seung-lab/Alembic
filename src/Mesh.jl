@@ -33,7 +33,7 @@ function get_image(mesh::Mesh; kwargs...)		return get_image(mesh.index; kwargs..
 ### retrieval
 function get_index(mesh::Mesh)				return mesh.index;					end
 function get_nodes(mesh::Mesh; globalized::Bool = false, use_post::Bool=false)
-	nodes = use_post ? copy(mesh.src_nodes) : copy(mesh.dst_nodes);
+	nodes = use_post ? copy(mesh.dst_nodes) : copy(mesh.src_nodes);
 	globalized ? globalize!(nodes, mesh) : nothing
 	return nodes
 end

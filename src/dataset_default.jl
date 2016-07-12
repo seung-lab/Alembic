@@ -1,3 +1,5 @@
+global DATASET_RESOLUTION = [7,7,40]
+
 function get_name(index::Index)
     if is_overview(index)
         if cur_dataset == "zebrafish"
