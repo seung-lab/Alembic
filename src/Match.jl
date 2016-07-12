@@ -74,7 +74,7 @@ function get_maximum_centered_norm(match::Match)
 end
 
 function get_centered_norms(match::Match)
-	if count_filtered_correspondences(match) == 0 
+	if count_correspondences(match) == 0 
 		return nothing
 	end
 	dvs = get_properties(match, "dv")

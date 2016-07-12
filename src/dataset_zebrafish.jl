@@ -1,5 +1,6 @@
 global ROI_FIRST = (2,32,0,0);
 global ROI_LAST = (9,163,0,0);
+global DATASET_RESOLUTION = [5,5,45]
 
 function get_name(index)
     if is_overview(index)
