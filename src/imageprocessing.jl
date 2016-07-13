@@ -186,3 +186,25 @@ end
 function laplacian_variance(img)
     return var(laplacian(img))
 end
+
+function import_mask(fn)
+    img = Images.load(fn).data'
+    return reshape(reinterpret(UInt8, img)[1,:,:], size(img))
+end
+
+function clean_mask!(mask::Array{UInt8,2})
+    th = 80
+    mask[mask.>=th] = 255
+    mask[mask.<th] = 0
+end
+
+function segment_by_mask(img, crack_mask)
+    segments = []
+    segments_mask = label_components(crack_mask)
+    seg_list = unique(segments_mask)
+    for seg in seg_list
+        seg_mask = segments_mask .== seg
+        push!(segments, (seg, img .* seg_mask))
+    end
+    return segments
+end

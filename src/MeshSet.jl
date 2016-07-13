@@ -227,13 +227,14 @@ function is_flagged(meshset::MeshSet)
   return |(map(is_flagged, meshset.matches)...)
 end
 
-function check!(meshset::MeshSet, crits = Base.values(meshset.properties["params"]["review"]))
+function check!(meshset::MeshSet, crits=meshset.properties["params"]["review"])
   unflag!(meshset)
-  return |(map(check!, meshset.matches, repeated(crits))...)
+  meshset.properties["params"]["review"] = crits
+  return |(map(check!, meshset.matches, repeated(Base.values(crits)))...)
 end
 
-function filter!(meshset::MeshSet, filters = Base.values(meshset.properties["params"]["filter"]))
-  for filter in filters
+function filter!(meshset::MeshSet, filters=meshset.properties["params"]["filter"])
+  for filter in Base.values(filters)
     filter!(meshset, filter)
   end
   passed = !check!(meshset)
@@ -251,9 +252,9 @@ function clear_filters!(meshset::MeshSet)
   end
 end
 
-function refilter!(meshset::MeshSet, filters=Base.values(meshset.properties["params"]["filter"]))
+function refilter!(meshset::MeshSet, filters=meshset.properties["params"]["filter"])
   clear_filters!(meshset)
-  filter!(meshset::MeshSet)
+  filter!(meshset, filters)
 end
 
 function check_and_fix!(meshset::MeshSet, crits = Base.values(meshset.properties["params"]["review"]), filters = Base.values(meshset.properties["params"]["filter"])) 
@@ -429,8 +430,10 @@ function prealign(index; params=get_params(index), to_fixed=false)
 	push!(meshset.meshes, make_mesh(dst_index, params, to_fixed))
 	push!(meshset.matches, Match(meshset.meshes[1], meshset.meshes[2], params))
 	filter!(meshset);
-	check_and_fix!(meshset);
-	solve!(meshset, method=params["solve"]["method"]);
+	check!(meshset);
+  try
+  	solve!(meshset, method=params["solve"]["method"]);
+  end
 	save(meshset);
 	return meshset;
 end
@@ -456,7 +459,7 @@ function MeshSet(first_index, last_index; params=get_params(first_index), solve=
 	match!(meshset, params["match"]["depth"]; reflexive = params["match"]["reflexive"]);
 
 	filter!(meshset);
-	check_and_fix!(meshset);
+	check!(meshset);
   save(meshset);
 
 	if solve == true
@@ -583,12 +586,13 @@ function sanitize!(meshset::MeshSet)
 end
 
 # JLS SAVE
+#=
 function save(filename::String, meshset::MeshSet)
   println("Saving meshset to ", filename)
   open(filename, "w") do file
     serialize(file, meshset)
   end
-end
+end=#
 
 function save(meshset::MeshSet)
   if has_parent(meshset)
@@ -771,42 +775,6 @@ function crop_center(image, rad_ratio)
 	return image[range_i, range_j];
 end
 
-function affine_load_section_pair(src_index, dst_index)
-  i_src = find_in_registry(src_index); 
-  i_dst = find_in_registry(dst_index); 
-
-  registry = get_registry(src_index);
-
-  name_dst = registry[i_dst, 1];
-  name_src = registry[i_src, 1];
-
-  @time dst_image = get_uint8_image(get_path(name_dst))
-  @time src_image = get_uint8_image(get_path(name_src))
- 
-  dst_scaled = imscale(dst_image, SCALING_FACTOR_TRANSLATE)[1]; 
-  src_scaled = imscale(src_image, SCALING_FACTOR_TRANSLATE)[1]; 
-
-  src_cropped = crop_center(src_scaled, 0.33);
-  dst_cropped = crop_center(dst_scaled, 0.66);
-  offset_vect, xc = get_max_xc_vector(src_cropped, dst_cropped);
-
-  offset_unscaled = round(Int64, offset_vect[1:2] / SCALING_FACTOR_TRANSLATE);
-
-  view(xc * 40);
-
-  println(offset_vect[1:2]);
-  println("Offsets from scaled blockmatches: $offset_unscaled");
-  println("r: $(offset_vect[3])");
-  update_offsets(name_src, offset_unscaled); 
-  return src_image, dst_image;
-end
-
-function load_section_pair(Ms, a, b)
-  @time A_image = get_h5_image(get_h5_path(Ms.meshes[find_index(Ms,a)].index))
-  @time B_image = get_h5_image(get_h5_path(Ms.meshes[find_index(Ms,b)].index))
-  return A_image, B_image; 
-end
-
 function load_stack(offsets, wafer_num, section_range)
   indices = find(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] in section_range, 1:size(offsets, 1))
   Ms = MeshSet(PARAMS_ALIGNMENT)
@@ -911,7 +879,7 @@ function autoblockmatch(index; params=get_params(index))
   return meshset;
 end
 
-function get_correspondence_property(meshset::MeshSet, key)
+function get_correspondence_properties(meshset::MeshSet, key)
   return map(get_properties, meshset.matches, repeated(key))
 end
 

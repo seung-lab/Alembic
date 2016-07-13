@@ -1,5 +1,6 @@
 global ROI_FIRST = (1,1,0,0);
 global ROI_LAST = (1,1,0,0);
+global DATASET_RESOLUTION = [4,4,40]
 
 function get_name(index)
     if is_overview(index)
@@ -7,6 +8,9 @@ function get_name(index)
     elseif is_montaged(index)
         return string(index[1], ",", index[2], "_montaged")
     elseif is_prealigned(index)
+      	if is_subsection(index)
+        	return string(index[1], ",", index[2], "_prealigned_", index[4])
+	end
         return string(index[1], ",", index[2], "_prealigned")
     elseif is_aligned(index)
         return string(index[1], ",", index[2], "_aligned")
@@ -98,6 +102,12 @@ function parse_name(name::String)
     m = match(r"(\d*),(\d*)_prealigned", name)
     if typeof(m) != Void
     ret = parse(Int, m[1]), parse(Int, m[2]), PREALIGNED_INDEX, PREALIGNED_INDEX 
+    end
+
+    # prealigned_subsection
+    m = match(r"(\d*),(\d*)_prealigned_(\d*)", name)
+    if typeof(m) != Void
+    ret = parse(Int, m[1]), parse(Int, m[2]), PREALIGNED_INDEX, parse(Int, m[3])
     end
 
     # aligned-section

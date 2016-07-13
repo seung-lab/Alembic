@@ -1,14 +1,14 @@
-MESH_LENGTH_MONTAGE = 400
+MESH_LENGTH_MONTAGE = 500
 GLOBAL_OFFSETS_MONTAGE = true
 BLOCKMATCH_SCALE_MONTAGE = 1.0
-BLOCK_R_MONTAGE = 60
-SEARCH_R_MONTAGE = 500
+BLOCK_R_MONTAGE = 100
+SEARCH_R_MONTAGE = 150
 MONOBLOCK_SCALE_MONTAGE = 1
 MONOBLOCK_MATCH_MONTAGE = false
 MONOBLOCK_RATIO_MONTAGE = 0.4
 MONOBLOCK_PADDING_MONTAGE = 0.0
 MESH_SPRING_COEFF_MONTAGE = 1.0
-MATCH_SPRING_COEFF_MONTAGE = 5.0 
+MATCH_SPRING_COEFF_MONTAGE = 100.0 
 FTOL_CG_MONTAGE = 1/10000
 MAX_ITERS_MONTAGE = 2000
 USE_CONJUGATE_GRADIENT_MONTAGE = true
@@ -34,9 +34,9 @@ MONOBLOCK_PADDING_PREALIGNMENT = 0.0
 
 MESH_LENGTH_ALIGNMENT = 400
 GLOBAL_OFFSETS_ALIGNMENT = true
-BLOCKMATCH_SCALE_ALIGNMENT = 0.5
-BLOCK_R_ALIGNMENT = 600
-SEARCH_R_ALIGNMENT = 275
+BLOCKMATCH_SCALE_ALIGNMENT = 1.0
+BLOCK_R_ALIGNMENT = 400
+SEARCH_R_ALIGNMENT = 300
 #BLOCK_R_ALIGNMENT = 122
 #SEARCH_R_ALIGNMENT = 350
 MONOBLOCK_SCALE_ALIGNMENT = 1
@@ -46,16 +46,12 @@ MONOBLOCK_PADDING_ALIGNMENT = 0.0
 MESH_SPRING_COEFF_ALIGNMENT = 1.0
 MATCH_SPRING_COEFF_ALIGNMENT = 50.0
 FTOL_CG_ALIGNMENT = 1e-8
-MAX_ITERS_ALIGNMENT = 3000
+MAX_ITERS_ALIGNMENT = 5000
 USE_CONJUGATE_GRADIENT_ALIGNMENT = true
 ETA_GD_ALIGNMENT = 0.01
 FTOL_GD_ALIGNMENT = 3e-3
 ETA_NEWTON_ALIGNMENT = 0.5
 FTOL_NEWTON_ALIGNMENT = 1e-8
-
-global GLOBAL_BB = BoundingBox(0,0,75000,32000)
-#global DATASET_RESOLUTION = [7,7,40]
-global DATASET_RESOLUTION = [5,5,45]
 
 global PARAMS_MONTAGE = Dict(
 			     "mesh" => Dict(
@@ -69,7 +65,7 @@ global PARAMS_MONTAGE = Dict(
 					"monoblock_ratio" => MONOBLOCK_RATIO_MONTAGE, 
 					"monoblock_match" => MONOBLOCK_MATCH_MONTAGE,
 					"depth" => 1,
-					"reflexive" => false),
+					"reflexive" => true),
 			     "solve" => Dict(
 					"mesh_spring_coeff" => MESH_SPRING_COEFF_MONTAGE,
 					"match_spring_coeff" => MATCH_SPRING_COEFF_MONTAGE,
@@ -81,8 +77,9 @@ global PARAMS_MONTAGE = Dict(
 			     	"eta_newton" => ETA_NEWTON_MONTAGE,
 			     	"ftol_newton" => FTOL_NEWTON_MONTAGE),
 			     "filter" => Dict(
-			     		"sigma_filter" => (:get_properties, >, 7.5, 0.5),
-			     		"r_filter" => (:get_properties, <, 0.12, "r_max")
+			     		"sigma_filter" => (:get_properties, >, 5, 0.8),
+			     		"r_filter" => (:get_properties, <, 0.2, "r_max"),
+					"centered_norm_filter" => (:get_centered_norms, >, 20)
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 2.5)
 					      ),
 			     "render" => Dict(
@@ -91,8 +88,8 @@ global PARAMS_MONTAGE = Dict(
 						# "too_few_corresps" => (:count_correspondences, <, 10),
 						"rejected_ratio" => (:get_ratio_rejected, >, 0.66, 8),
 						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.95),
-						# "norm_outliers" => (:count_outlier_norms, >, 0, 3),
-						"centered_norm" => (:get_maximum_centered_norm, >, BLOCK_R_MONTAGE/2)
+						#"norm_outliers" => (:count_outlier_norms, >, 0, 3), # too useless because they're so close to each other to begin with
+						#"centered_norm" => (:get_maximum_centered_norm, >, 45)
 					      ),
 			     "registry" => Dict(
 					"global_offsets" => GLOBAL_OFFSETS_MONTAGE
@@ -140,7 +137,7 @@ global PARAMS_PREALIGNMENT = Dict(
 						"rejected_ratio" => (:get_ratio_rejected, >, 0.15, 0),
 						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.95),
 						"norm_outliers" => (:count_outlier_norms, >, 0, 3),
-						"centered_norm" => (:get_maximum_centered_norm, >, BLOCK_R_PREALIGNMENT/2)
+						"centered_norm" => (:get_maximum_centered_norm, >, SEARCH_R_PREALIGNMENT/2)
 					      ),
 			     "registry" => Dict(
 					"global_offsets" => GLOBAL_OFFSETS_PREALIGNMENT
@@ -171,7 +168,7 @@ global PARAMS_ALIGNMENT = Dict(
 			     	"ftol_newton" => FTOL_NEWTON_ALIGNMENT),
 			     "filter" => Dict(
 			     		"sigma_filter" => (:get_properties, >, 20, 0.8),
-			     		"r_filter" => (:get_properties, <, 0.25, "r_max"),
+			     		"r_filter" => (:get_properties, <, 0.185, "r_max"),
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 5),
 			     		"kurtosis_filter" => (:get_properties, >, 50, "src_kurtosis"),
 					"centered_norm_filter" => (:get_centered_norms, >, 250)
@@ -183,9 +180,9 @@ global PARAMS_ALIGNMENT = Dict(
 						"rejected_ratio" => (:get_ratio_rejected, >, 0.50),
 						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.95),
 						# "norm_outliers" => (:count_outlier_norms, >, 0, 4),
-						"centered_norm" => (:get_maximum_centered_norm, >, BLOCK_R_ALIGNMENT*0.5)
+						"centered_norm" => (:get_maximum_centered_norm, >, BLOCK_R_ALIGNMENT/2)
 					      ),
 			     "registry" => Dict(
 					"global_offsets" => GLOBAL_OFFSETS_ALIGNMENT
 					)
-			     )
+)

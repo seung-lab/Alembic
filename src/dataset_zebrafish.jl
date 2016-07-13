@@ -1,5 +1,6 @@
 global ROI_FIRST = (2,32,0,0);
 global ROI_LAST = (9,163,0,0);
+global DATASET_RESOLUTION = [5,5,45]
 
 function get_name(index)
     if is_overview(index)
@@ -7,13 +8,20 @@ function get_name(index)
     elseif is_montaged(index)
         return string(index[1], ",", index[2], "_montaged")
     elseif is_prealigned(index)
+      	if is_subsection(index)
+        	return string(index[1], ",", index[2], "_prealigned_", index[4])
+	end
         return string(index[1], ",", index[2], "_prealigned")
     elseif is_aligned(index)
         return string(index[1], ",", index[2], "_aligned")
     elseif is_finished(index)
         return string(index[1], ",", index[2], "_finished")
     else
+      if index[1] < 10
     return string("Tile_r", index[3], "-c", index[4], "_W00", index[1], "_sec", index[2])
+  	else
+    return string("Tile_r", index[3], "-c", index[4], "_W0", index[1], "_sec", index[2])
+  end
     end
 end
 
@@ -25,8 +33,13 @@ end
 function get_path(index, ext = ".h5")
     name = get_name(index)
     if is_overview(index)
+      if index[1] < 10
         section_folder = string("W00", index[1], "_Sec", index[2], "_Montage")
+      else
+        section_folder = string("W0", index[1], "_Sec", index[2], "_Montage")
+      end
         path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ext))
+        path = joinpath(PREMONTAGED_DIR, string(name, ext))
     elseif is_montaged(index)
         path = joinpath(MONTAGED_DIR, string(name, ext))
     elseif is_prealigned(index)
@@ -98,6 +111,12 @@ function parse_name(name::String)
     m = match(r"(\d*),(\d*)_prealigned", name)
     if typeof(m) != Void
     ret = parse(Int, m[1]), parse(Int, m[2]), PREALIGNED_INDEX, PREALIGNED_INDEX 
+    end
+
+    # prealigned_subsection
+    m = match(r"(\d*),(\d*)_prealigned_(\d*)", name)
+    if typeof(m) != Void
+    ret = parse(Int, m[1]), parse(Int, m[2]), PREALIGNED_INDEX, parse(Int, m[3])
     end
 
     # aligned-section

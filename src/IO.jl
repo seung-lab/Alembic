@@ -26,6 +26,13 @@ function save(path::String, img::Array)
       close(f)
     end
 
+function save(filename::String, data)
+  println("Saving $(typeof(data)) to ", filename)
+  open(filename, "w") do file
+    serialize(file, data)
+  end
+end
+
 # extensions:
 # Mesh.jl	get_image(mesh::Mesh)
 # filesystem.jl	get_image() 
@@ -333,7 +340,7 @@ function make_slice(center, radius)
   return (x-radius):(x+radius), (y-radius):(y+radius)
 end
 
-function save_stack(firstindex::Index, lastindex::Index, center, radius, scale=1.0)
+function save_stack(firstindex::Index, lastindex::Index, center, radius; scale=1.0)
   slice = make_slice(center, radius)
   stack = make_stack(firstindex, lastindex, slice, scale=scale)
   return save_stack(stack, firstindex, lastindex, slice, scale=scale)
@@ -353,13 +360,15 @@ function save_stack(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, 
   x_slice = [slice[1][1], slice[1][end]] + origin
   y_slice = [slice[2][1], slice[2][end]] + origin
   z_slice = [find_in_registry(firstindex), find_in_registry(lastindex)]
-  filename = string(cur_dataset, "_", join([join(x_slice, "-"), join(y_slice, "-"), join(z_slice,"-")], "_"), ".h5")
+  phasename = is_prealigned(firstindex) ? "prealigned" : "aligned"
+  filename = string(cur_dataset, "_", phasename, "_", join([join(x_slice, "-"), join(y_slice, "-"), join(z_slice,"-")], "_"), ".h5")
   filepath = joinpath(FINISHED_DIR, filename)
   println("\nSaving stack to ", filepath)
   f = h5open(filepath, "w")
-  chunksize = min(512, min(size(stack)...))
-  @time f["main", "chunk", (chunksize,chunksize,chunksize)] = stack
-  # f = Dict()
+  # Omni can't handle chunked channel data
+  # chunksize = min(512, min(size(stack)...))
+  # @time f["main", "chunk", (chunksize,chunksize,chunksize)] = stack
+  f["main"] = stack
   f["orientation"] = orientation
   f["origin"] = origin
   f["x_slice"] = x_slice
