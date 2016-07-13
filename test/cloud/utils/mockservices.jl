@@ -3,6 +3,7 @@ module MockServices
 import Julimaps.Cloud.Services.Queue
 import Julimaps.Cloud.Services.Bucket
 import Julimaps.Cloud.Services.Cache
+import Julimaps.Cloud.Services.Datasource
 import Julimaps.Cloud.Tasks.DaemonTask
 
 export MockTaskNoExecute, MockTaskWithExecute
@@ -17,8 +18,8 @@ end
 export MockBucketService
 type MockBucketService <: Bucket.Service
     mockFiles::Dict{AbstractString, Any}
-    #=MockBucketService() = new(Dict())=#
 end
+MockBucketService() = MockBucketService(Dict())
 
 # local_file can also be a file location but we're not testing that for now
 function Bucket.download(bucket::MockBucketService, key::ASCIIString,
@@ -45,8 +46,8 @@ end
 export MockCacheService
 type MockCacheService <: Cache.Service
     mockValues::Dict{AbstractString, IO}
-    #=MockCacheService() = new(Dict())=#
 end
+MockCacheService() = MockCacheService(Dict())
 function Cache.exists(cache::MockCacheService, key::AbstractString)
     return haskey(cache.mockValues, key)
 end
@@ -57,7 +58,7 @@ function Cache.put!(cache::MockCacheService, key::AbstractString,
     seekstart(data)
     cache.mockValues[key] = data
 end
-function Cache.get!(cache::MockCacheService, key::AbstractString)
+function Cache.get(cache::MockCacheService, key::AbstractString)
     if haskey(cache.mockValues, key)
         data = cache.mockValues[key]
         seekstart(data)
@@ -70,5 +71,8 @@ function Cache.delete!(cache::MockCacheService, key::AbstractString)
     delete!(cache.mockValues, key)
 end
 
+export MockDatasourceService
+type MockDatasourceService <: Datasource.Service
+end
 
 end # module MockServices

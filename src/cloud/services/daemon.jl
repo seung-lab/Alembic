@@ -2,7 +2,7 @@ module Daemon
 
 import Julimaps.Cloud.Services.Queue
 import Julimaps.Cloud.Services.Bucket
-import Julimaps.Cloud.Services.DataSource
+import Julimaps.Cloud.Services.Datasource
 import Julimaps.Cloud.Tasks.DaemonTask
 import JSON
 
@@ -11,12 +11,12 @@ export Service, register, run
 type Service
     queue::Queue.Service
     bucket::Bucket.Service
-    dataSource::DataSource.Service
+    dataSource::Datasource.Service
     poll_frequency_seconds::Int64
     tasks::Dict{AbstractString, Type}
     Service(queue::Queue.Service, bucket::Bucket.Service,
-        poll_frequency_seconds::Int64) = 
-            new(queue, bucket, poll_frequency_seconds,
+        datasource::Datasource.Service, poll_frequency_seconds::Int64) = 
+            new(queue, bucket, datasource, poll_frequency_seconds,
                 Dict{AbstractString, Module}())
 end
 
@@ -99,7 +99,7 @@ end
 
 function prepare_input(daemon::Service, task::DaemonTask.Details)
     for filename in task.basicInfo.files
-        DataSource.pull!(daemon.dataSource, filename)
+        Datasource.pull!(daemon.dataSource, filename)
     end
 end
 
@@ -111,7 +111,7 @@ function finalize_output(daemon::Service, task::DaemonTask.Details,
     else
         println("Task $(task.details.id), $(task.details.name) was
             completed successfully")
-        DataSource.push!(daemon.datasource, result.filename)
+        Datasource.push!(daemon.datasource, result.filename)
     end
 end
 

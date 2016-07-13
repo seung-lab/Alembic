@@ -1,6 +1,6 @@
 module TaskTests
-include("tasks/test_daemontask.jl")
-include("tasks/test_blockmatchtask.jl")
-include("tasks/test_basictaskinfo.jl")
-include("tasks/test_alignmenttaskinfo.jl")
+include("test_daemontask.jl")
+include("test_blockmatchtask.jl")
+include("test_basictaskinfo.jl")
+include("test_alignmenttaskinfo.jl")
 end # module TaskTests

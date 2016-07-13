@@ -35,11 +35,11 @@ Get an IO stream to the object that is cached with this key.
 Returns nothing if key is not found
 """
 function get(cache::Service, key::AbstractString)
-    error("clear is unimplemented for $cache")
+    error("get is unimplemented for $cache")
 end
 
 function delete!(cache::Service, key::AbstractString)
-    error("clear is unimplemented for $cache")
+    error("delete! is unimplemented for $cache")
 end
 
 end #module Cache
