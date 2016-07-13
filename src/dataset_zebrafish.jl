@@ -17,7 +17,11 @@ function get_name(index)
     elseif is_finished(index)
         return string(index[1], ",", index[2], "_finished")
     else
+      if index[1] < 10
     return string("Tile_r", index[3], "-c", index[4], "_W00", index[1], "_sec", index[2])
+  	else
+    return string("Tile_r", index[3], "-c", index[4], "_W0", index[1], "_sec", index[2])
+  end
     end
 end
 
