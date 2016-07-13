@@ -1,7 +1,7 @@
 module TestBlockMatchTask
 
 using Base.Test
-using CloudTest.MockTasks
+using CloudTest.TestTasks
 
 import Julimaps.Cloud.Tasks.DaemonTask
 import Julimaps.Cloud.Tasks.BlockMatchTask

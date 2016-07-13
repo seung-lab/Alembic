@@ -1,6 +1,10 @@
 module Services
-include("bucketservice.jl")
-include("awsbucketservice.jl")
-include("queueservice.jl")
-include("awsqueueservice.jl")
+include("bucket.jl")
+include("awsbucket.jl")
+include("queue.jl")
+include("awsqueue.jl")
+include("cache.jl")
+include("filesystemcache.jl")
+include("datasource.jl")
+include("daemon.jl")
 end # module Services

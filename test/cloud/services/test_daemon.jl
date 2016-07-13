@@ -1,18 +1,18 @@
 module TestDaemonService
 
 using Base.Test
-using CloudTest.MockTasks
+using CloudTest.TestTasks
 using CloudTest.MockServices
 
 import Julimaps.Cloud.Services.Queue
 import Julimaps.Cloud.Services.Bucket
+import Julimaps.Cloud.Services.Daemon
 import Julimaps.Cloud.Tasks.DaemonTask
-import Julimaps.Cloud.Daemon
 
 function test_register_no_execute_method()
     mock_queue = MockQueueService()
     mock_bucket = MockBucketService()
-    daemon = Daemon.DaemonService(mock_queue, mock_bucket, 10)
+    daemon = Daemon.Service(mock_queue, mock_bucket, 10)
     @test_throws Exception Daemon.register!(daemon,
         TEST_TASK_NAME, MockTaskNoExecute)
 end

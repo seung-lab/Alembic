@@ -1,4 +1,4 @@
-module MockTasks
+module TestTasks
 
 import Julimaps.Cloud.Tasks.DaemonTask
 import Julimaps.Cloud.Tasks.BasicTask

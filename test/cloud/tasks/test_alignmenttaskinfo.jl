@@ -4,7 +4,7 @@ import Julimaps.Cloud.Tasks.AlignmentTask
 import JSON
 
 using Base.Test
-using CloudTest.MockTasks
+using CloudTest.TestTasks
 
 function test_alignment_task_info_no_indices()
     info = make_valid_alignment_task_info()

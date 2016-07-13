@@ -2,6 +2,7 @@ module Daemon
 
 import Julimaps.Cloud.Services.Queue
 import Julimaps.Cloud.Services.Bucket
+import Julimaps.Cloud.Services.DataSource
 import Julimaps.Cloud.Tasks.DaemonTask
 import JSON
 
@@ -10,7 +11,7 @@ export Service, register, run
 type Service
     queue::Queue.Service
     bucket::Bucket.Service
-    cache::Cache.Service
+    dataSource::DataSource.Service
     poll_frequency_seconds::Int64
     tasks::Dict{AbstractString, Type}
     Service(queue::Queue.Service, bucket::Bucket.Service,
@@ -96,18 +97,21 @@ function parse(daemon::Service, text::ASCIIString)
     return daemon.tasks[task_name](details, message["payload"])
 end
 
-function prepare_input(daemon::Service, task::DaemonTask)
-    basic_info = task.basicInfo
-    for file in task.basicInfo.files
-        if Cache.exists(daemon.cache, file)
-
+function prepare_input(daemon::Service, task::DaemonTask.Details)
+    for filename in task.basicInfo.files
+        DataSource.pull!(daemon.dataSource, filename)
+    end
 end
 
-function finalize_output(daemon::Service, task::DaemonTask,
+function finalize_output(daemon::Service, task::DaemonTask.Details,
     result::DaemonTask.Result)
     if !result.success
         println("Task $(task.details.id), $(task.details.name) was
-        not successful")
+            not successful")
+    else
+        println("Task $(task.details.id), $(task.details.name) was
+            completed successfully")
+        DataSource.push!(daemon.datasource, result.filename)
     end
 end
 

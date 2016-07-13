@@ -18,6 +18,16 @@ end
 """
 abstract Details
 
+"""
+    DaemonTask.Result
+
+This object contains the outcome of performing the task.
+"""
+type Result
+    success::Bool
+    filename::AbstractString
+end
+
 # Test to see if the execute function exists for this type
 function can_execute(task_type::Type)
     if !(task_type <: Details)

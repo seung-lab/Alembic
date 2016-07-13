@@ -3,9 +3,9 @@ include("../Julimaps.jl")
 module RunDaemon
 
 import Julimaps
-import Julimaps.Cloud.Daemon
-import Julimaps.Cloud.Queue
-import Julimaps.Cloud.Bucket
+import Julimaps.Cloud.Services.AWSQueue
+import Julimaps.Cloud.Services.AWSBucket
+import Julimaps.Cloud.Services.Daemon
 import AWS
 
 type RunConfig

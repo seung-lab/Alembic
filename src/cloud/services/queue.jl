@@ -7,7 +7,7 @@ abstract Service
 """
     pop_message(queue::QueueService)
 
-Pop a message of the queue. Override this function in implementation
+Pop a message of the queue.
 """
 function pop_message(queue::Service)
     error("pop_message for $queue is not implemented")
