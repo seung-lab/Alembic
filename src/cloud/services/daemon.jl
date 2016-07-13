@@ -98,9 +98,7 @@ function parse(daemon::Service, text::ASCIIString)
 end
 
 function prepare(daemon::Service, task::DaemonTask.Details)
-    for filename in task.basicInfo.files
-        Datasource.pull!(daemon.dataSource, filename)
-    end
+    Datasource.pull!(daemon.dataSource, task.basicInfo.files)
 end
 
 function finalize(daemon::Service, task::DaemonTask.Details,

@@ -32,6 +32,42 @@ function test_pull_empty_cache()
     @test readchomp(new_cache_value) == bucket_text 
 end
 
+function test_pull_multi_empty_cache()
+    key = "somekey"
+    bucket_text = "mock contents"
+    bucket_file = IOBuffer(bucket_text)
+    seekstart(bucket_file)
+
+    key2 = "somekey2"
+    bucket_text2 = "mock contents2"
+    bucket_file2 = IOBuffer(bucket_text2)
+    seekstart(bucket_file2)
+
+    bucket_files = Dict()
+    bucket_files[key] = bucket_file
+    bucket_files[key2] = bucket_file2
+
+    cache_values = Dict()
+
+    bucket = MockBucketService(bucket_files)
+    cache = MockCacheService(cache_values)
+
+    datasource = BucketCacheDatasourceService(bucket, cache)
+
+    Datasource.pull!(datasource, [key, key2])
+
+    @test haskey(cache.mockValues, key)
+    new_cache_value = cache.mockValues[key]
+    # cache gets updated with the bucket text
+    @test readchomp(new_cache_value) == bucket_text
+
+    @test haskey(cache.mockValues, key2)
+    new_cache_value2 = cache.mockValues[key2]
+    # cache gets updated with the bucket text
+    @test readchomp(new_cache_value2) == bucket_text2
+    println("$(cache.mockValues)")
+end
+
 function  test_pull_with_cache()
     key = "somekey"
 
