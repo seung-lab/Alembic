@@ -17,16 +17,23 @@ end
 export MockBucketService
 type MockBucketService <: Bucket.Service
     mockFiles::Dict{AbstractString, Any}
+    #=MockBucketService() = new(Dict())=#
 end
 
-function Bucket.download(bucket::MockBucketService, key::AbstractString,
-        local_file::IO)
+# local_file can also be a file location but we're not testing that for now
+function Bucket.download(bucket::MockBucketService, key::ASCIIString,
+        local_file::Union{ASCIIString, IO})
     data = bucket.mockFiles[key]
-    write(local_file, data)
+    write(local_file, readall(data))
+    seekstart(data)
 end
-function Bucket.upload(bucket::MockBucketService, local_file::IO,
-        key::AbstractString)
-    bucket.mockFiles[key] = readbytes(local_file; all=true)
+# local_file can also be a file location but we're not testing that for now
+function Bucket.upload(bucket::MockBucketService,
+    local_file::Union{ASCIIString, IO}, key::ASCIIString)
+    data = IOBuffer()
+    write(data, readbytes(local_file))
+    seekstart(data)
+    bucket.mockFiles[key] = data
 end
 
 export MockQueueService
@@ -37,6 +44,31 @@ end
 
 export MockCacheService
 type MockCacheService <: Cache.Service
+    mockValues::Dict{AbstractString, IO}
+    #=MockCacheService() = new(Dict())=#
 end
+function Cache.exists(cache::MockCacheService, key::AbstractString)
+    return haskey(cache.mockValues, key)
+end
+function Cache.put!(cache::MockCacheService, key::AbstractString,
+        value_buffer::IO)
+    data = IOBuffer()
+    write(data, readbytes(value_buffer))
+    seekstart(data)
+    cache.mockValues[key] = data
+end
+function Cache.get!(cache::MockCacheService, key::AbstractString)
+    if haskey(cache.mockValues, key)
+        data = cache.mockValues[key]
+        seekstart(data)
+        return data
+    else
+        return nothing
+    end
+end
+function Cache.delete!(cache::MockCacheService, key::AbstractString)
+    delete!(cache.mockValues, key)
+end
+
 
 end # module MockServices
