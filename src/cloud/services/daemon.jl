@@ -34,11 +34,11 @@ function run(daemon::Service)
 
                 println("Task is $(task.details.id), $(task.details.name)")
 
-                prepareTask(daemon, task)
+                prepare(daemon, task)
 
                 result = DaemonTask.execute(task)
 
-                finalizeTask(daemon, task, result)
+                finalize(daemon, task, result)
 
             end
         catch e
@@ -97,13 +97,13 @@ function parse(daemon::Service, text::ASCIIString)
     return daemon.tasks[task_name](details, message["payload"])
 end
 
-function prepare_input(daemon::Service, task::DaemonTask.Details)
+function prepare(daemon::Service, task::DaemonTask.Details)
     for filename in task.basicInfo.files
         Datasource.pull!(daemon.dataSource, filename)
     end
 end
 
-function finalize_output(daemon::Service, task::DaemonTask.Details,
+function finalize(daemon::Service, task::DaemonTask.Details,
     result::DaemonTask.Result)
     if !result.success
         println("Task $(task.details.id), $(task.details.name) was
