@@ -351,7 +351,7 @@ function premontage_to_overview(wafer, start, tile_size = [8000,8000], scale = 0
 	xc = normxcorr2(cur_image, overview_image)
 	rm, ind = findmax(xc)
 	i_max, j_max = ind2sub(xc, ind);
-	return [i_max, j_max]
+	return [round(Int64, i_max / scale), round(Int64, j_max / scale)]
     end
 
     offsets = pmap(find_patch_locs, images, repeated(overview_image))

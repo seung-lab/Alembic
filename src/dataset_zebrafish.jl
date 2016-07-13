@@ -4,7 +4,11 @@ global DATASET_RESOLUTION = [5,5,45]
 
 function get_name(index)
     if is_overview(index)
+      if index[1] < 10
         return string("MontageOverviewImage_W00", index[1], "_sec", index[2])
+      else
+        return string("MontageOverviewImage_W0", index[1], "_sec", index[2])
+      end
     elseif is_montaged(index)
         return string(index[1], ",", index[2], "_montaged")
     elseif is_prealigned(index)
@@ -38,7 +42,7 @@ function get_path(index, ext = ".h5")
       else
         section_folder = string("W0", index[1], "_Sec", index[2], "_Montage")
       end
-        path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ext))
+        #path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ext))
         path = joinpath(PREMONTAGED_DIR, string(name, ext))
     elseif is_montaged(index)
         path = joinpath(MONTAGED_DIR, string(name, ext))
