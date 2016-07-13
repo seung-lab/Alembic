@@ -33,8 +33,13 @@ end
 function get_path(index, ext = ".h5")
     name = get_name(index)
     if is_overview(index)
+      if index[1] < 10
         section_folder = string("W00", index[1], "_Sec", index[2], "_Montage")
+      else
+        section_folder = string("W0", index[1], "_Sec", index[2], "_Montage")
+      end
         path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ext))
+        path = joinpath(PREMONTAGED_DIR, string(name, ext))
     elseif is_montaged(index)
         path = joinpath(MONTAGED_DIR, string(name, ext))
     elseif is_prealigned(index)
