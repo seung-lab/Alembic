@@ -382,7 +382,7 @@ function save_stack(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, 
   # Omni can't handle chunked channel data
   # chunksize = min(512, min(size(stack)...))
   # @time f["main", "chunk", (chunksize,chunksize,chunksize)] = stack
-  f["main"] = stack
+  f["img"] = stack
   f["orientation"] = orientation
   f["origin"] = origin
   f["x_slice"] = x_slice
