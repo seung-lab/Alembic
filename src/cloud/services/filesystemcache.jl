@@ -7,6 +7,7 @@ const FOLDER_SEPARATOR = "/"
 
 type FileSystemCacheService <: Cache.Service
     baseDirectory::AbstractString
+
     FileSystemCacheService(baseDirectory::AbstractString) =
         isempty(strip(baseDirectory)) ?  throw(ArgumentError("Base directory can
             not be empty")) : new(baseDirectory)

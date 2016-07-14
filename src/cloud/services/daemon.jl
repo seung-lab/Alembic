@@ -15,11 +15,12 @@ type Service
     dataSource::Datasource.Service
     poll_frequency_seconds::Int64
     tasks::Dict{AbstractString, Type}
-    Service(queue::Queue.Service, bucket::Bucket.Service,
-        datasource::Datasource.Service, poll_frequency_seconds::Int64) = 
-            new(queue, bucket, datasource, poll_frequency_seconds,
-                Dict{AbstractString, Module}())
 end
+
+Service(queue::Queue.Service, bucket::Bucket.Service,
+    datasource::Datasource.Service, poll_frequency_seconds::Int64) = 
+        Service(queue, bucket, datasource, poll_frequency_seconds,
+            Dict{AbstractString, Module}())
 
 function run(daemon::Service)
     while true

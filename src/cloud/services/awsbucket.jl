@@ -8,10 +8,10 @@ export AWSBucketService
 type AWSBucketService <: Bucket.Service
     env::AWS.AWSEnv
     name::ASCIIString
-
-    AWSBucketService(env::AWS.AWSEnv, name::ASCIIString) =
-        check_reachable(env, name) && new(env, name, Bucket)
 end
+
+AWSBucketService(env::AWS.AWSEnv, name::ASCIIString) =
+    check_reachable(env, name) && AWSBucketService(env, name, Bucket)
 
 function check_reachable(env::AWS.AWSEnv, bucket_name::AbstractString)
     bucket_response = S3.get_bkt(env, bucket_name)
