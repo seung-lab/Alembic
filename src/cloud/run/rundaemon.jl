@@ -2,10 +2,13 @@ include("../Julimaps.jl")
 
 module RunDaemon
 
+using Julimaps.Cloud.Services.AWSQueue
+using Julimaps.Cloud.Services.AWSBucket
+using Julimaps.Cloud.Services.FileSystemCache
+using Julimaps.Cloud.Services.BucketCacheDatasource
+using Julimaps.Cloud.Services.Daemon
+
 import Julimaps
-import Julimaps.Cloud.Services.AWSQueue
-import Julimaps.Cloud.Services.AWSBucket
-import Julimaps.Cloud.Services.Daemon
 import AWS
 
 type RunConfig
@@ -24,9 +27,11 @@ function main()
     # variables or ~/.awssecret or query permissions server)
     env = AWS.AWSEnv()
 
-    queue = Queue.AWSQueueService(env, run_config.queue_name)
+    queue =AWSQueueService(env, run_config.queue_name)
 
-    bucket = Bucket.AWSBucketService(env, run_config.bucket_name)
+    bucket = AWSBucketService(env, run_config.bucket_name)
+
+    cache = FileSystemCacheService("
 
     daemon = Daemon.DaemonService(queue, bucket, run_config.poll_frequency_seconds)
 

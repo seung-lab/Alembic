@@ -36,12 +36,7 @@ function run(daemon::Service)
 
                 println("Task is $(task.details.id), $(task.details.name)")
 
-                prepare(daemon, task)
-
-                result = DaemonTask.execute(task)
-
-                finalize(daemon, task, result)
-
+                success = DaemonTask.run(task, daemon.datasource)
             end
         catch e
             showerror(STDERR, e, catch_backtrace(); backtrace = true)
@@ -60,7 +55,7 @@ Register the task type generation for the given task_name
 """
 function register!(daemon::Service, task_name::AbstractString,
         task_type::Type)
-    if !DaemonTask.can_execute(task_type)
+    if !can_execute(task_type)
         error("Can not register $task_type with name $task_name " *
             " in Daemon. Could not find a registered method to execute")
     end
@@ -73,6 +68,11 @@ function register!(daemon::Service, task_name::AbstractString,
     daemon.tasks[task_name] = task_type
 end
 
+"""
+    parse(daemon::Service, text::ASCIIString)
+
+Parse input JSON message into a task object
+"""
 function parse(daemon::Service, text::ASCIIString)
     text = strip(text)
 
@@ -90,22 +90,6 @@ function parse(daemon::Service, text::ASCIIString)
 
     task_type = daemon.tasks[basic_info.name]
     return task_type(basic_info, message["payloadInfo"])
-end
-
-function prepare(daemon::Service, task::DaemonTask.Details)
-    Datasource.pull!(daemon.dataSource, task.basicInfo.files)
-end
-
-function finalize(daemon::Service, task::DaemonTask.Details,
-    result::DaemonTask.Result)
-    if !result.success
-        println("Task $(task.details.id), $(task.details.name) was
-            not successful")
-    else
-        println("Task $(task.details.id), $(task.details.name) was
-            completed successfully")
-        Datasource.push!(daemon.datasource, result.filename)
-    end
 end
 
 end # end module Daemon
