@@ -13,7 +13,7 @@ type Info
     indices::Array{Tuple{Int64,Int64,Int64,Int64}}
 end
 
-function Info(dict::Dict{AbstractString, Any})
+function Info(dict::Dict{AbstractString, Any}) 
     # parse indices list
     if typeof(dict["indices"]) != Array{Any, 1} ||
             length(dict["indices"]) == 0

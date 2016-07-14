@@ -1,7 +1,7 @@
 module TestDatasource
 
 using Base.Test
-using CloudTest.MockServices
+using CloudTest.Utils.MockServices
 using Julimaps.Cloud.Services.BucketCacheDatasource
 
 import Julimaps.Cloud.Services.Bucket

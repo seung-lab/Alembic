@@ -12,7 +12,7 @@ i.e. compose a task with
 ```julia
 type YourDaemonTaskDetails <: DaemonTask.Details
     basicInfo::BasicTask.Info
-    taskInfo::YourTaskDetails
+    taskInfo::YourTask.Info
 end
 ```
 """

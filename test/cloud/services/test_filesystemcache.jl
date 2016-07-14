@@ -1,7 +1,7 @@
 module TestFileSystemCache
 
 using Base.Test
-using CloudTest.TestServices
+using CloudTest.Utils.TestServices
 
 import Julimaps.Cloud.Services.Cache
 import Julimaps.Cloud.Services.FileSystemCache

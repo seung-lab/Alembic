@@ -15,8 +15,13 @@ type Info
     files::Array{AbstractString, 1}
 end
 
-function Info(dict::Dict{AbstractString, Any}) 
-    id = typeof(dict["id"]) <: Int ?  dict["id"] : parse(Int64, dict["id"])
+function Info(dict::Dict{AbstractString, Any})
+    if haskey(dict, "id")
+        id = typeof(dict["id"]) <: Int ?  dict["id"] : parse(Int64, dict["id"])
+    else
+        id = -1
+    end
+
     if isempty(strip(dict["name"]))
         throw(ArgumentError("Task name can not be empty"))
     end

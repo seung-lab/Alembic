@@ -1,19 +1,11 @@
 module MockServices
 
+using CloudTest.Utils.TestTasks
+
 import Julimaps.Cloud.Services.Queue
 import Julimaps.Cloud.Services.Bucket
 import Julimaps.Cloud.Services.Cache
 import Julimaps.Cloud.Services.Datasource
-import Julimaps.Cloud.Tasks.DaemonTask
-
-export MockTaskNoExecute, MockTaskWithExecute
-type MockTaskNoExecute <: DaemonTask.Details
-end
-type MockTaskWithExecute <: DaemonTask.Details
-end
-function DaemonTask.execute(task::MockTaskWithExecute)
-    println("executing")
-end
 
 export MockBucketService
 type MockBucketService <: Bucket.Service

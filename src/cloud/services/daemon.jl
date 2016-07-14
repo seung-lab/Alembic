@@ -4,6 +4,7 @@ import Julimaps.Cloud.Services.Queue
 import Julimaps.Cloud.Services.Bucket
 import Julimaps.Cloud.Services.Datasource
 import Julimaps.Cloud.Tasks.DaemonTask
+import Julimaps.Cloud.Tasks.BasicTask
 import JSON
 
 export Service, register, run
@@ -75,26 +76,19 @@ function parse(daemon::Service, text::ASCIIString)
     text = strip(text)
 
     if isempty(text)
-        error("Trying to parse empty string for task")
+        throw(ArgumentError("Trying to parse empty string for task"))
     end
 
     message = JSON.parse(text)
 
-    if !haskey(message, "details")
-        error("Could not find task details from parsing message ($text)")
+    basic_info = BasicTask.Info(message["basicInfo"])
+
+    if !haskey(daemon.tasks, basic_info.name)
+        error("Task $(basic_info.name) is not registered with the daemon")
     end
 
-    details = DaemonTask.Details(message["details"])
-
-    if !haskey(message, "payload")
-        error("Could not find task payload from parsing message ($text)")
-    end
-
-    if !haskey(daemon.tasks, details.name)
-        error("Task $(details.name) is not registered with the daemon")
-    end
-
-    return daemon.tasks[task_name](details, message["payload"])
+    task_type = daemon.tasks[basic_info.name]
+    return task_type(basic_info, message["payloadInfo"])
 end
 
 function prepare(daemon::Service, task::DaemonTask.Details)

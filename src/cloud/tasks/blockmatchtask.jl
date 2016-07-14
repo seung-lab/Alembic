@@ -18,7 +18,7 @@ type BlockMatchTaskDetails <: DaemonTask.Details
 end
 
 BlockMatchTaskDetails(info::BasicTask.Info, dict::Dict{AbstractString, Any}) =
-    new(info, AlignmentTask.Info(dict))
+    BlockMatchTaskDetails(info, AlignmentTask.Info(dict))
 
 const name = "BLOCK_MATCH"
 

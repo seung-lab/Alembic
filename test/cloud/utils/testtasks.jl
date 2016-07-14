@@ -11,6 +11,9 @@ export make_valid_basic_info
 export TEST_INDICES
 export make_valid_alignment_task_info
 
+export MockTaskNoExecute, MockTaskExecute
+export make_valid_task_execute, make_valid_task_no_execute
+
 const TEST_ID = 1
 const TEST_TASK_NAME = "test_name"
 const TEST_BASE_DIRECTORY = "base_directory"
@@ -25,4 +28,28 @@ function make_valid_alignment_task_info()
     return AlignmentTask.Info(TEST_INDICES)
 end
 
-end # MockTasks
+type MockTaskNoExecute <: DaemonTask.Details
+    basicInfo::BasicTask.Info
+    payloadInfo::AbstractString
+end
+
+type MockTaskExecute <: DaemonTask.Details
+    basicInfo::BasicTask.Info
+    payloadInfo::AbstractString
+end
+# register a registered test task
+function DaemonTask.execute(task::MockTaskExecute)
+    println("executing")
+end
+
+function make_valid_task_no_execute()
+    return MockTaskNoExecute(make_valid_basic_info(),
+        "Mock Task No Execute")
+end
+
+function make_valid_task_execute()
+    return MockTaskExecute(make_valid_basic_info(),
+        "Mock Task Execute")
+end
+
+end # module MockTasks
