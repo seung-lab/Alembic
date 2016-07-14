@@ -52,13 +52,13 @@ function index_to_int(index)
   return index[1]*10^7 + index[2]*10^4 + index[3]*10^2 + index[4] 
 end
 
-function isless(indexA, indexB)
-  return Base.isless(index_rank(indexA), index_rank(indexB))
-end
+# function isless(indexA, indexB)
+#   return Base.isless(index_rank(indexA), index_rank(indexB))
+# end
 
-function isequal(indexA, indexB)
-  return Base.isequal(index_rank(indexA), index_rank(indexB))
-end
+# function isequal(indexA, indexB)
+#   return Base.isequal(index_rank(indexA), index_rank(indexB))
+# end
 
 function get_overview_index(index)
   return (index[1:2]..., OVERVIEW_INDEX, OVERVIEW_INDEX)
@@ -152,7 +152,7 @@ function get_succeeding(index, num = 1)
   loc_in_reg = find_in_registry(index);
   if loc_in_reg == 0 return NO_INDEX; end
   if loc_in_reg > size(registry, 1) - num return NO_INDEX; end
-  cur_sec = registry[loc_in_reg, 2]
+  cur_sec = registry[loc_in_reg, 2][2]
   ind_num = 0;
   for sec_num in 1:num
     while cur_sec == registry[loc_in_reg + ind_num, 2][2]
