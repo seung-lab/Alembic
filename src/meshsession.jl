@@ -249,7 +249,7 @@ end
 
 #### ASSUMES HOMOGENEOUS TILE SIZE
 #function premontage(wafer_range::UnitRange{Int64})
-function premontage(wafer, start)
+function premontage(wafer, start, tile_size = [8000,8000], expected_overlap = 0.145)
 #  for wafer in wafer_range
     premontaged_path = get_path(premontaged(wafer, 1))
     dir,name = splitdir(premontaged_path)
@@ -271,33 +271,94 @@ function premontage(wafer, start)
 
     fixed_indices = similar(tile_indices, 0)
     images = map(get_image, tile_indices)
-    images = map(Images.restrict, images);
-    images = map(Images.restrict, images);
+    #images = map(Images.restrict, images);
+    #images = map(Images.restrict, images);
+    #images = map(Images.restrict, images);
 
     #fix the first one
-    update_offset(tile_indices[1], [0, 0], [8000,8000]);
+    update_offset(tile_indices[1], [0, 0], tile_size);
     push!(fixed_indices, tile_indices[1])
-    oset = Points(length(tile_indices))
-    oset[1] = [0,0];
+    offsets = Points(length(tile_indices))
+    offsets[1] = [0,0];
 
     sigma = [1,1]
 
     for index in tile_indices[2:end]
 	target_index = fixed_indices[findfirst(this -> is_adjacent(index, this), fixed_indices)]
-
-	xc = normxcorr2(images[findfirst(ind -> ind == index, tile_indices)], images[findfirst(ind -> ind == target_index, tile_indices)]; shape="full")
+	  cur_image = images[findfirst(ind -> ind == index, tile_indices)]
+	  target_image = images[findfirst(ind -> ind == target_index, tile_indices)]
+	if index[3] - target_index[3] == 1
+	  cur_patch = cur_image[1:round(Int64, tile_size[1] * expected_overlap), :]
+	  target_patch = target_image[(1 + round(Int64, tile_size[1] * (1 - expected_overlap))):end, :]
+	  expected_offset = [round(Int64, tile_size[1] * (1 - expected_overlap)), 0]
+	else
+	  cur_patch = cur_image[1:end, 1:round(Int64, tile_size[2] * expected_overlap)]
+	  target_patch = target_image[1:end, (1 + round(Int64, tile_size[2] * (1 - expected_overlap))):end]
+	  expected_offset = [0, round(Int64, tile_size[2] * (1 - expected_overlap))]
+	end
+	cur_patch = Images.restrict(cur_patch)
+	target_patch = Images.restrict(target_patch)
+	xc = normxcorr2(cur_patch, target_patch; shape="full")
 	xcd = xc - Images.imfilter_gaussian(xc, sigma);
 
 	rm, ind = findmax(xcd)
 	i_max, j_max = ind2sub(xcd, ind);
-	i_diff = 4 * (i_max - median(1:size(xcd, 1)))
-	j_diff = 4 * (j_max - median(1:size(xcd, 2)))
+	i_diff = 2 * (i_max - median(1:size(xcd, 1)))
+	j_diff = 2 * (j_max - median(1:size(xcd, 2)))
 
 #    	update_offset(index, [i_diff, j_diff] + get_offset(target_index), [size(images[findfirst(ind -> ind == index, tile_indices)])...]);
-    	update_offset(index, [i_diff, j_diff] + oset[findfirst(ind -> ind == target_index, tile_indices)], [8000,8000]);
-    	oset[findfirst(ind -> ind == index, tile_indices)] = [i_diff, j_diff] + oset[findfirst(ind -> ind == target_index, tile_indices)]
+    	update_offset(index, expected_offset + [i_diff, j_diff] + offsets[findfirst(ind -> ind == target_index, tile_indices)], tile_size);
+    	offsets[findfirst(ind -> ind == index, tile_indices)] = expected_offset + [i_diff, j_diff] + offsets[findfirst(ind -> ind == target_index, tile_indices)]
     	push!(fixed_indices, index)
     end
+# end
+ end
+end
+
+#### ASSUMES HOMOGENEOUS TILE SIZE
+#function premontage(wafer_range::UnitRange{Int64})
+function premontage_to_overview(wafer, start, tile_size = [8000,8000], scale = 0.05)
+#  for wafer in wafer_range
+    premontaged_path = get_path(premontaged(wafer, 1))
+    dir,name = splitdir(premontaged_path)
+    tiles = sort_dir(dir, ".h5");
+    tiles = filter(x->contains(x,"Tile"), tiles)
+    tile_indices = sort(map(parse_name, tiles))
+    tile_indices = filter(x->x[1] == wafer, tile_indices)
+    section_range = start:tile_indices[end][2]
+  for sec in section_range
+    premontaged_path = get_path(premontaged(wafer, sec))
+    dir,name = splitdir(premontaged_path)
+    println("$wafer, $sec")
+    tiles = sort_dir(dir, ".h5");
+    tiles = filter(x->contains(x,"Tile"), tiles)
+    tile_indices = sort(map(parse_name, tiles))
+    tile_indices = filter(x->x[1:2] == (wafer,sec), tile_indices)
+
+    if length(tile_indices) == 0 continue; end
+
+    fixed_indices = similar(tile_indices, 0)
+    images = map(get_image, tile_indices)
+    #images = map(Images.restrict, images);
+    #images = map(Images.restrict, images);
+    #images = map(Images.restrict, images);
+
+    sigma = [1,1]
+
+    overview_image = get_image(overview(wafer, sec))
+    function find_patch_locs(cur_image, overview_image)
+	cur_image = imscale(cur_image, scale)[1]
+	xc = normxcorr2(cur_image, overview_image)
+	rm, ind = findmax(xc)
+	i_max, j_max = ind2sub(xc, ind);
+	return [round(Int64, i_max / scale), round(Int64, j_max / scale)]
+    end
+
+    offsets = pmap(find_patch_locs, images, repeated(overview_image))
+    for i in 1:length(tile_indices)
+      update_offset(tile_indices[i], offsets[i], tile_size)
+    end
+    
 # end
  end
 end
