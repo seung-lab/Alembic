@@ -1,5 +1,3 @@
-global DATASET_RESOLUTION = [7,7,40]
-
 function get_name(index::Index)
     if is_overview(index)
         if cur_dataset == "zebrafish"
@@ -183,6 +181,7 @@ end
 datasets_dir_path = "research/Julimaps/datasets"
 # cur_dataset = "piriform"
 # cur_dataset = "AIBS_practice_234251S6R_01_01_aligned_01"
+cur_dataset = "AIBS_actual_trial"
 # cur_dataset = "align_net"
 # cur_dataset = "AIBS_pilot_v1"
 # cur_dataset = "align_net"
@@ -190,7 +189,7 @@ datasets_dir_path = "research/Julimaps/datasets"
 # cur_dataset = "elastic_real_crack_with_cropping"
 # cur_dataset = "elastic_real_compression"
 # cur_dataset = "elastic_no_crack"
-cur_dataset = "elastic_compression_automated"
+# cur_dataset = "elastic_compression_automated"
 in_alignment_test = false
 # test_dataset = "AIBS_practice_spring_constants"
 # test_dataset = "AIBS_practice_broken_springs"
@@ -201,7 +200,7 @@ in_alignment_test = false
 # test_dataset = "AIBS_practice_broken_section_no_bug"
 # test_dataset = "elastic_test_crack_removed_matches"
 # test_dataset = "elastic_test_crack_broken_springs"
-test_dataset = "elastic_compression_automated_debug_right"
+# test_dataset = "elastic_compression_automated_debug"
 # test_dataset = "elastic_test_crack_removed_matches_broken_springs"
 # test_dataset = "elastic_test_crack_removed_matches_broken_springs_zeros"
 # test_dataset = "elastic_test_crack_removed_matches_broken_springs_finer_mesh"
