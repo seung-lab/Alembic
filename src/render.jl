@@ -52,11 +52,6 @@ function render_montaged(meshset::MeshSet; render_full=false, render_review=true
       write_seams(meshset, imgs, offsets, indices, flagged_only)
     end
     if render_full
-    println(typeof(imgs));
-    println(typeof(imgs[1]));
-    println(size(imgs[1]));
-    println(imgs[1][1:10]);
-      println("test1")
       img, offset = merge_images(imgs, offsets)
       println("Writing ", new_fn)
       f = h5open(get_path(index), "w")
