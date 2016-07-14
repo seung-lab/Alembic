@@ -199,7 +199,7 @@ function view_match(meshset::MeshSet, match_ind)
     end
   end
 
-  imgc, img2 = view(img, pixelspacing=[1,1])
+  imgc, img2 = ImageView.view(img, pixelspacing=[1,1])
   # resize(imgc, 400, 600)
   make_vectors!(params)
   show_vectors(imgc, img2, params["vectors"], RGB(0,0,1), RGB(1,0,1))
@@ -357,11 +357,11 @@ function view_blockmatch(match, match_ind, params)
   cgrid = canvasgrid(2,3; pad=10)
   opts = Dict(:pixelspacing => [1,1])
 
-  imgc, img2 = view(cgrid[1,1], src; opts...)
-  imgc, img2 = view(cgrid[2,1], dst; opts...)
-  imgc, img2 = view(cgrid[2,2], fused_img; opts...)
-  imgc, img2 = view(cgrid[1,2], xc_color'; opts...)
-  imgc, img2 = view(cgrid[1,3], xc_beta_color'; opts...)
+  imgc, img2 = ImageView.view(cgrid[1,1], src; opts...)
+  imgc, img2 = ImageView.view(cgrid[2,1], dst; opts...)
+  imgc, img2 = ImageView.view(cgrid[2,2], fused_img; opts...)
+  imgc, img2 = ImageView.view(cgrid[1,2], xc_color'; opts...)
+  imgc, img2 = ImageView.view(cgrid[1,3], xc_beta_color'; opts...)
   c = canvas(imgc)
   win = Tk.toplevel(c)
   return win
