@@ -1,7 +1,7 @@
 #NORMALIZER = Array{Float64, 2}(readdlm("calib"))
 using StatsBase
 
-function construct_adjustment_image(meta)
+function construct_adjustment_image(meta, suffix="")
 	function read(fn)
 		return Array{Float64, 2}(Images.load(fn).data')
 	end
@@ -77,6 +77,100 @@ function import_AIBS_pilot_v1(construct=false)
 			close(f)
 			update_offset(index, offset, [size(img)...])
 		end		
+	end
+end
+
+function build_AIBS_actual_adjustment(meta, dir, suffix="_sec00000", n=20)
+	println("building adjustment file")
+
+	adj_fn = joinpath(RAW_DIR, string("adj", suffix, ".txt"))
+	intensities = Array{Float64,1}()
+
+	function read(fn)
+		return Array{Float64, 2}(Images.load(fn).data')
+	end
+
+	samples = [1:30:size(meta,1)]
+	for (k, i) = enumerate(samples)
+		println("Compiling meta $i, # $k / ", length(samples))
+		old_fn = joinpath(dir, meta[i,1])
+		if isfile(old_fn)
+			intensities = vcat(intensities, read(old_fn)[:])
+		end
+	end
+	println("Calculating intensity histogram...")
+	distr = nquantile(intensities, n)
+	println(distr)
+	writedlm(adj_fn, distr)
+end
+
+function build_AIBS_actual_meta(meta_fn, suffix="_sec00000")
+	meta = readdlm(meta_fn)
+	meta_new_fn = joinpath(RAW_DIR, string("meta", suffix, ".txt"))
+
+	# cleanup meta text file
+	path = meta[:,1]
+	path_no_ext = [split(i, ".")[1] for i in path]
+	col = [parse(split(i, "_")[9])+1 for i in path_no_ext]
+	row = [parse(split(i, "_")[10])+1 for i in path_no_ext]
+	sec = meta[:,4]+1
+	# string("Tile_r", index[3], "-c", index[4], "_S2-W00", index[1], "_sec", index[2])
+	# path_new_fn = [string("Tile_r", @sprintf("%02d", i), "-c", @sprintf("%02d", j), "_S2-W001_sec", @sprintf("%04d", k), ".h5") for (i,j,k) in zip(row, col, sec)]
+	path_new_fn = [string("Tile_r", i, "-c", j, "_S2-W001_sec", k, ".h5") for (i,j,k) in zip(row, col, sec)]
+	meta = hcat(meta, [path_new_fn row col])
+	writedlm(meta_new_fn, meta)
+end
+
+function import_AIBS_actual(dir="/media/tmacrina/Data/AIBS_actual_trial/Dropbox (MIT)/0", suffix="_sec00000", trakem_fn="_trackem_20160630142845_243774_7R_SID_09_redo_0_0_416.txt")
+	meta_fn = joinpath(RAW_DIR, string("meta", suffix, ".txt"))
+	if !isfile(meta_fn)
+		build_AIBS_actual_meta(joinpath(dir, trakem_fn), suffix)
+	end
+	meta = readdlm(meta_fn)
+
+	adj_fn = joinpath(RAW_DIR, string("adj", suffix, ".txt"))
+	if !isfile(adj_fn)
+		build_AIBS_actual_adjustment(meta, dir, suffix)
+	end
+	adj = readdlm(adj_fn)
+	minval = adj[2]
+	maxval = adj[length(adj)-1]
+
+	function read(fn)
+		return Array{Float64, 2}(Images.load(fn).data')
+	end
+
+	function auto_adjust(img) #, n=20)
+		# distr = nquantile(img[:], n)
+		# minval = distr[2]; maxval = distr[n];
+		return min(1, max(0, (img-minval) / (maxval-minval)))
+	end
+
+	function convert_float64_to_uint8(img)
+		return Array{UInt8, 2}(round(UInt8, img * 255))
+	end
+
+	for i in 1:size(meta, 1)
+		println("# $i / ", size(meta,1))
+		old_fn = joinpath(dir, meta[i,1])
+		new_fn = joinpath(RAW_DIR, meta[i,5])
+		index = (1, meta[i,4]+1, meta[i,6], meta[i,7])
+		offset = [meta[i,3], meta[i,2]]
+
+		println(old_fn)
+		if isfile(old_fn) # && !isfile(new_fn)
+			img = auto_adjust(read(old_fn))
+			img = convert_float64_to_uint8(img)
+			#f = h5open(joinpath(to, import_frame_tif_to_wafer_section_h5(tif, wafer_num, sec_num)), "w")
+			f = h5open(new_fn, "w")
+			#    	chunksize = div(min(size(img)...), 4);
+			chunksize = 1000;
+			@time f["img", "chunk", (chunksize,chunksize)] = img
+			close(f)
+			update_offset(index, offset, [size(img)...])
+		else
+			println("Does not exist / already exists!")
+		end
 	end
 end
 
