@@ -4,7 +4,6 @@ import Julimaps.Cloud.Services.Bucket
 import Julimaps.Cloud.Services.Cache
 import Julimaps.Cloud.Services.Datasource
 
-
 export BucketCacheDatasourceService
 
 type BucketCacheDatasourceService <: Datasource.Service
@@ -13,15 +12,12 @@ type BucketCacheDatasourceService <: Datasource.Service
 end
 
 function Datasource.pull!(datasource::BucketCacheDatasourceService,
-        keys::Union{AbstractString, Array{AbstractString, 1}}; force::Bool=false)
-    if !(typeof(keys) <: Array)
-        keys = [keys]
-    end
-    map((key) -> pull!(datasource, key; force=force), keys)
+        keys::Array{AbstractString, 1}; force::Bool=false)
+    map((key) -> Datasource.pull!(datasource, key; force=force), keys)
 end
 
-function pull!(datasource::BucketCacheDatasourceService,
-    key::AbstractString; force::Bool=false)
+function Datasource.pull!(datasource::BucketCacheDatasourceService,
+        key::AbstractString; force::Bool=false)
     if force || !Cache.exists(datasource.cache, key)
         buffer = PipeBuffer()
         Bucket.download(datasource.remote, key, buffer)
@@ -31,15 +27,11 @@ function pull!(datasource::BucketCacheDatasourceService,
 end
 
 function Datasource.push!(datasource::BucketCacheDatasourceService,
-        keys::Union{AbstractString, Array{AbstractString, 1}})
-    if !(typeof(keys) <: Array)
-        keys = [keys]
-    end
-
+        key::Array{AbstractString, 1})
     return map((key) -> push!(datasource, key), keys)
 end
 
-function push!(datasource::BucketCacheDatasourceService,
+function Datasource.push!(datasource::BucketCacheDatasourceService,
         key::AbstractString)
     if !Cache.exists(datasource.cache, key)
         return false
@@ -47,7 +39,7 @@ function push!(datasource::BucketCacheDatasourceService,
 
     Bucket.upload(datasource.remote,
         Cache.get(datasource.cache, key), key)
-    return success
+    return true
 end
 
 end # module BucketCacheDatasource

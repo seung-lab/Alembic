@@ -54,7 +54,8 @@ function test_pull_multi_empty_cache()
 
     datasource = BucketCacheDatasourceService(bucket, cache)
 
-    Datasource.pull!(datasource, [key, key2])
+    Datasource.pull!(datasource, convert(Array{AbstractString, 1},
+        [key, key2]))
 
     @test haskey(cache.mockValues, key)
     new_cache_value = cache.mockValues[key]
@@ -65,7 +66,6 @@ function test_pull_multi_empty_cache()
     new_cache_value2 = cache.mockValues[key2]
     # cache gets updated with the bucket text
     @test readchomp(new_cache_value2) == bucket_text2
-    println("$(cache.mockValues)")
 end
 
 function  test_pull_with_cache()
@@ -188,6 +188,35 @@ function test_push()
     @test readchomp(bucket_file) == cache_text
 end
 
+function test_push_multi()
+    key = "somekey"
+
+    bucket_text = "mock contents"
+    bucket_file = IOBuffer(bucket_text)
+    seekstart(bucket_file)
+    bucket_files = Dict()
+    bucket_files[key] = bucket_file
+
+    cache_text = "mock contents cached already"
+    cache_io = IOBuffer(cache_text)
+    seekstart(cache_io)
+    cache_values = Dict()
+    cache_values[key] = cache_io
+
+    bucket = MockBucketService(bucket_files)
+    cache = MockCacheService(cache_values)
+    datasource = BucketCacheDatasourceService(bucket, cache)
+
+    result = Datasource.push!(datasource, key)
+
+    @test result == true
+
+    @test haskey(bucket.mockFiles, key)
+    bucket_file = bucket.mockFiles[key]
+    # pushing back to bucket with new cached file updates bucket
+    @test readchomp(bucket_file) == cache_text
+end
+
 function  test_push_not_exist()
     key = "somekey"
 
@@ -215,12 +244,14 @@ end
 
 function __init__()
     test_pull_empty_cache()
+    test_pull_multi_empty_cache()
     test_pull_with_cache()
     test_pull_no_bucket()
     test_force_pull_empty_cache()
     test_force_pull_with_cache()
 
     test_push()
+    test_push_multi()
     test_push_not_exist()
 end
 
