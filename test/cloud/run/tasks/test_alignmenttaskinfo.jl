@@ -1,7 +1,7 @@
 module TestAlignmentTaskInfo
 
 using Base.Test
-using CloudTest.JulitasksTest.Utils.TestTasks
+using CloudTest.JulitasksTests.Utils.TestTasks
 
 import Julimaps.Cloud.Run.Tasks.AlignmentTask
 import JSON

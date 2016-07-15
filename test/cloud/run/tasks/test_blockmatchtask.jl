@@ -1,10 +1,10 @@
 module TestBlockMatchTask
 
 using Base.Test
-using CloudTest.Utils.TestTasks
+using CloudTest.JulitasksTests.Utils.TestTasks
 
-import Julimaps.Cloud.Tasks.DaemonTask
-import Julimaps.Cloud.Tasks.BlockMatchTask
+import Julimaps.Cloud.Julitasks.Tasks.DaemonTask
+import Julimaps.Cloud.Run.Tasks.BlockMatchTask
 
 function test_execute_undefined_task()
     basic_info = make_valid_basic_info()
