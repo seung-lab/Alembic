@@ -35,6 +35,7 @@ function can_execute(task_type::Type)
     end
 
     execute_methods = methods(execute, Any[task_type])
+
     if length(execute_methods) == 0
         return false
     end

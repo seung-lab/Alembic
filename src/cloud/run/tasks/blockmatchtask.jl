@@ -6,10 +6,11 @@ the generic DaemonTask.Info and AlignmentTask.Info.
 """
 module BlockMatchTask
 
-import Julimaps.Cloud.Tasks.DaemonTask
-import Julimaps.Cloud.Tasks.BasicTask
-import Julimaps.Cloud.Tasks.AlignmentTask
-import Julimaps.Cloud.Services.Daemon
+import Julimaps.Cloud.Run.Tasks.AlignmentTask
+import Julimaps.Cloud.Julitasks.Tasks.DaemonTask
+import Julimaps.Cloud.Julitasks.Tasks.BasicTask
+import Julimaps.Cloud.Julitasks.Services.Daemon
+import Julimaps.Cloud.Julitasks.Services.Datasource
 
 export BlockMatchTaskDetails, name, execute
 

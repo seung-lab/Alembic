@@ -1,4 +1,4 @@
 module Tasks
-include("tasks/alignmenttaskinfo.jl")
-include("tasks/blockmatchtask.jl")
+include("alignmenttaskinfo.jl")
+include("blockmatchtask.jl")
 end # module Tasks

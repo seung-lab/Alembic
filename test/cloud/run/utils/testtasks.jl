@@ -1,7 +1,7 @@
 module TestTasks
 
-import Julimaps.Cloud.Julitasks.Tasks.AlignmentTask
-import Julimaps.Cloud.Julitasks.Tasks.BlockMatchTask
+import Julimaps.Cloud.Run.Tasks.AlignmentTask
+import Julimaps.Cloud.Run.Tasks.BlockMatchTask
 
 export TEST_INDICES
 export make_valid_alignment_task_info
