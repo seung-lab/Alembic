@@ -55,7 +55,7 @@ Register the task type generation for the given task_name
 """
 function register!(daemon::Service, task_name::AbstractString,
         task_type::Type)
-    if !can_execute(task_type)
+    if !DaemonTask.can_execute(task_type)
         error("Can not register $task_type with name $task_name " *
             " in Daemon. Could not find a registered method to execute")
     end

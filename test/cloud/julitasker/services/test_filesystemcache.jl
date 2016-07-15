@@ -1,13 +1,12 @@
 module TestFileSystemCache
 
 using Base.Test
-using CloudTest.JulitasksTest.Utils.TestServices
+using CloudTest.JulitasksTests.Utils.TestServices
 
 import Julimaps.Cloud.Julitasks.Services.Cache
 import Julimaps.Cloud.Julitasks.Services.FileSystemCache
 
 function test_blank_directory()
-    println("testing blank diretory")
     @test_throws ArgumentError FileSystemCache.FileSystemCacheService(" ")
 end
 

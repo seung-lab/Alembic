@@ -1,12 +1,12 @@
 module TestDaemonService
 
 using Base.Test
-using CloudTest.JulitasksTest.Utils.TestTasks
-using CloudTest.JulitasksTest.Utils.MockServices
+using CloudTest.JulitasksTests.Utils.TestTasks
+using CloudTest.JulitasksTests.Utils.MockServices
 
 import Julimaps.Cloud.Julitasks.Services.Queue
 import Julimaps.Cloud.Julitasks.Services.Bucket
-import Julimaps.Cloud.Julitasks.Services.DataSource
+import Julimaps.Cloud.Julitasks.Services.Datasource
 import Julimaps.Cloud.Julitasks.Services.Daemon
 import Julimaps.Cloud.Julitasks.Tasks.DaemonTask
 import JSON
