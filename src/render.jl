@@ -43,7 +43,6 @@ function render_montaged(meshset::MeshSet; render_full=false, render_review=true
     new_fn = get_name(index)
     println("Rendering ", new_fn)
     warps = map(meshwarp_mesh, meshset.meshes);
-      println(warps[1][1][1][1:10])
     imgs = [x[1][1] for x in warps];
     offsets = [x[1][2] for x in warps];
     indices = [x[2] for x in warps];
