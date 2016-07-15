@@ -438,9 +438,9 @@ function prealign(index; params=get_params(index), to_fixed=false)
 	return meshset;
 end
 
-function MeshSet(index; params=get_params(index))
-	if is_premontaged(index) return MeshSet(index, index); end
-	if is_montaged(index) return MeshSet(premontaged(index), premontaged(index)); end
+function MeshSet(index; kwargs...)
+	if is_premontaged(index) return MeshSet(index, index; kwargs...); end
+	if is_montaged(index) return MeshSet(premontaged(index), premontaged(index); kwargs...); end
 end
 
 function MeshSet(first_index, last_index; params=get_params(first_index), solve=true, solve_method="elastic")
