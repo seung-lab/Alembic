@@ -1,7 +1,7 @@
 module FileSystemCache
 
-import Julimaps.Cloud.Services.Bucket
-import Julimaps.Cloud.Services.Cache
+import Julimaps.Cloud.Julitasks.Services.Bucket
+import Julimaps.Cloud.Julitasks.Services.Cache
 
 const FOLDER_SEPARATOR = "/"
 

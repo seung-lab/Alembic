@@ -2,7 +2,7 @@ module TestDaemonTask
 
 using Base.Test
 
-import Julimaps.Cloud.Tasks.DaemonTask
+import Julimaps.Cloud.JulitasksTests.Tasks.DaemonTask
 
 type NewTask <: DaemonTask.Details end
 function test_execute_undefined_task()

@@ -52,7 +52,7 @@ end
 
 Run the current task. 1. Prepare, 2. Execute 3. Finalize
 """
-function run(task::Details, datasource::Datasource.Service)
+function run(task::Details,)
     prepare(task, datasource)
     result = execute(task, datasource)
     finalize(task, datasource, result)
@@ -63,7 +63,7 @@ end
 
 prepare what is needed for the task
 """
-function prepare(task::Details, datasource::Datasource.Service)
+function prepare(task::Details, args...; kwargs...)
     error("Prepare is unimplemented for this task $task")
 end
 
@@ -72,7 +72,7 @@ end
 
 Executes the given task. Must be overriden for new tasks
 """
-function execute(task::Details, datasource::Datasource.Service)
+function execute(task::Details, args...; kwargs...)
     error("Execute is unimplemented for this task $task")
 end
 
@@ -81,8 +81,7 @@ end
 
 After task has completed, perform this action
 """
-function finalize(task::Details, datasource::Datasource.Service,
-        result::Result)
+function finalize(task::Details, args...; kwargs...)
     error("finalize is unimplemented for this task $task")
 end
 

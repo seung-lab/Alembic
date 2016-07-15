@@ -1,7 +1,7 @@
 module AWSQueue
 
 import AWS, AWS.SQS
-import Julimaps.Cloud.Services.Queue
+import Julimaps.Cloud.Julitasks.Services.Queue
 
 export AWSQueueService
 

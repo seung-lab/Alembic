@@ -1,7 +1,7 @@
 module TestServices
 
-import Julimaps.Cloud.Services.Cache
-import Julimaps.Cloud.Services.FileSystemCache
+import Julimaps.Cloud.Julitasks.Services.Cache
+import Julimaps.Cloud.Julitasks.Services.FileSystemCache
 
 export TEST_BASE_DIRECTORY, make_valid_file_system_cache
 const TEST_BASE_DIRECTORY = "/var/tmp"

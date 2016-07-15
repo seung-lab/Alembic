@@ -1,9 +1,9 @@
 module TestAlignmentTaskInfo
 
 using Base.Test
-using CloudTest.Utils.TestTasks
+using CloudTest.JulitasksTest.Utils.TestTasks
 
-import Julimaps.Cloud.Tasks.AlignmentTask
+import Julimaps.Cloud.Run.Tasks.AlignmentTask
 import JSON
 
 function test_alignment_task_info_no_indices()

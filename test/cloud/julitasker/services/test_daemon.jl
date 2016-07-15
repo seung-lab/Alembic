@@ -1,14 +1,14 @@
 module TestDaemonService
 
 using Base.Test
-using CloudTest.Utils.TestTasks
-using CloudTest.Utils.MockServices
+using CloudTest.JulitasksTest.Utils.TestTasks
+using CloudTest.JulitasksTest.Utils.MockServices
 
-import Julimaps.Cloud.Services.Queue
-import Julimaps.Cloud.Services.Bucket
-import Julimaps.Cloud.Services.DataSource
-import Julimaps.Cloud.Services.Daemon
-import Julimaps.Cloud.Tasks.DaemonTask
+import Julimaps.Cloud.Julitasks.Services.Queue
+import Julimaps.Cloud.Julitasks.Services.Bucket
+import Julimaps.Cloud.Julitasks.Services.DataSource
+import Julimaps.Cloud.Julitasks.Services.Daemon
+import Julimaps.Cloud.Julitasks.Tasks.DaemonTask
 import JSON
 
 function test_register_no_execute_method()

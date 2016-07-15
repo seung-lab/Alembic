@@ -1,10 +1,10 @@
 module TestBasicTaskInfo
 
 using Base.Test
-using CloudTest.Utils.TestTasks
+using CloudTest.JulitasksTest.Utils.TestTasks
 
-import Julimaps.Cloud.Tasks.BasicTask
-import Julimaps.Cloud.Tasks.BlockMatchTask
+import Julimaps.Cloud.Julitasks.Tasks.BasicTask
+import Julimaps.Cloud.Julitasks.Tasks.BlockMatchTask
 import JSON
 
 function test_basic_info_no_id()

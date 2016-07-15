@@ -6,10 +6,10 @@ This module includes the composite type NoOpDetails which includes both the
 """
 module NoOpTask
 
-import Julimaps.Cloud.Tasks.DaemonTask
-import Julimaps.Cloud.Tasks.BasicTask
-import Julimaps.Cloud.Tasks.AlignmentTask
-import Julimaps.Cloud.Services.Datasource
+import Julimaps.Cloud.Julitasks.Tasks.DaemonTask
+import Julimaps.Cloud.Julitasks.Tasks.BasicTask
+import Julimaps.Cloud.Julitasks.Tasks.AlignmentTask
+import Julimaps.Cloud.Julitasks.Services.Datasource
 
 export NoOpTaskDetails, name, execute
 

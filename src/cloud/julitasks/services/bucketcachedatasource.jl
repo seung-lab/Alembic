@@ -1,8 +1,8 @@
 module BucketCacheDatasource
 
-import Julimaps.Cloud.Services.Bucket
-import Julimaps.Cloud.Services.Cache
-import Julimaps.Cloud.Services.Datasource
+import Julimaps.Cloud.Julitasks.Services.Bucket
+import Julimaps.Cloud.Julitasks.Services.Cache
+import Julimaps.Cloud.Julitasks.Services.Datasource
 
 export BucketCacheDatasourceService
 

@@ -1,10 +1,10 @@
 module Daemon
 
-import Julimaps.Cloud.Services.Queue
-import Julimaps.Cloud.Services.Bucket
-import Julimaps.Cloud.Services.Datasource
-import Julimaps.Cloud.Tasks.DaemonTask
-import Julimaps.Cloud.Tasks.BasicTask
+import Julimaps.Cloud.Julitasks.Services.Queue
+import Julimaps.Cloud.Julitasks.Services.Bucket
+import Julimaps.Cloud.Julitasks.Services.Datasource
+import Julimaps.Cloud.Julitasks.Tasks.DaemonTask
+import Julimaps.Cloud.Julitasks.Tasks.BasicTask
 import JSON
 
 export Service, register, run

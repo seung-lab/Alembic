@@ -1,12 +1,12 @@
 module TestDatasource
 
 using Base.Test
-using CloudTest.Utils.MockServices
-using Julimaps.Cloud.Services.BucketCacheDatasource
+using CloudTest.JulitasksTest.Utils.MockServices
+using Julimaps.Cloud.Julitasks.Services.BucketCacheDatasource
 
-import Julimaps.Cloud.Services.Bucket
-import Julimaps.Cloud.Services.Cache
-import Julimaps.Cloud.Services.Datasource
+import Julimaps.Cloud.Julitasks.Services.Bucket
+import Julimaps.Cloud.Julitasks.Services.Cache
+import Julimaps.Cloud.Julitasks.Services.Datasource
 
 function test_pull_empty_cache()
     key = "somekey"

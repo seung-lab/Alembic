@@ -1,7 +1,7 @@
 module AWSBucket
 
 import AWS, AWS.S3
-import Julimaps.Cloud.Services.Bucket
+import Julimaps.Cloud.Julitasks.Services.Bucket
 
 export AWSBucketService
 
