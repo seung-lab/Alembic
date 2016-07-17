@@ -1,18 +1,18 @@
 function check_montage_review_renders()
-	jls_files = readdir(MONTAGED_DIR)
-	seam_paths = readdir(joinpath(MONTAGED_DIR, "review"))
-	seam_paths = [joinpath(MONTAGED_DIR, "review", fn) for fn in seam_paths]
+	jls_files = readdir(MONTAGED_DIR_PATH)
+	seam_paths = readdir(joinpath(MONTAGED_DIR_PATH, "review"))
+	seam_paths = [joinpath(MONTAGED_DIR_PATH, "review", fn) for fn in seam_paths]
 	missed_seams = []
-	path = joinpath(MONTAGED_DIR, "review", "missed_seams.txt")
+	path = joinpath(MONTAGED_DIR_PATH, "review", "missed_seams.txt")
 	println("Saving missed seams:\n", path)
 	for fn in jls_files
 		if fn[end-2:end] == "jls"
-			meshset = load(joinpath(MONTAGED_DIR, fn))
+			meshset = load(joinpath(MONTAGED_DIR_PATH, fn))
 			bbs = find_boundingboxes(meshset)
 			indices = [mesh.index for mesh in meshset.meshes]
 			overlap_tuples = find_overlaps(bbs)
 			for (k, (i,j)) in enumerate(overlap_tuples)
-				seam_path = get_review_path(indices[i], indices[j])
+				seam_path = get_path("review"(indices[i], indices[j]))
 				if !(seam_path in seam_paths)
 					println("MISSED ", seam_path)
 					push!(missed_seams, seam_path)
@@ -33,7 +33,7 @@ end
 function check_tile_copy()
 	omni_path = joinpath(homedir(), "seungmount/Omni/alignment/datasets/")
 	research_path = joinpath(homedir(), "seungmount/")
-	for (k, wafer_path) in WAFER_DIR_DICT
+	for (k, wafer_path) in WAFER_DIR_PATH_DICT
 		omni_wafer = joinpath(omni_path, wafer_path)
 		research_wafer = joinpath(research_path, wafer_path)
 	end

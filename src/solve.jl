@@ -16,7 +16,7 @@ end
 
 #filtered ones only
 function get_homogeneous_correspondences(match::Match; globalized = false)
-  src_points, dst_points = get_filtered_correspondences(match; globalized=globalized);
+  src_points, dst_points = get_correspondences(match; globalized=globalized, filtered=true);
   return homogenize_points(src_points), homogenize_points(dst_points);
 end
 

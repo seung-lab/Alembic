@@ -25,6 +25,25 @@ function is_subsection(index)		return index[3] == PREALIGNED_INDEX && index[4] >
 function is_aligned(index)	 	return index[3:4] == (ALIGNED_INDEX, ALIGNED_INDEX);			end
 function is_finished(index)	 	return index[3:4] == (FINISHED_INDEX, FINISHED_INDEX);			end
 
+# function to get the next stage
+function nextstage(index)
+    if is_overview(index)		return premontaged(index)
+    elseif is_premontaged(index) 	return montaged(index)
+    elseif is_montaged(index) 		return prealigned(index)
+    elseif is_prealigned(index) 	return aligned(index)
+    elseif is_aligned(index) 		return finished(index)
+    elseif is_finished(index) 		return NO_INDEX		end
+end
+
+function prevstage(index)
+    if is_overview(index)		return NO_INDEX
+    elseif is_premontaged(index) 	return overview(index)
+    elseif is_montaged(index) 		return premontaged(index)
+    elseif is_prealigned(index) 	return montaged(index)
+    elseif is_aligned(index) 		return prealigned(index)
+    elseif is_finished(index) 		return aligned(index)		end
+end
+
 # functions for checking whether two indices are next to each other
 function is_adjacent(A_index, B_index)
   if !(is_premontaged(A_index)) || !(is_premontaged(B_index))	return false end
@@ -256,96 +275,6 @@ function is_first_section(index)
   return get_registry(index)[1,2] == index
 end
 
-"""
-Convert two indices into a name
-"""
-function indices_to_string(indexA, indexB)
-  if is_premontaged(indexA)
-    return string(join(indexA, ","), "-", join(indexB, ","))
-  else
-    return string(join(indexA[1:2], ","), "-", join(indexB[1:2], ","))
-  end
-end
-
-function get_filename(index, ext="h5")
-  return string(get_name(index), ".", ext)
-end
-
-function get_dir(index, )
-  dir = ""
-  if is_premontaged(index)
-    dir = PREMONTAGED_DIR
-  elseif is_montaged(index)
-    dir = MONTAGED_DIR
-  elseif is_prealigned(index)
-    dir = PREALIGNED_DIR
-  elseif is_aligned(index)
-    dir = ALIGNED_DIR
-  elseif is_finished(index)
-    dir = FINISHED_DIR
-  else
-    dir = PREMONTAGED_DIR
-  end
-  return dir
-end
-
-# function get_path(index, ext="h5")
-#   return joinpath(get_dir(index), get_filename(index, ext))
-# end
-
-function get_review_name(src_index, dst_index)
-  prefix = "review"
-  ind = indices_to_string(src_index, dst_index)
-  return string(prefix, "_", ind)
-end
-
-function get_review_filename(src_index, dst_index, ext="h5")
-  return string(get_review_name(src_index, dst_index), ".", ext)
-end
-
-function get_review_dir(index, )
-  dir = ""
-  if is_premontaged(index)
-    dir = MONTAGED_DIR
-  elseif is_montaged(index)
-    dir = PREALIGNED_DIR
-  elseif is_prealigned(index)
-    dir = ALIGNED_DIR
-  elseif is_aligned(index)
-    dir = FINISHED_DIR
-  elseif is_finished(index)
-    dir = FINISHED_DIR
-  else
-    dir = PREMONTAGED_DIR
-  end
-  return joinpath(dir, "review")
-end
-
-function get_review_path(src_index, dst_index, ext="h5")
-  dir = get_review_dir(src_index)
-  fn = get_review_filename(src_index, dst_index, ext)
-  return joinpath(dir, fn)
-end
-
-# """
-# Generate filepath for the review image of given indices
-# """
-# function get_review_path(src_index, dst_index=(0,0,0,0))
-#   prefix = "review"
-#   dir = ALIGNED_DIR
-#   ind = indices_to_string(src_index, dst_index)
-#   if is_premontaged(src_index) || is_premontaged(dst_index)
-#     dir = MONTAGED_DIR
-#     ind = string(join(src_index, ","), "-", join(dst_index, ","))
-#   elseif is_montaged(src_index) || is_montaged(dst_index)
-#     dir = PREALIGNED_DIR
-#   elseif is_prealigned(src_index) || is_prealigned(dst_index)
-#     dir = ALIGNED_DIR
-#   end
-#   fn = string(prefix, "_", ind, ".h5")
-#   return joinpath(dir, "review", fn)
-# end
-
 function reset_offset(index)
   update_offset(index, [0,0])
 end
@@ -394,13 +323,7 @@ function update_offset(index, registry_fp::String, offset::Array, sz=[0,0], need
   remotecall_fetch(IO_PROC, reload_registry, index)
 end
 
-function get_registry_path(index)
-  if is_montaged(index) registry_fp = montaged_registry_path;
-  elseif is_prealigned(index) registry_fp = prealigned_registry_path;
-  elseif is_aligned(index) registry_fp = aligned_registry_path;
-  else registry_fp = premontaged_registry_path; end
-  return registry_fp
-end
+
 
 function reload_registry(index)
   registry_fp = get_registry_path(index)

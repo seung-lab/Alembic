@@ -140,7 +140,7 @@ function copy_through_first_section(index::Index)
 
   function write_image(index, img)
     fn = string(get_name(index), ".h5")
-    dir = get_dir(index)
+    dir = get_dir_path(index)
 
     update_offset(index, [0,0], size(img))
     println("Writing image:\n\t", fn)
@@ -368,7 +368,7 @@ Write any errors to a log file
 """
 function log_error(index::Index; fn="render_error_log", comment="")
   ts = parse(Dates.format(now(), "yymmddHHMMSS"))
-  dir = get_dir(index)
+  dir = get_dir_path(index)
   path = joinpath(dir, string(fn, ".txt"))
   new_row = [ts, index, comment]'
   if !isfile(path)

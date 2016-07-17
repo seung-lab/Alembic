@@ -28,6 +28,10 @@ function get_dst_index(match::Match)
   return match.dst_index
 end
 
+function get_index(match::Match)
+	return get_src_and_dst_indices(match::Match)
+end
+
 function get_src_and_dst_indices(match::Match)
   return match.src_index, match.dst_index
 end

@@ -9,22 +9,22 @@ function construct_adjustment_image(meta)
 	println("Constructing contrast adjustment image")
 	adj_count = 1
 	j = 50
-	filepath = joinpath(RAW_DIR, meta[j,5])
+	filepath = joinpath(RAW_DIR_PATH, meta[j,5])
 	img_adj = read(filepath)
 	for i in 92:90:size(meta,1)
-		filepath = joinpath(RAW_DIR, meta[i,5])
+		filepath = joinpath(RAW_DIR_PATH, meta[i,5])
 		img_adj += read(filepath)
 		adj_count += 1
 	end
 	img_adj /= adj_count
-	fn = joinpath(RAW_DIR, "adjustment_image.txt")
+	fn = joinpath(RAW_DIR_PATH, "adjustment_image.txt")
 	writedlm(fn, img_adj)
 end
 
 function import_AIBS_pilot_v1(construct=false)
-	meta_fn = joinpath(RAW_DIR, "2342516R01_ribbonordered.txt")
+	meta_fn = joinpath(RAW_DIR_PATH, "2342516R01_ribbonordered.txt")
 	meta = readdlm(meta_fn)
-	meta_new_fn = joinpath(RAW_DIR, "meta.txt")
+	meta_new_fn = joinpath(RAW_DIR_PATH, "meta.txt")
 
 	# cleanup meta text file
 	path = meta[:,1]
@@ -56,13 +56,13 @@ function import_AIBS_pilot_v1(construct=false)
 	if construct
 		construct_adjustment_image(meta)
 	end
-	fn = joinpath(RAW_DIR, "adjustment_image.txt")
+	fn = joinpath(RAW_DIR_PATH, "adjustment_image.txt")
 	img_adj = Array{Float64, 2}(readdlm(fn))
 
 	for i in 1:size(meta, 1)
 		if 9 < meta[i,4]+1 < 13
-			old_filepath = joinpath(RAW_DIR, meta[i,5])
-			new_filepath = joinpath(RAW_DIR, meta[i,6])
+			old_filepath = joinpath(RAW_DIR_PATH, meta[i,5])
+			new_filepath = joinpath(RAW_DIR_PATH, meta[i,6])
 			index = (1, meta[i,4]+1, meta[i,7], meta[i,8])
 			offset = [meta[i,3], meta[i,2]]
 

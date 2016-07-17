@@ -5,7 +5,7 @@ type MeshSet
 end
 
 ### IO.jl
-function get_path(meshset::MeshSet)			return get_path(meshset.meshes);		end
+function get_index(meshset::MeshSet) 	return get_index(meshset.meshes[1]), get_index(meshset.meshes[end]) end
 
 function get_images(meshset::MeshSet, dtype = UInt8)	return map(get_image, meshset.meshes, repeated(dtype));	end
 
@@ -17,15 +17,10 @@ function get_params(meshset::MeshSet)			return meshset.properties["params"];		en
 
 ### counting
 function count_meshes(meshset::MeshSet)			return length(meshset.meshes);		end
-
 function count_matches(meshset::MeshSet)		return length(meshset.matches);		end
-
 function count_nodes(meshset::MeshSet)			return sum(map(count_nodes, meshset.meshes));		end
-
 function count_edges(meshset::MeshSet)			return sum(map(count_edges, meshset.meshes));		end
-
 function count_correspondences(meshset::MeshSet)	return sum(map(count_correspondences, meshset.matches));		end
-
 function count_filtered_correspondences(meshset::MeshSet)	return sum(map(count_filtered_correspondences, meshset.matches));		end
 
 function get_mesh(meshset::MeshSet, index)
@@ -38,30 +33,16 @@ function get_matches(meshset::MeshSet, index)
 end
 
 ### finding
-function find_mesh_index(meshset::MeshSet, index)
-  return findfirst(this -> index == get_index(this), meshset.meshes)
-end
-
-function find_mesh_index(meshset::MeshSet, mesh::Mesh)
-  return find_mesh_index(meshset, get_index(mesh))
-end
-
-function contains_mesh(meshset::MeshSet, index)
-  return !(find_mesh_index(meshset, index) == 0)
-end
-
-function contains_mesh(meshset::MeshSet, mesh::Mesh)
-  return contains_mesh(meshset, get_index(mesh))
-end
-
+function find_mesh_index(meshset::MeshSet, index)  	return findfirst(this -> index == get_index(this), meshset.meshes)	end
+function find_mesh_index(meshset::MeshSet, mesh::Mesh)	return find_mesh_index(meshset, get_index(mesh))			end
+function contains_mesh(meshset::MeshSet, index)		return !(find_mesh_index(meshset, index) == 0)				end
+function contains_mesh(meshset::MeshSet, mesh::Mesh)	return contains_mesh(meshset, get_index(mesh))				end
 function find_match_index(meshset::MeshSet, src_index, dst_index)
-  return findfirst(this -> (src_index == get_src_index(this)) && (dst_index == get_dst_index(this)), meshset.matches)
+  	return findfirst(this -> (src_index == get_src_index(this)) && (dst_index == get_dst_index(this)), meshset.matches)
 end
-
 function find_match_index(meshset::MeshSet, match::Match)
-  return find_match_index(meshset, get_src_and_dst_indices(match)...);
+	return find_match_index(meshset, get_src_and_dst_indices(match)...);
 end
-
 function find_match_indices(meshset::MeshSet, index)
   indices = []
   indices = [indices, find(this->index==get_src_index(this), meshset.matches)]
@@ -69,7 +50,7 @@ function find_match_indices(meshset::MeshSet, index)
   return indices
 end
 
-### finding subs
+### finding subs for purposes of making submeshsets
 function find_matches_subarray(meshset::MeshSet, meshes::Array{Mesh, 1})
 	matches_sub = Array{Match, 1}(0);
 	meshes_inds = [get_index(mesh) for mesh in meshes]
@@ -104,26 +85,15 @@ function make_submeshsets(meshset::MeshSet)
    return meshsets;
 end
 
-function fix!(meshset::MeshSet, mesh_ind::Int64)
-	fix!(meshset.meshes[mesh_ind]);
-end
-
+# Mesh.jl extensions
+function fix!(meshset::MeshSet, mesh_ind::Int64) 	fix!(meshset.meshes[mesh_ind]); 	end
 function fix!(meshset::MeshSet, mesh_ind_first::Int64, mesh_ind_last::Int64)
-  	for mesh_ind in mesh_ind_first:mesh_ind_last
-	fix!(meshset.meshes[mesh_ind]);
-      end
+	for mesh_ind in mesh_ind_first:mesh_ind_last	fix!(meshset.meshes[mesh_ind]);		end
 end
-
 function fix!(meshset::MeshSet)
-  for mesh in meshset.meshes
-	fix!(mesh);
-      end
+	for mesh in meshset.meshes			fix!(mesh);			 	end
 end
-
-function unfix!(meshset::MeshSet, mesh_ind::Int64)
-	unfix!(meshset.meshes[mesh_ind]);
-end
-
+function unfix!(meshset::MeshSet, mesh_ind::Int64)	unfix!(meshset.meshes[mesh_ind]);	end
 function unfix!(meshset::MeshSet, mesh_ind_first::Int64, mesh_ind_last::Int64)
   	for mesh_ind in mesh_ind_first:mesh_ind_last
 	unfix!(meshset.meshes[mesh_ind]);
@@ -594,6 +564,7 @@ function save(filename::String, meshset::MeshSet)
   end
 end=#
 
+#=
 function save(meshset::MeshSet)
   if has_parent(meshset)
     foldername = joinpath(ALIGNED_DIR, meshset.properties["meta"]["parent"])
@@ -605,6 +576,7 @@ function save(meshset::MeshSet)
   end
   save(filename, meshset);
 end
+=#
 
 function parse_meshset_filename(name::String)
     indexA, indexB = NO_INDEX, NO_INDEX
@@ -662,7 +634,7 @@ function get_filename(firstindex, lastindex)
 end
 
 #### ONLY AS PARENT!!!!
-function get_name(meshset::MeshSet)
+function get_parent_name(meshset::MeshSet)
   if has_parent(meshset)
     return get_split_index(meshset);
   elseif get_src_index(meshset.matches[1]) == get_dst_index(meshset.matches[1])
@@ -675,7 +647,7 @@ function get_name(meshset::MeshSet)
   end
 end
 
-function get_name(firstindex, lastindex)
+function get_meshset_name(firstindex, lastindex)
   name = ""
   if (((is_montaged(firstindex) || is_prealigned(firstindex) || is_aligned(firstindex)) && is_montaged(lastindex))) && (firstindex != lastindex)
     name = string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned")
@@ -705,12 +677,12 @@ function get_split_index(meshset::MeshSet)
 	if !haskey(meshset.properties, "meta") || !haskey(meshset.properties["meta"], "parent") || meshset.properties["meta"]["parent"] == nothing return 0 end
 	return meshset.properties["meta"]["split_index"];
 end
-
+#=
 function load(firstindex, lastindex)
   filename = get_filename(firstindex, lastindex)
   println("Loading meshset from ", filename)
   return load(filename)
-end
+end=#
 
 function count_children(parent_name)
     dirname = joinpath(ALIGNED_DIR, parent_name)
@@ -724,19 +696,19 @@ function load_split(parent_name, split_index)
     println("Loading meshset for ", parent_name, ": child ", split_index, " / ", count_children(parent_name));
     return load(filename);
 end
-
+#=
 function load(index)
   if is_montaged(index)
 	  return load(index, index)
   elseif is_prealigned(index)
 	  return load(montaged(index), (get_preceding(montaged(index)))) 
   end
-end
-
+end=#
+#=
 function load(filename::String)
   if !isfile(filename) return nothing end
   return open(deserialize, filename)
-end
+end=#
 
 function make_stack(first_index, last_index, fixed_interval = 0)
 	if first_index[3] != last_index[3] || first_index[4] != last_index[4]

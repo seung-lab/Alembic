@@ -27,7 +27,7 @@ function render_montaged(firstindex::Index, lastindex::Index;
   lastindex = montaged(lastindex)
   for index in get_index_range(firstindex, lastindex)
     println(index);
-    meshset = load(index)
+    meshset = load("MeshSet", index)
     render_montaged(meshset; render_full=render_full, render_review=render_review)
   end 
 end
@@ -94,7 +94,7 @@ function prepare_prealignment(index::Index, startindex=montaged(ROI_FIRST))
     cumulative_tform = tform*cumulative_tform
     src_index = index
     dst_index = get_preceding(src_index)
-    meshset = load(src_index, dst_index)
+    meshset = load("MeshSet",(src_index, dst_index))
     dst_index = get_index(meshset.meshes[2])
     src_offset = get_offset(src_index)
     translation = make_translation_matrix(src_offset)
@@ -172,14 +172,14 @@ function render_prealigned(src_index::Index, dst_index::Index, src_img, dst_img,
     src_thumb, src_thumb_offset = imwarp(src_img, tform*s, [0,0])
     println("Warping prealigned review image... 2/2")
     dst_thumb, dst_thumb_offset = imwarp(dst_img, s, dst_offset)
-    path = get_review_path(src_index, dst_index)
+    path = get_path("review", (src_index, dst_index))
     write_review_image(path, src_thumb, src_thumb_offset, dst_thumb, dst_thumb_offset, scale, tform)
 
     println("Warping aligned review image... 1/2")
     src_thumb, src_thumb_offset = imwarp(src_img, tform*cumulative_tform*s, [0,0])
     println("Warping aligned review image... 2/2")
     dst_thumb, dst_thumb_offset = imwarp(dst_img, cumulative_tform*s, [dst_offset])
-    aligned_path = get_review_path(prealigned(src_index), prealigned(dst_index))
+    aligned_path = get_path("review", (src_index, dst_index))
     write_review_image(aligned_path, src_thumb, src_thumb_offset, dst_thumb, dst_thumb_offset, scale, tform*cumulative_tform)
   end
 
@@ -228,7 +228,7 @@ Render aligned images
 """
 function render_aligned_review(firstindex::Index, lastindex::Index, start=1, finish=0; scale=0.05)
   firstindex, lastindex = prealigned(firstindex), prealigned(lastindex)
-  meshset = load(firstindex, lastindex)
+  meshset = load("MeshSet",(firstindex, lastindex))
   render_aligned_review(meshset, start, finish, scale=scale)
 end
 
@@ -251,7 +251,7 @@ Render aligned images
 """
 function render_aligned(firstindex::Index, lastindex::Index, start=1, finish=0)
   firstindex, lastindex = prealigned(firstindex), prealigned(lastindex)
-  meshset = load(firstindex, lastindex)
+  meshset = load("MeshSet",(firstindex, lastindex))
   render_aligned(meshset, start, finish)
 end
 

@@ -1,5 +1,5 @@
 function inspect(index::Index, match_ind=0)
-  meshset = load(index)
+  meshset = load("MeshSet", index)
   inspect(meshset, match_ind)
 end
 
@@ -11,7 +11,7 @@ function inspect(firstindex::Index, lastindex::Index, match_ind=0)
     end 
     meshset = load_split(get_name(firstindex, lastindex), k)
   else
-    meshset = load(firstindex, lastindex)
+    meshset = load("MeshSet", (firstindex, lastindex))
   end
   inspect(meshset, match_ind)
 end
@@ -55,7 +55,7 @@ function get_next_match(meshset::MeshSet, match_ind=1)
       if indexA[1:2] == (0,0) || indexB[1:2] == (0,0)
         return nothing, nothing
       else
-        meshset = load(indexA, indexB)
+        meshset = load("MeshSet", (indexA, indexB))
         match_ind = 1
         return meshset, match_ind
       end
@@ -95,7 +95,7 @@ function get_previous_match(meshset::MeshSet, match_ind=1)
       if indexA[1:2] == (0,0) || indexB[1:2] == (0,0)
         return nothing, nothing
       else
-        meshset = load(indexA, indexB)
+        meshset = load("MeshSet", (indexA, indexB))
         match_ind = length(meshset.matches)
         return meshset, match_ind
       end
@@ -159,9 +159,9 @@ function view_match(meshset::MeshSet, match_ind)
   indexA = match.src_index
   indexB = match.dst_index
 
-  path = get_review_path(indexB, indexA)
+  path = get_path("review", (indexB, indexA))
   if !isfile(path)
-    path = get_review_path(indexA, indexB)
+    path = get_path("review", (indexA, indexB))
     if !isfile(path)
       error("NO REVIEW IMAGE CREATED")
     end
@@ -725,7 +725,7 @@ function switch_pre_to_post(imgc, img2, matches, params)
 end
 
 function view_dv_dispersion(index::Index)
-  meshset = load(index)
+  meshset = load("MeshSet"(index))
   fig = figure("dv $index", figsize=(20,20))
   for (i, match) in enumerate(meshset.matches)
     dv_all = hcat(get_properties(match, "dv")...)
@@ -754,7 +754,7 @@ function view_property_histogram(firstindex::Index, lastindex::Index, property_n
   attr = []
   indrange = get_index_range(firstindex, lastindex)
   for index in indrange
-    meshset = load(index)
+    meshset = load("MeshSet", index)
     for match in meshset.matches
       attr = vcat(attr, get_properties(match, property_name))
     end

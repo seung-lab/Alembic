@@ -1,8 +1,12 @@
+global BUCKET = "/usr/people/dih/datasets"
+global DATASET = "zebrafish"
 global ROI_FIRST = (2,32,0,0);
 global ROI_LAST = (9,163,0,0);
+global ROI_FIRST = (10,1,0,0);
+global ROI_LAST = (10,163,0,0);
 global DATASET_RESOLUTION = [5,5,45]
 
-function get_name(index)
+function get_name_legacy(index)
     if is_overview(index)
       if index[1] < 10
         return string("MontageOverviewImage_W00", index[1], "_sec", index[2])
@@ -34,63 +38,49 @@ end
 #     
 # extensions:
 # Mesh.jl: get_path(mesh::Mesh)
-function get_path(index, ext = ".h5")
-    name = get_name(index)
+function get_path_legacy(index, ext = ".h5")
+    name = get_name_legacy(index)
     if is_overview(index)
       if index[1] < 10
         section_folder = string("W00", index[1], "_Sec", index[2], "_Montage")
       else
         section_folder = string("W0", index[1], "_Sec", index[2], "_Montage")
       end
-        #path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ext))
-        path = joinpath(PREMONTAGED_DIR, string(name, ext))
+        #path = joinpath(BUCKET, WAFER_DIR_PATH_DICT[index[1]], section_folder, string(name, ext))
+        path = joinpath(PREMONTAGED_DIR_PATH, string(name, ext))
     elseif is_montaged(index)
-        path = joinpath(MONTAGED_DIR, string(name, ext))
+        path = joinpath(MONTAGED_DIR_PATH, string(name, ext))
     elseif is_prealigned(index)
-        path = joinpath(PREALIGNED_DIR, string(name, ext))
+        path = joinpath(PREALIGNED_DIR_PATH, string(name, ext))
     elseif is_aligned(index)
-        path = joinpath(ALIGNED_DIR, string(name, ext))
+        path = joinpath(ALIGNED_DIR_PATH, string(name, ext))
     elseif is_finished(index)
-        path = joinpath(FINISHED_DIR, string(name, ext))
+        path = joinpath(FINISHED_DIR_PATH, string(name, ext))
     else
 #        section_folder = string("S2-W00", index[1], "_Sec", index[2], "_Montage")
-        #path = joinpath(BUCKET, WAFER_DIR_DICT[index[1]], section_folder, string(name, ext))
-        path = joinpath(BUCKET, PREMONTAGED_DIR, string(name, ext))
+        #path = joinpath(BUCKET, WAFER_DIR_PATH_DICT[index[1]], section_folder, string(name, ext))
+        path = joinpath(PREMONTAGED_DIR_PATH, string(name, ext))
     end
     return path
 end
 
-function get_path(name::String)
-    return get_path(parse_name(name))
-end
-
-
-function get_image(index::Index)
-    return get_image(get_path(index))
-end
-
-function get_thumbnail_path(index::Index)
-  fn = string(join(index[1:2], ","), "_thumb.jpg")
-  println(fn)
-  return joinpath(MONTAGED_DIR, "review", fn) 
-end
-
-function get_thumbnail_path(indexA::Index, indexB::Index)
-  fn = string(join(indexA[1:2],","), "-", join(indexB[1:2],","), "_thumb.png")
-  println(fn)
-  if is_prealigned(indexA)
-    return joinpath(PREALIGNED_DIR, "review", fn) 
-  else
-    return joinpath(ALIGNED_DIR, "review", fn) 
+function migrate_legacy()
+  registry_premontaged_legacy_path = joinpath(PREMONTAGED_DIR_PATH, "registry_premontaged.txt")
+  registry = readdlm(registry_premontaged_legacy_path)
+  for i in 1:size(registry, 1)
+	ind = parse_name_legacy(registry[i,1])
+	if isfile(get_path_legacy(ind))
+	run(`mv $(get_path_legacy(ind)) $(get_path(ind))`)
+      end
+	registry[i,1] = get_name(parse_name_legacy(registry[i,1]))
   end
+  writedlm(get_registry_path((1,1,1,1)), registry)
+  run(`mv $(joinpath(MONTAGED_DIR_PATH, "registry_montaged.txt")) $(get_registry_path(montaged(1,1)))`)
+  run(`mv $(joinpath(PREALIGNED_DIR_PATH, "registry_prealigned.txt")) $(get_registry_path(prealigned(1,1)))`)
+  run(`mv $(joinpath(ALIGNED_DIR_PATH, "registry_aligned.txt")) $(get_registry_path(aligned(1,1)))`)
 end
 
-function parse_index(s::String)
-    m = match(r"(\d*),(\d*),(\-\d+|\d+),(\-\d+|\d+)", s)
-    return (parse(Int, m[1]), parse(Int, m[2]), parse(Int, m[3]), parse(Int, m[4]))
-end
-
-function parse_name(name::String)
+function parse_name_legacy(name::String)
 
     ret = (0, 0, 0, 0)
     # singleton tile
@@ -132,104 +122,5 @@ function parse_name(name::String)
     return ret
     
 end
-
-function parse_registry(path::String)
-    registry = cell(0, 0)
-    if isfile(path)
-        file = readdlm(path)
-        registry = cell(size(file, 1), size(file, 2) + 1) # name, index, dx, dy
-        for i in 1:size(registry, 1)
-            index = parse_name(file[i, 1])
-            registry[i, 1] = get_name(index)
-            registry[i, 2] = index
-            for j in 3:size(registry, 2)
-                registry[i, j] = file[i, j-1]
-            end
-        end
-      end
-    return registry
-end
-
-bucket_dir_path = ""
-
-if contains(gethostname(), "seunglab") || contains(gethostname(), "spock") 
- bucket_dir_path = "/mnt/bucket/labs/seung/"
-end
-
-if contains(gethostname(), "seungworkstation")
- bucket_dir_path = joinpath(homedir(), "seungmount/")
-end
-
-tracerhostnames = ["seungworkstation04", "mycroft", "seungworkstation10", "hogwarts"]
-if gethostname() in tracerhostnames
- bucket_dir_path = joinpath(homedir(), "seungmount/Omni/alignment/datasets/")
-end
-
-if isdefined(:omni)
-    if omni
-        bucket_dir_path = joinpath(homedir(), "seungmount/Omni/alignment/datasets/")
-    end
-end  
-
-#=if isfile("bucket_dir_path.txt")
-    bucket_dir_path = rstrip(readall("bucket_dir_path.txt"), '\n')
-elseif isfile("../bucket_dir_path.txt")
-    bucket_dir_path = rstrip(readall("../bucket_dir_path.txt"), '\n')
-else
-    bucket_dir_path = joinpath(homedir(), "seungmount/Omni/alignment/datasets")
-    if isdefined(:training)
-        if training
-            println("TRAINING PATHS LOADED")
-            bucket_dir_path = joinpath(homedir(), "seungmount/Omni/alignment/training")
-        end
-    end
-    if isdefined(:seunglabs)
-        if seunglabs
-            println("SEUNGLABS PATHS LOADED")
-            bucket_dir_path = "/mnt/bucket/labs/seung/Omni/alignment/datasets"
-        end
-    end
-end
-=#
-
-datasets_dir_path = joinpath(homedir(), "datasets")
-#datasets_dir_path = joinpath(homedir(), "seungmount", "research", "Julimaps", "datasets")
-cur_dataset = "zebrafish"
-affine_dir_path = "~"
-
-premontaged_dir_path = "1_premontaged"
-montaged_dir_path = "2_montaged"
-prealigned_dir_path = "3_prealigned"
-aligned_dir_path = "4_aligned"
-finished_dir_path = "5_finished"
-
-premontaged_registry_filename = "registry_premontaged.txt"
-montaged_registry_filename = "registry_montaged.txt"
-prealigned_registry_filename = "registry_prealigned.txt"
-aligned_registry_filename = "registry_aligned.txt"
-
-export BUCKET, DATASET_DIR, AFFINE_DIR, PREMONTAGED_OFFSETS, PREMONTAGE_DIR, ALIGNMENT_DIR, INSPECTION_DIR
-
-global BUCKET = bucket_dir_path
-global AFFINE_DIR = affine_dir_path
-global DATASET_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset)
-global PREMONTAGED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, premontaged_dir_path)
-global MONTAGED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, montaged_dir_path)
-global PREALIGNED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, prealigned_dir_path)
-global ALIGNED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, aligned_dir_path)
-global FINISHED_DIR = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, finished_dir_path)
-
-premontaged_registry_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, premontaged_dir_path, premontaged_registry_filename)
-global REGISTRY_PREMONTAGED = parse_registry(premontaged_registry_path)
-#REGISTRY_PREMONTAGED = hcat(REGISTRY_PREMONTAGED, fill(8000, size(REGISTRY_PREMONTAGED)[1], 2));
-
-montaged_registry_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, montaged_dir_path, montaged_registry_filename)
-global REGISTRY_MONTAGED = parse_registry(montaged_registry_path)
-
-prealigned_registry_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, prealigned_dir_path, prealigned_registry_filename)
-global REGISTRY_PREALIGNED = parse_registry(prealigned_registry_path)
-
-aligned_registry_path = joinpath(bucket_dir_path, datasets_dir_path, cur_dataset, aligned_dir_path, aligned_registry_filename)
-global REGISTRY_ALIGNED = parse_registry(aligned_registry_path)
 
 

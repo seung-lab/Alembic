@@ -22,7 +22,7 @@ end
 rename all review images to start with "review"
 """
 function rename_review_images()
-	review_names = [(MONTAGED_DIR, "seam"), (PREALIGNED_DIR, "thumb"), (ALIGNED_DIR, "thumb_imfuse")]
+	review_names = [(MONTAGED_DIR_PATH, "seam"), (PREALIGNED_DIR_PATH, "thumb"), (ALIGNED_DIR_PATH, "thumb_imfuse")]
 	for (dir, prefix) in review_names
 		for fn in readdir(joinpath(dir, "review"))
 			print(fn)
