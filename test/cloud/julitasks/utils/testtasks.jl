@@ -1,5 +1,7 @@
 module TestTasks
 
+using Julimaps.Cloud.Julitasks.Types
+
 import Julimaps.Cloud.Julitasks.Tasks.DaemonTask
 import Julimaps.Cloud.Julitasks.Tasks.BasicTask
 
@@ -18,12 +20,12 @@ function make_valid_basic_info()
         TEST_FILES)
 end
 
-type MockTaskNoExecute <: DaemonTask.Details
+type MockTaskNoExecute <: DaemonTaskDetails
     basicInfo::BasicTask.Info
     payloadInfo::AbstractString
 end
 
-type MockTaskExecute <: DaemonTask.Details
+type MockTaskExecute <: DaemonTaskDetails
     basicInfo::BasicTask.Info
     payloadInfo::AbstractString
 end

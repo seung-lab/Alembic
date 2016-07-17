@@ -1,11 +1,13 @@
 module FileSystemCache
 
+using ...Julitasks.Types
+
 import Julimaps.Cloud.Julitasks.Services.Bucket
 import Julimaps.Cloud.Julitasks.Services.Cache
 
 const FOLDER_SEPARATOR = "/"
 
-type FileSystemCacheService <: Cache.Service
+type FileSystemCacheService <: CacheService
     baseDirectory::AbstractString
 
     FileSystemCacheService(baseDirectory::AbstractString) =

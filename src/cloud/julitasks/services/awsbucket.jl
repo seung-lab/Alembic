@@ -1,11 +1,13 @@
 module AWSBucket
 
+using ...Julitasks.Types
+
 import AWS, AWS.S3
 import Julimaps.Cloud.Julitasks.Services.Bucket
 
 export AWSBucketService
 
-type AWSBucketService <: Bucket.Service
+type AWSBucketService <: BucketService
     env::AWS.AWSEnv
     name::ASCIIString
 end

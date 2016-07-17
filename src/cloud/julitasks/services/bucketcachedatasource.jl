@@ -1,14 +1,16 @@
 module BucketCacheDatasource
 
+using ...Julitasks.Types
+
 import Julimaps.Cloud.Julitasks.Services.Bucket
 import Julimaps.Cloud.Julitasks.Services.Cache
 import Julimaps.Cloud.Julitasks.Services.Datasource
 
 export BucketCacheDatasourceService
 
-type BucketCacheDatasourceService <: Datasource.Service
-    remote::Bucket.Service
-    cache::Cache.Service
+type BucketCacheDatasourceService <: DatasourceService
+    remote::BucketService
+    cache::CacheService
 end
 
 function Datasource.pull!(datasource::BucketCacheDatasourceService,

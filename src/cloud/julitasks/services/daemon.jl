@@ -1,5 +1,7 @@
 module Daemon
 
+using ...Julitasks.Types
+
 import Julimaps.Cloud.Julitasks.Services.Queue
 import Julimaps.Cloud.Julitasks.Services.Bucket
 import Julimaps.Cloud.Julitasks.Services.Datasource
@@ -7,22 +9,22 @@ import Julimaps.Cloud.Julitasks.Tasks.DaemonTask
 import Julimaps.Cloud.Julitasks.Tasks.BasicTask
 import JSON
 
-export Service, register, run
+export DaemonService, register, run
 
-type Service
-    queue::Queue.Service
-    bucket::Bucket.Service
-    dataSource::Datasource.Service
+type DaemonService
+    queue::QueueService
+    bucket::BucketService
+    datasource::DatasourceService
     poll_frequency_seconds::Int64
     tasks::Dict{AbstractString, Type}
 end
 
-Service(queue::Queue.Service, bucket::Bucket.Service,
-    datasource::Datasource.Service, poll_frequency_seconds::Int64) = 
-        Service(queue, bucket, datasource, poll_frequency_seconds,
+DaemonService(queue::QueueService, bucket::BucketService,
+    datasource::DatasourceService, poll_frequency_seconds::Int64) = 
+        DaemonService(queue, bucket, datasource, poll_frequency_seconds,
             Dict{AbstractString, Module}())
 
-function run(daemon::Service)
+function run(daemon::DaemonService)
     while true
         try
             message = Queue.pop_message(daemon.queue)
@@ -48,12 +50,12 @@ function run(daemon::Service)
 end
 
 """
-    register(daemon::Service, task_module::Module)
+    register(daemon::DaemonService, task_module::Module)
 
 Register the task type generation for the given task_name
 
 """
-function register!(daemon::Service, task_name::AbstractString,
+function register!(daemon::DaemonService, task_name::AbstractString,
         task_type::Type)
     if !DaemonTask.can_execute(task_type)
         error("Can not register $task_type with name $task_name " *
@@ -69,11 +71,11 @@ function register!(daemon::Service, task_name::AbstractString,
 end
 
 """
-    parse(daemon::Service, text::ASCIIString)
+    parse(daemon::DaemonService, text::ASCIIString)
 
 Parse input JSON message into a task object
 """
-function parse(daemon::Service, text::ASCIIString)
+function parse(daemon::DaemonService, text::ASCIIString)
     text = strip(text)
 
     if isempty(text)

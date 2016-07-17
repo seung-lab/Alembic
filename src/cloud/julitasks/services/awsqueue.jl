@@ -1,11 +1,13 @@
 module AWSQueue
 
+using ...Julitasks.Types
+
 import AWS, AWS.SQS
 import Julimaps.Cloud.Julitasks.Services.Queue
 
 export AWSQueueService
 
-type AWSQueueService <: Queue.Service
+type AWSQueueService <: QueueService
     env::AWS.AWSEnv
     name::ASCIIString
     url::ASCIIString

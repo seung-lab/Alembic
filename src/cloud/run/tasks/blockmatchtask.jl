@@ -6,6 +6,8 @@ the generic DaemonTask.Info and AlignmentTask.Info.
 """
 module BlockMatchTask
 
+using Julimaps.Cloud.Julitasks.Types
+
 import Julimaps.Cloud.Run.Tasks.AlignmentTask
 import Julimaps.Cloud.Julitasks.Tasks.DaemonTask
 import Julimaps.Cloud.Julitasks.Tasks.BasicTask
@@ -14,7 +16,7 @@ import Julimaps.Cloud.Julitasks.Services.Datasource
 
 export BlockMatchTaskDetails, name, execute
 
-type BlockMatchTaskDetails <: DaemonTask.Details
+type BlockMatchTaskDetails <: DaemonTaskDetails
     basicInfo::BasicTask.Info
     payloadInfo::AlignmentTask.Info
 end
@@ -25,18 +27,18 @@ BlockMatchTaskDetails(info::BasicTask.Info, dict::Dict{AbstractString, Any}) =
 const name = "BLOCK_MATCH"
 
 function DaemonTask.prepare(task::BlockMatchTaskDetails,
-        datasource::Datasource.Service)
-    #=Datasource.pull!(daemon.dataSource, task.basicInfo.files)=#
+        datasource::DatasourceService)
+    #=Datasource.pull!(daemon.datasource, task.basicInfo.files)=#
     println("Executing BlockMatchTask")
 end
 
 function DaemonTask.execute(task::BlockMatchTaskDetails,
-        datasource::Datasource.Service)
+        datasource::DatasourceService)
     println("Executing BlockMatchTask")
 end
 
 function DaemonTask.finalize(task::BlockMatchTaskDetails,
-        datasource::Datasource.Service, result::DaemonTask.Result)
+        datasource::DatasourceService, result::DaemonTask.Result)
     #=
      =if !result.success
      =    println("Task $(task.details.id), $(task.details.name) was

@@ -1,22 +1,8 @@
 module DaemonTask
 
-import JSON
+using ...Julitasks.Types
 
-export Details, Info, run
-
-"""
-    DaemonTask.Details
-
-This is the base composite abstract class used to compose Details and Payload
-i.e. compose a task with
-```julia
-type YourDaemonTaskDetails <: DaemonTask.Details
-    basicInfo::BasicTask.Info
-    taskInfo::YourTask.Info
-end
-```
-"""
-abstract Details
+export Info, run
 
 """
     DaemonTask.Result
@@ -30,7 +16,7 @@ end
 
 # Test to see if the execute function exists for this type
 function can_execute(task_type::Type)
-    if !(task_type <: Details)
+    if !(task_type <: DaemonTaskDetails)
         return false
     end
 
@@ -49,40 +35,40 @@ function can_execute(task_type::Type)
 end
 
 """
-    run(task::Details, datasource::Datasource.Service)
+    run(task::DaemonTaskDetails, datasource::DatasourceService)
 
 Run the current task. 1. Prepare, 2. Execute 3. Finalize
 """
-function run(task::Details,)
+function run(task::DaemonTaskDetails, datasource::DatasourceService)
     prepare(task, datasource)
     result = execute(task, datasource)
     finalize(task, datasource, result)
 end
 
 """
-    prepare(task::DaemonTask, datasource::Datasource)
+    prepare(task::DaemonTaskDetails, datasource::DatasourceService)
 
 prepare what is needed for the task
 """
-function prepare(task::Details, args...; kwargs...)
+function prepare(task::DaemonTaskDetails, datasource::DatasourceService)
     error("Prepare is unimplemented for this task $task")
 end
 
 """
-    execute(task::DaemonTask)
+    execute(task::DaemonTaskDetails, datasource::DatasourceService)
 
 Executes the given task. Must be overriden for new tasks
 """
-function execute(task::Details, args...; kwargs...)
+function execute(task::DaemonTaskDetails, datasource::DatasourceService)
     error("Execute is unimplemented for this task $task")
 end
 
 """
-    finalize(daemon::Service, task::DaemonTask.Details,
+    finalize(daemon::DaemonService, task::DaemonTaskDetails,
 
 After task has completed, perform this action
 """
-function finalize(task::Details, args...; kwargs...)
+function finalize(task::DaemonTaskDetails, datasource::DatasourceService)
     error("finalize is unimplemented for this task $task")
 end
 

@@ -1,5 +1,6 @@
 module MockServices
 
+using Julimaps.Cloud.Julitasks.Types
 using CloudTest.JulitasksTests.Utils.TestTasks
 
 import Julimaps.Cloud.Julitasks.Services.Queue
@@ -8,7 +9,7 @@ import Julimaps.Cloud.Julitasks.Services.Cache
 import Julimaps.Cloud.Julitasks.Services.Datasource
 
 export MockBucketService
-type MockBucketService <: Bucket.Service
+type MockBucketService <: BucketService
     mockFiles::Dict{AbstractString, Any}
 end
 MockBucketService() = MockBucketService(Dict())
@@ -30,13 +31,13 @@ function Bucket.upload(bucket::MockBucketService,
 end
 
 export MockQueueService
-type MockQueueService <: Queue.Service
+type MockQueueService <: QueueService
 end
 function Queue.pop_message(mock_queue::MockQueueService)
 end
 
 export MockCacheService
-type MockCacheService <: Cache.Service
+type MockCacheService <: CacheService
     mockValues::Dict{AbstractString, IO}
 end
 MockCacheService() = MockCacheService(Dict())
@@ -64,7 +65,7 @@ function Cache.delete!(cache::MockCacheService, key::AbstractString)
 end
 
 export MockDatasourceService
-type MockDatasourceService <: Datasource.Service
+type MockDatasourceService <: DatasourceService
 end
 
 end # module MockServices

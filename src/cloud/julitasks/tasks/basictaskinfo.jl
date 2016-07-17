@@ -3,7 +3,7 @@ module BasicTask
 export Info
 
 """
-    DaemonTask.Info
+    BasicTask.Info
 
 Type contains basic information for a daemon task
 

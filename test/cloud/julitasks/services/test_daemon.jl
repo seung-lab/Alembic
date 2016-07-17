@@ -3,16 +3,16 @@ module TestDaemonService
 using Base.Test
 using CloudTest.JulitasksTests.Utils.TestTasks
 using CloudTest.JulitasksTests.Utils.MockServices
+using Julimaps.Cloud.Julitasks.Services.Daemon
 
 import Julimaps.Cloud.Julitasks.Services.Queue
 import Julimaps.Cloud.Julitasks.Services.Bucket
 import Julimaps.Cloud.Julitasks.Services.Datasource
-import Julimaps.Cloud.Julitasks.Services.Daemon
 import Julimaps.Cloud.Julitasks.Tasks.DaemonTask
 import JSON
 
 function test_register_no_execute_method()
-    daemon = Daemon.Service(MockQueueService(),
+    daemon = DaemonService(MockQueueService(),
         MockBucketService(),
         MockDatasourceService(), 10)
     @test_throws Exception Daemon.register!(daemon,
@@ -20,7 +20,7 @@ function test_register_no_execute_method()
 end
 
 function test_register_with_execute_method()
-    daemon = Daemon.Service(MockQueueService(),
+    daemon = DaemonService(MockQueueService(),
         MockBucketService(),
         MockDatasourceService(), 10)
     @test Daemon.register!(daemon, TEST_TASK_NAME, MockTaskExecute) !=
@@ -28,14 +28,14 @@ function test_register_with_execute_method()
 end
 
 function test_parse_empty()
-    daemon = Daemon.Service(MockQueueService(),
+    daemon = DaemonService(MockQueueService(),
         MockBucketService(),
         MockDatasourceService(), 10)
     @test_throws ArgumentError Daemon.parse(daemon, " ")
 end
 
 function test_parse_no_basic_info()
-    daemon = Daemon.Service(MockQueueService(),
+    daemon = DaemonService(MockQueueService(),
         MockBucketService(),
         MockDatasourceService(), 10)
     task = make_valid_task_execute()
@@ -45,7 +45,7 @@ function test_parse_no_basic_info()
 end
 
 function test_parse_no_payload_info()
-    daemon = Daemon.Service(MockQueueService(),
+    daemon = DaemonService(MockQueueService(),
         MockBucketService(),
         MockDatasourceService(), 10)
     task = make_valid_task_execute()
@@ -56,7 +56,7 @@ function test_parse_no_payload_info()
 end
 
 function test_parse_task_not_registered()
-    daemon = Daemon.Service(MockQueueService(),
+    daemon = DaemonService(MockQueueService(),
         MockBucketService(),
         MockDatasourceService(), 10)
     task = make_valid_task_execute()
@@ -66,7 +66,7 @@ function test_parse_task_not_registered()
 end
 
 function test_parse_good()
-    daemon = Daemon.Service(MockQueueService(),
+    daemon = DaemonService(MockQueueService(),
         MockBucketService(),
         MockDatasourceService(), 10)
     task = make_valid_task_execute()
