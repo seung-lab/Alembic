@@ -7,6 +7,7 @@ using Julimaps.Cloud.Services.AWSBucket
 using Julimaps.Cloud.Services.FileSystemCache
 using Julimaps.Cloud.Services.BucketCacheDatasource
 using Julimaps.Cloud.Services.Daemon
+using Julimaps.Cloud.Tasks.NoOpTask
 
 import Julimaps
 import AWS
@@ -14,6 +15,7 @@ import AWS
 type RunConfig
     queue_name::ASCIIString
     bucket_name::ASCIIString
+    cache_directory::ASCIIString
     poll_frequency_seconds::Int64
 end
 
@@ -27,13 +29,17 @@ function main()
     # variables or ~/.awssecret or query permissions server)
     env = AWS.AWSEnv()
 
-    queue =AWSQueueService(env, run_config.queue_name)
+    queue = AWSQueueService(env, run_config.queue_name)
 
     bucket = AWSBucketService(env, run_config.bucket_name)
 
-    cache = FileSystemCacheService("
+    cache = FileSystemCacheService(run_config.cache_directory)
 
-    daemon = Daemon.DaemonService(queue, bucket, run_config.poll_frequency_seconds)
+    datasource = BucketCacheDatasource(bucket, cache)
+
+    daemon = DaemonService(queue, bucket, run_config.poll_frequency_seconds)
+
+    register!(daemon, "NOOP_TASK", NoOpTaskDetails)
 
     Daemon.run(daemon)
 end
@@ -45,13 +51,15 @@ end
 function parse_args()
     if length(ARGS) < 3
         error("Not enough arguments given, (given $ARGS) sample usage:
-            -- julia daemon.jl queue_name bucket_name")
+            -- julia daemon.jl queue_name bucket_name cache_directory
+            poll_frequency_seconds")
     end
 
     run_config = RunConfig(
         ASCIIString(ARGS[1]),
         ASCIIString(ARGS[2]),
-        parse(Int64, ARGS[3])
+        ASCIIString(ARGS[3]),
+        parse(Int64, ARGS[4])
     )
     return run_config
 end

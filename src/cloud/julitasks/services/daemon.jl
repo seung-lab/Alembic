@@ -50,7 +50,7 @@ function run(daemon::DaemonService)
 end
 
 """
-    register(daemon::DaemonService, task_module::Module)
+    register!(daemon::DaemonService, task_module::Module)
 
 Register the task type generation for the given task_name
 
