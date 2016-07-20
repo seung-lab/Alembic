@@ -1,6 +1,7 @@
 module Services
 include("bucket.jl")
 include("awsbucket.jl")
+include("awsclibucket.jl")
 
 include("queue.jl")
 include("awsqueue.jl")

@@ -13,7 +13,7 @@ type AWSBucketService <: BucketService
 end
 
 AWSBucketService(env::AWS.AWSEnv, name::ASCIIString) =
-    check_reachable(env, name) && AWSBucketService(env, name, Bucket)
+    check_reachable(env, name) && AWSBucketService(env, name)
 
 function check_reachable(env::AWS.AWSEnv, bucket_name::AbstractString)
     bucket_response = S3.get_bkt(env, bucket_name)
