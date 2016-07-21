@@ -12,13 +12,17 @@ const TEST_FILE_NAME = "testfile"
 const BUCKET_NAME = "seunglab-alignment"
 const MAX_INDEX = 100000
 
-function upload_test_file()
-    create_test_file()
+function upload_remote_test_file()
+    create_local_test_file()
     try
         run(`aws s3 cp $TEST_FILE_NAME s3://$BUCKET_NAME/$TEST_FILE_NAME`)
     finally
-        delete_test_file()
+        delete_local_test_file()
     end
+end
+
+function delete_remote_test_file()
+    run(`aws s3 rm s3://$BUCKET_NAME/$TEST_FILE_NAME`)
 end
 
 function write_numbers(io::IO)
@@ -27,13 +31,13 @@ function write_numbers(io::IO)
     end
 end
 
-function create_test_file()
+function create_local_test_file()
     file = open(TEST_FILE_NAME, "w")
     write_numbers(file)
     close(file)
 end
 
-function delete_test_file()
+function delete_local_test_file()
     rm(TEST_FILE_NAME)
 end
 
@@ -51,7 +55,7 @@ function test_bad_bucket()
 end
 
 function test_download_IO()
-    upload_test_file()
+    upload_remote_test_file()
 
     env = AWS.AWSEnv()
     bucket = AWSCLIBucketService(env.aws_id, env.aws_seckey,
@@ -60,24 +64,27 @@ function test_download_IO()
     buffer = IOBuffer()
     Bucket.download(bucket, TEST_FILE_NAME, buffer)
 
-    index = 0
-    while !eof(buffer)
-        index = index + 1
-        @test parse(Int, readline(buffer)) == index
+    file_indices = split(takebuf_string(buffer), "\n")
+    for index in 1:length(file_indices) - 1
+        @test parse(Int, file_indices[index]) == index
     end
+    # last split from \n is generates an empty string
+    @test length(file_indices) - 1 == MAX_INDEX
+
+    delete_remote_test_file()
 end
 
 function test_download_file()
-    upload_test_file()
+    upload_remote_test_file()
 
     env = AWS.AWSEnv()
     bucket = AWSCLIBucketService(env.aws_id, env.aws_seckey,
         BUCKET_NAME)
 
-    new_filename = "new$TEST_FILE_NAME"
-    Bucket.download(bucket, TEST_FILE_NAME, new_filename)
+    download_filename = "new$TEST_FILE_NAME"
+    process = Bucket.download(bucket, TEST_FILE_NAME, download_filename)
 
-    file = open(new_filename, "r")
+    file = open(download_filename, "r")
     index = 0
     try
         while !eof(file)
@@ -86,9 +93,11 @@ function test_download_file()
         end
     finally
         close(file)
-        rm(new_filename)
+        #=rm(download_filename)=#
     end
     @test index == MAX_INDEX
+
+    delete_remote_test_file()
 end
 
 function test_upload_io()
@@ -98,12 +107,14 @@ function test_upload_io()
 
     io = IOBuffer()
     write_numbers(io)
-    upload_filename = "$(TEST_FILE_NAME)up"
+    upload_filename = "$(TEST_FILE_NAME)UpIO"
 
     Bucket.upload(bucket, io, "$upload_filename")
 
+    # Verify the uploaded file by manually download the uploaded file
     try
         run(`aws s3 cp s3://$BUCKET_NAME/$upload_filename $upload_filename`)
+        run(`aws s3 rm s3://$BUCKET_NAME/$upload_filename`)
     catch
         error("Unable to find downloaded file $upload_filename")
     end
@@ -117,6 +128,7 @@ function test_upload_io()
         end
     finally
         close(downloaded_file)
+        rm(upload_filename)
     end
     @test index == MAX_INDEX
 end
@@ -125,12 +137,12 @@ function test_upload_file()
 end
 
 function __init__()
-    test_creatable()
-    test_bad_bucket()
-    test_download_IO()
+    #=test_creatable()=#
+    #=test_bad_bucket()=#
+    #=test_download_IO()=#
     test_download_file()
 
-    test_upload_io()
+    #=test_upload_io()=#
 end
 
 end # module TestAWSCLIBucket

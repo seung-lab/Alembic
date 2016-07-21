@@ -44,23 +44,59 @@ end
 function Bucket.download(bucket::AWSCLIBucketService, remote_file::ASCIIString,
     local_file::Union{ASCIIString, IO})
 
-    (stream, process) = open(`aws s3 cp s3://$(bucket.name)/$remote_file -`, "r")
-
     if isa(local_file, ASCIIString)
         local_file = open(local_file, "w")
     end
 
-    write(local_file, readbytes(stream))
+    download_cmd = `aws s3 cp s3://$(bucket.name)/$remote_file -`
+
+    process = nothing
+    # ugh julia doesn't support piping directly to IOBuffers yet
+    #=https://github.com/JuliaLang/julia/issues/14437=#
+    if typeof(local_file) <: IOBuffer
+        (s3_output, process) = open(download_cmd, "r")
+        # manually read from stream and write to buffer
+        write(local_file, readbytes(s3_output))
+    else
+        # open the cmd in write mode. this automatically takes the 2nd arg
+        # (stdio) and uses it as redirection of STDOUT
+        (s3_input, process) = open(download_cmd, "w", local_file)
+        # for now just make it block until command has completed until i know
+        # how to make IOBuffer async/return a process
+        wait(process)
+    end
+
+    return process
 end
 
 function Bucket.upload(bucket::AWSCLIBucketService,
         local_file::Union{ASCIIString, IO}, remote_file::ASCIIString)
+
     if isa(local_file, ASCIIString)
         local_file = open(local_file, "w")
     end
 
-    (stream, process) = open(`aws s3 cp - s3://$(bucket.name)/$remote_file`,
-        "w", local_file)
+    upload_cmd = `aws s3 cp - s3://$(bucket.name)/$remote_file`
+
+    process = nothing
+    # ugh julia doesn't support piping directly to IOBuffers yet
+    #=https://github.com/JuliaLang/julia/issues/14437=#
+    if typeof(local_file) <: IOBuffer
+        (s3_input, process) = open(upload_cmd, "w")
+        # manually read from buffer and write to stream
+        write(s3_input, takebuf_array(local_file))
+        close(s3_input)
+    else
+        # open the cmd in write mode. this automatically takes the 2nd arg
+        # (stdio) and uses it as redirection of STDOUT.
+        (s3_output, process) = open(upload_cmd, "r", local_file)
+        # for now just make it block until command has completed until i know
+        # how to make IOBuffer async/return a process
+        wait(process)
+    end
+
+    return process
+end
 
 #=
  =    folder = remote_file[1:rsearch(remote_file, "/").stop]
@@ -81,6 +117,6 @@ function Bucket.upload(bucket::AWSCLIBucketService,
  =            response was $(put_response.http_code)")
  =    end
  =#
-end
+#=end=#
 
 end # module AWSCLIBucket
