@@ -36,7 +36,7 @@ function Cache.exists(cache::FileSystemCacheService, key::AbstractString)
 end
 
 function Cache.put!(cache::FileSystemCacheService, key::AbstractString,
-        value_buffer::IO)
+        value_io::IO)
     filename = to_filename(cache, key)
     create_path(filename)
     filestream = open(filename, "w")
@@ -44,7 +44,11 @@ function Cache.put!(cache::FileSystemCacheService, key::AbstractString,
         error("Unable to write to $filename")
     end
 
-    write(filestream, takebuf_array(value_buffer))
+    if typeof(value_io) <: IOBuffer
+        write(filestream, takebuf_array(value_io))
+    else
+        write(filestream, readall(value_io))
+    end
     close(filestream)
 end
 

@@ -9,9 +9,10 @@ export download, upload
 local_file::Union{ASCIIString, IO})
 
 Download a remote file either to a new location `ASCIIString` or a stream `IO`.
+If the local_file is not specified, a stream to the download is returned
 """
 function download(bucket::BucketService, remote_file::ASCIIString,
-    local_file::Union{ASCIIString, IO})
+    local_file::Union{ASCIIString, IO, Void}=nothing)
     error("download with $bucket is not implemented")
 end
 

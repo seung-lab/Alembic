@@ -16,10 +16,15 @@ MockBucketService() = MockBucketService(Dict())
 
 # local_file can also be a file location but we're not testing that for now
 function Bucket.download(bucket::MockBucketService, key::ASCIIString,
-        local_file::Union{ASCIIString, IO})
+        local_file::Union{ASCIIString, IO, Void})
     data = bucket.mockFiles[key]
-    write(local_file, readall(data))
+    if local_file != nothing
+        write(local_file, readall(data))
+        return local_file
+    end
     seekstart(data)
+
+    return IOBuffer(data)
 end
 # local_file can also be a file location but we're not testing that for now
 function Bucket.upload(bucket::MockBucketService,

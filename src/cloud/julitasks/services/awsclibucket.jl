@@ -34,7 +34,9 @@ end
 function check_reachable(bucket_name::AbstractString)
     try
         println("Checking access to $bucket_name")
-        run(pipeline(`aws s3 ls s3://$bucket_name`, DevNull))
+        # pipleine into DevNull to squelch stdout
+        run(pipeline(`aws s3 ls s3://$bucket_name`, stdout=DevNull,
+            stderr=DevNull))
     catch
         throw(ArgumentError("Unable to access bucket \"$bucket_name\"")) 
     end
@@ -42,7 +44,7 @@ function check_reachable(bucket_name::AbstractString)
 end
 
 function Bucket.download(bucket::AWSCLIBucketService, remote_file::ASCIIString,
-    local_file::Union{ASCIIString, IO})
+    local_file::Union{ASCIIString, IO, Void}=nothing)
 
     if isa(local_file, ASCIIString)
         local_file = open(local_file, "w")
@@ -50,35 +52,35 @@ function Bucket.download(bucket::AWSCLIBucketService, remote_file::ASCIIString,
 
     download_cmd = `aws s3 cp s3://$(bucket.name)/$remote_file -`
 
-    process = nothing
+    if local_file == nothing
+        (s3_output, process) = open(download_cmd, "r")
+        return s3_output
     # ugh julia doesn't support piping directly to IOBuffers yet
     #=https://github.com/JuliaLang/julia/issues/14437=#
-    if typeof(local_file) <: IOBuffer
+    elseif typeof(local_file) <: IOBuffer
         (s3_output, process) = open(download_cmd, "r")
         # manually read from stream and write to buffer
         write(local_file, readbytes(s3_output))
+        return local_file
     else
         # open the cmd in write mode. this automatically takes the 2nd arg
         # (stdio) and uses it as redirection of STDOUT
         (s3_input, process) = open(download_cmd, "w", local_file)
-        # for now just make it block until command has completed until i know
-        # how to make IOBuffer async/return a process
+        # for now just make it block until command has completed
         wait(process)
+        return local_file
     end
-
-    return process
 end
 
 function Bucket.upload(bucket::AWSCLIBucketService,
         local_file::Union{ASCIIString, IO}, remote_file::ASCIIString)
 
     if isa(local_file, ASCIIString)
-        local_file = open(local_file, "w")
+        local_file = open(local_file, "r")
     end
 
     upload_cmd = `aws s3 cp - s3://$(bucket.name)/$remote_file`
 
-    process = nothing
     # ugh julia doesn't support piping directly to IOBuffers yet
     #=https://github.com/JuliaLang/julia/issues/14437=#
     if typeof(local_file) <: IOBuffer
@@ -95,7 +97,6 @@ function Bucket.upload(bucket::AWSCLIBucketService,
         wait(process)
     end
 
-    return process
 end
 
 end # module AWSCLIBucket

@@ -18,7 +18,7 @@ end
 
 Get an IO stream to put an object into
 """
-function put!(cache::CacheService, key::AbstractString, value_buffer::IO)
+function put!(cache::CacheService, key::AbstractString, value_io::IO)
     error("put is unimplemented for $cache")
 end
 

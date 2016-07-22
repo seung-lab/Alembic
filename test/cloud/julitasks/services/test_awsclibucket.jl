@@ -2,8 +2,6 @@ module TestAWSCLIBucket
 
 using Base.Test
 using Julimaps.Cloud.Julitasks.Services.AWSCLIBucket
-#=using CloudTest.JulitasksTests.Utils.TestTasks=#
-#=using CloudTest.JulitasksTests.Utils.MockServices=#
 
 import AWS
 import Julimaps.Cloud.Julitasks.Services.Bucket
@@ -11,6 +9,10 @@ import Julimaps.Cloud.Julitasks.Services.Bucket
 const TEST_FILE_NAME = "testfile"
 const BUCKET_NAME = "seunglab-alignment"
 const MAX_INDEX = 100000
+
+macro silent(expr::Expr)
+    return :(try run(pipeline($expr, stdout=DevNull, stderr=DevNull)) catch end)
+end
 
 function upload_remote_test_file()
     create_local_test_file(TEST_FILE_NAME)
@@ -82,7 +84,7 @@ function test_download_file()
         BUCKET_NAME)
 
     download_filename = "new$TEST_FILE_NAME"
-    process = Bucket.download(bucket, TEST_FILE_NAME, download_filename)
+    Bucket.download(bucket, TEST_FILE_NAME, download_filename)
 
     file = open(download_filename, "r")
     index = 0
@@ -93,7 +95,30 @@ function test_download_file()
         end
     finally
         close(file)
-        #=rm(download_filename)=#
+        rm(download_filename)
+    end
+    @test index == MAX_INDEX
+
+    delete_remote_test_file()
+end
+
+function test_download_stream()
+    upload_remote_test_file()
+
+    env = AWS.AWSEnv()
+    bucket = AWSCLIBucketService(env.aws_id, env.aws_seckey,
+        BUCKET_NAME)
+
+    stream = Bucket.download(bucket, TEST_FILE_NAME)
+
+    index = 0
+    try
+        while !eof(stream)
+            index = index + 1
+            @test parse(Int, readline(stream)) == index
+        end
+    finally
+        close(stream)
     end
     @test index == MAX_INDEX
 
@@ -108,16 +133,15 @@ function test_upload_io()
     io = IOBuffer()
     write_numbers(io)
     upload_filename = "$(TEST_FILE_NAME)UpIO"
-    
-    # make sure the file if it exists is removed first
-    run(`aws s3 rm s3://$BUCKET_NAME/$upload_filename`)
+
+    # try to remove the file we are tring to upload from bucket
+    @silent `aws s3 rm s3://$BUCKET_NAME/$upload_filename`
 
     Bucket.upload(bucket, io, upload_filename)
 
     # Verify the uploaded file by manually download the uploaded file
     try
         run(`aws s3 cp s3://$BUCKET_NAME/$upload_filename $upload_filename`)
-        run(`aws s3 rm s3://$BUCKET_NAME/$upload_filename`)
     catch
         error("Unable to find downloaded file $upload_filename")
     end
@@ -134,6 +158,7 @@ function test_upload_io()
         rm(upload_filename)
     end
     @test index == MAX_INDEX
+    @silent `aws s3 rm s3://$BUCKET_NAME/$upload_filename`
 end
 
 function test_upload_file()
@@ -142,8 +167,8 @@ function test_upload_file()
         BUCKET_NAME)
 
     upload_filename = "$(TEST_FILE_NAME)UpFile"
-    # make sure the file if it exists is removed first
-    run(`aws s3 rm s3://$BUCKET_NAME/$upload_filename`)
+    # try to remove the file we are tring to upload from bucket
+    @silent `aws s3 rm s3://$BUCKET_NAME/$upload_filename`
 
     create_local_test_file(upload_filename)
 
@@ -152,7 +177,6 @@ function test_upload_file()
     # Verify the uploaded file by manually download the uploaded file
     try
         run(`aws s3 cp s3://$BUCKET_NAME/$upload_filename $upload_filename`)
-        run(`aws s3 rm s3://$BUCKET_NAME/$upload_filename`)
     catch
         error("Unable to find downloaded file $upload_filename")
     end
@@ -169,13 +193,16 @@ function test_upload_file()
         rm(upload_filename)
     end
     @test index == MAX_INDEX
+    @silent `aws s3 rm s3://$BUCKET_NAME/$upload_filename`
 end
 
 function __init__()
     test_creatable()
     test_bad_bucket()
+
     test_download_IO()
     test_download_file()
+    test_download_stream()
 
     test_upload_io()
     test_upload_file()
