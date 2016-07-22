@@ -20,7 +20,7 @@ function can_execute(task_type::Type)
         return false
     end
 
-    execute_methods = methods(execute, Any[task_type])
+    execute_methods = methods(execute, Any[task_type, DatasourceService])
 
     if length(execute_methods) == 0
         return false
