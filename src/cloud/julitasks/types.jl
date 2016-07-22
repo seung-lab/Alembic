@@ -7,7 +7,6 @@ export BucketService,
     CacheService
 
 abstract BucketService
-abstract DaemonService
 abstract DatasourceService
 abstract QueueService
 abstract CacheService

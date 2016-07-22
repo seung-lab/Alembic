@@ -4,7 +4,7 @@ module RunDaemon
 
 using Julimaps.Cloud.Julitasks.Types
 using Julimaps.Cloud.Julitasks.Services.AWSQueue
-using Julimaps.Cloud.Julitasks.Services.AWSBucket
+using Julimaps.Cloud.Julitasks.Services.AWSCLIBucket
 using Julimaps.Cloud.Julitasks.Services.FileSystemCache
 using Julimaps.Cloud.Julitasks.Services.BucketCacheDatasource
 using Julimaps.Cloud.Julitasks.Services.Daemon
@@ -32,7 +32,7 @@ function main()
 
     queue = AWSQueueService(env, run_config.queue_name)
 
-    bucket = AWSBucketService(env, run_config.bucket_name)
+    bucket = AWSCLIBucketService(env.aws_id, env.aws_seckey)
 
     cache = FileSystemCacheService(run_config.cache_directory)
 
