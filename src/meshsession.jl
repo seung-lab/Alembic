@@ -249,21 +249,21 @@ end
 
 #### ASSUMES HOMOGENEOUS TILE SIZE
 #function premontage(wafer_range::UnitRange{Int64})
-function premontage(wafer, start, tile_size = [8000,8000], expected_overlap = 0.145)
+function premontage(wafer, start, tile_size = [8000,8000], expected_overlap = 0.160)
 #  for wafer in wafer_range
-    premontaged_path = get_path(premontaged(wafer, 1))
-    dir,name = splitdir(premontaged_path)
+    #premontaged_path = get_path(premontaged(wafer, 1))
+    #dir,name = splitdir(premontaged_path)
+    dir = PREMONTAGED_DIR_PATH
     tiles = sort_dir(dir, ".h5");
-    tiles = filter(x->contains(x,"Tile"), tiles)
+    #tiles = filter(x->contains(x,"Tile"), tiles)
     tile_indices = sort(map(parse_name, tiles))
     tile_indices = filter(x->x[1] == wafer, tile_indices)
     section_range = start:tile_indices[end][2]
   for sec in section_range
-    premontaged_path = get_path(premontaged(wafer, sec))
-    dir,name = splitdir(premontaged_path)
+    dir = PREMONTAGED_DIR_PATH
     println("$wafer, $sec")
     tiles = sort_dir(dir, ".h5");
-    tiles = filter(x->contains(x,"Tile"), tiles)
+    #tiles = filter(x->contains(x,"Tile"), tiles)
     tile_indices = sort(map(parse_name, tiles))
     tile_indices = filter(x->x[1:2] == (wafer,sec), tile_indices)
 
@@ -296,15 +296,15 @@ function premontage(wafer, start, tile_size = [8000,8000], expected_overlap = 0.
 	  target_patch = target_image[1:end, (1 + round(Int64, tile_size[2] * (1 - expected_overlap))):end]
 	  expected_offset = [0, round(Int64, tile_size[2] * (1 - expected_overlap))]
 	end
-	cur_patch = Images.restrict(cur_patch)
-	target_patch = Images.restrict(target_patch)
+#	cur_patch = Images.restrict(cur_patch)
+#	target_patch = Images.restrict(target_patch)
 	xc = normxcorr2(cur_patch, target_patch; shape="full")
 	xcd = xc - Images.imfilter_gaussian(xc, sigma);
 
 	rm, ind = findmax(xcd)
 	i_max, j_max = ind2sub(xcd, ind);
-	i_diff = 2 * (i_max - median(1:size(xcd, 1)))
-	j_diff = 2 * (j_max - median(1:size(xcd, 2)))
+	i_diff =  (i_max - median(1:size(xcd, 1)))
+	j_diff =  (j_max - median(1:size(xcd, 2)))
 
 #    	update_offset(index, [i_diff, j_diff] + get_offset(target_index), [size(images[findfirst(ind -> ind == index, tile_indices)])...]);
     	update_offset(index, expected_offset + [i_diff, j_diff] + offsets[findfirst(ind -> ind == target_index, tile_indices)], tile_size);
@@ -319,19 +319,15 @@ end
 #function premontage(wafer_range::UnitRange{Int64})
 function premontage_to_overview(wafer, start, tile_size = [8000,8000], scale = 0.05)
 #  for wafer in wafer_range
-    premontaged_path = get_path(premontaged(wafer, 1))
-    dir,name = splitdir(premontaged_path)
+    dir = PREMONTAGED_DIR_PATH
     tiles = sort_dir(dir, ".h5");
-    tiles = filter(x->contains(x,"Tile"), tiles)
     tile_indices = sort(map(parse_name, tiles))
     tile_indices = filter(x->x[1] == wafer, tile_indices)
     section_range = start:tile_indices[end][2]
   for sec in section_range
-    premontaged_path = get_path(premontaged(wafer, sec))
-    dir,name = splitdir(premontaged_path)
+    dir = PREMONTAGED_DIR_PATH
     println("$wafer, $sec")
     tiles = sort_dir(dir, ".h5");
-    tiles = filter(x->contains(x,"Tile"), tiles)
     tile_indices = sort(map(parse_name, tiles))
     tile_indices = filter(x->x[1:2] == (wafer,sec), tile_indices)
 
@@ -345,7 +341,7 @@ function premontage_to_overview(wafer, start, tile_size = [8000,8000], scale = 0
 
     sigma = [1,1]
 
-    overview_image = get_image(overview(wafer, sec))
+    overview_image = get_image(get_path(overview(wafer, sec), ".tif"))
     function find_patch_locs(cur_image, overview_image)
 	cur_image = imscale(cur_image, scale)[1]
 	xc = normxcorr2(cur_image, overview_image)
