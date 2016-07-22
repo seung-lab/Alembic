@@ -15,7 +15,7 @@ end
 
 function Datasource.pull!(datasource::BucketCacheDatasourceService,
         keys::Array{AbstractString, 1}; force::Bool=false)
-    map((key) -> Datasource.pull!(datasource, key; force=force), keys)
+    return map((key) -> Datasource.pull!(datasource, key; force=force), keys)
 end
 
 function Datasource.pull!(datasource::BucketCacheDatasourceService,
@@ -25,6 +25,7 @@ function Datasource.pull!(datasource::BucketCacheDatasourceService,
         Cache.put!(datasource.cache, key, stream)
         close(stream)
     end
+    return Cache.get(datasource.cache, key)
 end
 
 function Datasource.push!(datasource::BucketCacheDatasourceService,

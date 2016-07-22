@@ -37,7 +37,8 @@ function main()
 
     datasource = BucketCacheDatasource(bucket, cache)
 
-    daemon = DaemonService(queue, bucket, run_config.poll_frequency_seconds)
+    daemon = DaemonService(queue, bucket, datasource,
+        run_config.poll_frequency_seconds)
 
     register!(daemon, "NOOP_TASK", NoOpTaskDetails)
 

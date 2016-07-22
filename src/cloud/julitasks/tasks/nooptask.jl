@@ -22,18 +22,20 @@ end
 
 const name = "NO_OP"
 
-function DaemonTask.prepare(task::BlockMatchTaskDetails,
+function DaemonTask.prepare(task::NoOpTaskDetails,
         datasource::DatasourceService)
-    #=Datasource.pull!(daemon.datasource, task.basicInfo.files)=#
+    Datasource.pull!(daemon.datasource, task.basicInfo.files)
     println("Preparing NoOpTask")
 end
 
-function DaemonTask.execute(task::BlockMatchTaskDetails,
+function DaemonTask.execute(task::NoOpTaskDetails,
         datasource::DatasourceService)
-    println("Executing NoOpTask with payload $(task.payloadInfo)")
+    file = datasource.get(task.basicInfo.files[1])
+    println(readall(file))
+    return DaemonTask.Result(true, "output")
 end
 
-function DaemonTask.finalize(task::BlockMatchTaskDetails,
+function DaemonTask.finalize(task::NoOpTaskDetails,
         datasource::DatasourceService, result::DaemonTask.Result)
     if !result.success
         println("Task $(task.details.id), $(task.details.name) was
