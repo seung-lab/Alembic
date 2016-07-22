@@ -145,6 +145,15 @@ function get_properties(match::Match, property_name)
 	end
 end
 
+function get_properties_ratios(match::Match, args...)
+  	props_den = get_properties(match, args[end])
+  	for arg in args[(end-1):-1:1]
+	props_num = get_properties(match, arg)
+	props_den = props_num ./ props_den
+      	end
+	return props_den
+end
+
 function get_properties(match::Match, fn::Function, args...)
 	return fn(match, args...)
 end
@@ -294,6 +303,7 @@ function monoblock_match(src_index, dst_index, src_image, dst_image, params=get_
   println("monoblock:")
 	if params["match"]["monoblock_match"] == false return; end
 	scale = params["match"]["monoblock_scale"];
+	highpass_sigma = params["match"]["highpass_sigma"];
 	ratio = params["match"]["monoblock_ratio"];
 
 	scaled_rads = ceil(Int64, ratio * size(src_image, 1) / 2), round(Int64, ratio * size(src_image, 2) / 2)
@@ -308,7 +318,7 @@ function monoblock_match(src_index, dst_index, src_image, dst_image, params=get_
 
 	ranges = src_index, range_in_src, src_pt_locs, dst_index, range_in_dst, dst_range_full, dst_pt_locs, dst_pt_locs_full, rel_offset
 
-	match = get_match(src_pt_locs, ranges, src_image, dst_image, scale)
+	match = get_match(src_pt_locs, ranges, src_image, dst_image, scale, highpass_sigma)
 
 	if match == nothing
 		error("MONOBLOCK_MATCH FAILED: Cross correlogram maximum is NaN. Check that images have variance.")
@@ -332,12 +342,12 @@ function monoblock_match(src_index, dst_index, src_image, dst_image, params=get_
 end
 
 function get_match(pt, ranges, src_image, dst_image, params)
-	return get_match(pt, ranges, src_image, dst_image, params["match"]["blockmatch_scale"]);
+	return get_match(pt, ranges, src_image, dst_image, params["match"]["blockmatch_scale"], params["match"]["highpass_sigma"]);
 end
 """
 Template match two image patches to produce point pair correspondence
 """
-function get_match(pt, ranges, src_image, dst_image, scale = 1.0)
+function get_match(pt, ranges, src_image, dst_image, scale = 1.0, highpass_sigma = 1)
 	src_index, src_range, src_pt_loc, dst_index, dst_range, dst_range_full, dst_pt_loc, dst_pt_loc_full, rel_offset = ranges;
 
 	#see if any of the edges in the template are fully padded
@@ -388,21 +398,22 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0)
 		padded_img = fill(avg, length(dst_range_full[1]), length(dst_range_full[2]));
 		padded_img[indices_within_range...] = intersect_img;
 		if scale == 1.0 
-		xc = normxcorr2_preallocated(src_image[src_range[1], src_range[2]], padded_img);
+		xc = normxcorr2_preallocated(src_image[src_range[1], src_range[2]], padded_img; highpass_sigma = highpass_sigma);
 	      else
-		xc = normxcorr2_preallocated(imscale_register_a!(src_image[src_range[1], src_range[2]], scale)[1], imscale_register_b!(padded_img, scale)[1])
+		xc = normxcorr2_preallocated(imscale_register_a!(src_image[src_range[1], src_range[2]], scale)[1], imscale_register_b!(padded_img, scale)[1]; highpass_sigma = highpass_sigma)
 	      end
 	else
 		if scale == 1.0 
-		xc = normxcorr2_preallocated(src_image[src_range[1], src_range[2]], dst_image[dst_range[1], dst_range[2]]);
+		  highpass_sigma = highpass_sigma * scale;
+		xc = normxcorr2_preallocated(src_image[src_range[1], src_range[2]], dst_image[dst_range[1], dst_range[2]]; highpass_sigma = highpass_sigma);
 	      else
-		xc = normxcorr2_preallocated(imscale_register_a!(src_image[src_range[1], src_range[2]], scale)[1], imscale_register_b!(dst_image[dst_range[1], dst_range[2]], scale)[1])
+		xc = normxcorr2_preallocated(imscale_register_a!(src_image[src_range[1], src_range[2]], scale)[1], imscale_register_b!(dst_image[dst_range[1], dst_range[2]], scale)[1]; highpass_sigma = highpass_sigma)
 	      end
 	end
 
 	r_max = maximum(xc)
 	if isnan(r_max) return nothing end;
-	if r_max > 1.0 println("rounding error") end
+#	if r_max > 1.0 println("rounding error") end
   	ind = findfirst(r_max .== xc)
 	i_max, j_max = rem(ind, size(xc, 1)), cld(ind, size(xc, 1));
   	if i_max == 0 
@@ -458,7 +469,7 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0)
 	correspondence_properties["xcorr"] = Dict{Any, Any}();
 	correspondence_properties["xcorr"]["r_max"] = r_max;
 	correspondence_properties["xcorr"]["sigmas"] = Dict{Float64, Any}();
-	for beta in 0.5:0.05:0.95
+	for beta in [0.5, 0.75, 0.95]
 	correspondence_properties["xcorr"]["sigmas"][beta] = sigma(xc, beta) / scale;
         end
 	correspondence_properties["vects"] = Dict{Any, Any}();

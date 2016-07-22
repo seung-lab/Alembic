@@ -23,11 +23,11 @@ function inspect(meshset::MeshSet, match_ind=0)
   k = match_ind
   name = get_name(meshset)
   num_string = string(" @ ", match_ind, " / ", length(meshset.matches))
-  if is_prealigned(meshset.meshes[1].index) || is_prealigned(meshset.meshes[2].index)
+  #=if is_prealigned(meshset.meshes[1].index) || is_prealigned(meshset.meshes[2].index)
     k = 1
     name = string("#", get_name(meshset), " ", get_parent(meshset))
     num_string = ""
-  end
+  end=#
   println("\n", name, ": ", get_name(meshset.matches[k]), num_string)
   imgc, img2, params = view_match(meshset, k)
   enable_inspection(imgc, img2, meshset, k, params)

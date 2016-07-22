@@ -1,9 +1,7 @@
-global BUCKET = "/usr/people/dih/datasets"
+global BUCKET = "/home/ubuntu/datasets"
 global DATASET = "zebrafish"
-global ROI_FIRST = (2,32,0,0);
-global ROI_LAST = (9,163,0,0);
-global ROI_FIRST = (10,1,0,0);
-global ROI_LAST = (10,163,0,0);
+global ROI_FIRST = (2,33,0,0);
+global ROI_LAST = (9,164,0,0);
 global DATASET_RESOLUTION = [5,5,45]
 
 function get_name_legacy(index)
