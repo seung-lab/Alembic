@@ -5,6 +5,8 @@ using ...Julitasks.Types
 import Julimaps.Cloud.Julitasks.Services.Bucket
 import Julimaps.Cloud.Julitasks.Services.Cache
 
+export FileSystemCacheService
+
 const FOLDER_SEPARATOR = "/"
 
 type FileSystemCacheService <: CacheService

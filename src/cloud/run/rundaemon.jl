@@ -23,22 +23,20 @@ end
 #=
  = Create the queue and bucket service and start the daemon
  =#
-function main()
-    run_config = parse_args()
-
+function run(queue_name, bucket_name, cache_directory, poll_frequency_seconds)
     # Load AWS credentials via AWS library (either through environment
     # variables or ~/.awssecret or query permissions server)
     env = AWS.AWSEnv()
 
-    queue = AWSQueueService(env, run_config.queue_name)
+    queue = AWSQueueService(env, queue_name)
 
-    bucket = AWSCLIBucketService(env.aws_id, env.aws_seckey)
+    bucket = AWSCLIBucketService(env.aws_id, env.aws_seckey, bucket_name)
 
-    cache = FileSystemCacheService(run_config.cache_directory)
+    cache = FileSystemCacheService(cache_directory)
 
-    datasource = BucketCacheDatasource(bucket, cache)
+    datasource = BucketCacheDatasourceService(bucket, cache)
 
-    daemon = DaemonService(queue, bucket, run_config.poll_frequency_seconds)
+    daemon = DaemonService(queue, bucket, datasource, poll_frequency_seconds)
 
     register!(daemon, "NOOP_TASK", NoOpTaskDetails)
 
@@ -67,7 +65,10 @@ end
 
 #Run main!
 function __init__()
-    main()
+    #=run_config = parse_args()=#
+    run_config = RunConfig("test-queue2", "seunglab-alignment", "/var/tmp/", 20)
+    run(run_config.queue_name, run_config.bucket_name,
+        run_config.cache_directory, run_config.poll_frequency_seconds)
 end
 
 end # end module RunDaemon

@@ -9,7 +9,7 @@ import Julimaps.Cloud.Julitasks.Tasks.DaemonTask
 import Julimaps.Cloud.Julitasks.Tasks.BasicTask
 import JSON
 
-export DaemonService, register, run
+export DaemonService, register!, run
 
 type DaemonService
     queue::QueueService
