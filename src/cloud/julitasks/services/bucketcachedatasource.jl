@@ -29,8 +29,8 @@ function Datasource.pull!(datasource::BucketCacheDatasourceService,
 end
 
 function Datasource.push!(datasource::BucketCacheDatasourceService,
-        key::Array{AbstractString, 1})
-    return map((key) -> push!(datasource, key), keys)
+        keys::Array{AbstractString, 1})
+    return map((key) -> Datasource.push!(datasource, key), keys)
 end
 
 function Datasource.push!(datasource::BucketCacheDatasourceService,
