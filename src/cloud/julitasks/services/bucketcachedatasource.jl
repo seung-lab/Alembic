@@ -21,8 +21,8 @@ end
 function Datasource.pull!(datasource::BucketCacheDatasourceService,
         key::AbstractString; force::Bool=false)
     if force || !Cache.exists(datasource.cache, key)
-        # ugh julia doesn't support writing directly to IOBuffers yet
-        #=https://github.com/JuliaLang/julia/issues/14437=#
+        # Julia doens't let you create arbitrary iostreams. this is annoying
+        # and suboptimal must create a buffer instead.
         buffer = PipeBuffer()
         Bucket.download(datasource.remote, key, buffer)
         Cache.put!(datasource.cache, key, buffer)

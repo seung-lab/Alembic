@@ -98,25 +98,4 @@ function Bucket.upload(bucket::AWSCLIBucketService,
     return process
 end
 
-#=
- =    folder = remote_file[1:rsearch(remote_file, "/").stop]
- =
- =    #check to make sure folder exists TODO does it matter?!
- =    if !isempty(folder)
- =        folder_response = S3.put_object(bucket.env, bucket.name, folder,
- =            "folder")
- =        if folder_response != 200
- =            error("Unable to access folder $folder in bucket $(bucket.name)")
- =        end
- =    end
- =
- =    put_response = S3.put_object(bucket.env, bucket.name, local_file)
- =
- =    if put_response != 200
- =        error("Unable to put object $local_file in bucket $(bucket.name),
- =            response was $(put_response.http_code)")
- =    end
- =#
-#=end=#
-
 end # module AWSCLIBucket

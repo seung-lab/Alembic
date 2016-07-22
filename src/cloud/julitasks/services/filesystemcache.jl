@@ -43,6 +43,7 @@ function Cache.put!(cache::FileSystemCacheService, key::AbstractString,
     if !iswritable(filestream)
         error("Unable to write to $filename")
     end
+
     write(filestream, takebuf_array(value_buffer))
     close(filestream)
 end

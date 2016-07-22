@@ -13,7 +13,7 @@ const BUCKET_NAME = "seunglab-alignment"
 const MAX_INDEX = 100000
 
 function upload_remote_test_file()
-    create_local_test_file()
+    create_local_test_file(TEST_FILE_NAME)
     try
         run(`aws s3 cp $TEST_FILE_NAME s3://$BUCKET_NAME/$TEST_FILE_NAME`)
     finally
@@ -31,8 +31,8 @@ function write_numbers(io::IO)
     end
 end
 
-function create_local_test_file()
-    file = open(TEST_FILE_NAME, "w")
+function create_local_test_file(filename::AbstractString)
+    file = open(filename, "w")
     write_numbers(file)
     close(file)
 end
@@ -108,8 +108,11 @@ function test_upload_io()
     io = IOBuffer()
     write_numbers(io)
     upload_filename = "$(TEST_FILE_NAME)UpIO"
+    
+    # make sure the file if it exists is removed first
+    run(`aws s3 rm s3://$BUCKET_NAME/$upload_filename`)
 
-    Bucket.upload(bucket, io, "$upload_filename")
+    Bucket.upload(bucket, io, upload_filename)
 
     # Verify the uploaded file by manually download the uploaded file
     try
@@ -134,15 +137,48 @@ function test_upload_io()
 end
 
 function test_upload_file()
+    env = AWS.AWSEnv()
+    bucket = AWSCLIBucketService(env.aws_id, env.aws_seckey,
+        BUCKET_NAME)
+
+    upload_filename = "$(TEST_FILE_NAME)UpFile"
+    # make sure the file if it exists is removed first
+    run(`aws s3 rm s3://$BUCKET_NAME/$upload_filename`)
+
+    create_local_test_file(upload_filename)
+
+    Bucket.upload(bucket, upload_filename, upload_filename)
+
+    # Verify the uploaded file by manually download the uploaded file
+    try
+        run(`aws s3 cp s3://$BUCKET_NAME/$upload_filename $upload_filename`)
+        run(`aws s3 rm s3://$BUCKET_NAME/$upload_filename`)
+    catch
+        error("Unable to find downloaded file $upload_filename")
+    end
+
+    downloaded_file = open(upload_filename, "r")
+    index = 0
+    try
+        while !eof(downloaded_file)
+            index = index + 1
+            @test parse(Int, readline(downloaded_file)) == index
+        end
+    finally
+        close(downloaded_file)
+        rm(upload_filename)
+    end
+    @test index == MAX_INDEX
 end
 
 function __init__()
-    #=test_creatable()=#
-    #=test_bad_bucket()=#
-    #=test_download_IO()=#
+    test_creatable()
+    test_bad_bucket()
+    test_download_IO()
     test_download_file()
 
-    #=test_upload_io()=#
+    test_upload_io()
+    test_upload_file()
 end
 
 end # module TestAWSCLIBucket
