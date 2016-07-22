@@ -10,8 +10,6 @@ using ...Julitasks.Types
 
 import Julimaps.Cloud.Julitasks.Tasks.DaemonTask
 import Julimaps.Cloud.Julitasks.Tasks.BasicTask
-import Julimaps.Cloud.Julitasks.Tasks.AlignmentTask
-import Julimaps.Cloud.Julitasks.Services.Datasource
 
 export NoOpTaskDetails, name, execute
 

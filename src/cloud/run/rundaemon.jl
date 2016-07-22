@@ -1,13 +1,14 @@
-include("../Julimaps.jl")
+include("../../Julimaps.jl")
 
 module RunDaemon
 
-using Julimaps.Cloud.Services.AWSQueue
-using Julimaps.Cloud.Services.AWSBucket
-using Julimaps.Cloud.Services.FileSystemCache
-using Julimaps.Cloud.Services.BucketCacheDatasource
-using Julimaps.Cloud.Services.Daemon
-using Julimaps.Cloud.Tasks.NoOpTask
+using Julimaps.Cloud.Julitasks.Types
+using Julimaps.Cloud.Julitasks.Services.AWSQueue
+using Julimaps.Cloud.Julitasks.Services.AWSBucket
+using Julimaps.Cloud.Julitasks.Services.FileSystemCache
+using Julimaps.Cloud.Julitasks.Services.BucketCacheDatasource
+using Julimaps.Cloud.Julitasks.Services.Daemon
+using Julimaps.Cloud.Julitasks.Tasks.NoOpTask
 
 import Julimaps
 import AWS
@@ -37,8 +38,7 @@ function main()
 
     datasource = BucketCacheDatasource(bucket, cache)
 
-    daemon = DaemonService(queue, bucket, datasource,
-        run_config.poll_frequency_seconds)
+    daemon = DaemonService(queue, bucket, run_config.poll_frequency_seconds)
 
     register!(daemon, "NOOP_TASK", NoOpTaskDetails)
 
