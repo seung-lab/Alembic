@@ -11,7 +11,7 @@ This object contains the outcome of performing the task.
 """
 type Result
     success::Bool
-    output::AbstractString
+    output::Array{AbstractString, 1}
 end
 
 # Test to see if the execute function exists for this type
@@ -40,6 +40,7 @@ end
 Run the current task. 1. Prepare, 2. Execute 3. Finalize
 """
 function run(task::DaemonTaskDetails, datasource::DatasourceService)
+    println(" running ! $task, $datasource")
     prepare(task, datasource)
     result = execute(task, datasource)
     finalize(task, datasource, result)

@@ -29,14 +29,14 @@ function run(daemon::DaemonService)
         try
             message = Queue.pop_message(daemon.queue)
 
-            print("Message received is$(message)")
-
             if isempty(message)
                 println("No messages found in $(Queue.string(daemon.queue))")
             else
-                task = parse(message)
+                println("Message received is $(message)")
 
-                println("Task is $(task.details.id), $(task.details.name)")
+                task = parse(daemon, message)
+
+                println("Task is $(task.basicInfo.id), $(task.basicInfo.name)")
 
                 success = DaemonTask.run(task, daemon.datasource)
             end

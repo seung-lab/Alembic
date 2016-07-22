@@ -23,8 +23,13 @@ function test_register_with_execute_method()
     daemon = DaemonService(MockQueueService(),
         MockBucketService(),
         MockDatasourceService(), 10)
-    @test Daemon.register!(daemon, TEST_TASK_NAME, MockTaskExecute) !=
-        nothing
+    exception = nothing
+    try
+         Daemon.register!(daemon, TEST_TASK_NAME, MockTaskExecute)
+    catch e
+        exception = e
+    end
+    @test exception == nothing
 end
 
 function test_parse_empty()

@@ -8,7 +8,7 @@ using Julimaps.Cloud.Julitasks.Services.AWSCLIBucket
 using Julimaps.Cloud.Julitasks.Services.FileSystemCache
 using Julimaps.Cloud.Julitasks.Services.BucketCacheDatasource
 using Julimaps.Cloud.Julitasks.Services.Daemon
-using Julimaps.Cloud.Julitasks.Tasks.NoOpTask
+using Julimaps.Cloud.Julitasks.Examples.NoOpTask
 
 import Julimaps
 import AWS

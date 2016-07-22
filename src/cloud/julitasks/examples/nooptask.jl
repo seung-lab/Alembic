@@ -10,6 +10,7 @@ using ...Julitasks.Types
 
 import Julimaps.Cloud.Julitasks.Tasks.DaemonTask
 import Julimaps.Cloud.Julitasks.Tasks.BasicTask
+import Julimaps.Cloud.Julitasks.Services.Datasource
 
 export NoOpTaskDetails, name, execute
 
@@ -22,26 +23,29 @@ const name = "NO_OP"
 
 function DaemonTask.prepare(task::NoOpTaskDetails,
         datasource::DatasourceService)
-    Datasource.pull!(daemon.datasource, task.basicInfo.files)
     println("Preparing NoOpTask")
+    Datasource.pull!(datasource, task.basicInfo.files)
 end
 
 function DaemonTask.execute(task::NoOpTaskDetails,
         datasource::DatasourceService)
-    file = datasource.get(task.basicInfo.files[1])
-    println(readall(file))
-    return DaemonTask.Result(true, "output")
+    println("executing task $task, files contain")
+    file = Datasource.pull!(datasource, task.basicInfo.files[1])
+    if file != nothing
+        println(readall(file))
+    end
+    return DaemonTask.Result(true, ["output"])
 end
 
 function DaemonTask.finalize(task::NoOpTaskDetails,
         datasource::DatasourceService, result::DaemonTask.Result)
     if !result.success
-        println("Task $(task.details.id), $(task.details.name) was
+        println("Task $(task.basicInfo.id), $(task.basicInfo.name) was
             not successful")
     else
-        println("Task $(task.details.id), $(task.details.name) was
+        println("Task $(task.basicInfo.id), $(task.basicInfo.name) was
             completed successfully")
-        Datasource.push!(daemon.datasource, result.filename)
+        Datasource.push!(datasource, result.output)
     end
 end
 

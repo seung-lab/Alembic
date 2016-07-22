@@ -4,6 +4,7 @@ using Julimaps.Cloud.Julitasks.Types
 
 import Julimaps.Cloud.Julitasks.Tasks.DaemonTask
 import Julimaps.Cloud.Julitasks.Tasks.BasicTask
+import Julimaps.Cloud.Julitasks.Services.Datasource
 
 export TEST_ID, TEST_TASK_NAME, TEST_BASE_DIRECTORY, TEST_FILES
 export make_valid_basic_info
@@ -30,7 +31,8 @@ type MockTaskExecute <: DaemonTaskDetails
     payloadInfo::AbstractString
 end
 # register a registered test task
-function DaemonTask.execute(task::MockTaskExecute)
+function DaemonTask.execute(task::MockTaskExecute,
+        datasource::DatasourceService)
     println("executing")
 end
 
