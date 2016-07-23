@@ -510,10 +510,10 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, highpass_sigma
 		i_max += xc_i / xc_w 
 		j_max += xc_j / xc_w 
 		if isnan(i_max) || isnan(j_max) 
-		  println(xc_i)
+	#=	  println(xc_i)
 		  println(xc_j)
 		  println(xc_w)
-		  println(xc[iorig-1:iorig+1, jorig-1:jorig+1])
+		  println(xc[iorig-1:iorig+1, jorig-1:jorig+1])=#
 		  return nothing
 		end
 	end
@@ -545,11 +545,6 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, highpass_sigma
 
 	di = Float64(i_max - 1 + src_pt_loc[1] - dst_pt_loc_full[1])
 	dj = Float64(j_max - 1 + src_pt_loc[2] - dst_pt_loc_full[2])
-	#=if myid() == 2
-	  println(i_max)
-	  println(src_pt_loc[1])
-	  println(dst_pt_loc_full[1])
-	end=#
 
 	#= # version that treats each value as a bin and sends it to the centre
 	xc_i_locs = linspace(1, xc_i_len, size(xc, 1) + 1)
