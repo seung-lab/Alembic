@@ -370,15 +370,26 @@ function normxcorr2_preallocated(template,img; shape = "valid", highpass_sigma =
     end
 
 	@fastmath @inbounds calculate_local_sums(LOCAL_SUM, CONV_SUM, LOCAL_SUM2, CONV_SUM2, LL[1], LL[2], n1, n2);
+	# not actually local variance, but local variance * prod(size(img))
 	@fastmath @inbounds localvariance = calculate_local_variance!(LOCAL_SUM2, LOCAL_SUM, template)
 
     # localvariance is zero for image patches that are constant
     # leading to undefined Pearson correlation coefficient
     # should only be negative due to roundoff error
-    @fastmath @inbounds localvariance[localvariance.<=0] *= eps
+    eps_scaled = eps_large * prod(size(template))
+    for i in 1:length(localvariance) 
+    	@inbounds if localvariance[i] <= eps_scaled
+      	@fastmath @inbounds localvariance[i] = eps 
+	@inbounds numerator[i] = 0 
+      end
+    end
     @fastmath @inbounds denominator=calculate_denominator!(localvariance, templatevariance)
-    @fastmath @inbounds numerator[denominator.<=0] = 0
-    @fastmath @inbounds denominator[denominator.<=0] = eps
+    for i in 1:length(denominator) @inbounds if denominator[i] <= 0 
+    	@inbounds denominator[i] = eps; 
+	@inbounds numerator[i] = 0 
+    	end end
+    #@fastmath @inbounds numerator[denominator.<=0] = 0
+    #@fastmath @inbounds denominator[denominator.<=0] = eps
 
     @fastmath @inbounds xc = elwise_div!(numerator, denominator);
 #    @fastmath @inbounds xcd = Images.imfilter_gaussian(xc, sigma)

@@ -257,6 +257,7 @@ function get_correspondence_patches(match::Match, ind)
 
 	prepare_patches(src_path, dst_path, props["ranges"]["src_range"], props["ranges"]["dst_range"], props["ranges"]["dst_range_full"], scale, highpass_sigma; from_disk = true)
 
+	#return SRC_PATCH, DST_PATCH
 	xc = normxcorr2_preallocated(SRC_PATCH, DST_PATCH);
 	dv = ceil(Int64, props["vects"]["dv"] * scale)
 	return src_patch, src_pt, dst_patch, dst_pt, xc, dst_pt-src_pt+dv
@@ -344,8 +345,41 @@ function monoblock_match(src_index, dst_index, src_image, dst_image, params=get_
 	end
 end
 
+function zeropad_to_meanpad!(img)
+  running_sum = 0;
+  count = 0;
+  zero_entries = Array{Int64, 1}();
+ 	@simd for i in 1:length(img)
+	  @inbounds px = img[i];
+	  if px != 0
+	    @fastmath running_sum += px;
+	    @fastmath count += 1;
+	  end
+	  if px == 0
+	    push!(zero_entries, i)
+	  end
+	end
+	if length(zero_entries) == 0 return end
+ 	@fastmath nonzero_mean = running_sum / count
+	if eltype(img) != Float64
+ 		@fastmath nonzero_mean = round(eltype(img), nonzero_mean)
+	end
+ 	for i in zero_entries
+	  @inbounds px = img[i];
+	  if px == 0
+	    @fastmath @inbounds img[i] = nonzero_mean;
+#=	    if i%2 != 0
+	    @fastmath @inbounds img[i] = nonzero_mean;
+	  else
+	    @fastmath @inbounds img[i] = nonzero_mean + eps::Float64;
+	    end =#
+	  end
+	end
+end
+
 # if from_disk src_image / dst_image are paths
 function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma; from_disk = false)
+
 
 	if size(SRC_PATCH_FULL) != map(length,src_range)
 		global SRC_PATCH_FULL = Array{Float64, 2}(map(length, src_range)...);
@@ -363,8 +397,10 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
 	@inbounds DST_PATCH_FULL[indices_within_range...] = h5read(dst_image, "img", dst_range)
       end
 
-	if isnan(mean(DST_PATCH_FULL)) || isnan(mean(SRC_PATCH_FULL)) return nothing; end
+#	if isnan(mean(DST_PATCH_FULL)) || isnan(mean(SRC_PATCH_FULL)) return nothing; end
 
+#=	SRC_PATCH_FULL[SRC_PATCH_FULL .== 0] = mean(SRC_PATCH_FULL[SRC_PATCH_FULL .!= 0])
+	DST_PATCH_FULL[DST_PATCH_FULL .== 0] = mean(DST_PATCH_FULL[DST_PATCH_FULL .!= 0])=#
 
 	function imscale_src_patch!(img, scale_factor)
   	if scale == 1.0
@@ -384,6 +420,7 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
    		end
   		ImageRegistration.imwarp!(SRC_PATCH, img, tform);
 	end
+	zeropad_to_meanpad!(SRC_PATCH);
   	@inbounds SRC_PATCH_G[:] = SRC_PATCH
 	end
 
@@ -405,6 +442,7 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
    		end
   		ImageRegistration.imwarp!(DST_PATCH, img, tform);
 	end
+	zeropad_to_meanpad!(DST_PATCH);
   	@inbounds DST_PATCH_G[:] = DST_PATCH
 	end
 
@@ -429,14 +467,18 @@ Template match two image patches to produce point pair correspondence
 """
 function get_match(pt, ranges, src_image, dst_image, scale = 1.0, highpass_sigma = 0)
 	src_index, src_range, src_pt_loc, dst_index, dst_range, dst_range_full, dst_pt_loc, dst_pt_loc_full, rel_offset = ranges;
+#=	if sum(src_image[src_range[1], first(src_range[2])]) == 0 && sum(src_image[src_range[1], last(src_range[2])]) == 0 &&
+			sum(src_image[first(src_range[1]), src_range[2]]) == 0 && sum(src_image[last(src_range[1]), src_range[2]]) == 0 return nothing end
+	if sum(dst_image[dst_range[1], first(dst_range[2])]) == 0 && sum(dst_image[dst_range[1], last(dst_range[2])]) == 0 &&
+			sum(dst_image[first(dst_range[1]), dst_range[2]]) == 0 && sum(dst_image[last(dst_range[1]), dst_range[2]]) == 0 return nothing end=#
 
 	#see if any of the edges in the template are fully padded
-	if sum(src_image[src_range[1], first(src_range[2])]) == 0 return nothing end
+#=	if sum(src_image[src_range[1], first(src_range[2])]) == 0 return nothing end
 	if sum(src_image[src_range[1], last(src_range[2])]) == 0 return nothing end
 	if sum(src_image[first(src_range[1]), src_range[2]]) == 0 return nothing end
-	if sum(src_image[last(src_range[1]), src_range[2]]) == 0 return nothing end
-	#=if sum(src_image[src_range[1], round(Int64,median(src_range[2]))]) == 0 return nothing end
-	if sum(src_image[round(Int64,median(src_range[1])), src_range[2]]) == 0 return nothing end=#
+	if sum(src_image[last(src_range[1]), src_range[2]]) == 0 return nothing end=#
+	if sum(src_image[src_range[1], round(Int64,median(src_range[2]))]) == 0 return nothing end
+	if sum(src_image[round(Int64,median(src_range[1])), src_range[2]]) == 0 return nothing end
 
 	correspondence_properties = Dict{Any, Any}();
 	correspondence_properties["ranges"] = Dict{Any, Any}();
@@ -510,10 +552,9 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, highpass_sigma
 		i_max += xc_i / xc_w 
 		j_max += xc_j / xc_w 
 		if isnan(i_max) || isnan(j_max) 
-	#=	  println(xc_i)
+		  println(xc_i)
 		  println(xc_j)
 		  println(xc_w)
-		  println(xc[iorig-1:iorig+1, jorig-1:jorig+1])=#
 		  return nothing
 		end
 	end
