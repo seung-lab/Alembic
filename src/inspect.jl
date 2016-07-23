@@ -299,7 +299,7 @@ function view_sigma(match, match_ind)
   xgrid = repmat(x, 1, M)
   ygrid = repmat(y', N, 1)
 
-  fig = figure("sigma_filter") #,figsize=(10,10))
+  fig = figure("sigma_filter_100") #,figsize=(10,10))
   PyPlot.clf()
   ax = fig[:add_subplot](1,1,1, projection = "3d") 
   ax[:plot_surface](xgrid, ygrid, xc, rstride=10, edgecolors="k", 

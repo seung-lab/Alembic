@@ -14,20 +14,6 @@ global IFFT_INPLACE_PLAN_A = plan_ifft!(COMPLEX_CONV_INTERMEDIATE_A)
 
 global RFFT_PLAN = plan_rfft(CONV_INTERMEDIATE_A);
 global IRFFT_PLAN = plan_irfft(COMPLEX_CONV_INTERMEDIATE_A, 10);
-function setup_highpass_filter(highpass_sigma, filter_size)
-  	splice_j = false;
-	filter = gaussian2d(highpass_sigma, );
-	@fastmath @inbounds @simd for i in 1:length(filter)
-	  filter[i] = - filter[i]
-	end
-	filter[(1+size(filter,1)) / 2, (1+size(filter,2)) /2] = 2.0
-	filter_padded = zeros(filter_size...)
-	filter_padded[1:size(filter, 1), 1:size(filter, 2)] = filter;
-	filter = rfft(filter_padded);
-	return filter;
-end
-global HIGHPASS_SIGMA = 1
-global HIGHPASS_FILTER = setup_highpass_filter(HIGHPASS_SIGMA, (10,10))
 
 global CONV_DT = Array{Float64, 2}();
 global CONV_IMGPAD = Array{Float64, 2}();
@@ -73,7 +59,7 @@ function convolve_Float64(A,B)
     irfft(rfft(pA).*rfft(pB),common_size[1])
 end
 
-function convolve_Float64_planned(A,B, ranges; factorable = nothing, highpass_sigma = 0)
+function convolve_Float64_planned(A,B, ranges; factorable = nothing)
     common_size=tuple(map(max,size(A),size(B))...)
     #pad to the smallest multiple of the factorables larger than the common size in each dimensions for speed
     if factorable != nothing
@@ -94,16 +80,6 @@ function convolve_Float64_planned(A,B, ranges; factorable = nothing, highpass_si
       COMPLEX_CONV_INTERMEDIATE_B[:] = 0;
     end
 
-    if highpass_sigma != 0 && highpass_sigma != HIGHPASS_SIGMA || size(HIGHPASS_FILTER) != size(COMPLEX_CONV_INTERMEDIATE_A)
-#=      println("change highpass_sigma")
-      println(highpass_sigma)
-      println(HIGHPASS_SIGMA)
-      println(size(HIGHPASS_FILTER))
-      println(size(COMPLEX_CONV_INTERMEDIATE_A))=#
-      	global HIGHPASS_SIGMA = highpass_sigma
-	global HIGHPASS_FILTER = setup_highpass_filter(highpass_sigma, common_size)
-    end
-
     rangesA=[1:x for x in size(A)]
     rangesB=[x:-1:1 for x in size(B)]
     @inbounds CONV_INTERMEDIATE_A[rangesA...]=A
@@ -112,9 +88,6 @@ function convolve_Float64_planned(A,B, ranges; factorable = nothing, highpass_si
     @fastmath A_mul_B!(COMPLEX_CONV_INTERMEDIATE_A, RFFT_PLAN, CONV_INTERMEDIATE_A);
     @fastmath A_mul_B!(COMPLEX_CONV_INTERMEDIATE_B, RFFT_PLAN, CONV_INTERMEDIATE_B);
     @fastmath elwise_mul!(COMPLEX_CONV_INTERMEDIATE_A, COMPLEX_CONV_INTERMEDIATE_B);
-    if highpass_sigma != 0
-    @fastmath elwise_mul!(COMPLEX_CONV_INTERMEDIATE_A, HIGHPASS_FILTER);
-  	end
     @fastmath A_mul_B!(CONV_INTERMEDIATE_A, IRFFT_PLAN, COMPLEX_CONV_INTERMEDIATE_A)
     
    # (IRFFT_PLAN * elwise_mul!(RFFT_PLAN * CONV_INTERMEDIATE_A, RFFT_PLAN * CONV_INTERMEDIATE_B))[ranges...]
@@ -131,6 +104,12 @@ end
 function elwise_mul!(A, B)
       @simd for i in 1:length(A)
 	@fastmath @inbounds A[i] = A[i] * B[i]
+      end
+      return A
+end
+function elwise_sub!(A, B)
+      @simd for i in 1:length(A)
+	@fastmath @inbounds A[i] = A[i] - B[i]
       end
       return A
 end
@@ -217,13 +196,13 @@ function convolve_ComplexFloat64_prealloc_flipped(A,B,ranges)
 
 
 
-function valid_convolve_flipped(A,B; kwargs...)
+function valid_convolve_flipped(A,B; factorable = nothing)
     ranges=[min(a,b):max(a,b) for (a,b) in zip(size(A),size(B))]
     if size(CONV_RESULT) != (length(ranges[1]), length(ranges[2]))
 	global CONV_RESULT = Array{Float64}(length(ranges[1]), length(ranges[2]));
       end
     #=convolve_ComplexFloat64_prealloc_flipped(A,B, ranges)=#
-    convolve_Float64_planned(A, B, ranges; kwargs...)
+    convolve_Float64_planned(A, B, ranges; factorable = factorable)
     return CONV_RESULT
 end
 
@@ -326,7 +305,7 @@ function calculate_local_variance!(SUM2, SUM, template)
 end
 function calculate_denominator!(localvariance, templatevariance)
 	for i in 1:length(localvariance)
-	  localvariance[i] = sqrt(localvariance[i] * templatevariance)
+	 @fastmath localvariance[i] = sqrt(localvariance[i] * templatevariance)
 	end
 	  return localvariance
 end
@@ -362,7 +341,7 @@ function normxcorr2_preallocated(template,img; shape = "valid", highpass_sigma =
     end
     @inbounds CONV_DT[:] = template[:]
     @fastmath @inbounds calculate_dt!(CONV_DT)
-    @fastmath @inbounds numerator=valid_convolve_flipped(img,CONV_DT; factorable = factors, highpass_sigma = highpass_sigma)
+    @fastmath @inbounds numerator=valid_convolve_flipped(img,CONV_DT; factorable = factors)
     @fastmath @inbounds templatevariance=sum(elwise_mul!(CONV_DT, CONV_DT))
 
     
@@ -396,7 +375,7 @@ function normxcorr2_preallocated(template,img; shape = "valid", highpass_sigma =
     # localvariance is zero for image patches that are constant
     # leading to undefined Pearson correlation coefficient
     # should only be negative due to roundoff error
-    #localvariance[localvariance.<=0] *= NaN
+    @fastmath @inbounds localvariance[localvariance.<=0] *= eps
     @fastmath @inbounds denominator=calculate_denominator!(localvariance, templatevariance)
     @fastmath @inbounds numerator[denominator.<=0] = 0
     @fastmath @inbounds denominator[denominator.<=0] = eps

@@ -1,3 +1,10 @@
+global SRC_PATCH_FULL = Array{Float64, 2}(10,10);
+global SRC_PATCH = Array{Float64, 2}(10,10);
+global SRC_PATCH_G = Array{Float64, 2}(10,10);
+global DST_PATCH_FULL = Array{Float64, 2}(10,10);
+global DST_PATCH = Array{Float64, 2}(10,10);
+global DST_PATCH_G = Array{Float64, 2}(10,10);
+
 type Match
   src_index          # source mesh index
   dst_index          # destination mesh index
@@ -234,28 +241,24 @@ end
 function get_correspondence_patches(match::Match, ind)
 	src_path = get_path(match.src_index);
 	dst_path = get_path(match.dst_index);
-	
 	#assert(src_path[end-1:end] == "h5")
 
 	props = match.correspondence_properties[ind]
 
 		scale = props["ranges"]["scale"];
+		highpass_sigma = match.properties["params"]["match"]["highpass_sigma"]
 		src_patch = h5read(src_path, "img", props["ranges"]["src_range"])
 		src_pt_loc = props["ranges"]["src_pt_loc"];
 		dst_patch = h5read(dst_path, "img", props["ranges"]["dst_range"])
 		dst_pt_loc = props["ranges"]["dst_pt_loc"];
-		if scale != 1
-			src_pt_loc = ceil(Int64, scale * src_pt_loc);
-			dst_pt_loc = ceil(Int64, scale * dst_pt_loc);
-			src_patch = imscale(src_patch, scale)[1]
-			dst_patch = imscale(dst_patch, scale)[1]
-		end
+
 		src_pt = src_pt_loc
 		dst_pt = dst_pt_loc
 
-	xc = normxcorr2_preallocated(src_patch, dst_patch);
-	dv = ceil(Int64, props["vects"]["dv"] * scale)
+	prepare_patches(src_path, dst_path, props["ranges"]["src_range"], props["ranges"]["dst_range"], props["ranges"]["dst_range_full"], scale, highpass_sigma; from_disk = true)
 
+	xc = normxcorr2_preallocated(SRC_PATCH, DST_PATCH);
+	dv = ceil(Int64, props["vects"]["dv"] * scale)
 	return src_patch, src_pt, dst_patch, dst_pt, xc, dst_pt-src_pt+dv
 end
 
@@ -341,13 +344,90 @@ function monoblock_match(src_index, dst_index, src_image, dst_image, params=get_
 	end
 end
 
+# if from_disk src_image / dst_image are paths
+function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma; from_disk = false)
+
+	if size(SRC_PATCH_FULL) != map(length,src_range)
+		global SRC_PATCH_FULL = Array{Float64, 2}(map(length, src_range)...);
+	end
+	if size(DST_PATCH_FULL) != map(length,dst_range_full)
+		global DST_PATCH_FULL = Array{Float64, 2}(map(length, dst_range_full)...);
+	end
+
+	indices_within_range = findin(dst_range_full[1], dst_range[1]), findin(dst_range_full[2], dst_range[2])
+	if !from_disk
+	@inbounds SRC_PATCH_FULL[:] = src_image[src_range...]
+	@inbounds DST_PATCH_FULL[indices_within_range...] = dst_image[dst_range...]
+      else
+	@inbounds SRC_PATCH_FULL[:] = h5read(src_image, "img", src_range)
+	@inbounds DST_PATCH_FULL[indices_within_range...] = h5read(dst_image, "img", dst_range)
+      end
+
+	if isnan(mean(DST_PATCH_FULL)) || isnan(mean(SRC_PATCH_FULL)) return nothing; end
+
+
+	function imscale_src_patch!(img, scale_factor)
+  	if scale == 1.0
+  		if size(SRC_PATCH) != size(img)
+   			global SRC_PATCH = zeros(Float64, tbb.h, tbb.w)
+   			global SRC_PATCH_G = zeros(Float64, tbb.h, tbb.w)
+   		end
+		@inbounds SRC_PATCH[:] = img
+	else
+  		tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
+  		bb = BoundingBox{Float64}(0,0, size(img, 1), size(img, 2))
+  		wbb = tform_bb(bb, tform)
+  		tbb = snap_bb(wbb)
+  		if size(SRC_PATCH) != (tbb.h, tbb.w)
+   			global SRC_PATCH = zeros(Float64, tbb.h, tbb.w)
+   			global SRC_PATCH_G = zeros(Float64, tbb.h, tbb.w)
+   		end
+  		ImageRegistration.imwarp!(SRC_PATCH, img, tform);
+	end
+  	@inbounds SRC_PATCH_G[:] = SRC_PATCH
+	end
+
+	function imscale_dst_patch!(img, scale_factor)
+  	if scale == 1.0
+  		if size(DST_PATCH) != size(img)
+   			global DST_PATCH = zeros(Float64, tbb.h, tbb.w)
+   			global DST_PATCH_G = zeros(Float64, tbb.h, tbb.w)
+   		end
+		@inbounds DST_PATCH[:] = img
+	else
+  		tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
+  		bb = BoundingBox{Float64}(0,0, size(img, 1), size(img, 2))
+  		wbb = tform_bb(bb, tform)
+  		tbb = snap_bb(wbb)
+  		if size(DST_PATCH) != (tbb.h, tbb.w)
+   			global DST_PATCH = zeros(Float64, tbb.h, tbb.w)
+   			global DST_PATCH_G = zeros(Float64, tbb.h, tbb.w)
+   		end
+  		ImageRegistration.imwarp!(DST_PATCH, img, tform);
+	end
+  	@inbounds DST_PATCH_G[:] = DST_PATCH
+	end
+
+	imscale_src_patch!(SRC_PATCH_FULL, scale);	
+	imscale_dst_patch!(DST_PATCH_FULL, scale);	
+	
+
+	if highpass_sigma != 0
+	  highpass_sigma = highpass_sigma / scale
+	@fastmath Images.imfilter_gaussian_no_nans!(SRC_PATCH_G, [highpass_sigma, highpass_sigma])
+	elwise_sub!(SRC_PATCH, SRC_PATCH_G);
+	@fastmath Images.imfilter_gaussian_no_nans!(DST_PATCH_G, [highpass_sigma, highpass_sigma])
+	elwise_sub!(DST_PATCH, DST_PATCH_G);
+      end
+end
+
 function get_match(pt, ranges, src_image, dst_image, params)
 	return get_match(pt, ranges, src_image, dst_image, params["match"]["blockmatch_scale"], params["match"]["highpass_sigma"]);
 end
 """
 Template match two image patches to produce point pair correspondence
 """
-function get_match(pt, ranges, src_image, dst_image, scale = 1.0, highpass_sigma = 1)
+function get_match(pt, ranges, src_image, dst_image, scale = 1.0, highpass_sigma = 0)
 	src_index, src_range, src_pt_loc, dst_index, dst_range, dst_range_full, dst_pt_loc, dst_pt_loc_full, rel_offset = ranges;
 
 	#see if any of the edges in the template are fully padded
@@ -355,8 +435,8 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, highpass_sigma
 	if sum(src_image[src_range[1], last(src_range[2])]) == 0 return nothing end
 	if sum(src_image[first(src_range[1]), src_range[2]]) == 0 return nothing end
 	if sum(src_image[last(src_range[1]), src_range[2]]) == 0 return nothing end
-	#if sum(dst_image[dst_range[1], median(dst_range[2])]) == 0 return nothing end
-	#if sum(dst_image[median(dst_range[1]), dst_range[2]]) == 0 return nothing end
+	#=if sum(src_image[src_range[1], round(Int64,median(src_range[2]))]) == 0 return nothing end
+	if sum(src_image[round(Int64,median(src_range[1])), src_range[2]]) == 0 return nothing end=#
 
 	correspondence_properties = Dict{Any, Any}();
 	correspondence_properties["ranges"] = Dict{Any, Any}();
@@ -364,6 +444,7 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, highpass_sigma
 	correspondence_properties["ranges"]["src_range"] = src_range;
 	correspondence_properties["ranges"]["dst_pt_loc"] = dst_pt_loc;
 	correspondence_properties["ranges"]["dst_range"] = dst_range;
+	correspondence_properties["ranges"]["dst_range_full"] = dst_range_full;
 	correspondence_properties["ranges"]["scale"] = scale;
 
 #=
@@ -389,6 +470,9 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, highpass_sigma
 	xc = normxcorr2_preallocated(src_image[src_range[1], src_range[2]], dst_image[dst_range[1], dst_range[2]]);
 	end
 	=#
+	if(prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma) == nothing) return nothing end;
+	xc = normxcorr2_preallocated(SRC_PATCH, DST_PATCH);
+#=
 	if dst_range != dst_range_full
 		indices_within_range = findin(dst_range_full[1], dst_range[1]), findin(dst_range_full[2], dst_range[2])
 		intersect_img = dst_image[dst_range...];
@@ -398,24 +482,23 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, highpass_sigma
 		padded_img = fill(avg, length(dst_range_full[1]), length(dst_range_full[2]));
 		padded_img[indices_within_range...] = intersect_img;
 		if scale == 1.0 
-		xc = normxcorr2_preallocated(src_image[src_range[1], src_range[2]], padded_img; highpass_sigma = highpass_sigma);
+		xc = normxcorr2_preallocated(src_image[src_range[1], src_range[2]], padded_img);
 	      else
-		xc = normxcorr2_preallocated(imscale_register_a!(src_image[src_range[1], src_range[2]], scale)[1], imscale_register_b!(padded_img, scale)[1]; highpass_sigma = highpass_sigma)
+		xc = normxcorr2_preallocated(imscale_register_a!(src_image[src_range[1], src_range[2]], scale)[1], imscale_register_b!(padded_img, scale)[1])
 	      end
 	else
 		if scale == 1.0 
-		  highpass_sigma = highpass_sigma * scale;
-		xc = normxcorr2_preallocated(src_image[src_range[1], src_range[2]], dst_image[dst_range[1], dst_range[2]]; highpass_sigma = highpass_sigma);
+		xc = normxcorr2_preallocated(src_image[src_range[1], src_range[2]], dst_image[dst_range[1], dst_range[2]]);
 	      else
-		xc = normxcorr2_preallocated(imscale_register_a!(src_image[src_range[1], src_range[2]], scale)[1], imscale_register_b!(dst_image[dst_range[1], dst_range[2]], scale)[1]; highpass_sigma = highpass_sigma)
+		xc = normxcorr2_preallocated(imscale_register_a!(src_image[src_range[1], src_range[2]], scale)[1], imscale_register_b!(dst_image[dst_range[1], dst_range[2]], scale)[1])
 	      end
-	end
+	end=#
 
 	r_max = maximum(xc)
 	if isnan(r_max) return nothing end;
 #	if r_max > 1.0 println("rounding error") end
   	ind = findfirst(r_max .== xc)
-	i_max, j_max = rem(ind, size(xc, 1)), cld(ind, size(xc, 1));
+	i_max, j_max = ind2sub(xc, ind)
   	if i_max == 0 
     		i_max = size(xc, 1)
   	end
@@ -424,9 +507,9 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, highpass_sigma
 		xc_w = sum(xc[i_max-1:i_max+1, j_max-1:j_max+1])
 		xc_i = sum(xc[i_max+1, j_max-1:j_max+1]) - sum(xc[i_max-1, j_max-1:j_max+1])
 		xc_j = sum(xc[i_max-1:i_max+1, j_max+1]) - sum(xc[i_max-1:i_max+1, j_max-1])
-		i_max += xc_i / xc_w
-		j_max += xc_j / xc_w
-		if isnan(i_max) || isnan(j_max)
+		i_max += xc_i / xc_w 
+		j_max += xc_j / xc_w 
+		if isnan(i_max) || isnan(j_max) 
 		  println(xc_i)
 		  println(xc_j)
 		  println(xc_w)
@@ -447,6 +530,28 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, highpass_sigma
           else
 	  xc_j_len = length(dst_range_full[2]) - length(src_range[2]) 
 	end
+	xc_i_locs = linspace(1, xc_i_len, size(xc, 1))
+	xc_j_locs = linspace(1, xc_j_len, size(xc, 2))
+#=	if myid() == 2
+	println(xc_i_len)
+	println(size(xc, 1))
+	println(step(xc_i_locs))
+	println(i_max)
+      end=#
+
+	i_max = (i_max - 1) * step(xc_i_locs) + 1
+	j_max = (j_max - 1) * step(xc_j_locs) + 1
+      end
+
+	di = Float64(i_max - 1 + src_pt_loc[1] - dst_pt_loc_full[1])
+	dj = Float64(j_max - 1 + src_pt_loc[2] - dst_pt_loc_full[2])
+	#=if myid() == 2
+	  println(i_max)
+	  println(src_pt_loc[1])
+	  println(dst_pt_loc_full[1])
+	end=#
+
+	#= # version that treats each value as a bin and sends it to the centre
 	xc_i_locs = linspace(1, xc_i_len, size(xc, 1) + 1)
 	xc_j_locs = linspace(1, xc_j_len, size(xc, 2) + 1)
 
@@ -455,6 +560,7 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, highpass_sigma
       end
 	di = Float64(i_max - (dst_pt_loc_full[1] - src_pt_loc[1] + 1))
 	dj = Float64(j_max - (dst_pt_loc_full[2] - src_pt_loc[2] + 1))
+	=#
 
 
 
@@ -476,7 +582,6 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, highpass_sigma
 	correspondence_properties["vects"]["dv"] = [di, dj];
 	correspondence_properties["vects"]["norm"] = norm([di, dj]);
 	correspondence_properties["posts"] = Dict{Any, Any}();
-
 
 	return vcat(pt + rel_offset + [di, dj], correspondence_properties);
 end
@@ -581,7 +686,7 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 
 
 	print("computing matches:")
-        @time dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(src_img), repeated(dst_img), repeated(params["match"]["blockmatch_scale"])) 
+        @time dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(src_img), repeated(dst_img), repeated(params["match"]["blockmatch_scale"]), repeated(params["match"]["highpass_sigma"])) 
         #@time dst_allpoints = map(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(src_img), repeated(dst_img), repeated(params["match"]["blockmatch_scale"])) 
 
 	matched_inds = find(i -> i != nothing, dst_allpoints);
