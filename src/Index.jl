@@ -356,7 +356,7 @@ function update_offset(index::Index, registry_fp::String, offset::Array, sz=[0,0
   remotecall_fetch(IO_PROC, reload_registry, index)
 end
 
-function update_offset(indices::Array{Index,1}, offsets::Array{Array,1},1}, sz::Array{Array,1},1}))
+function update_offset(indices::Array{Index,1}, offsets::Array{Array,1}, sz::Array{Array,1})
 end
 
 function reload_registry(index)
