@@ -942,7 +942,7 @@ function get_random_slice(index::Index, dim=(511,511))
 end
 
 function view_random_slice(index::Index, slice=get_random_slice(index))
-  img = get_slice(get_path(index), slice)
+  img = get_slice(index, slice)
   return ImageView.view(reinterpret(Ufixed8, img))
 end
 
