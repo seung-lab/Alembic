@@ -107,6 +107,12 @@ function elwise_mul!(A, B)
       end
       return A
 end
+function elwise_sub!(A, B)
+      @simd for i in 1:length(A)
+	@fastmath @inbounds A[i] = A[i] - B[i]
+      end
+      return A
+end
 function elwise_div!(A, B)
       @simd for i in 1:length(A)
 	@fastmath @inbounds A[i] = A[i] / B[i]
@@ -299,11 +305,11 @@ function calculate_local_variance!(SUM2, SUM, template)
 end
 function calculate_denominator!(localvariance, templatevariance)
 	for i in 1:length(localvariance)
-	  localvariance[i] = sqrt(localvariance[i] * templatevariance)
+	 @fastmath localvariance[i] = sqrt(localvariance[i] * templatevariance)
 	end
 	  return localvariance
 end
-function normxcorr2_preallocated(template,img; shape = "valid")
+function normxcorr2_preallocated(template,img; shape = "valid", highpass_sigma = 0)
     # "normalized cross correlation": slide template across img,
     # compute Pearson correlation coefficient for each template location
     # result has same size as MATLAB-style 'valid' convolution
@@ -364,15 +370,28 @@ function normxcorr2_preallocated(template,img; shape = "valid")
     end
 
 	@fastmath @inbounds calculate_local_sums(LOCAL_SUM, CONV_SUM, LOCAL_SUM2, CONV_SUM2, LL[1], LL[2], n1, n2);
+	# not actually local variance, but local variance * prod(size(img))
 	@fastmath @inbounds localvariance = calculate_local_variance!(LOCAL_SUM2, LOCAL_SUM, template)
 
     # localvariance is zero for image patches that are constant
     # leading to undefined Pearson correlation coefficient
     # should only be negative due to roundoff error
-    #localvariance[localvariance.<=0] *= NaN
+    eps_scaled = eps_large * prod(size(template))
+    for i in 1:length(localvariance) 
+    	@inbounds if localvariance[i] <= eps_scaled
+      	@fastmath @inbounds localvariance[i] = eps 
+	@inbounds numerator[i] = 0 
+      end
+    end
     @fastmath @inbounds denominator=calculate_denominator!(localvariance, templatevariance)
-    @fastmath @inbounds numerator[denominator.<=0] = 0
-    @fastmath @inbounds denominator[denominator.<=0] = eps
+    for i in 1:length(denominator) @inbounds if denominator[i] <= 0 
+    	@inbounds denominator[i] = eps; 
+	@inbounds numerator[i] = 0 
+    	end end
+    #@fastmath @inbounds numerator[denominator.<=0] = 0
+    #@fastmath @inbounds denominator[denominator.<=0] = eps
 
-    @fastmath @inbounds return elwise_div!(numerator, denominator);
+    @fastmath @inbounds xc = elwise_div!(numerator, denominator);
+#    @fastmath @inbounds xcd = Images.imfilter_gaussian(xc, sigma)
+	return xc
 end

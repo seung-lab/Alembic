@@ -9,6 +9,7 @@ export BinaryProperty, FloatProperty
 export Match, Mesh
 
 typealias Index Tuple{Int64, Int64, Int64, Int64};    # (wafer, section, row, column)
+typealias Indices Tuple{Index, Index};    # (wafer, section, row, column)
 
 typealias Triangle Tuple{Int64, Int64, Int64};      # index of three points of the triangle for some point
 typealias Triangles Array{Triangle, 1};       # index of three points of the triangle for some point
@@ -35,7 +36,7 @@ global const NO_POINT = [typemin(Int64), typemin(Int64)];
 global const NO_RANGE = (0:0, 0:0);
 global const NO_INDEX = (0, 0, 0, 0);
 
-global const OVERVIEW_INDEX = -1;
+global const OVERVIEW_INDEX = 0;
 global const PREMONTAGED_INDEX = 1;
 global const MONTAGED_INDEX = -2;
 global const PREALIGNED_INDEX = -3;
@@ -43,6 +44,8 @@ global const ALIGNED_INDEX = -4;
 global const FINISHED_INDEX = -5;
 
 global const eps = 1e-12;
+global const eps_large = 1e-4;
+global const eps_rec = 1 / eps;
 
 
 if !haskey(ENV, "USER")
@@ -55,7 +58,7 @@ else
   global const ON_AWS = true;
 end
 
-if contains(gethostname(), "seunglab") || contains(gethostname(), "seungom")
+if contains(gethostname(), "seunglab") || contains(gethostname(), "seungom") || ENV["USER"] == "dih"
   global const USE_PYPLOT = false;
 else
   global const USE_PYPLOT = true;
@@ -90,7 +93,6 @@ if !(contains(gethostname(), "seunglab") || contains(gethostname(), "seungom"))
   using ImageView
   using MKLSparse
 end
-#using ParallelSparseMatMul
 
 include("parallelism.jl")
 include("author.jl")
@@ -98,18 +100,14 @@ include("Index.jl")
 include("registry.jl")
 include("import.jl")
 if ON_AWS
-  #include("filesystem_formyelin.jl")
   include("dataset_zebrafish.jl")
-#  include("dataset_aibs.jl")
   include("params_default.jl")
-  #  using AWS
-  #  using AWS.S3
-  #include("filesystem_aws.jl")
-  #include("aws_credentials.jl")
 else
-  include("dataset_default.jl")
+#  include("dataset_default.jl")
+  include("dataset_zebrafish.jl")
   include("params_default.jl")
 end
+include("dataset_common.jl")
 include("IO.jl")
 include("convolve.jl")
 include("convolve_inplace.jl")

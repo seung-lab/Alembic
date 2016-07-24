@@ -140,7 +140,7 @@ function write_seams(meshset, imgs, offsets, indices, flagged_only=true)
     ind = find_match_index(meshset, src_index, dst_index)
     if !flagged_only || is_flagged(meshset.matches[ind])
       println("Writing match #", k, " of ", total_seams, " seams")
-      path = get_review_path(src_index, dst_index)
+      path = get_path("review", (src_index, dst_index))
       img, fuse_offset = imfuse(imgs[i], offsets[i], imgs[j], offsets[j])
       bb = bbs[i] - bbs[j]
       img_cropped = imcrop(img, fuse_offset, bb)

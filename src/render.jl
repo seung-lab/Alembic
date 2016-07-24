@@ -27,7 +27,7 @@ function render_montaged(firstindex::Index, lastindex::Index;
   lastindex = montaged(lastindex)
   for index in get_index_range(firstindex, lastindex)
     println(index);
-    meshset = load(index)
+    meshset = load("MeshSet", index)
     render_montaged(meshset; render_full=render_full, render_review=render_review)
   end 
 end
@@ -48,7 +48,6 @@ function render_montaged(meshset::MeshSet; render_full=false, render_review=true
     new_fn = get_name(index)
     println("Rendering ", new_fn)
     warps = map(meshwarp_mesh, meshset.meshes);
-      println(warps[1][1][1][1:10])
     imgs = [x[1][1] for x in warps];
     offsets = [x[1][2] for x in warps];
     indices = [x[2] for x in warps];
@@ -66,11 +65,6 @@ function render_montaged(meshset::MeshSet; render_full=false, render_review=true
       write_seams(meshset, imgs, offsets, indices, flagged_only)
     end
     if render_full
-      # println(typeof(imgs));
-      # println(typeof(imgs[1]));
-      # println(size(imgs[1]));
-      # println(imgs[1][1:10]);
-      # println("test1")
       img, offset = merge_images(imgs, offsets)
       println("Writing ", new_fn)
       f = h5open(get_path(index), "w")
@@ -114,7 +108,7 @@ function prepare_prealignment(index::Index, startindex=montaged(ROI_FIRST))
     cumulative_tform = tform*cumulative_tform
     src_index = index
     dst_index = get_preceding(src_index)
-    meshset = load(src_index, dst_index)
+    meshset = load("MeshSet",(src_index, dst_index))
     dst_index = get_index(meshset.meshes[2])
     src_offset = get_offset(src_index)
     translation = make_translation_matrix(src_offset)
@@ -192,14 +186,14 @@ function render_prealigned(src_index::Index, dst_index::Index, src_img, dst_img,
     src_thumb, src_thumb_offset = imwarp(src_img, tform*s, [0,0])
     println("Warping prealigned review image... 2/2")
     dst_thumb, dst_thumb_offset = imwarp(dst_img, s, dst_offset)
-    path = get_review_path(src_index, dst_index)
+    path = get_path("review", (src_index, dst_index))
     write_review_image(path, src_thumb, src_thumb_offset, dst_thumb, dst_thumb_offset, scale, tform)
 
     println("Warping aligned review image... 1/2")
     src_thumb, src_thumb_offset = imwarp(src_img, tform*cumulative_tform*s, [0,0])
     println("Warping aligned review image... 2/2")
     dst_thumb, dst_thumb_offset = imwarp(dst_img, cumulative_tform*s, [dst_offset])
-    aligned_path = get_review_path(prealigned(src_index), prealigned(dst_index))
+    aligned_path = get_path("review", (src_index, dst_index))
     write_review_image(aligned_path, src_thumb, src_thumb_offset, dst_thumb, dst_thumb_offset, scale, tform*cumulative_tform)
   end
 
@@ -248,7 +242,7 @@ Render aligned images
 """
 function render_aligned_review(firstindex::Index, lastindex::Index, start=1, finish=0; scale=0.05)
   firstindex, lastindex = prealigned(firstindex), prealigned(lastindex)
-  meshset = load(firstindex, lastindex)
+  meshset = load("MeshSet",(firstindex, lastindex))
   render_aligned_review(meshset, start, finish, scale=scale)
 end
 
@@ -261,7 +255,7 @@ function render_aligned_review(meshset, start=1, finish=length(meshset.matches);
 
     src_img, src_offset = retrieve_image(images, src_index; tform=s)
     dst_img, dst_offset = retrieve_image(images, dst_index; tform=s)
-    path = get_review_path(src_index, dst_index)
+    path = get_path("review", (src_index, dst_index))
     write_review_image(path, src_img, src_offset, dst_img, dst_offset, scale, s)
   end
 end

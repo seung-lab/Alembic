@@ -142,7 +142,7 @@ function copy_through_first_section(index::Index)
 
   function write_image(index, img)
     fn = string(get_name(index), ".h5")
-    dir = get_dir(index)
+    dir = get_dir_path(index)
 
     update_offset(index, [0,0], size(img))
     println("Writing image:\n\t", fn)
@@ -411,19 +411,15 @@ end
 #function premontage(wafer_range::UnitRange{Int64})
 function premontage_to_overview(wafer, start, tile_size = [8000,8000], scale = 0.05)
 #  for wafer in wafer_range
-    premontaged_path = get_path(premontaged(wafer, 1))
-    dir,name = splitdir(premontaged_path)
+    dir = PREMONTAGED_DIR_PATH
     tiles = sort_dir(dir, ".h5");
-    tiles = filter(x->contains(x,"Tile"), tiles)
     tile_indices = sort(map(parse_name, tiles))
     tile_indices = filter(x->x[1] == wafer, tile_indices)
     section_range = start:tile_indices[end][2]
   for sec in section_range
-    premontaged_path = get_path(premontaged(wafer, sec))
-    dir,name = splitdir(premontaged_path)
+    dir = PREMONTAGED_DIR_PATH
     println("$wafer, $sec")
     tiles = sort_dir(dir, ".h5");
-    tiles = filter(x->contains(x,"Tile"), tiles)
     tile_indices = sort(map(parse_name, tiles))
     tile_indices = filter(x->x[1:2] == (wafer,sec), tile_indices)
 
@@ -437,7 +433,7 @@ function premontage_to_overview(wafer, start, tile_size = [8000,8000], scale = 0
 
     sigma = [1,1]
 
-    overview_image = get_image(overview(wafer, sec))
+    overview_image = get_image(get_path(overview(wafer, sec), ".tif"))
     function find_patch_locs(cur_image, overview_image)
 	cur_image = imscale(cur_image, scale)[1]
 	xc = normxcorr2(cur_image, overview_image)
@@ -460,7 +456,7 @@ Write any errors to a log file
 """
 function log_error(index::Index; fn="render_error_log", comment="")
   ts = parse(Dates.format(now(), "yymmddHHMMSS"))
-  dir = get_dir(index)
+  dir = get_dir_path(index)
   path = joinpath(dir, string(fn, ".txt"))
   new_row = [ts, index, comment]'
   if !isfile(path)

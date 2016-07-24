@@ -132,6 +132,7 @@ function normxcorr2(template,img; shape = "valid")
     @fastmath @inbounds s2=cumsum2(imgpad.^2)
 
     @fastmath @inbounds localsum2=s2[LL...]-s2[SL...]-s2[LS...]+s2[SS...]
+    # localvariance is actually localvariance * prod(size(template))
     @fastmath @inbounds localvariance=localsum2-localsum.^2/prod(size(template))
     # localvariance is zero for image patches that are constant
     # leading to undefined Pearson correlation coefficient

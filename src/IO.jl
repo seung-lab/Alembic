@@ -1,4 +1,3 @@
-
 # size in bytes
 global const IMG_CACHE_SIZE = 8 * 2^30 # n * gibibytes
 global const IMG_ELTYPE = UInt8
@@ -9,28 +8,51 @@ if myid() == 1
 end
 
 global const IO_PROC = nprocs();
-#global const WORKER_PROCS = setdiff(procs(), IO_PROC);
 if nprocs() > 2
 global const WORKER_PROCS = setdiff(procs(), [1, IO_PROC]);
 else 
 global const WORKER_PROCS = setdiff(procs(), [1]);
 end
 
-#global const SHARED_SRC_IMAGE = SharedArray(IMG_ELTYPE, SUP_SIZE)
-#global const SHARED_DST_IMAGE = SharedArray(IMG_ELTYPE, SUP_SIZE)
-
-
+#=
 function save(path::String, img::Array)
-      f = h5open(path, "w")
-      @time f["img", "chunk", (1000,1000)] = img
-      close(f)
-    end
+	f = h5open(path, "w")
+	@time f["img", "chunk", (1000,1000)] = img
+        close(f)
+end=#
 
-function save(filename::String, data)
-  println("Saving $(typeof(data)) to ", filename)
-  open(filename, "w") do file
-    serialize(file, data)
-  end
+function save(path::String, data; chunksize = 1000)
+	println("Saving $(typeof(data)) to ", path)
+  	ext = splitext(path)[2];
+	if ext == ".h5"
+		f = h5open(path, "w"); @time f["img", "chunk", (chunksize, chunksize)] = img; close(f)
+	elseif ext == ".jls"
+	open(path, "w") do file serialize(file, data) end
+      	elseif ext == ".jld"
+	open(path, "w") do file write(file, "data", data) end
+      	end
+end
+
+function load(path::String)
+	println("Loading data from ", path)
+	if !isfile(path) return nothing end
+  	ext = splitext(path)[2];
+	if ext == ".h5"
+	elseif ext == ".jls"
+	data = open(deserialize, path)
+      	elseif ext == ".jld"
+	data = load(path, "data")
+      	end
+	println("Loaded $(typeof(data)) from ", path)
+	return data
+end
+
+function save(data; kwargs...)
+	save(get_path(data), data; kwargs...)
+end
+
+function load(args...)
+	return load(get_path(args...));
 end
 
 # extensions:
@@ -64,7 +86,7 @@ end
 
 function prefetch(index, scale=1.0, dtype = IMG_ELTYPE)
         clean_cache()  
-	if haskey(IMG_CACHE_DICT, (get_path(index), scale)) index = NO_INDEX end;
+	if haskey(IMG_CACHE_DICT, (get_image_path(index), scale)) index = NO_INDEX end;
 	println("$(get_path(index)) is being prefetched at scale $scale...")
 	return remotecall(IO_PROC, get_image_disk_async, index, scale, dtype);
 end
@@ -209,7 +231,7 @@ function load_mask(path; clean=true)
 end
 
 function load_affine(path::String)
-  affinePath = joinpath(AFFINE_DIR, string(path, ".csv"))
+  affinePath = joinpath(AFFINE_DIR_PATH, string(path, ".csv"))
   return readcsv(path)
 end
 
@@ -259,7 +281,7 @@ function expunge_tile(index::Index)
   assert(is_premontaged(index))
   fn = get_filename(index)
   path = get_path(index)
-  new_path = joinpath(EXPUNGED_DIR, fn)
+  new_path = joinpath(EXPUNGED_DIR_PATH, fn)
   println("Expunging $fn")
   println("Moving to $new_path")
   assert(isfile(path) && !isfile(new_path))
@@ -291,7 +313,7 @@ end
 function resurrect_tile(index::Index)
   assert(is_premontaged(index))
   fn = get_filename(index)
-  path = joinpath(EXPUNGED_DIR, fn)
+  path = joinpath(EXPUNGED_DIR_PATH, fn)
   new_path = get_path(index)
   println("Resurrecting $fn")
   println("Moving back to $new_path")
@@ -302,7 +324,7 @@ end
 function is_expunged(index::Index)
   assert(is_premontaged(index))
   fn = get_filename(index)
-  expunged_path = joinpath(EXPUNGED_DIR, fn)
+  expunged_path = joinpath(EXPUNGED_DIR_PATH, fn)
   included_path = get_path(index)
   return assert(isfile(expunged_path) && !isfile(included_path))
 end
@@ -384,7 +406,7 @@ function save_stack(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, 
   z_slice = [find_in_registry(firstindex), find_in_registry(lastindex)]
   phasename = is_prealigned(firstindex) ? "prealigned" : "aligned"
   filename = string(cur_dataset, "_", phasename, "_", join([join(x_slice, "-"), join(y_slice, "-"), join(z_slice,"-")], "_"), ".h5")
-  filepath = joinpath(FINISHED_DIR, filename)
+  filepath = joinpath(FINISHED_DIR_PATH, filename)
   println("\nSaving stack to ", filepath)
   f = h5open(filepath, "w")
   # Omni can't handle chunked channel data
@@ -411,7 +433,7 @@ end
 #   imwrite(img, filepath)
 # end
 
-# function save_stack_into_tifs(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, slice::Tuple{UnitRange{Int64},UnitRange{Int64}}; dst_dir=FINISHED_DIR)
+# function save_stack_into_tifs(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, slice::Tuple{UnitRange{Int64},UnitRange{Int64}}; dst_dir=FINISHED_DIR_PATH)
 #   assert(isdir(dst_dir))
 #   origin = [0,0]
 #   x_slice = [slice[1][1], slice[1][end]] + origin

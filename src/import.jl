@@ -256,26 +256,6 @@ function reset_offsets(k)
 	end
 end
 
-# function import_AIBS_pilot_v2()
-# 	trakem_fn = joinpath(homedir(), "seungmount/research/Julimaps/datasets/AIBS_pilot_v2/234251S6R_01_02_160421_zorder_sectmanifest_columnsappended.txt")
-# 	image_dir = joinpath(homedir(), "seungmount/research/Julimaps/datasets/AIBS_pilot_v2/0_raw")
-
-# 	meta = readdlm(trakem_fn)
-
-# 	# cleanup trakem text file
-# 	fn_length = map(length, meta[:,1])
-# 	fn_start = 3
-# 	fn_range = map(range, repeated(fn_start), fn_length-fn_start+1)
-# 	meta[:,1] = map(getindex, meta[:,1], fn_range)
-
-# 	# rename files based on ordering
-# 	fn_splits = [split(split(i, ".")[1], "_")[end-1:end] for i in meta[:,1]]
-# 	row = [parse(i[1]) for i in fn_splits]
-# 	col = [parse(i[2]) for i in fn_splits]
-# 	meta = hcat(meta, [row col])
-
-# end
-
 function import_trakem_dir_tifs(src_folder, suffix="_prealigned", dst_folder=src_folder)
 	for tif in sort_dir(src_folder, "tif")
 		println(tif)

@@ -424,7 +424,7 @@ end
 
 @inbounds function stats(meshset::MeshSet, first_ind = 1, last_ind = count_matches(meshset); flagged_only::Bool = false, summary::Bool = false)
 
-  println("Computing statistics... sigma is computed at beta = 0.8")
+  println("Computing statistics... sigma is computed at beta = 0.95")
 
   params = get_params(meshset)
 
@@ -493,7 +493,7 @@ println(join(fill('-', 190)))
 
   	props = get_filtered_correspondence_properties(match);
   	r_maxs_match = Array{Float64}(map(get_dfs, props, repeated("r_max")));
-  	sigs_match = Array{Float64}(map(get_dfs, props, repeated(0.8)));
+  	sigs_match = Array{Float64}(map(get_dfs, props, repeated(0.95)));
 
 	g_src_pts = g_src_pts[filtered];
 	g_dst_pts = g_dst_pts[filtered];

@@ -27,8 +27,9 @@ function get_image_size(mesh::Mesh)			return get_image_size(get_metadata(mesh.in
 function get_metadata(mesh::Mesh)			return get_metadata(mesh.index);			end
 
 ### IO.jl EXTENSIONS
-function get_path(mesh::Mesh)				return get_path(mesh.index);				end
+function get_image_path(mesh::Mesh)			return get_image_path(mesh.index);			end
 function get_image(mesh::Mesh; kwargs...)		return get_image(mesh.index; kwargs...);		end
+function get_name(mesh::Mesh)				return get_name(mesh.index);				end
 
 ### retrieval
 function get_index(mesh::Mesh)				return mesh.index;					end
@@ -38,6 +39,7 @@ function get_nodes(mesh::Mesh; globalized::Bool = false, use_post::Bool=false)
 	return nodes
 end
 
+### IO
 
 ### counting
 function count_nodes(mesh::Mesh)			return size(mesh.src_nodes, 1);				end
