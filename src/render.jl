@@ -34,6 +34,11 @@ end
 
 function render_montaged(meshset::MeshSet; render_full=false, render_review=true, flagged_only=true)
   assert(is_premontaged(meshset.meshes[1].index))
+  crop = [0, 0]
+  render_params = meshset.properties["params"]["render"]
+  if haskey(render_params, "crop")
+    crop = render_params["crop"]
+  end
   index = montaged(meshset.meshes[1].index)
   if is_flagged(meshset) 
     println("The meshset has a flag. Continuing anyway....")
@@ -47,6 +52,15 @@ function render_montaged(meshset::MeshSet; render_full=false, render_review=true
     imgs = [x[1][1] for x in warps];
     offsets = [x[1][2] for x in warps];
     indices = [x[2] for x in warps];
+
+    if |((crop .> [0,0])...)
+      x, y = crop
+      for k in 1:length(imgs)
+        imgs[k] = imgs[k][x:(end-x+1), y:(end-y+1)]
+        offsets[k] = offsets[k] + crop
+      end
+    end
+
     # review images
     if render_review
       write_seams(meshset, imgs, offsets, indices, flagged_only)

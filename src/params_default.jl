@@ -1,8 +1,8 @@
-MESH_LENGTH_MONTAGE = 300
+MESH_LENGTH_MONTAGE = 100
 GLOBAL_OFFSETS_MONTAGE = true
 BLOCKMATCH_SCALE_MONTAGE = 1.0
 BLOCK_R_MONTAGE = 80
-SEARCH_R_MONTAGE = 750
+SEARCH_R_MONTAGE = 140
 MONOBLOCK_SCALE_MONTAGE = 1
 MONOBLOCK_MATCH_MONTAGE = false
 MONOBLOCK_RATIO_MONTAGE = 0.4
@@ -65,7 +65,7 @@ global PARAMS_MONTAGE = Dict(
 					"monoblock_ratio" => MONOBLOCK_RATIO_MONTAGE, 
 					"monoblock_match" => MONOBLOCK_MATCH_MONTAGE,
 					"depth" => 1,
-					"reflexive" => true),
+					"reflexive" => false),
 			     "solve" => Dict(
 					"mesh_spring_coeff" => MESH_SPRING_COEFF_MONTAGE,
 					"match_spring_coeff" => MATCH_SPRING_COEFF_MONTAGE,
@@ -84,6 +84,7 @@ global PARAMS_MONTAGE = Dict(
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 2.5)
 					      ),
 			     "render" => Dict(
+			     		"crop" => [250, 250]
 					      ),
 			     "review" => Dict(
 						# "too_few_corresps" => (:count_correspondences, <, 10),
@@ -135,9 +136,9 @@ global PARAMS_PREALIGNMENT = Dict(
 			     "review" => Dict(
 				     	# "r_below" => (:count_filtered_properties, >, 0, "r_max", <, 0.2),
 			     		"too_few_corresps" => (:count_correspondences, <, 3),
-						"rejected_ratio" => (:get_ratio_rejected, >, 0.15, 0),
+						"rejected_ratio" => (:get_ratio_rejected, >, 0.33, 0),
 						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.95),
-						"norm_outliers" => (:count_outlier_norms, >, 0, 3),
+						# "norm_outliers" => (:count_outlier_norms, >, 0, 3),
 						"centered_norm" => (:get_maximum_centered_norm, >, SEARCH_R_PREALIGNMENT/2)
 					      ),
 			     "registry" => Dict(
