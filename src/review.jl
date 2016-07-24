@@ -1,78 +1,5 @@
-function clear_all_filters!(indexA, indexB)
-        indices = get_index_range(indexA, indexB)
-        for ind in indices
-                meshset = load(ind)
-                for match in meshset.matches
-                        clear_filters!(match)
-                end
-                save(meshset)
-        end
-end
-
-function print_filter_eval(indexA, indexB)
-        indices = get_index_range(indexA, indexB)
-        for ind in indices
-                meshset = load(ind)
-                for (i, match) in enumerate(meshset.matches);
-            fp, fn, tp, total = eval_filters(match, [("sigma_5", >, 5, 0)] ,:)
-            p = (100 * tp / (fp + tp))
-            r = (100 * tp / (fn + tp))
-            if !isnan(r) && r < 100.0
-                    println(ind, " #", i, " ", p, " / ", r)
-            end
-       end
-   end
-end
-
-function update_meshset_with_edits!(meshset, log)
-  for i in 1:size(log,1)
-    match_index = log[i,5]
-    indices_to_remove = [log[i,6]]
-    if typeof(indices_to_remove[1]) != Int64
-      indices_to_remove = readdlm(IOBuffer(log[i,6]), ',', Int)
-    end
-    if indices_to_remove[1] != 0
-      remove_matches_from_meshset!(meshset, indices_to_remove, match_index)
-    end
-  end
-end
-
-function crop_meshset!(meshset, a, b)
-  meshset.indices = meshset.indices[a:b]
-  meshset.meshes = meshset.meshes[a:b]
-  meshset.N = length(meshset.meshes)
-  meshset.nodes_indices = meshset.nodes_indices[a:b]
-  meshset.nodes_indices -= meshset.nodes_indices[1]
-  matches_mask = map(x -> x>=(a,a) && x<=(b,b), meshset.matches_pairs)
-  matches_pairs = meshset.matches_pairs[matches_mask]
-  meshset.matches_pairs = map(x->(x[1]-a+1, x[2]-a+1), matches_pairs)
-  meshset.matches = meshset.matches[matches_mask]
-  meshset.M = length(meshset.matches)
-
-  meshset.n = 0
-  meshset.m = 0
-  meshset.m_i = 0
-  meshset.m_e = 0
-  for mesh in meshset.meshes
-    meshset.n += mesh.n
-    meshset.m += mesh.m
-    meshset.m_i += mesh.m
-
-  end
-  for matches in meshset.matches
-    meshset.m += matches.n
-    meshset.m_e += matches.n
-  end
-end
-
-"""
-Append 'EDITED' with a timestamp to update filename
-"""
-function update_filename(fn, ts="")
-  if ts == ""
-    ts = Dates.format(now(), "yyyymmddHHMMSS")
-  end
-  return string(fn[1:end-4], "_EDITED_", ts, fn[end-3:end])
+function get_bb(index::Index)
+  return BoundingBox(get_offset(index)..., get_image_size(index)...)
 end
 
 """
@@ -88,6 +15,22 @@ Get bounding box offset
 """
 function get_offset(bb::BoundingBox)
   return [bb.i, bb.j]
+end
+
+function get_size(bb::BoundingBox)
+  return [bb.h, bb.w]
+end
+
+function get_bounds(bb::BoundingBox)
+  return (bb.i, bb.j, bb.i+bb.h, bb.j+bb.w)
+end
+
+function get_rect(bb::BoundingBox)
+  return (bb.j, bb.i, bb.w, bb.h)
+end
+
+function get_area(bb::BoundingBox)
+  return bb.w*bb.h
 end
 
 """
@@ -209,6 +152,46 @@ function write_seams(meshset, imgs, offsets, indices, flagged_only=true)
       close(f)
     end
   end
+end
+
+"""
+Create CairoSurface of tile outlines based on premontage registry
+"""
+function draw_premontage_review(index::Index; scale=0.05)
+  padding = [100, 100]
+  fontsize = 36
+  indices = get_index_range(premontaged(index), premontaged(index))
+  bbs = map(scale_bb, map(get_bb, indices), repeated(scale))
+  global_bb = snap_bb(sum(bbs))
+  bbs = map(translate_bb, bbs, repeated(-get_offset(global_bb)+padding))
+  sz = get_size(global_bb) + 2*padding
+  drw = create_drawing(ones(UInt32, sz...))
+  ctx = create_context(drw)
+  rects = map(get_rect, bbs)
+  colors = ([1,0,1], [0,1,1])
+  txt = join(index[1:2], ",")
+  draw_text(ctx, txt, [50,50], [-10,-10], fontsize, [1,1,1])
+  for (k, (idx, rect)) in enumerate(zip(indices, rects))
+    draw_rect(ctx, rect, colors[k%2+1])
+    ctr = [rect[1]+rect[3]/2, rect[2]+rect[4]/2]
+    txt = join(idx[3:4], ",")
+    draw_text(ctx, txt, ctr, [0,-10], fontsize, colors[k%2+1])
+  end
+  return drw
+end
+
+function view_premontage_review(index::Index; scale=0.05)
+  drw = draw_premontage_review(index, scale=scale)
+  img = convert_drawing(get_drawing(drw))'
+  return ImageView.view(img, pixelspacing=[1,1])
+end
+
+function save_premontage_review(index::Index; scale=0.05)
+  drw = draw_premontage_review(index, scale=scale)
+  idx = (index[1:2]..., 0, 0)
+  fn = joinpath(get_review_dir(idx), string(join(index[1:2], ","), ".png"))
+  println("Saving premontage review: $fn")
+  Cairo.write_to_png(drw, fn)
 end
 
 """
@@ -394,14 +377,4 @@ function go_to(meshset, area, slice, k; include_reverse=false)
   stack = make_image_stack(meshset, section_range, (islice, jslice); 
                                             include_reverse=include_reverse)
   return stack, (islice, jslice)
-end
-
-function get_frame(imgc)
-  state = imgc.navigationstate
-  t = state.t
-  if t > N
-    t = 2*N - t
-  end
-  println(t)
-  return t
 end
