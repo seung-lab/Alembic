@@ -479,6 +479,18 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, highpass_sigma
 	if sum(src_image[last(src_range[1]), src_range[2]]) == 0 return nothing end=#
 	if sum(src_image[src_range[1], round(Int64,median(src_range[2]))]) == 0 return nothing end
 	if sum(src_image[round(Int64,median(src_range[1])), src_range[2]]) == 0 return nothing end
+	dst_quart_range_i = linspace(dst_range[1][1], dst_range[1][end], 5)
+	dst_quart_range_j = linspace(dst_range[2][1], dst_range[2][end], 5)
+	cent_sum = 0;
+	cent_sum += sum(dst_image[round(Int64, dst_quart_range_i[2]):round(Int64, dst_quart_range_i[4]), round(Int64, dst_quart_range_j[2])]);
+	cent_sum += sum(dst_image[round(Int64, dst_quart_range_i[2]):round(Int64, dst_quart_range_i[4]), round(Int64, dst_quart_range_j[4])]);
+	cent_sum += sum(dst_image[round(Int64, dst_quart_range_i[2]), round(Int64, dst_quart_range_j[2]):round(Int64, dst_quart_range_j[4])]);
+	cent_sum += sum(dst_image[round(Int64, dst_quart_range_i[4]), round(Int64, dst_quart_range_j[2]):round(Int64, dst_quart_range_j[4])]);
+	if cent_sum == 0 return nothing end
+#	if sum(dst_image[dst_range[1], round(Int64,linspace(dst_range[2][1], dst_range[2][end], 5)[2])]) == 0 return nothing end
+#	if sum(dst_image[dst_range[1], round(Int64,linspace(dst_range[2][1], dst_range[2][end], 5)[4])]) == 0 return nothing end
+#	if sum(dst_image[round(Int64,linspace(dst_range[1][1], dst_range[1][end], 5)[2]), dst_range[2]]) == 0 return nothing end
+#	if sum(dst_image[round(Int64,linspace(dst_range[1][1], dst_range[1][end], 5)[4]), dst_range[2]]) == 0 return nothing end
 
 	correspondence_properties = Dict{Any, Any}();
 	correspondence_properties["ranges"] = Dict{Any, Any}();
