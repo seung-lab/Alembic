@@ -181,7 +181,7 @@ end
 datasets_dir_path = "research/Julimaps/datasets"
 # cur_dataset = "piriform"
 # cur_dataset = "AIBS_practice_234251S6R_01_01_aligned_01"
-cur_dataset = "AIBS_actual_trial"
+cur_dataset = "AIBS_actual_trial10_full"
 # cur_dataset = "align_net"
 # cur_dataset = "AIBS_pilot_v1"
 # cur_dataset = "align_net"
@@ -295,7 +295,17 @@ show_plot = false
 if cur_dataset == "piriform"
     global ROI_FIRST = (1,2,0,0);
     global ROI_LAST = (8,173,0,0);
+    global DATASET_RESOLUTION = [7,7,40]
 else
     global ROI_FIRST = (1,1,0,0);
     global ROI_LAST = (1,102,0,0);
+    global DATASET_RESOLUTION = [4,4,40]
+end
+
+if cur_dataset == "piriform" || cur_dataset == "zebrafish"
+    global TILE_SIZE = [8000, 8000]
+    global EXPECTED_TILE_OVERLAP = 0.145
+else
+    global TILE_SIZE = [3840, 3840]
+    global EXPECTED_TILE_OVERLAP = 0.18
 end

@@ -80,12 +80,13 @@ using ImageRegistration
 using Optim
 using Distributions
 using Compat
+using Images
+using StatsBase
 #using RegERMs
 if USE_PYPLOT
   using PyPlot
 end
 if !(contains(gethostname(), "seunglab") || contains(gethostname(), "seungom"))
-  using Images
   using ImageView
   using MKLSparse
 end
@@ -95,6 +96,7 @@ include("parallelism.jl")
 include("author.jl")
 include("Index.jl")
 include("registry.jl")
+include("import.jl")
 if ON_AWS
   #include("filesystem_formyelin.jl")
   include("dataset_zebrafish.jl")
