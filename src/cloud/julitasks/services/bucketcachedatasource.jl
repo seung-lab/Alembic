@@ -16,14 +16,15 @@ end
 # Using parametrics because as of 0.4.6 can not promote Array{ASCIIString, 1}
 # to Array{AbstractString, 1}
 function Datasource.get{String <: AbstractString}(
-        datasource::BucketCacheDatasourceService,
-        keys::Array{String, 1}; force::Bool=false)
-    return map((key) -> Datasource.get(datasource, key; force=force), keys)
+        datasource::BucketCacheDatasourceService, keys::Array{String, 1};
+        override_cache::Bool=false)
+    return map((key) -> Datasource.get(datasource, key;
+    override_cache=override_cache), keys)
 end
 
 function Datasource.get(datasource::BucketCacheDatasourceService,
-        key::AbstractString; force::Bool=false)
-    if force || !Cache.exists(datasource.cache, key)
+        key::AbstractString; override_cache::Bool=false)
+    if override_cache || !Cache.exists(datasource.cache, key)
         stream = Bucket.download(datasource.remote, key)
         Cache.put!(datasource.cache, key, stream)
         close(stream)
@@ -33,20 +34,42 @@ end
 
 # Using parametrics because as of 0.4.6 can not promote Array{ASCIIString, 1}
 # to Array{AbstractString, 1}
+function Datasource.put!{String <: AbstractString, I <: IO}(
+        datasource::BucketCacheDatasourceService, keys::Array{String, 1},
+        new_values::Array{I, 1}; only_cache::Bool=false)
+    return map((index) -> Datasource.put!(datasource, keys[index],
+        new_values[index]; only_cache=only_cache), 1:length(keys))
+end
+
 function Datasource.put!{String <: AbstractString}(
-        datasource::BucketCacheDatasourceService,
-        keys::Array{String, 1})
-    return map((key) -> Datasource.put!(datasource, key), keys)
+        datasource::BucketCacheDatasourceService, keys::Array{String, 1};
+        only_cache::Bool=false)
+    return map((index) -> Datasource.put!(datasource, keys[index],
+        nothing; only_cache=only_cache), 1:length(keys))
 end
 
 function Datasource.put!(datasource::BucketCacheDatasourceService,
-        key::AbstractString)
+        key::AbstractString, new_value::Union{IO, Void}=nothing;
+        only_cache::Bool=false)
+    if new_value != nothing
+        println("Putting in cache")
+        Cache.put!(datasource.cache, key, new_value)
+    else
+
+
+        println(" nOT Putting in cache")
+    end
+
     if !Cache.exists(datasource.cache, key)
         return false
     end
 
-    Bucket.upload(datasource.remote,
-        Cache.get(datasource.cache, key), key)
+    if !only_cache
+        #=println("uploading to bucket=#
+        #=$(takebuf_string(Cache.get(datasource.cache, key)))")=#
+        Bucket.upload(datasource.remote,
+            Cache.get(datasource.cache, key), key)
+    end
     return true
 end
 

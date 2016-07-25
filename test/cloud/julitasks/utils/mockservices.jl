@@ -19,7 +19,11 @@ function Bucket.download(bucket::MockBucketService, key::ASCIIString,
         local_file::Union{ASCIIString, IO, Void})
     data = bucket.mockFiles[key]
     if local_file != nothing
-        write(local_file, readall(data))
+        if typeof(local_file) <: IOBuffer
+            write(local_file, takebuf_array(data))
+        else
+            write(local_file, readall(data))
+        end
         return local_file
     end
     seekstart(data)
@@ -29,8 +33,13 @@ end
 # local_file can also be a file location but we're not testing that for now
 function Bucket.upload(bucket::MockBucketService,
     local_file::Union{ASCIIString, IO}, key::ASCIIString)
+    println("UPloading $local_file")
     data = IOBuffer()
-    write(data, readbytes(local_file))
+    if typeof(local_file) <: IOBuffer
+        write(data, takebuf_array(local_file))
+    else
+        write(data, readbytes(local_file))
+    end
     seekstart(data)
     bucket.mockFiles[key] = data
 end
@@ -52,7 +61,11 @@ end
 function Cache.put!(cache::MockCacheService, key::AbstractString,
         value_buffer::IO)
     data = IOBuffer()
-    write(data, readbytes(value_buffer))
+    if typeof(value_buffer) <: IOBuffer
+        write(data, takebuf_array(value_buffer))
+    else
+        write(data, readbytes(value_buffer))
+    end
     seekstart(data)
     cache.mockValues[key] = data
 end

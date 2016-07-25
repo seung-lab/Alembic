@@ -41,7 +41,7 @@ function DaemonTask.execute(task::NoOpTaskDetails,
         datasource::DatasourceService)
     println("executing task NOOP $(task.basicInfo.id), inputs contain")
     for input in task.basicInfo.inputs
-        data_stream = Datasource.put!(datasource, full_input_path(task, input))
+        data_stream = Datasource.get(datasource, full_input_path(task, input))
         if data_stream != nothing
             data = readall(data_stream)
             println("Input: $input contains $(data[1:min(20, end)]) \nto\n" *
