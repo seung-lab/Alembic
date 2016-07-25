@@ -55,8 +55,8 @@ function Queue.pop_message(queue::AWSQueueService)
 
     receiptHandle=receive_response.obj.messageSet[1].receiptHandle
 
-    #=delete_response = SQS.DeleteMessage(queue.env; queueUrl = queue.url,=#
-        #=receiptHandle = receiptHandle)=#
+    delete_response = SQS.DeleteMessage(queue.env; queueUrl = queue.url,
+        receiptHandle = receiptHandle)
 
     return strip(receive_response.obj.messageSet[1].body)
 end
