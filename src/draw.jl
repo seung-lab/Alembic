@@ -2,7 +2,7 @@ function create_drawing(img::Array{UInt32,2})
   return Cairo.CairoRGBSurface(img)
 end
 
-function create_contex(surface::Cairo.CairoSurface)
+function create_context(surface::Cairo.CairoSurface)
   return Cairo.CairoContext(surface)
 end
 
@@ -23,7 +23,7 @@ function draw_rect(ctx::Cairo.CairoContext, bounds, color=(0,0,0), thickness=2.0
   Cairo.save(ctx)
   Cairo.set_source_rgb(ctx, color...)
   # Cairo.rotate(ctx, -pi/2)
-  Cairo.rectangle(ctx, bounds[2], bounds[1], bounds[4], bounds[3])
+  Cairo.rectangle(ctx, bounds[1], bounds[2], bounds[3], bounds[4])
   Cairo.set_line_width(ctx, thickness)
   # Cairo.rotate(ctx, pi/2)
   Cairo.stroke(ctx)
@@ -70,31 +70,33 @@ end
 
 function draw_text(ctx::Cairo.CairoContext, text, point, offset, fontsize, color)
   fill_color = color
-  line_color = [1,1,1] - color
+  # line_color = [1,1,1] - color
+  line_color = color
   Cairo.save(ctx)
   Cairo.select_font_face(ctx, "Sans", Cairo.FONT_SLANT_NORMAL, 
-                                          Cairo.FONT_WEIGHT_BOLD)
+                                          Cairo.FONT_WEIGHT_NORMAL) #Cairo.FONT_WEIGHT_BOLD)
   Cairo.set_font_size(ctx, fontsize)
   Cairo.move_to(ctx, point+offset...)
-  Cairo.rotate(ctx, -pi/2)
-  Cairo.scale(ctx, -1, 1)
+  # Cairo.rotate(ctx, -pi/2)
+  # Cairo.scale(ctx, -1, 1)
   Cairo.text_path(ctx, text)
   Cairo.set_source_rgb(ctx, fill_color...)
   Cairo.fill_preserve(ctx)
   Cairo.set_source_rgb(ctx, line_color...)
   Cairo.set_line_width(ctx, 1.0)
-  Cairo.scale(ctx, -1, 1)
-  Cairo.rotate(ctx, pi/2)
+  # Cairo.scale(ctx, -1, 1)
+  # Cairo.rotate(ctx, pi/2)
   Cairo.stroke(ctx)
   return ctx
 end
 
 function draw_indices(ctx::Cairo.CairoContext, points, offset, fontsize, color)
   fill_color = color
-  line_color = [1,1,1] - color
+  # line_color = [1,1,1] - color
+  line_color = color
   Cairo.save(ctx)
   Cairo.select_font_face(ctx, "Sans", Cairo.FONT_SLANT_NORMAL, 
-                                          Cairo.FONT_WEIGHT_BOLD)
+                                          Cairo.FONT_WEIGHT_NORMAL) #Cairo.FONT_WEIGHT_BOLD)
   Cairo.set_font_size(ctx, fontsize)
   for (k, point) in enumerate(points)
     Cairo.move_to(ctx, point+offset...)
@@ -103,8 +105,8 @@ function draw_indices(ctx::Cairo.CairoContext, points, offset, fontsize, color)
     Cairo.text_path(ctx, "$k")
     Cairo.set_source_rgb(ctx, fill_color...)
     Cairo.fill_preserve(ctx)
-    Cairo.set_source_rgb(ctx, line_color...)
-    Cairo.set_line_width(ctx, 1.0)
+    # Cairo.set_source_rgb(ctx, line_color...)
+    # Cairo.set_line_width(ctx, 1.0)
     Cairo.scale(ctx, -1, 1)
     Cairo.rotate(ctx, pi/2)
   end

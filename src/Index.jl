@@ -63,6 +63,34 @@ function is_preceding(A_index, B_index, within = 1)
   return false;
 end
 
+function get_neighbor(index::Index, direction=[0,1])
+  if !(is_premontaged(index)) return NO_INDEX end
+  neighbor_index = (index[1:2]..., index[3]+direction[1], index[4]+direction[2])
+  if !in_registry(neighbor_index) return NO_INDEX end
+  return neighbor_index
+end
+
+function get_above(index::Index)
+  return get_neighbor(index, [-1,0])
+end
+
+function get_below(index::Index)
+  return get_neighbor(index, [1,0])
+end
+
+function get_right(index::Index)
+  return get_neighbor(index, [0,1])
+end
+
+function get_left(index::Index)
+  return get_neighbor(index, [0,-1])
+end
+
+function get_cardinal_neighbors(index::Index)
+  neighbors = [get_above(index), get_left(index), get_below(index), get_right(index)] 
+  return filter(i->i!=NO_INDEX, neighbors)
+end
+
 function index_rank(index)
   return index[1]*10^3 + index[2]
 end
@@ -71,13 +99,13 @@ function index_to_int(index)
   return index[1]*10^7 + index[2]*10^4 + index[3]*10^2 + index[4] 
 end
 
-function isless(indexA, indexB)
-  return Base.isless(index_rank(indexA), index_rank(indexB))
-end
+# function isless(indexA, indexB)
+#   return Base.isless(index_rank(indexA), index_rank(indexB))
+# end
 
-function isequal(indexA, indexB)
-  return Base.isequal(index_rank(indexA), index_rank(indexB))
-end
+# function isequal(indexA, indexB)
+#   return Base.isequal(index_rank(indexA), index_rank(indexB))
+# end
 
 function get_overview_index(index)
   return (index[1:2]..., OVERVIEW_INDEX, OVERVIEW_INDEX)
@@ -109,6 +137,11 @@ end
 function find_in_registry(index)
   registry = get_registry(index);
   return findfirst(registry[:,2], index);
+end
+
+function in_registry(index::Index)
+  if index[3] == 0 || index[4] == 0 return false end
+  return find_in_registry(index) != 0
 end
 
 """
@@ -286,7 +319,7 @@ index: 4-element tuple for section identifier
 offset: 2-element collection for the i,j offset
 sz: 2-element collection for the i,j height and width
 """
-function update_offset(index, offset::Array, sz=[0, 0], needs_render=false)
+function update_offset(index::Index, offset::Array, sz=[0, 0], needs_render=false)
   registry_fp = get_registry_path(index)
   update_offset(index, registry_fp, offset, sz, needs_render)
 end
@@ -295,7 +328,7 @@ function update_offset(name::String, offset::Array, sz=[0, 0], needs_render=fals
   update_offset(parse_name(name), offset, sz, needs_render);
 end
 
-function update_offset(index, registry_fp::String, offset::Array, sz=[0,0], needs_render=false)
+function update_offset(index::Index, registry_fp::String, offset::Array, sz=[0,0], needs_render=false)
   image_fn = string(get_name(index));
 
   println("Updating registry for ", image_fn, " in:\n", registry_fp, ": offset is now ", offset)
@@ -323,7 +356,8 @@ function update_offset(index, registry_fp::String, offset::Array, sz=[0,0], need
   remotecall_fetch(IO_PROC, reload_registry, index)
 end
 
-
+function update_offset(indices::Array{Index,1}, offsets::Array{Array,1}, sz::Array{Array,1})
+end
 
 function reload_registry(index)
   registry_fp = get_registry_path(index)

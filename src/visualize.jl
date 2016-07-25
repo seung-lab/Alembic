@@ -198,8 +198,15 @@ function write_imageview(path, imgc, img2)
   close_image(imgc)
 end
 
+function xcview(xc)
+  xc_image = xcorr2Image(xc)
+  hot = create_hot_colormap()
+  xc_color = apply_colormap(xc_image, hot)
+  ImageView.view(xc_color') #, pixelspacing=[1,1])
+end
+
 function uview(img::Array{UInt8,2})
-  return ImageView.view(convert(Array{Ufixed8}, img))
+  return ImageView.view(reinterpret(UFixed8, img), pixelspacing=[1,1])
 end
 
 function override_xy_label(imgc, img2, offset, scale=1.0)

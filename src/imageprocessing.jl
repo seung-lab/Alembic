@@ -16,8 +16,9 @@ function merge_images(imgs, offsets)
     end
     global_ref = sum(bbs)
     merged_img = zeros(T, global_ref.h, global_ref.w)
+    no_imgs = length(imgs)
     for (idx, (img, bb)) in enumerate(zip(imgs, bbs))
-        println("Merging tile ", idx)
+        println("Merging image # ", idx , " / ", no_imgs)
         i = bb.i - global_ref.i+1
         j = bb.j - global_ref.j+1
         w = bb.w-1
@@ -187,24 +188,21 @@ function laplacian_variance(img)
     return var(laplacian(img))
 end
 
-function import_mask(fn)
-    img = Images.load(fn).data'
-    return reshape(reinterpret(UInt8, img)[1,:,:], size(img))
-end
-
 function clean_mask!(mask::Array{UInt8,2})
     th = 80
     mask[mask.>=th] = 255
     mask[mask.<th] = 0
 end
 
-function segment_by_mask(img, crack_mask)
+function segment_by_mask(img, crack_mask; include_crack=false)
     segments = []
     segments_mask = label_components(crack_mask)
     seg_list = unique(segments_mask)
     for seg in seg_list
-        seg_mask = segments_mask .== seg
-        push!(segments, (seg, img .* seg_mask))
+        if seg != 0 || include_crack
+            seg_mask = segments_mask .== seg
+            push!(segments, (seg, img .* seg_mask))
+        end
     end
     return segments
 end

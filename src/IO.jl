@@ -191,6 +191,18 @@ function ufixed8_to_uint8(img)
   reinterpret(UInt8, -img)
 end
 
+function get_slice(index::Index, bb::BoundingBox, scale=1.0; is_global=true)
+  if is_global
+    offset = get_offset(index)
+    bb = translate_bb(bb, -offset)
+  end
+  return get_slice(index, bb_to_slice(bb), scale)
+end
+
+function get_slice(index::Index, slice::Tuple{UnitRange{Int64},UnitRange{Int64}}, scale=1.0)
+  return get_slice(get_path(index), slice, scale)
+end
+
 function get_slice(path::String, slice, scale=1.0)
   # return reinterpret(Ufixed8, h5read(path, "img", slice))
   if splitext(path)[2] != ".h5" 
@@ -202,6 +214,20 @@ function get_slice(path::String, slice, scale=1.0)
     img = imscale(img, scale)[1]
   end
   return img
+end
+
+function load_mask(index::Index; clean=true)
+    path = get_mask_path(index)
+    return load_mask(path, clean=clean)
+end
+
+function load_mask(path; clean=true)
+    img = Images.load(path).data'
+    mask = reinterpret(UInt8, img)
+    if clean
+        clean_mask!(mask)
+    end
+    return mask
 end
 
 function load_affine(path::String)
@@ -309,7 +335,7 @@ function make_stack_from_finished(firstindex::Index, lastindex::Index, slice=(1:
     for index in get_index_range(firstindex, lastindex)
         index = finished(index)
         print(string(join(index[1:2], ",") ,"|"))
-        img = get_slice(get_path(index), slice)
+        img = get_slice(index, slice)
         if bb == nothing
             bb = h5read(get_path(index), "bb")
         else
@@ -344,13 +370,9 @@ function make_stack(firstindex::Index, lastindex::Index, slice=(1:255, 1:255); s
     bb = BoundingBox(offset..., sz...)
     if intersects(bb, global_bb)
       shared_bb = global_bb - bb
-      img_roi = translate_bb(shared_bb, -offset)
       stack_roi = snap_bb(scale_bb(translate_bb(shared_bb, -stack_offset), scale))
-      h5_slice = bb_to_slice(img_roi)
       img_slice = bb_to_slice(stack_roi)
-
-      # println(h5_slice, " " , img_slice)
-      img[img_slice...] = get_slice(get_path(index), h5_slice, scale) 
+      img[img_slice...] = get_slice(index, shared_bb, scale, is_global=true) 
     end
     push!(imgs, img)
   end
@@ -390,7 +412,7 @@ function save_stack(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, 
   # Omni can't handle chunked channel data
   # chunksize = min(512, min(size(stack)...))
   # @time f["main", "chunk", (chunksize,chunksize,chunksize)] = stack
-  f["main"] = stack
+  f["img"] = stack
   f["orientation"] = orientation
   f["origin"] = origin
   f["x_slice"] = x_slice

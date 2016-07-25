@@ -1,104 +1,260 @@
-#NORMALIZER = Array{Float64, 2}(readdlm("calib"))
-using StatsBase
-
-function construct_adjustment_image(meta)
+function calculate_sample_stats(k, N=60)
+	
 	function read(fn)
 		return Array{Float64, 2}(Images.load(fn).data')
 	end
 
-	println("Constructing contrast adjustment image")
-	adj_count = 1
-	j = 50
-	filepath = joinpath(RAW_DIR_PATH, meta[j,5])
-	img_adj = read(filepath)
-	for i in 92:90:size(meta,1)
-		filepath = joinpath(RAW_DIR_PATH, meta[i,5])
-		img_adj += read(filepath)
-		adj_count += 1
+	function calculate_stats(i, dir, meta, N)
+		println("# $i / ", N)
+		fn = joinpath(dir, meta[i,1])
+		row, col = meta[i,6], meta[i,7]
+		if isfile(fn)
+			img = read(fn)
+			hist = nquantile(img[:], 20)
+			krt = kurtosis(img[:])
+			return [row, col, krt, hist...]
+		end
+		return [row, col, 0, zeros(21)...]
 	end
-	img_adj /= adj_count
-	fn = joinpath(RAW_DIR_PATH, "adjustment_image.txt")
-	writedlm(fn, img_adj)
+
+	dir = joinpath("/media/tmacrina/Data/AIBS_actual_trial/Dropbox (MIT)/", "$k")
+	files = readdir(dir)
+	j = findfirst(i -> contains(i, "trackem"), files)
+	stats = []
+	if j > 0
+		trakem_fn = files[j]
+		suffix = string("_sec", @sprintf("%05d", k))
+		meta_fn = joinpath(RAW_DIR, string("meta", suffix, ".txt"))
+		if !isfile(meta_fn)
+			build_AIBS_actual_meta(joinpath(dir, trakem_fn), k)
+		end
+		meta = readdlm(meta_fn)
+
+		samples = rand(1:size(meta,1), N)
+		stats = pmap(calculate_stats, samples, repeated(dir), repeated(meta), repeated(N)) 
+		stats = hcat(stats...)'
+		stats_fn = joinpath(RAW_DIR, string("stats", suffix, ".txt"))
+		writedlm(stats_fn, stats)
+		return stats
+	end
 end
 
-function import_AIBS_pilot_v1(construct=false)
-	meta_fn = joinpath(RAW_DIR_PATH, "2342516R01_ribbonordered.txt")
+function is_AIBS_actual_resin(img)
+	dist = nquantile(img[:], 20)
+	return dist[2] > 0.75
+end
+
+function build_AIBS_actual_bias(meta, dir, suffix="")
+	
+	function read(fn)
+		return Array{Float64, 2}(Images.load(fn).data')
+	end
+
+	function load_images(i, dir, meta)
+		println("Compiling meta $i")
+		fn = joinpath(dir, meta[i,1])
+		if isfile(fn)
+			img = read(fn)
+			return img, !is_AIBS_actual_resin(img)
+		end
+		return Array{Float64,2}(), false
+	end
+
+	println("Constructing bias adjustment image")
+	samples = rand(1:size(meta,1), 50)
+	results = pmap(load_images, samples, repeated(dir), repeated(meta))
+	imgs = [i[1] for i in results]
+	tissue = [i[2] for i in results]
+	bias = sum(imgs[tissue .== true]) / sum(tissue)
+	bias[bias .== 0] = 1e-5
+	f = h5open(joinpath(RAW_DIR, string("bias", suffix, ".h5")), "w")
+	f["img"] = bias
+	close(f)
+end
+
+function build_AIBS_actual_adjustment(meta, dir, suffix, n=20)
+	println("Constructing bias adjusted histogram")
+
+	adj_fn = joinpath(RAW_DIR, string("adj", suffix, ".txt"))
+	intensities = Array{Float64,1}()
+
+	bias_fn = joinpath(RAW_DIR, string("bias", suffix, ".h5"))
+	if !isfile(bias_fn)
+		build_AIBS_actual_bias(meta, dir, suffix)
+	end
+	bias = h5read(bias_fn, "img")
+	bias_mean = mean(bias)
+
+	function read(fn)
+		return Array{Float64, 2}(Images.load(fn).data')
+	end
+
+	function compile_images(i, dir, meta, bias, bias_mean)
+		println("Compiling meta $i")
+		fn = joinpath(dir, meta[i,1])
+		if isfile(fn)
+			img = read(fn)
+			if !is_AIBS_actual_resin(img)
+				img = (img ./ bias) * bias_mean
+				return img[:]
+			end
+		end
+		return Array{Float64,1}()
+	end
+
+	samples = rand(1:size(meta,1), 30)
+	intensities = pmap(compile_images, samples, repeated(dir), repeated(meta), repeated(bias), repeated(bias_mean)) 
+	println("Calculating intensity histogram...")
+	distr = nquantile(vcat(intensities...), n)
+	println(distr)
+	writedlm(adj_fn, distr)
+end
+
+function build_AIBS_actual_meta(meta_fn, k)
 	meta = readdlm(meta_fn)
-	meta_new_fn = joinpath(RAW_DIR_PATH, "meta.txt")
+	suffix = string("_sec", @sprintf("%05d", k))
+	meta_new_fn = joinpath(RAW_DIR, string("meta", suffix, ".txt"))
 
 	# cleanup meta text file
 	path = meta[:,1]
-	path_split = map(split, path, repeated("\\"))
-	path_grid = [i[1] for i in path_split]
-	path_subdir = [i[2] for i in path_split]
-	path_old_fn = [i[3] for i in path_split]
-	path = [joinpath(a,b,c) for (a,b,c) in zip(path_grid, path_subdir, path_old_fn)]
-	path_old_fn_no_ext = [split(i, ".")[1] for i in path_old_fn]
-	col = [parse(split(i, "-")[2])+1 for i in path_old_fn_no_ext]
-	row = [parse(split(i, "-")[3])+1 for i in path_old_fn_no_ext]
-	sec = meta[:,4]+1
+	path_no_ext = [split(i, ".")[1] for i in path]
+	col = [parse(split(i, "_")[9])+1 for i in path_no_ext]
+	row = [parse(split(i, "_")[10])+1 for i in path_no_ext]
+	sec = [k+1 for i in path_no_ext]
 	# string("Tile_r", index[3], "-c", index[4], "_S2-W00", index[1], "_sec", index[2])
 	# path_new_fn = [string("Tile_r", @sprintf("%02d", i), "-c", @sprintf("%02d", j), "_S2-W001_sec", @sprintf("%04d", k), ".h5") for (i,j,k) in zip(row, col, sec)]
-	path_new_fn = [string("Tile_r",i, "-c", j, "_S2-W001_sec", k, ".h5") for (i,j,k) in zip(row, col, sec)]
-	meta = hcat(meta, [path path_new_fn row col])
+	path_new_fn = [string("Tile_r", r, "-c", c, "_S2-W001_sec", s, ".h5") for (r,c,s) in zip(row, col, sec)]
+	meta = hcat(meta, [path_new_fn row col sec])
 	writedlm(meta_new_fn, meta)
+end
 
-	function read(fn)
-		return Array{Float64, 2}(Images.load(fn).data')
-	end
+function import_AIBS_actual(k; reset=false)
+	dir = joinpath("/media/tmacrina/Data/AIBS_actual_trial/Dropbox (MIT)/", "$k")
+	files = readdir(dir)
+	j = findfirst(i -> contains(i, "trackem"), files)
+	if j > 0
+		trakem_fn = files[j]
+		suffix = string("_sec", @sprintf("%05d", k))
+		meta_fn = joinpath(RAW_DIR, string("meta", suffix, ".txt"))
+		if !isfile(meta_fn) || reset
+			build_AIBS_actual_meta(joinpath(dir, trakem_fn), k)
+		end
+		meta = readdlm(meta_fn)
 
-	function auto_adjust(img)
-		distr = nquantile(img[:], 16)
-		minval = distr[2]; maxval = distr[16];
-		return min(1, max(0, (img-minval) / (maxval-minval)))
-	end
+		bias_fn = joinpath(RAW_DIR, string("bias", suffix, ".h5"))
+		if !isfile(bias_fn) || reset
+			build_AIBS_actual_bias(meta, dir, suffix)
+		end
+		bias = h5read(bias_fn, "img")
+		bias_mean = mean(bias)
 
-	if construct
-		construct_adjustment_image(meta)
-	end
-	fn = joinpath(RAW_DIR_PATH, "adjustment_image.txt")
-	img_adj = Array{Float64, 2}(readdlm(fn))
+		adj_fn = joinpath(RAW_DIR, string("adj", suffix, ".txt"))
+		if !isfile(adj_fn) || reset
+			build_AIBS_actual_adjustment(meta, dir, suffix)
+		end
+		adj = readdlm(adj_fn)
+		minval = adj[2]
+		maxval = adj[length(adj)-1]
 
-	for i in 1:size(meta, 1)
-		if 9 < meta[i,4]+1 < 13
-			old_filepath = joinpath(RAW_DIR_PATH, meta[i,5])
-			new_filepath = joinpath(RAW_DIR_PATH, meta[i,6])
-			index = (1, meta[i,4]+1, meta[i,7], meta[i,8])
+		function read(fn)
+			return Array{Float64, 2}(Images.load(fn).data')
+		end
+
+		function bias_correction(img, bias, bias_mean)
+			return (img ./ bias) * bias_mean
+		end
+
+		function auto_adjust(img, minval, maxval) #, n=20)
+			# distr = nquantile(img[:], n)
+			# minval = distr[2]; maxval = distr[n];
+			return min(1, max(0, (img-minval) / (maxval-minval)))
+		end
+
+		function convert_float64_to_uint8(img)
+			return Array{UInt8, 2}(round(UInt8, img * 255))
+		end
+
+		function correct_and_save(i, dir, meta, bias, bias_mean, minval, maxval)
+			println("# $i / ", size(meta,1))
+			old_fn = joinpath(dir, meta[i,1])
+			new_fn = joinpath(RAW_DIR, meta[i,5])
+			index = (1, meta[i,8], meta[i,6], meta[i,7])
 			offset = [meta[i,3], meta[i,2]]
 
-			println(old_filepath)
-			img = auto_adjust(read(old_filepath) ./ img_adj)
-			img = Array{UInt8, 2}(round(UInt8, img * 255))
-			#f = h5open(joinpath(to, import_frame_tif_to_wafer_section_h5(tif, wafer_num, sec_num)), "w")
-			f = h5open(new_filepath, "w")
-			#    	chunksize = div(min(size(img)...), 4);
-			chunksize = 1000;
-			@time f["img", "chunk", (chunksize,chunksize)] = img
-			close(f)
-			update_offset(index, offset, [size(img)...])
-		end		
+			println(old_fn)
+			if isfile(old_fn) # && !isfile(new_fn)
+				img = read(old_fn)
+				if !is_AIBS_actual_resin(img)
+					img = bias_correction(img, bias, bias_mean)
+					img = auto_adjust(img, minval, maxval)
+					img = convert_float64_to_uint8(img)
+					#f = h5open(joinpath(to, import_frame_tif_to_wafer_section_h5(tif, wafer_num, sec_num)), "w")
+					f = h5open(new_fn, "w")
+					#    	chunksize = div(min(size(img)...), 4);
+					chunksize = 1000;
+					@time f["img", "chunk", (chunksize,chunksize)] = img
+					close(f)
+					update_offset(index, offset, [size(img)...])
+					return i, false
+				end
+			end
+			return i, true
+		end
+
+		is_resin = [true for i in 1:size(meta,1)]
+		ignore = pmap(correct_and_save, 1:size(meta,1), repeated(dir), 
+							repeated(meta), repeated(bias), repeated(bias_mean), 
+							repeated(minval), repeated(maxval))
+		indices = [i[1] for i in ignore]
+		ignore = [i[2] for i in ignore]
+		to_ignore = ignore[sortperm(indices)]
+		meta = hcat(meta, to_ignore)
+		writedlm(meta_fn, meta)
 	end
 end
 
-# function import_AIBS_pilot_v2()
-# 	trakem_fn = joinpath(homedir(), "seungmount/research/Julimaps/datasets/AIBS_pilot_v2/234251S6R_01_02_160421_zorder_sectmanifest_columnsappended.txt")
-# 	image_dir = joinpath(homedir(), "seungmount/research/Julimaps/datasets/AIBS_pilot_v2/0_raw")
+function import_AIBS_actual_tile(k, row, col)
+	suffix = string("_sec", @sprintf("%05d", k))
+	meta_fn = joinpath(RAW_DIR, string("meta", suffix, ".txt"))
+	meta = readdlm(meta_fn)
 
-# 	meta = readdlm(trakem_fn)
+end
 
-# 	# cleanup trakem text file
-# 	fn_length = map(length, meta[:,1])
-# 	fn_start = 3
-# 	fn_range = map(range, repeated(fn_start), fn_length-fn_start+1)
-# 	meta[:,1] = map(getindex, meta[:,1], fn_range)
+function reset_offsets(k)
+	dir = joinpath("/media/tmacrina/Data/AIBS_actual_trial/Dropbox (MIT)/", "$k")
+	files = readdir(dir)
+	j = findfirst(i -> contains(i, "trackem"), files)
+	dist = []
+	if j > 0
+		trakem_fn = files[j]
+		suffix = string("_sec", @sprintf("%05d", k))
+		meta_fn = joinpath(RAW_DIR, string("meta", suffix, ".txt"))
+		if !isfile(meta_fn)
+			build_AIBS_actual_meta(joinpath(dir, trakem_fn), k)
+		end
+		meta = readdlm(meta_fn)
 
-# 	# rename files based on ordering
-# 	fn_splits = [split(split(i, ".")[1], "_")[end-1:end] for i in meta[:,1]]
-# 	row = [parse(i[1]) for i in fn_splits]
-# 	col = [parse(i[2]) for i in fn_splits]
-# 	meta = hcat(meta, [row col])
+		for i in 1:size(meta, 1)
+			println("# $i / ", size(meta,1))
+			old_fn = joinpath(dir, meta[i,1])
+			new_fn = joinpath(RAW_DIR, meta[i,5])
+			index = (1, meta[i,8], meta[i,6], meta[i,7])
+			offset = [meta[i,3], meta[i,2]]
+			is_resin = meta[i,8]
 
-# end
+			println(old_fn)
+			if isfile(old_fn) # && !isfile(new_fn)
+				if is_resin
+					update_offset(index, offset, [3840,3840])
+				else
+					println("Not importing - this is resin.")
+				end
+			else
+				println("Does not exist!")
+			end
+		end
+	end
+end
 
 function import_trakem_dir_tifs(src_folder, suffix="_prealigned", dst_folder=src_folder)
 	for tif in sort_dir(src_folder, "tif")

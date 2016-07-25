@@ -194,10 +194,12 @@ function view_match(meshset::MeshSet, match_ind)
   if USE_PYPLOT
     try
       view_inspection_statistics(meshset, match_ind)
+    catch e
+      println("view_inspection_statistics failed:\n$e")
     end
   end
 
-  imgc, img2 = view(img, pixelspacing=[1,1])
+  imgc, img2 = ImageView.view(img, pixelspacing=[1,1])
   # resize(imgc, 400, 600)
   make_vectors!(params)
   show_vectors(imgc, img2, params["vectors"], RGB(0,0,1), RGB(1,0,1))
@@ -221,9 +223,9 @@ function make_vectors!(params)
   match_ind = params["match_index"]
   scale = params["scale"]
   offset = params["offset"]
-  src_points, dst_points, filtered_inds = get_correspondences(meshset, match_ind; globalized = true)
+  src_points, dst_points, filtered_inds = get_correspondences(meshset, match_ind; globalized=true)
   if params["post_matches"]
-    src_points, dst_points, filtered_inds = get_correspondences(meshset, match_ind; globalized = true, use_post = true)
+    src_points, dst_points, filtered_inds = get_correspondences(meshset, match_ind; globalized=true, use_post=true)
   end
   vectorsA = scale_matches(src_points, scale)
   vectorsB = scale_matches(dst_points, scale)
@@ -355,11 +357,11 @@ function view_blockmatch(match, match_ind, params)
   cgrid = canvasgrid(2,3; pad=10)
   opts = Dict(:pixelspacing => [1,1])
 
-  imgc, img2 = view(cgrid[1,1], src; opts...)
-  imgc, img2 = view(cgrid[2,1], dst; opts...)
-  imgc, img2 = view(cgrid[2,2], fused_img; opts...)
-  imgc, img2 = view(cgrid[1,2], xc_color'; opts...)
-  imgc, img2 = view(cgrid[1,3], xc_beta_color'; opts...)
+  imgc, img2 = ImageView.view(cgrid[1,1], src; opts...)
+  imgc, img2 = ImageView.view(cgrid[2,1], dst; opts...)
+  imgc, img2 = ImageView.view(cgrid[2,2], fused_img; opts...)
+  imgc, img2 = ImageView.view(cgrid[1,2], xc_color'; opts...)
+  imgc, img2 = ImageView.view(cgrid[1,3], xc_beta_color'; opts...)
   c = canvas(imgc)
   win = Tk.toplevel(c)
   return win
@@ -940,7 +942,7 @@ function get_random_slice(index::Index, dim=(511,511))
 end
 
 function view_random_slice(index::Index, slice=get_random_slice(index))
-  img = get_slice(get_path(index), slice)
+  img = get_slice(index, slice)
   return ImageView.view(reinterpret(Ufixed8, img))
 end
 

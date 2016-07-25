@@ -142,26 +142,13 @@ end
 datasets_dir_path = "research/Julimaps/datasets" =#
 # cur_dataset = "piriform"
 # cur_dataset = "AIBS_practice_234251S6R_01_01_aligned_01"
+# cur_dataset = "AIBS_actual_trial10_full"
 # cur_dataset = "align_net"
 # cur_dataset = "AIBS_pilot_v1"
 # cur_dataset = "align_net"
 # cur_dataset = "elastic_test_crack"
 # cur_dataset = "elastic_real_crack_with_cropping"
-DATASET = "elastic_real_compression"
-in_alignment_test = false
-# test_dataset = "AIBS_practice_spring_constants"
-# test_dataset = "AIBS_practice_broken_springs"
-# test_dataset = "AIBS_practice_broken_springs_no_bug"
-# test_dataset = "AIBS_practice_broken_springs_spring_constants"
-# test_dataset = "AIBS_practice_broken_springs_fixed_springs"
-# test_dataset = "AIBS_practice_broken_section"
-# test_dataset = "AIBS_practice_broken_section_no_bug"
-# test_dataset = "elastic_test_crack_removed_matches"
-# test_dataset = "elastic_test_crack_broken_springs"
-test_dataset = "elastic_test_crack_removed_matches_broken_springs"
-# test_dataset = "elastic_test_crack_removed_matches_broken_springs_zeros"
-# test_dataset = "elastic_test_crack_removed_matches_broken_springs_finer_mesh"
-#cur_dataset = "zebrafish"
+DATASET = "AIBS_actual_trial10_full"
 affine_dir_path = "~"
 
 function migrate_legacy()
