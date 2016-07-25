@@ -48,7 +48,7 @@ function Cache.put!(cache::FileSystemCacheService, key::AbstractString,
             error("Unable to write to $filename")
         end
 
-        if position(value_io) == value_io.size
+        if typeof(value_io) <: IOBuffer && position(value_io) == value_io.size
             println("wARNING: trying to read from an IOBuffer with current " *
                 "position at the end of the buffer")
         end
@@ -58,8 +58,9 @@ function Cache.put!(cache::FileSystemCacheService, key::AbstractString,
         close(filestream)
         # if there was an error in writing, we should delete the file so it
         # doens't count as being cached
+        showerror(STDERR, e, catch_backtrace(); backtrace = true)
         rm(filename)
-        throw(e)
+        error("Unable to put into cache $key")
     end
 end
 

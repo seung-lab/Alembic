@@ -38,7 +38,7 @@ function run(queue_name, bucket_name, cache_directory, poll_frequency_seconds)
 
     daemon = DaemonService(queue, bucket, datasource, poll_frequency_seconds)
 
-    register!(daemon, "NOOP_TASK", NoOpTaskDetails)
+    register!(daemon, NoOpTask.NAME, NoOpTaskDetails)
 
     Daemon.run(daemon)
 end
