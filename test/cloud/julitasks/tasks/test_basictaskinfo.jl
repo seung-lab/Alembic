@@ -57,17 +57,17 @@ function test_basic_info_empty_base_directory()
     @test_throws ArgumentError BasicTask.Info(dict)
 end
 
-function test_basic_info_no_files()
+function test_basic_info_no_inputs()
     info = make_valid_basic_info()
     dict = JSON.parse(JSON.json(info))
-    delete!(dict, "files")
+    delete!(dict, "inputs")
     @test_throws KeyError BasicTask.Info(dict)
 end
 
-function test_basic_info_empty_files()
+function test_basic_info_empty_inputs()
     info = make_valid_basic_info()
     dict = JSON.parse(JSON.json(info))
-    dict["files"] = []
+    dict["inputs"] = []
     @test_throws ArgumentError BasicTask.Info(dict)
 end
 
@@ -80,26 +80,24 @@ function test_basic_info_info_good()
     @test new_info.id == TEST_ID
     @test new_info.name == TEST_TASK_NAME
     @test new_info.baseDirectory == TEST_BASE_DIRECTORY
-    @test length(new_info.files) == length(TEST_FILES)
-    for index in 1:length(TEST_FILES)
-        @test new_info.files[index] == TEST_FILES[index]
+    @test length(new_info.inputs) == length(TEST_INPUTS)
+    for index in 1:length(TEST_INPUTS)
+        @test new_info.inputs[index] == TEST_INPUTS[index]
     end
 end
 
 function __init__()
     test_basic_info_no_id()
-#=
- =    test_basic_info_empty_id()
- =    test_basic_info_bad_id()
- =    test_basic_info_no_name()
- =    test_basic_info_empty_name()
- =    test_basic_info_no_base_directory()
- =    test_basic_info_empty_base_directory()
- =    test_basic_info_no_files()
- =    test_basic_info_empty_files()
- =
- =    test_basic_info_info_good()
- =#
+    test_basic_info_empty_id()
+    test_basic_info_bad_id()
+    test_basic_info_no_name()
+    test_basic_info_empty_name()
+    test_basic_info_no_base_directory()
+    test_basic_info_empty_base_directory()
+    test_basic_info_no_inputs()
+    test_basic_info_empty_inputs()
+
+    test_basic_info_info_good()
 end
 
 end # module TestBasicTaskInfo

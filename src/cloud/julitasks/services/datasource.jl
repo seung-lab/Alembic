@@ -2,43 +2,51 @@ module Datasource
 
 using ...Julitasks.Types
 
-export pull!, push!
+export get, put
 
 """
-    pull!(datasource::DatasourceService, key::AbstractString; force::Bool=false)
+    get(datasource::DatasourceService, key::AbstractString; force::Bool=false)
 
-Pull in input from datasource.
+Get in input from datasource.
 """
-function pull!(datasource::DatasourceService, key::AbstractString; force::Bool=false)
-    error("pull! is not implemented for $datasource")
-end
-
-"""
-    pull!(datasource::DatasourceService, key::Array{AbstractString, 1};
-
-Pull in multiple inputs from datasource.
-"""
-function pull!(datasource::DatasourceService, key::Array{AbstractString, 1};
+function get(datasource::DatasourceService, key::AbstractString;
         force::Bool=false)
-    error("pull! is not implemented for $datasource")
+    error("get is not implemented for $datasource")
 end
 
 """
-    push!(datasource::DatasourceService, key::AbstractString)
+    get{String <: AbstractString}(datasource::DatasourceService,
+        key::Array{AbstractString, 1};
 
-Push the output we have in our datasource out
+Get in multiple inputs from datasource.
 """
-function push!(datasource::DatasourceService, key::AbstractString)
-    error("push! is not implemented for $datasource")
+# Using parametrics because as of 0.4.6 can not promote Array{ASCIIString, 1}
+# to Array{AbstractString, 1}
+function get{String <: AbstractString}(datasource::DatasourceService,
+        key::Array{String, 1}; force::Bool=false)
+    error("get is not implemented for $datasource")
 end
 
 """
-    push!(datasource::DatasourceService, key::AbstractString)
+    put!(datasource::DatasourceService, key::AbstractString)
 
-Push multiple outputs we have in our datasource out
+Put the output we have in our datasource out
 """
-function push!(datasource::DatasourceService, key::Array{AbstractString, 1})
-    error("push! is not implemented for $datasource")
+function put!(datasource::DatasourceService, key::AbstractString)
+    error("put! is not implemented for $datasource")
+end
+
+"""
+    put!{String <: AbstractString}(datasource::DatasourceService,
+        key::AbstractString)
+
+Put multiple outputs we have in our datasource out
+"""
+# Using parametrics because as of 0.4.6 can not promote Array{ASCIIString, 1}
+# to Array{AbstractString, 1}
+function put!{String <: AbstractString}(datasource::DatasourceService,
+        key::Array{String, 1})
+    error("put! is not implemented for $datasource")
 end
 
 end # module Datasource

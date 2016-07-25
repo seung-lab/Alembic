@@ -43,8 +43,9 @@ function check_reachable(bucket_name::AbstractString)
     return true
 end
 
-function Bucket.download(bucket::AWSCLIBucketService, remote_file::ASCIIString,
-    local_file::Union{ASCIIString, IO, Void}=nothing)
+function Bucket.download(bucket::AWSCLIBucketService,
+    remote_file::AbstractString,
+    local_file::Union{AbstractString, IO, Void}=nothing)
 
     if isa(local_file, ASCIIString)
         local_file = open(local_file, "w")
@@ -73,9 +74,9 @@ function Bucket.download(bucket::AWSCLIBucketService, remote_file::ASCIIString,
 end
 
 function Bucket.upload(bucket::AWSCLIBucketService,
-        local_file::Union{ASCIIString, IO}, remote_file::ASCIIString)
+        local_file::Union{AbstractString, IO}, remote_file::AbstractString)
 
-    if isa(local_file, ASCIIString)
+    if isa(local_file, AbstractString)
         local_file = open(local_file, "r")
     end
 

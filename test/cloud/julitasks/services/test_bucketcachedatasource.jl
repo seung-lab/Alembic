@@ -8,7 +8,7 @@ import Julimaps.Cloud.Julitasks.Services.Bucket
 import Julimaps.Cloud.Julitasks.Services.Cache
 import Julimaps.Cloud.Julitasks.Services.Datasource
 
-function test_pull_empty_cache()
+function test_get_empty_cache()
     key = "somekey"
 
     bucket_text = "mock contents"
@@ -24,7 +24,7 @@ function test_pull_empty_cache()
 
     datasource = BucketCacheDatasourceService(bucket, cache)
 
-    Datasource.pull!(datasource, key)
+    Datasource.get(datasource, key)
 
     @test haskey(cache.mockValues, key)
     new_cache_value = cache.mockValues[key]
@@ -32,7 +32,7 @@ function test_pull_empty_cache()
     @test readchomp(new_cache_value) == bucket_text 
 end
 
-function test_pull_multi_empty_cache()
+function test_get_multi_empty_cache()
     key = "somekey"
     bucket_text = "mock contents"
     bucket_file = IOBuffer(bucket_text)
@@ -54,8 +54,7 @@ function test_pull_multi_empty_cache()
 
     datasource = BucketCacheDatasourceService(bucket, cache)
 
-    Datasource.pull!(datasource, convert(Array{AbstractString, 1},
-        [key, key2]))
+    Datasource.get(datasource, [key, key2])
 
     @test haskey(cache.mockValues, key)
     new_cache_value = cache.mockValues[key]
@@ -68,7 +67,7 @@ function test_pull_multi_empty_cache()
     @test readchomp(new_cache_value2) == bucket_text2
 end
 
-function  test_pull_with_cache()
+function test_get_with_cache()
     key = "somekey"
 
     bucket_text = "mock contents"
@@ -87,7 +86,7 @@ function  test_pull_with_cache()
     cache = MockCacheService(cache_values)
     datasource = BucketCacheDatasourceService(bucket, cache)
 
-    Datasource.pull!(datasource, key)
+    Datasource.get(datasource, key)
 
     @test haskey(cache.mockValues, key)
     new_cache_io = cache.mockValues[key]
@@ -95,7 +94,7 @@ function  test_pull_with_cache()
     @test readchomp(new_cache_io) == cache_text
 end
 
-function  test_pull_no_bucket()
+function test_get_no_bucket()
     key = "somekey"
 
     bucket_files = Dict()
@@ -105,10 +104,10 @@ function  test_pull_no_bucket()
     cache = MockCacheService(cache_values)
     datasource = BucketCacheDatasourceService(bucket, cache)
 
-    @test_throws Exception Datasource.pull!(datasource, key)
+    @test_throws Exception Datasource.get(datasource, key)
 end
 
-function test_force_pull_empty_cache()
+function test_force_get_empty_cache()
     key = "somekey"
 
     bucket_text = "mock contents"
@@ -124,7 +123,7 @@ function test_force_pull_empty_cache()
 
     datasource = BucketCacheDatasourceService(bucket, cache)
 
-    Datasource.pull!(datasource, key; force=true)
+    Datasource.get(datasource, key; force=true)
 
     @test haskey(cache.mockValues, key)
     new_cache_value = cache.mockValues[key]
@@ -132,7 +131,7 @@ function test_force_pull_empty_cache()
     @test readchomp(new_cache_value) == bucket_text 
 end
 
-function  test_force_pull_with_cache()
+function test_force_get_with_cache()
     key = "somekey"
 
     bucket_text = "mock contents"
@@ -151,7 +150,7 @@ function  test_force_pull_with_cache()
     cache = MockCacheService(cache_values)
     datasource = BucketCacheDatasourceService(bucket, cache)
 
-    Datasource.pull!(datasource, key; force=true)
+    Datasource.get(datasource, key; force=true)
 
     @test haskey(cache.mockValues, key)
     new_cache_io = cache.mockValues[key]
@@ -159,7 +158,7 @@ function  test_force_pull_with_cache()
     @test readchomp(new_cache_io) == bucket_text
 end
 
-function test_push()
+function test_put()
     key = "somekey"
 
     bucket_text = "mock contents"
@@ -178,17 +177,17 @@ function test_push()
     cache = MockCacheService(cache_values)
     datasource = BucketCacheDatasourceService(bucket, cache)
 
-    result = Datasource.push!(datasource, key)
+    result = Datasource.put!(datasource, key)
 
     @test result == true
 
     @test haskey(bucket.mockFiles, key)
     bucket_file = bucket.mockFiles[key]
-    # pushing back to bucket with new cached file updates bucket
+    # puting back to bucket with new cached file updates bucket
     @test readchomp(bucket_file) == cache_text
 end
 
-function test_push_multi()
+function test_put_multi()
     key = "somekey"
 
     bucket_text = "mock contents"
@@ -207,17 +206,17 @@ function test_push_multi()
     cache = MockCacheService(cache_values)
     datasource = BucketCacheDatasourceService(bucket, cache)
 
-    result = Datasource.push!(datasource, key)
+    result = Datasource.put!(datasource, key)
 
     @test result == true
 
     @test haskey(bucket.mockFiles, key)
     bucket_file = bucket.mockFiles[key]
-    # pushing back to bucket with new cached file updates bucket
+    # puting back to bucket with new cached file updates bucket
     @test readchomp(bucket_file) == cache_text
 end
 
-function  test_push_not_exist()
+function test_put_not_exist()
     key = "somekey"
 
     bucket_text = "mock contents"
@@ -232,27 +231,27 @@ function  test_push_not_exist()
     cache = MockCacheService(cache_values)
     datasource = BucketCacheDatasourceService(bucket, cache)
 
-    result = Datasource.push!(datasource, key)
+    result = Datasource.put!(datasource, key)
 
     @test result == false
 
     @test haskey(bucket.mockFiles, key)
     bucket_file = bucket.mockFiles[key]
-    # pushing back to bucket when not existing in cache does not modify bucket
+    # puting back to bucket when not existing in cache does not modify bucket
     @test readchomp(bucket_file) == bucket_text
 end
 
 function __init__()
-    test_pull_empty_cache()
-    test_pull_multi_empty_cache()
-    test_pull_with_cache()
-    test_pull_no_bucket()
-    test_force_pull_empty_cache()
-    test_force_pull_with_cache()
+    test_get_empty_cache()
+    test_get_multi_empty_cache()
+    test_get_with_cache()
+    test_get_no_bucket()
+    test_force_get_empty_cache()
+    test_force_get_with_cache()
 
-    test_push()
-    test_push_multi()
-    test_push_not_exist()
+    test_put()
+    test_put_multi()
+    test_put_not_exist()
 end
 
 end # module TestDatasource

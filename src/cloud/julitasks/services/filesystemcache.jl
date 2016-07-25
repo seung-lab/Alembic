@@ -34,7 +34,8 @@ function create_path(full_path_file_name::AbstractString)
 end
 
 function Cache.exists(cache::FileSystemCacheService, key::AbstractString)
-    return isfile(to_filename(cache, key))
+    filename = to_filename(cache, key)
+    return isfile(filename) && isreadable(filename)
 end
 
 function Cache.put!(cache::FileSystemCacheService, key::AbstractString,

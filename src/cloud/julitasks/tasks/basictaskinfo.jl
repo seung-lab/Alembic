@@ -12,7 +12,7 @@ type Info
     id::Int64
     name::AbstractString
     baseDirectory::AbstractString
-    files::Array{AbstractString, 1}
+    inputs::Array{AbstractString, 1}
 end
 
 function Info(dict::Dict{AbstractString, Any})
@@ -31,13 +31,13 @@ function Info(dict::Dict{AbstractString, Any})
         throw(ArgumentError("Payload does not include a baseDirectory"))
     end
 
-    # parse file list
-    if typeof(dict["files"]) != Array{Any, 1} ||
-            length(dict["files"]) == 0
-        throw(ArgumentError("Payload does not include a file list"))
+    # parse input list
+    if typeof(dict["inputs"]) != Array{Any, 1} ||
+            length(dict["inputs"]) == 0
+        throw(ArgumentError("Payload does not include a input list"))
     end
 
-    return Info(id, dict["name"], dict["baseDirectory"], dict["files"])
+    return Info(id, dict["name"], dict["baseDirectory"], dict["inputs"])
 end
 
 end # module BasicTask

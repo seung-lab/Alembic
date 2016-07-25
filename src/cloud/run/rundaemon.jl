@@ -66,7 +66,7 @@ end
 #Run main!
 function __init__()
     #=run_config = parse_args()=#
-    run_config = RunConfig("test-queue2", "seunglab-alignment", "/var/tmp/", 20)
+    run_config = RunConfig("test-queue3", "seunglab-alignment", "/var/tmp/", 20)
     run(run_config.queue_name, run_config.bucket_name,
         run_config.cache_directory, run_config.poll_frequency_seconds)
 end

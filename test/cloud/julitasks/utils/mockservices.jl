@@ -72,21 +72,21 @@ end
 export MockDatasourceService
 type MockDatasourceService <: DatasourceService
 end
-function Datasource.pull!(datasource::MockDatasourceService,
-        keys::Array{AbstractString, 1})
-    println("pulling $keys")
+function Datasource.get{String <: AbstractString}(
+        datasource::MockDatasourceService, keys::Array{String, 1})
+    println("getting $keys")
 end
-function Datasource.pull!(datasource::MockDatasourceService,
+function Datasource.get(datasource::MockDatasourceService,
         key::AbstractString)
-    println("pulling $key")
+    println("getting $key")
 end
-function Datasource.push!(datasource::MockDatasourceService,
-        keys::Array{AbstractString, 1})
-    println("pushing $keys")
+function Datasource.put!{String <: AbstractString}(
+        datasource::MockDatasourceService, keys::Array{String, 1})
+    println("putting $keys")
 end
-function Datasource.push!(datasource::MockDatasourceService,
+function Datasource.put!(datasource::MockDatasourceService,
         key::AbstractString)
-    println("pushing $key")
+    println("putting $key")
 end
 
 end # module MockServices
