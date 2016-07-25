@@ -47,11 +47,11 @@ function Cache.put!(cache::FileSystemCacheService, key::AbstractString,
         error("Unable to write to $filename")
     end
 
-    if typeof(value_io) <: IOBuffer
-        write(filestream, takebuf_array(value_io))
-    else
-        write(filestream, readall(value_io))
+    if position(value_io) == value_io.size
+        println("wARNING: trying to read from an IOBuffer with current " *
+            "position at the end of the buffer")
     end
+    write(filestream, readbytes(value_io))
     close(filestream)
 end
 

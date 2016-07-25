@@ -194,9 +194,9 @@ function test_put_no_value()
     @test result
 
     @test haskey(bucket.mockFiles, key)
-    bucket_file = bucket.mockFiles[key]
+    new_bucket_file = bucket.mockFiles[key]
     # putting back to bucket with new cached file updates bucket
-    @test readchomp(bucket_file) == cache_text
+    @test readchomp(new_bucket_file) == cache_text
 end
 
 function test_put_multi_no_value()
@@ -208,7 +208,7 @@ function test_put_multi_no_value()
 
     key2 = "somekey2"
 
-    bucket_text2 = "mock contents"
+    bucket_text2 = "mock contents2"
     bucket_file2 = IOBuffer(bucket_text2)
     seekstart(bucket_file2)
 
@@ -238,14 +238,14 @@ function test_put_multi_no_value()
     @test result2
 
     @test haskey(bucket.mockFiles, key1)
-    bucket_file1 = bucket.mockFiles[key1]
+    new_bucket_file1 = bucket.mockFiles[key1]
     # putting back to bucket with new cached file updates bucket
-    @test readchomp(bucket_file1) == cache_text1
+    @test readchomp(new_bucket_file1) == cache_text1
 
     @test haskey(bucket.mockFiles, key2)
-    bucket_file2 = bucket.mockFiles[key2]
+    new_bucket_file2 = bucket.mockFiles[key2]
     # putting back to bucket with new cached file updates bucket
-    @test readchomp(bucket_file2) == cache_text2
+    @test readchomp(new_bucket_file2) == cache_text2
 end
 
 function test_put_not_exist_no_value()
@@ -268,9 +268,9 @@ function test_put_not_exist_no_value()
     @test !result
 
     @test haskey(bucket.mockFiles, key)
-    bucket_file = bucket.mockFiles[key]
+    new_bucket_file = bucket.mockFiles[key]
     # putting back to bucket when not existing in cache does not modify bucket
-    @test readchomp(bucket_file) == bucket_text
+    @test readchomp(new_bucket_file) == bucket_text
 end
 
 function test_put_new_value()
@@ -294,16 +294,21 @@ function test_put_new_value()
 
     new_text = "new value"
     new_value = IOBuffer(new_text)
+    seekstart(new_value)
     result = Datasource.put!(datasource, key, new_value)
 
     @test result == true
 
     @test haskey(bucket.mockFiles, key)
-    @test haskey(cache.mockValues, key)
     new_bucket_file = bucket.mockFiles[key]
-    new_cache_value = cache.mockValues[key]
+    seekstart(new_bucket_file)
     # putting with new value changes both bucket and cache
     @test readchomp(new_bucket_file) == new_text
+
+    @test haskey(cache.mockValues, key)
+    new_cache_value = cache.mockValues[key]
+    seekstart(new_cache_value)
+    # putting with new value changes both bucket and cache
     @test readchomp(new_cache_value) == new_text
 end
 
@@ -316,7 +321,7 @@ function test_put_multi_new_value()
 
     key2 = "somekey2"
 
-    bucket_text2 = "mock contents"
+    bucket_text2 = "mock contents2"
     bucket_file2 = IOBuffer(bucket_text2)
     seekstart(bucket_file2)
 
@@ -342,11 +347,12 @@ function test_put_multi_new_value()
 
     new_text1 = "new value1"
     new_value1 = IOBuffer(new_text1)
+    seekstart(new_value1)
 
     new_text2 = "new value2"
     new_value2 = IOBuffer(new_text2)
+    seekstart(new_value2)
 
-    println("HERE")
     (result1, result2) = Datasource.put!(datasource, [key1, key2],
         [new_value1, new_value2])
 
@@ -354,19 +360,27 @@ function test_put_multi_new_value()
     @test result2
 
     @test haskey(bucket.mockFiles, key1)
-    @test haskey(cache.mockValues, key1)
     new_bucket_file1 = bucket.mockFiles[key1]
-    new_cache_io1 = cache.mockValues[key1]
+    seekstart(new_bucket_file1)
     # putting with new value changes both bucket and cache
-    @test readchomp(bucket_file1) == new_text1
+    @test readchomp(new_bucket_file1) == new_text1
+
+    @test haskey(cache.mockValues, key1)
+    new_cache_io1 = cache.mockValues[key1]
+    seekstart(new_cache_io1)
+    # putting with new value changes both bucket and cache
     @test readchomp(new_cache_io1) == new_text1
 
     @test haskey(bucket.mockFiles, key2)
-    @test haskey(cache.mockValues, key2)
-    bucket_file2 = bucket.mockFiles[key2]
-    new_cache_io2 = cache.mockValues[key2]
+    new_bucket_file2 = bucket.mockFiles[key2]
+    seekstart(new_bucket_file2)
     # putting with new value changes both bucket and cache
-    @test readchomp(bucket_file2) == new_text2
+    @test readchomp(new_bucket_file2) == new_text2
+
+    @test haskey(cache.mockValues, key2)
+    new_cache_io2 = cache.mockValues[key2]
+    seekstart(new_cache_io2)
+    # putting with new value changes both bucket and cache
     @test readchomp(new_cache_io2) == new_text2
 end
 
@@ -387,14 +401,15 @@ function test_put_not_exist_new_value()
 
     new_text = "new value"
     new_value = IOBuffer(new_text)
+    seekstart(new_value)
     result = Datasource.put!(datasource, key, new_value)
 
     @test result
 
     @test haskey(bucket.mockFiles, key)
-    bucket_file = bucket.mockFiles[key]
+    new_bucket_file = bucket.mockFiles[key]
     # even if the value doesn't exist in cache, the new_text should be used
-    @test readchomp(bucket_file) == new_text
+    @test readchomp(new_bucket_file) == new_text
 end
 
 function test_put_multi_new_value_only_cache()
@@ -406,7 +421,7 @@ function test_put_multi_new_value_only_cache()
 
     key2 = "somekey2"
 
-    bucket_text2 = "mock contents"
+    bucket_text2 = "mock contents2"
     bucket_file2 = IOBuffer(bucket_text2)
     seekstart(bucket_file2)
 
@@ -432,9 +447,11 @@ function test_put_multi_new_value_only_cache()
 
     new_text1 = "new value1"
     new_value1 = IOBuffer(new_text1)
+    seekstart(new_value1)
 
     new_text2 = "new value2"
     new_value2 = IOBuffer(new_text2)
+    seekstart(new_value2)
 
     (result1, result2) = Datasource.put!(datasource, [key1, key2],
         [new_value1, new_value2]; only_cache=true)
@@ -446,14 +463,14 @@ function test_put_multi_new_value_only_cache()
     new_bucket_file1 = bucket.mockFiles[key1]
     new_cache_io1 = cache.mockValues[key1]
     # putting with new value changes both bucket and cache
-    @test readchomp(bucket_file1) == bucket_text1
+    @test readchomp(new_bucket_file1) == bucket_text1
     @test readchomp(new_cache_io1) == new_text1
 
     @test haskey(bucket.mockFiles, key2)
-    bucket_file2 = bucket.mockFiles[key2]
+    new_bucket_file2 = bucket.mockFiles[key2]
     new_cache_io2 = cache.mockValues[key2]
     # putting with new value changes both bucket and cache
-    @test readchomp(bucket_file2) == bucket_text2
+    @test readchomp(new_bucket_file2) == bucket_text2
     @test readchomp(new_cache_io2) == new_text2
 
 end

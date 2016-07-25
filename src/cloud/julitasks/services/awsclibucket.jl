@@ -85,9 +85,15 @@ function Bucket.upload(bucket::AWSCLIBucketService,
     # ugh julia doesn't support piping directly to IOBuffers yet
     #=https://github.com/JuliaLang/julia/issues/14437=#
     if typeof(local_file) <: IOBuffer
+
+        if position(local_file) == local_file.size
+            println("wARNING: trying to read from an IOBuffer with current " *
+                "position at the end of the buffer")
+        end
+
         (s3_input, process) = open(upload_cmd, "w")
         # manually read from buffer and write to stream
-        write(s3_input, takebuf_array(local_file))
+        write(s3_input, readbytes(local_file))
         close(s3_input)
     else
         # open the cmd in write mode. this automatically takes the 2nd arg

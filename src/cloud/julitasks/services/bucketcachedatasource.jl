@@ -52,12 +52,8 @@ function Datasource.put!(datasource::BucketCacheDatasourceService,
         key::AbstractString, new_value::Union{IO, Void}=nothing;
         only_cache::Bool=false)
     if new_value != nothing
-        println("Putting in cache")
+        seekstart(new_value)
         Cache.put!(datasource.cache, key, new_value)
-    else
-
-
-        println(" nOT Putting in cache")
     end
 
     if !Cache.exists(datasource.cache, key)
@@ -65,8 +61,6 @@ function Datasource.put!(datasource::BucketCacheDatasourceService,
     end
 
     if !only_cache
-        #=println("uploading to bucket=#
-        #=$(takebuf_string(Cache.get(datasource.cache, key)))")=#
         Bucket.upload(datasource.remote,
             Cache.get(datasource.cache, key), key)
     end
