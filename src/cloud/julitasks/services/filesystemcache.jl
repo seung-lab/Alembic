@@ -43,16 +43,24 @@ function Cache.put!(cache::FileSystemCacheService, key::AbstractString,
     filename = to_filename(cache, key)
     create_path(filename)
     filestream = open(filename, "w")
-    if !iswritable(filestream)
-        error("Unable to write to $filename")
-    end
+    try
+        if !iswritable(filestream)
+            error("Unable to write to $filename")
+        end
 
-    if position(value_io) == value_io.size
-        println("wARNING: trying to read from an IOBuffer with current " *
-            "position at the end of the buffer")
+        if position(value_io) == value_io.size
+            println("wARNING: trying to read from an IOBuffer with current " *
+                "position at the end of the buffer")
+        end
+        write(filestream, readbytes(value_io))
+        close(filestream)
+    catch e
+        close(filestream)
+        # if there was an error in writing, we should delete the file so it
+        # doens't count as being cached
+        rm(filename)
+        throw(e)
     end
-    write(filestream, readbytes(value_io))
-    close(filestream)
 end
 
 function Cache.get(cache::FileSystemCacheService, key::AbstractString)
