@@ -260,6 +260,49 @@ function get_parent(meshset::MeshSet)
   return parent
 end
 
+function split_meshset(meshset::MeshSet)
+	for mesh in meshset.meshes
+	  save(mesh);
+	end
+	for match in meshset.matches
+	  save(match)
+	end
+end
+
+function compile_meshset(first_index::Index, last_index::Index)
+  meshes = Array{Mesh, 1}()
+  matches = Array{Match, 1}()
+  inds = get_index_range(first_index, last_index);
+  println("Compiling MeshSet between $first_index and $last_index - $(length(inds)) meshes expected")
+  for ind in inds
+    if isfile(get_path(Mesh, ind)) push!(meshes, load(Mesh, ind)); end
+  end
+  for ind in inds
+    for dst_ind in inds
+      if isfile(get_path(Match, (ind, dst_ind))) push!(matches, load(Match, (ind, dst_ind))) end
+    end
+  end
+
+  println("$(length(meshes)) meshes found...")
+  if length(meshes) == 0 println("no meshes exist between the requested indices - aborting...."); return nothing end
+  if length(meshes) != length(inds) println("not all meshes exist between requested indices - continuing anyway...") end
+  if |(map(is_fixed, meshes)...) println("there are fixed meshes among the requested meshes - continuing anyway...") end
+  println("$(length(matches)) matches found...")
+
+  if length(matches) == 0 println("no matches exist between requested indices - continuing anyway...") end
+
+  sort!(meshes; by=get_index)
+  sort!(matches; by=get_dst_index)
+  sort!(matches; by=get_src_index)
+
+  ms = MeshSet();
+  ms.meshes = meshes;
+  ms.matches = matches;
+  ms.properties = Dict{Any, Any}("author" => author(), "meta" => Dict{Any, Any}("parent" => nothing, "split_index" => 0), "params" => deepcopy(meshes[1].properties["params"]))
+
+  return ms;
+end
+  #=
 ### splitting
 function split_meshset(meshset::MeshSet)
 	parent_name = get_name(meshset)
@@ -278,7 +321,7 @@ function split_meshset(meshset::MeshSet)
 		println("Child ", i, " / ", count_matches(meshset), " saved");
 	end
 end
-
+=#
 function concat_meshset(parent_name)
 	ms = MeshSet();
 	for i in 1:count_children(parent_name)

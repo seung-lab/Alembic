@@ -42,11 +42,11 @@ end
 function get_src_and_dst_indices(match::Match)
   return match.src_index, match.dst_index
 end
-
+#=
 function get_name(match::Match)
 	return join(get_src_and_dst_indices(match), ",")
 end
-
+=#
 function get_ratio_filtered(match::Match, min_corresps = 0) 
   if count_correspondences(match) < min_corresps return 1.0 end # ignore low match cases
 return count_filtered_correspondences(match) / max(count_correspondences(match), 1); end

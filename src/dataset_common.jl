@@ -54,7 +54,10 @@ function get_name(object)
 		else  return "$(firstindex[1]),$(firstindex[2])-$(lastindex[1]),$(lastindex[2])_aligned"; end
 	else
 	      #end hack
-	return string(typeof(object), get_index(object))		end
+	index = get_index(object)
+	if typeof(index) == Index 			return string(typeof(object), "(", index, ")")	
+        elseif typeof(index) == Tuple{Index, Index} 	return string(typeof(object), index)	end
+      end
 end
 
 # gets the full directory of the index as if it were an image - e.g. .../1_premontaged
