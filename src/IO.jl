@@ -60,27 +60,31 @@ end
 # filesystem.jl	get_image() 
 function get_image_disk(path::String, dtype = IMG_ELTYPE; shared = false)
 	ext = splitext(path)[2];
-  	if ext == ".tif"
-  		img = data(FileIO.load(path))
-  		img = img[:, :, 1]'
-   		#img.properties["timedim"] = 0
-		if shared
-		 img = convert(Array{dtype, 2}, round(convert(Array, img)*255))
-		 shared_img = SharedArray(dtype, size(img)...);
-		  @inbounds shared_img.s[:,:] = img[:,:]
-		 return shared_img;
-		else
-  		return convert(Array{dtype, 2}, round(convert(Array, img)*255))
-	      end
+  if ext == ".tif"
+    img = data(FileIO.load(path))
+    img = img[:, :, 1]'
+    #img.properties["timedim"] = 0
+    if shared
+      img = convert(Array{dtype, 2}, round(convert(Array, img)*255))
+      shared_img = SharedArray(dtype, size(img)...);
+      @inbounds shared_img.s[:,:] = img[:,:]
+      return shared_img;
+    else
+      if dtype == UInt8
+        return convert(Array{dtype, 2}, round(convert(Array, img)*255))
+      else
+        return convert(Array{dtype, 2}, img)
+      end
+    end
 	elseif ext == ".h5"
-		if shared
- 		img = convert(Array{dtype, 2}, h5read(path, "img"))
-		 shared_img = SharedArray(dtype, size(img)...);
-		  @inbounds shared_img.s[:,:] = img[:,:]
-		 return shared_img;
-	       else
- 		return convert(Array{dtype, 2}, h5read(path, "img"))
-	      end
+    if shared
+      img = convert(Array{dtype, 2}, h5read(path, "img"))
+      shared_img = SharedArray(dtype, size(img)...);
+      @inbounds shared_img.s[:,:] = img[:,:]
+      return shared_img;
+    else
+      return convert(Array{dtype, 2}, h5read(path, "img"))
+    end
 	end
 end
 

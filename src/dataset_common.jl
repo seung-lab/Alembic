@@ -84,6 +84,10 @@ function get_subdir(string::String)
   elseif string == "Match"      return MATCH_DIR, ".jls"
   elseif string == "MeshSet"    return MESHSET_DIR, ".jls"
   elseif string == "review"     return REVIEW_DIR, ".h5"
+  elseif string == "import"     return IMPORT_DIR, ".txt"
+  elseif string == "contrast_bias"     return CONTRAST_BIAS_DIR, ".h5"
+  elseif string == "contrast_auto"     return CONTRAST_AUTO_DIR, ".txt"
+  elseif string == "stats"     return STATS_DIR, ".txt"
   end
 end
 
@@ -199,6 +203,10 @@ global MESHSET_DIR = "meshset"
 global EXPUNGED_DIR = "expunged"
 global REVIEW_DIR = "review"
 global MASK_DIR = "mask"
+global IMPORT_DIR = "import"
+global CONTRAST_BIAS_DIR = "bias"
+global CONTRAST_AUTO_DIR = "auto"
+global STATS_DIR = "stats"
 
 global OVERVIEW_DIR_PATH = joinpath(BUCKET, DATASET, OVERVIEW_DIR)
 global PREMONTAGED_DIR_PATH = joinpath(BUCKET, DATASET, PREMONTAGED_DIR)
@@ -231,7 +239,7 @@ function check_dirs(dataset_name::String = DATASET)
 
     dataset_dir = joinpath(BUCKET, dataset_name)
     dirs = [ OVERVIEW_DIR, PREMONTAGED_DIR, MONTAGED_DIR, PREALIGNED_DIR, ALIGNED_DIR, FINISHED_DIR ]
-    subdirs = [ MESH_DIR, MATCH_DIR, MESHSET_DIR, EXPUNGED_DIR, REVIEW_DIR, MASK_DIR ]
+    subdirs = [ MESH_DIR, MATCH_DIR, MESHSET_DIR, EXPUNGED_DIR, REVIEW_DIR, MASK_DIR, IMPORT_DIR, CONTRAST_BIAS_DIR, CONTRAST_AUTO_DIR, STATS_DIR ]
 
     setup_dir(dataset_dir)
     for d in dirs
@@ -244,4 +252,4 @@ function check_dirs(dataset_name::String = DATASET)
     end
 end
 
-
+check_dirs()

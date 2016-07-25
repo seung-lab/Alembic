@@ -356,7 +356,33 @@ function update_offset(index::Index, registry_fp::String, offset::Array, sz=[0,0
   remotecall_fetch(IO_PROC, reload_registry, index)
 end
 
-function update_offset(indices::Array{Index,1}, offsets::Array{Array,1}, sz::Array{Array,1})
+function update_offsets(indices, offsets, sizes, needs_render=falses(length(indices)))
+  index = indices[1]
+  registry_fp = get_registry_path(index)
+  filenames = map(get_name, indices)
+  if !isfile(registry_fp)
+    f = open(registry_fp, "w")
+    close(f)
+    registry = [[f, o..., s..., n] for (f,o,s,n) in zip(filenames, offsets, sizes, needs_render)]
+    registry = hcat(registry...)'
+    println("Block line updating registry with ", registry, " in:\n", registry_fp)
+  else
+    registry = readdlm(registry_fp)
+    locations = map(findfirst, repeated(registry), filenames)
+    for (k, i) in enumerate(locations)
+      println("Updating registry for ", filenames[k], " in:\n", registry_fp, ": offset is now ", offsets[k])
+      registry_line = [filenames[k], offsets[k]..., sizes[k]..., needs_render[k]]
+      if i > 0
+        registry[i,:] = registry_line
+      else
+        registry = vcat(registry, registry_line')
+      end
+    end
+  end
+  registry = registry[sortperm(registry[:, 1], by=parse_name), :]
+  writedlm(registry_fp, registry)
+  reload_registry(index)
+  remotecall_fetch(IO_PROC, reload_registry, index)
 end
 
 function reload_registry(index)

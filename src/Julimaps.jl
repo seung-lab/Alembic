@@ -103,8 +103,8 @@ if ON_AWS
   include("dataset_zebrafish.jl")
   include("params_default.jl")
 else
-#  include("dataset_default.jl")
-  include("dataset_zebrafish.jl")
+ include("dataset_default.jl")
+  # include("dataset_zebrafish.jl")
   include("params_default.jl")
 end
 include("dataset_common.jl")
