@@ -43,7 +43,7 @@ function compile_tile_based_stats(z_index, N=60)
 	samples = rand(1:size(import_table,1), N)
 	stats = pmap(calculate_stats, samples) 
 	stats = hcat(stats...)'
-	stats_fn = get_path("stats", premontaged(1,k+1))
+	stats_fn = get_path("stats", premontaged(1, z_index+1))
 	writedlm(stats_fn, stats)
 	return stats
 end
@@ -77,7 +77,7 @@ function load_raw_tiles(z_index, file_indices; include_resin=false)
 	return indices[mask], tiles[mask]
 end
 
-function calculate_bias_field(z_index, N=60)
+function calculate_bias_field(z_index, N=100)
 	println("Calculating contrast bias field for section $(z_index+1) using $N samples")
 	import_table = load_import_table(z_index)	
 	samples = rand(1:size(import_table,1), N)
@@ -91,7 +91,7 @@ function calculate_bias_field(z_index, N=60)
 	println("Contrast bias image written to $bias_fn")
 end
 
-function calculate_contrast_histogram(z_index, N=30)
+function calculate_contrast_histogram(z_index, N=60)
 	println("Calculating overall contrast histogram for section $(z_index+1) using $N samples")
 	import_table = load_import_table(z_index)	
 	bias = load_bias_image(z_index)
