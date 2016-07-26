@@ -189,7 +189,7 @@ end
 function save_premontage_review(index::Index; scale=0.05)
   drw = draw_premontage_review(index, scale=scale)
   idx = (index[1:2]..., 0, 0)
-  fn = joinpath(get_review_dir(idx), string(join(index[1:2], ","), ".png"))
+  fn = get_path("outline", premontaged(index))
   println("Saving premontage review: $fn")
   Cairo.write_to_png(drw, fn)
 end
