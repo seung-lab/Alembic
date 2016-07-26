@@ -454,7 +454,7 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
 	imscale_dst_patch!(DST_PATCH_FULL, scale);	
 	
 	if highpass_sigma != 0
-		highpass_sigma = highpass_sigma / scale
+		highpass_sigma = highpass_sigma * scale
 		@fastmath Images.imfilter_gaussian_no_nans!(SRC_PATCH_G, [highpass_sigma, highpass_sigma])
 		elwise_sub!(SRC_PATCH, SRC_PATCH_G);
 		@fastmath Images.imfilter_gaussian_no_nans!(DST_PATCH_G, [highpass_sigma, highpass_sigma])
