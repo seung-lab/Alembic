@@ -325,16 +325,23 @@ function premontage(firstindex::Index, lastindex::Index)
     end
     
     translations = pmap(find_translation, overlaps)
+    offsets = map(get_offset, tile_indices)
+    sizes = map(get_image_size, tile_indices)
     moving_indices = [i[1] for i in translations]
-    for index in tile_indices
-      k = findfirst(i -> i==index, moving_indices)
+    for (i, index) in enumerate(tile_indices)
+      k = findfirst(i->i==index, moving_indices)
       if k > 0
         mindex, findex, moving_bb, fixed_bb, dv = translations[k]
-        offset = get_offset(findex) - get_offset(fixed_bb) + get_offset(mindex) + dv
-        update_offset(mindex, offset, get_image_size(mindex));
+        j = findfirst(i->i==findex, tile_indices)
+        fixed_offset = offsets[j]
+        moving_offset = offsets[i]
+        offsets[i] = fixed_offset - get_offset(fixed_bb) + moving_offset + dv
+        # update_offset(mindex, offset, get_image_size(mindex));
+        # offset = get_offset(findex) - get_offset(fixed_bb) + get_offset(mindex) + dv
       end
     end
-    save_premontage_review(tile_indices[1])
+    update_offsets(tile_indices, offsets, sizes)
+    # save_premontage_review(tile_indices[1])
   end
 end
 
