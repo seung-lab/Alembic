@@ -93,6 +93,10 @@ end
 function fix!(meshset::MeshSet)
 	for mesh in meshset.meshes			fix!(mesh);			 	end
 end
+
+function fix_ends!(meshset::MeshSet)
+   unfix!(meshset); fix!(meshset, 1); fix!(meshset, length(meshset.meshes));
+end
 function unfix!(meshset::MeshSet, mesh_ind::Int64)	unfix!(meshset.meshes[mesh_ind]);	end
 function unfix!(meshset::MeshSet, mesh_ind_first::Int64, mesh_ind_last::Int64)
   	for mesh_ind in mesh_ind_first:mesh_ind_last
