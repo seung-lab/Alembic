@@ -29,7 +29,7 @@ function get_metadata(mesh::Mesh)			return get_metadata(mesh.index);			end
 ### IO.jl EXTENSIONS
 function get_image_path(mesh::Mesh)			return get_image_path(mesh.index);			end
 function get_image(mesh::Mesh; kwargs...)		return get_image(mesh.index; kwargs...);		end
-function get_name(mesh::Mesh)				return get_name(mesh.index);				end
+#function get_name(mesh::Mesh)				return get_name(mesh.index);				end
 
 ### retrieval
 function get_index(mesh::Mesh)				return mesh.index;					end

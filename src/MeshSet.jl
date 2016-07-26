@@ -93,6 +93,10 @@ end
 function fix!(meshset::MeshSet)
 	for mesh in meshset.meshes			fix!(mesh);			 	end
 end
+
+function fix_ends!(meshset::MeshSet)
+   unfix!(meshset); fix!(meshset, 1); fix!(meshset, length(meshset.meshes));
+end
 function unfix!(meshset::MeshSet, mesh_ind::Int64)	unfix!(meshset.meshes[mesh_ind]);	end
 function unfix!(meshset::MeshSet, mesh_ind_first::Int64, mesh_ind_last::Int64)
   	for mesh_ind in mesh_ind_first:mesh_ind_last
@@ -260,6 +264,66 @@ function get_parent(meshset::MeshSet)
   return parent
 end
 
+function split_meshset(meshset::MeshSet)
+	for mesh in meshset.meshes
+	  save(mesh);
+	end
+	for match in meshset.matches
+	  save(match)
+	end
+end
+
+function compile_meshset(first_index::Index, last_index::Index)
+  #meshes = Array{Mesh, 1}()
+  #matches = Array{Match, 1}()
+  inds = get_index_range(first_index, last_index);
+  println("Compiling MeshSet between $first_index and $last_index - $(length(inds)) meshes expected")
+  mesh_inds = Array{Index, 1}();
+  match_inds = Array{Tuple{Index, Index}, 1}();
+
+  for ind in inds
+    if isfile(get_path(Mesh, ind)) push!(mesh_inds, ind) end
+  end
+  for ind in inds
+    for dst_ind in inds
+    if isfile(get_path(Match, (ind, dst_ind))) push!(match_inds, (ind, dst_ind)) end
+  end
+  end
+
+  meshes = pmap(load, repeated(Mesh), mesh_inds);
+  matches = pmap(load, repeated(Match), match_inds);
+  #=
+#  @sync begin
+  for ind in inds
+    if isfile(get_path(Mesh, ind)) @async push!(meshes, remotecall_fetch(WORKER_PROCS[ind[2]%length(WORKER_PROCS) + 1], load, Mesh, ind)); end
+  end
+  for ind in inds
+    for dst_ind in inds
+      if isfile(get_path(Match, (ind, dst_ind))) @async push!(matches, remotecall_fetch(WORKER_PROCS[ind[2]%length(WORKER_PROCS) + 1], load, Match, (ind, dst_ind))) end
+    end
+  end
+#end #sync=#
+
+  println("$(length(meshes)) meshes found...")
+  if length(meshes) == 0 println("no meshes exist between the requested indices - aborting...."); return nothing end
+  if length(meshes) != length(inds) println("not all meshes exist between requested indices - continuing anyway...") end
+  if |(map(is_fixed, meshes)...) println("there are fixed meshes among the requested meshes - continuing anyway...") end
+  println("$(length(matches)) matches found...")
+
+  if length(matches) == 0 println("no matches exist between requested indices - continuing anyway...") end
+
+  sort!(meshes; by=get_index)
+  sort!(matches; by=get_dst_index)
+  sort!(matches; by=get_src_index)
+
+  ms = MeshSet();
+  ms.meshes = meshes;
+  ms.matches = matches;
+  ms.properties = Dict{Any, Any}("author" => author(), "meta" => Dict{Any, Any}("parent" => nothing, "split_index" => 0), "params" => deepcopy(meshes[1].properties["params"]))
+
+  return ms;
+end
+  #=
 ### splitting
 function split_meshset(meshset::MeshSet)
 	parent_name = get_name(meshset)
@@ -278,7 +342,7 @@ function split_meshset(meshset::MeshSet)
 		println("Child ", i, " / ", count_matches(meshset), " saved");
 	end
 end
-
+=#
 function concat_meshset(parent_name)
 	ms = MeshSet();
 	for i in 1:count_children(parent_name)

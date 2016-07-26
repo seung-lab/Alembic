@@ -11,6 +11,58 @@ function meshwarp_mesh(mesh::Mesh)
   return @time meshwarp(img, src_nodes, dst_nodes, triangles, offset), get_index(mesh)
 end
 
+function render(index::Index; render_full=true)
+  mesh = load(Mesh, prevstage(index));
+  if mesh == nothing return nothing end;
+    new_fn = get_name(index)
+    println("Rendering ", new_fn)
+    warp = meshwarp_mesh(mesh);
+    img = warp[1][1];
+    offset = warp[1][2];
+
+#      img, offset = merge_images(imgs, offsets)
+      println("Writing ", new_fn)
+      f = h5open(get_path(index), "w")
+      chunksize = min(1000, min(size(img)...))
+      @time f["img", "chunk", (chunksize,chunksize)] = img
+        f["dtype"] = string(typeof(img[1]))
+        f["offset"] = offset
+        f["size"] = [size(img)...]
+      close(f)
+      update_offset(index, offset, size(img))
+
+    #=
+    warps = map(meshwarp_mesh, meshset.meshes);
+    imgs = [x[1][1] for x in warps];
+    offsets = [x[1][2] for x in warps];
+    indices = [x[2] for x in warps];
+
+    if |((crop .> [0,0])...)
+      x, y = crop
+      for k in 1:length(imgs)
+        imgs[k] = imgs[k][x:(end-x+1), y:(end-y+1)]
+        offsets[k] = offsets[k] + crop
+      end
+    end
+
+    # review images
+    if render_review
+      write_seams(meshset, imgs, offsets, indices, flagged_only)
+    end
+    if render_full
+      img, offset = merge_images(imgs, offsets)
+      println("Writing ", new_fn)
+      f = h5open(get_path(index), "w")
+      chunksize = min(1000, min(size(img)...))
+      @time f["img", "chunk", (chunksize,chunksize)] = img
+      close(f)
+      update_offset(index, [0,0], size(img))
+    end
+
+    render_montaged(meshset; render_full=render_full, render_review=render_review)
+    =#
+end
+
 """
 Multiple dispatch so Dodam doesn't have to type sooo much
 """
