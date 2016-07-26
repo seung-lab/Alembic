@@ -408,67 +408,72 @@ function prealign(index; params=get_params(index), to_fixed=false)
 	return meshset;
 end
 
-function MeshSet(index; kwargs...)
+function MeshSet(index::Index; kwargs...)
 	if is_premontaged(index) return MeshSet(index, index; kwargs...); end
 	if is_montaged(index) return MeshSet(premontaged(index), premontaged(index); kwargs...); end
 end
 
 function MeshSet(first_index, last_index; params=get_params(first_index), solve=true, solve_method="elastic")
-	ind_range = get_index_range(first_index, last_index);
-	if length(ind_range) == 0 return nothing; end
-	meshes = pmap(make_mesh, ind_range, repeated(params))
-  sort!(meshes; by=get_index)
- 	matches = Array{Match, 1}(0)		
-	properties = Dict{Any, Any}(	"params"  => params,
-					"author" => author(),
-					"meta" => Dict{Any, Any}(
-					"parent" => nothing,
-					"split_index" => 0)
-					)
-	meshset = MeshSet(meshes, matches, properties);
-	match!(meshset, params["match"]["depth"]; reflexive = params["match"]["reflexive"]);
-
-	filter!(meshset);
-	check!(meshset);
-  save(meshset);
-
-	if solve == true
-  	solve!(meshset, method=solve_method);
-    save(meshset);
-	end
-
-	return meshset;
+	indices = get_index_range(first_index, last_index);
+	if length(indices) == 0 return nothing; end
+	MeshSet(indices; params=get_params(indices[1]), solve=solve, solve_method=solve_method)
 end
 
-function MeshSet(firstindex, lastindex, fixed_meshes::Array{Mesh,1}; params=get_params(firstindex))
-  println("Using ", length(fixed_meshes), " fixed meshes to build meshset")
-  indices = get_index_range(firstindex, lastindex)
-  if length(indices) == 0 
-    return nothing; 
-  end
-  meshes = pmap(make_mesh, indices, repeated(params));
+function MeshSet(indices::Array; params=get_params(indices[1]), solve=true, solve_method="elastic")
+  meshes = pmap(make_mesh, indices, repeated(params))
   sort!(meshes; by=get_index)
-  map(fix!, fixed_meshes)
-  merge_meshes!(meshes, fixed_meshes) # merge meshes into fixed_meshes
-  matches = Array{Match, 1}(0)
+  matches = Array{Match, 1}(0)    
   properties = Dict{Any, Any}(  "params"  => params,
           "author" => author(),
           "meta" => Dict{Any, Any}(
           "parent" => nothing,
           "split_index" => 0)
           )
-  for mesh in fixed_meshes
-    println(get_index(mesh), " ", length(mesh.src_nodes))
-  end
-  meshset = MeshSet(fixed_meshes, matches, properties);
-  match!(meshset, params["match"]["depth"]);
+  meshset = MeshSet(meshes, matches, properties);
+  match!(meshset, params["match"]["depth"]; reflexive = params["match"]["reflexive"]);
 
+  save(meshset)
   filter!(meshset);
-  check_and_fix!(meshset);
-
+  check!(meshset);
   save(meshset);
+
+  if solve == true
+    solve!(meshset, method=solve_method);
+    save(meshset);
+  end
+
   return meshset;
 end
+
+# function MeshSet(firstindex::Index, lastindex::Index, fixed_meshes::Array{Mesh,1}; params=get_params(firstindex))
+#   println("Using ", length(fixed_meshes), " fixed meshes to build meshset")
+#   indices = get_index_range(firstindex, lastindex)
+#   if length(indices) == 0 
+#     return nothing; 
+#   end
+#   meshes = pmap(make_mesh, indices, repeated(params));
+#   sort!(meshes; by=get_index)
+#   map(fix!, fixed_meshes)
+#   merge_meshes!(meshes, fixed_meshes) # merge meshes into fixed_meshes
+#   matches = Array{Match, 1}(0)
+#   properties = Dict{Any, Any}(  "params"  => params,
+#           "author" => author(),
+#           "meta" => Dict{Any, Any}(
+#           "parent" => nothing,
+#           "split_index" => 0)
+#           )
+#   for mesh in fixed_meshes
+#     println(get_index(mesh), " ", length(mesh.src_nodes))
+#   end
+#   meshset = MeshSet(fixed_meshes, matches, properties);
+#   match!(meshset, params["match"]["depth"]);
+
+#   filter!(meshset);
+#   check_and_fix!(meshset);
+
+#   save(meshset);
+#   return meshset;
+# end
 
 function mark_solved!(meshset::MeshSet)
   meshset.properties["meta"]["solved"] = author()
