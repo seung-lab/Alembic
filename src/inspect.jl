@@ -293,6 +293,12 @@ end
 
 function view_sigma(match, match_ind)
   src_patch, src_pt, dst_patch, dst_pt, xc, offset = get_correspondence_patches(match, match_ind)
+  xcsurface(xc)
+  grid("on")
+  title("match $match_ind")
+end
+
+function xcsurface(xc)
   N=size(xc, 1)
   M=size(xc, 2)
 
@@ -301,26 +307,12 @@ function view_sigma(match, match_ind)
   xgrid = repmat(x, 1, M)
   ygrid = repmat(y', N, 1)
 
-  fig = figure("sigma_filter_100") #,figsize=(10,10))
+  fig = figure("xc") #,figsize=(10,10))
   PyPlot.clf()
   ax = fig[:add_subplot](1,1,1, projection = "3d") 
   ax[:plot_surface](xgrid, ygrid, xc, rstride=10, edgecolors="k", 
                     cstride=10, cmap=ColorMap("hot"), alpha=0.8, linewidth=0,
-                    antialiased=false) 
-  grid("on")
-  title("match $match_ind")
-
-  # s = sigma(xc)
-  # beta = 0.5
-  # xc_beta = xc
-  # xc_beta[xc .< beta*maximum(xc)] = NaN
-  # ax = fig[:add_subplot](2,1,2, projection = "3d") 
-  # ax[:plot_surface](xgrid, ygrid, xc_beta, rstride=10, edgecolors="k", 
-  #                   cstride=10, cmap=ColorMap("hot"), alpha=0.8, linewidth=0,
-  #                   antialiased=false) 
-  # grid("on")
-  # title("correlogram")
-  # title("beta_threshold")
+                    antialiased=false)
 end
 
 """
