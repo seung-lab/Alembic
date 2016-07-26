@@ -385,11 +385,11 @@ function rectify_drift(meshset::MeshSet, start_ind = 1, final_ind = count_meshes
   		continue;
   	end
 	if use_post
-	g_src_pts_after, g_dst_pts_after, filtered_after = get_correspondences(match; src_mesh = src_mesh, dst_mesh = dst_mesh, global_offsets = meshset.properties["params"]["registry"]["global_offsets"], use_post = true)
+	g_src_pts_after, g_dst_pts_after, filtered_after = get_correspondences(match; src_mesh = src_mesh, dst_mesh = dst_mesh, globalized = true, global_offsets = meshset.properties["params"]["registry"]["global_offsets"], use_post = true)
   	residuals_match_post = g_dst_pts_after[filtered_after] - g_src_pts_after[filtered_after]; 
 	avg_drift = mean(residuals_match_post);
       else
-	g_src_pts, g_dst_pts, filtered = get_correspondences(match; global_offsets = meshset.properties["params"]["registry"]["global_offsets"])
+	g_src_pts, g_dst_pts, filtered = get_correspondences(match; globalized = true, global_offsets = meshset.properties["params"]["registry"]["global_offsets"])
   	residuals_match = g_dst_pts[filtered] - g_src_pts[filtered]; 
 	avg_drift = mean(residuals_match);
       end
@@ -413,10 +413,14 @@ function rectify_drift(meshset::MeshSet, start_ind = 1, final_ind = count_meshes
   for i in setdiff(1:length(drifts), start_ind:final_ind) drifts[i] = Point([0,0]); end
   for (ind, drift) in enumerate(drifts)
     cum_drift += (drift + bias);
-    update_offset(get_index(meshset.meshes[ind]), round(Int64, get_offset(get_index(meshset.meshes[ind])) + cum_drift))
+    println("$(meshset.meshes[ind].index) is rectified against local drift $drift, cumulative drift $cum_drift...")
+    for i in 1:count_nodes(meshset.meshes[ind])
+	@fastmath @inbounds meshset.meshes[ind].dst_nodes[i] += cum_drift;
+    end
+    #=update_offset(get_index(meshset.meshes[ind]), round(Int64, get_offset(get_index(meshset.meshes[ind])) + cum_drift))
     if rectify_aligned
     update_offset(aligned(get_index(meshset.meshes[ind])), round(Int64, get_offset(aligned(get_index(meshset.meshes[ind]))) + cum_drift))
-  end
+  end=#
   end
 
 

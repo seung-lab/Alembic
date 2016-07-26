@@ -270,18 +270,35 @@ function split_meshset(meshset::MeshSet)
 end
 
 function compile_meshset(first_index::Index, last_index::Index)
-  meshes = Array{Mesh, 1}()
-  matches = Array{Match, 1}()
+  #meshes = Array{Mesh, 1}()
+  #matches = Array{Match, 1}()
   inds = get_index_range(first_index, last_index);
   println("Compiling MeshSet between $first_index and $last_index - $(length(inds)) meshes expected")
+  mesh_inds = Array{Index, 1}();
+  match_inds = Array{Tuple{Index, Index}, 1}();
+
   for ind in inds
-    if isfile(get_path(Mesh, ind)) push!(meshes, load(Mesh, ind)); end
+    if isfile(get_path(Mesh, ind)) push!(mesh_inds, ind) end
   end
   for ind in inds
     for dst_ind in inds
-      if isfile(get_path(Match, (ind, dst_ind))) push!(matches, load(Match, (ind, dst_ind))) end
+    if isfile(get_path(Match, (ind, dst_ind))) push!(match_inds, (ind, dst_ind)) end
+  end
+  end
+
+  meshes = pmap(load, repeated(Mesh), mesh_inds);
+  matches = pmap(load, repeated(Match), match_inds);
+  #=
+#  @sync begin
+  for ind in inds
+    if isfile(get_path(Mesh, ind)) @async push!(meshes, remotecall_fetch(WORKER_PROCS[ind[2]%length(WORKER_PROCS) + 1], load, Mesh, ind)); end
+  end
+  for ind in inds
+    for dst_ind in inds
+      if isfile(get_path(Match, (ind, dst_ind))) @async push!(matches, remotecall_fetch(WORKER_PROCS[ind[2]%length(WORKER_PROCS) + 1], load, Match, (ind, dst_ind))) end
     end
   end
+#end #sync=#
 
   println("$(length(meshes)) meshes found...")
   if length(meshes) == 0 println("no meshes exist between the requested indices - aborting...."); return nothing end
