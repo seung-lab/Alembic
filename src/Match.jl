@@ -405,12 +405,13 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
 	function imscale_src_patch!(img, scale_factor)
   	if scale == 1.0
   		if size(SRC_PATCH) != size(img)
-   			global SRC_PATCH = zeros(Float64, tbb.h, tbb.w)
-   			global SRC_PATCH_G = zeros(Float64, tbb.h, tbb.w)
+  			bb = BoundingBox{Int64}(0,0, size(img, 1), size(img, 2))
+   			global SRC_PATCH = zeros(Float64, bb.h, bb.w)
+   			global SRC_PATCH_G = zeros(Float64, bb.h, bb.w)
    		end
 		@inbounds SRC_PATCH[:] = img
 	else
-  		tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
+  		tform = make_scale_matrix(scale_factor)
   		bb = BoundingBox{Float64}(0,0, size(img, 1), size(img, 2))
   		wbb = tform_bb(bb, tform)
   		tbb = snap_bb(wbb)
@@ -425,37 +426,37 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
 	end
 
 	function imscale_dst_patch!(img, scale_factor)
-  	if scale == 1.0
-  		if size(DST_PATCH) != size(img)
-   			global DST_PATCH = zeros(Float64, tbb.h, tbb.w)
-   			global DST_PATCH_G = zeros(Float64, tbb.h, tbb.w)
-   		end
-		@inbounds DST_PATCH[:] = img
-	else
-  		tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
-  		bb = BoundingBox{Float64}(0,0, size(img, 1), size(img, 2))
-  		wbb = tform_bb(bb, tform)
-  		tbb = snap_bb(wbb)
-  		if size(DST_PATCH) != (tbb.h, tbb.w)
-   			global DST_PATCH = zeros(Float64, tbb.h, tbb.w)
-   			global DST_PATCH_G = zeros(Float64, tbb.h, tbb.w)
-   		end
-  		ImageRegistration.imwarp!(DST_PATCH, img, tform);
-	end
-	zeropad_to_meanpad!(DST_PATCH);
-  	@inbounds DST_PATCH_G[:] = DST_PATCH
+		if scale == 1.0
+			if size(DST_PATCH) != size(img)
+				bb = BoundingBox{Int64}(0,0, size(img, 1), size(img, 2))
+				global DST_PATCH = zeros(Float64, bb.h, bb.w)
+				global DST_PATCH_G = zeros(Float64, bb.h, bb.w)
+			end
+			@inbounds DST_PATCH[:] = img
+		else
+			tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
+			bb = BoundingBox{Float64}(0,0, size(img, 1), size(img, 2))
+			wbb = tform_bb(bb, tform)
+			tbb = snap_bb(wbb)
+			if size(DST_PATCH) != (tbb.h, tbb.w)
+				global DST_PATCH = zeros(Float64, tbb.h, tbb.w)
+				global DST_PATCH_G = zeros(Float64, tbb.h, tbb.w)
+			end
+			ImageRegistration.imwarp!(DST_PATCH, img, tform);
+		end
+		zeropad_to_meanpad!(DST_PATCH);
+		@inbounds DST_PATCH_G[:] = DST_PATCH
 	end
 
 	imscale_src_patch!(SRC_PATCH_FULL, scale);	
 	imscale_dst_patch!(DST_PATCH_FULL, scale);	
 	
-
 	if highpass_sigma != 0
-	  highpass_sigma = highpass_sigma / scale
-	@fastmath Images.imfilter_gaussian_no_nans!(SRC_PATCH_G, [highpass_sigma, highpass_sigma])
-	elwise_sub!(SRC_PATCH, SRC_PATCH_G);
-	@fastmath Images.imfilter_gaussian_no_nans!(DST_PATCH_G, [highpass_sigma, highpass_sigma])
-	elwise_sub!(DST_PATCH, DST_PATCH_G);
+		highpass_sigma = highpass_sigma / scale
+		@fastmath Images.imfilter_gaussian_no_nans!(SRC_PATCH_G, [highpass_sigma, highpass_sigma])
+		elwise_sub!(SRC_PATCH, SRC_PATCH_G);
+		@fastmath Images.imfilter_gaussian_no_nans!(DST_PATCH_G, [highpass_sigma, highpass_sigma])
+		elwise_sub!(DST_PATCH, DST_PATCH_G);
       end
 end
 
@@ -524,7 +525,8 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, highpass_sigma
 	xc = normxcorr2_preallocated(src_image[src_range[1], src_range[2]], dst_image[dst_range[1], dst_range[2]]);
 	end
 	=#
-	if(prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma) == nothing) return nothing end;
+	# if(prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma) == nothing) return nothing end;
+	prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma)
 	xc = normxcorr2_preallocated(SRC_PATCH, DST_PATCH);
 #=
 	if dst_range != dst_range_full
@@ -735,7 +737,7 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 
 	print("computing matches:")
         @time dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(src_img), repeated(dst_img), repeated(params["match"]["blockmatch_scale"]), repeated(params["match"]["highpass_sigma"])) 
-        #@time dst_allpoints = map(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(src_img), repeated(dst_img), repeated(params["match"]["blockmatch_scale"])) 
+        # @time dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(src_img), repeated(dst_img), repeated(params["match"]["blockmatch_scale"])) 
 
 	matched_inds = find(i -> i != nothing, dst_allpoints);
 	src_points = copy(src_mesh.src_nodes[ranged_inds][matched_inds]);
