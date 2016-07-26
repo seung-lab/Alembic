@@ -55,6 +55,7 @@ function render_montaged(meshset::MeshSet; render_full=false, render_review=true
     if |((crop .> [0,0])...)
       x, y = crop
       for k in 1:length(imgs)
+        # imgs[k] = imcrop(imgs[k], offsets[k] imgs[k][x:(end-x+1), y:(end-y+1)]
         imgs[k] = imgs[k][x:(end-x+1), y:(end-y+1)]
         offsets[k] = offsets[k] + crop
       end

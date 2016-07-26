@@ -54,9 +54,9 @@ end
 #="""
 Use in montage?
 """=#
-function affine_approximate(Ms::MeshSet, row, col)
-	ind = findfirst(i -> Ms.meshes[i].index[3:4] == (row, col), 1:Ms.N)
- 	return affine_approximate(Ms.meshes[ind])
+function affine_approximate(ms::MeshSet, row, col)
+	ind = findfirst(i -> ms.meshes[i].index[3:4] == (row, col), 1:ms.N)
+ 	return affine_approximate(ms.meshes[ind])
 end
 
 
@@ -64,44 +64,64 @@ end
 Return right-hand matrix for the matches
 `pts_src*T ~= pts_dst`
 """=#
-function affine_solve(Ms::MeshSet; k=1, globalized=false)
-  pts_src, pts_dst = get_homogeneous_correspondences(Ms, k; globalized=globalized)
+function affine_solve(ms::MeshSet; k=1, globalized=false)
+  pts_src, pts_dst = get_homogeneous_correspondences(ms, k; globalized=globalized)
 	for ind in 1:size(pts_dst, 1)
-  	pts_dst[ind, 1:2] = pts_dst[ind, 1:2] - get_offset(Ms.matches[k].src_index)'
+  	pts_dst[ind, 1:2] = pts_dst[ind, 1:2] - get_offset(ms.matches[k].src_index)'
 	end
   return find_affine(pts_src, pts_dst)
 end
 
+function affine_solve!(ms::MeshSet; k=1, globalized=false)
+  tform = affine_solve(ms; k=k, globalized=globalized)
+  apply_transform!(ms, tform, k)
+end
+
 #="""
 Return right-hand matrix for the matches
 `pts_src*T ~= pts_dst`
 """=#
-function rigid_solve(Ms::MeshSet; k=1, globalized=false)
-  pts_src, pts_dst = get_homogeneous_correspondences(Ms, k; globalized=globalized)
+function rigid_solve(ms::MeshSet; k=1, globalized=false)
+  pts_src, pts_dst = get_homogeneous_correspondences(ms, k; globalized=globalized)
 	for ind in 1:size(pts_dst, 1)
-  	pts_dst[ind, 1:2] = pts_dst[ind, 1:2] - get_offset(Ms.matches[k].src_index)'
+  	pts_dst[ind, 1:2] = pts_dst[ind, 1:2] - get_offset(ms.matches[k].src_index)'
 	end
   return find_rigid(pts_src, pts_dst)
+end
+
+function rigid_solve!(ms::MeshSet; k=1, globalized=false)
+  tform = rigid_solve(ms; k=k, globalized=globalized)
+  apply_transform!(ms, tform, k)
 end
 
 #="""
 Apply some weighted combination of affine and rigid, gauged by lambda
 """=#
-function regularized_solve(Ms::MeshSet; k=1, lambda=0.9, globalized=false)
-  affine = affine_solve(Ms; k=k, globalized=globalized)
-  rigid = rigid_solve(Ms; k=k, globalized=globalized)
+function regularized_solve(ms::MeshSet; k=1, lambda=0.9, globalized=false)
+  affine = affine_solve(ms; k=k, globalized=globalized)
+  rigid = rigid_solve(ms; k=k, globalized=globalized)
   return lambda*affine + (1-lambda)*rigid
 end
 
 #="""
 ONLY WORKS ON CASES WHERE MATCHES[1] = MESHES[1] -> MESHES[2]
 """=#
-function regularized_solve!(Ms::MeshSet; k=1, lambda=0.9)
-	tform = regularized_solve(Ms, k=k, lambda=lambda);
-	for ind in 1:count_nodes(Ms.meshes[k])
-		Ms.meshes[k].dst_nodes[ind] = ([Ms.meshes[k].src_nodes[ind]; 1]' * tform)[1:2]
-	end
-	stats(Ms);
+function regularized_solve!(ms::MeshSet; k=1, lambda=0.9)
+	tform = regularized_solve(ms, k=k, lambda=lambda);
+	apply_transform!(ms, tform, k)
+end
+
+function apply_transform!(ms::MeshSet, tform, k::Int64)
+  for ind in 1:count_nodes(ms.meshes[k])
+    ms.meshes[k].dst_nodes[ind] = ([ms.meshes[k].src_nodes[ind]; 1]' * tform)[1:2]
+  end
+  stats(ms);
+end
+
+function translation_solve(ms::MeshSet; globalized=false)
+  indices = map(get_index, ms.meshes)
+  indices = spiral_sort(indices)
+  # incomplete
 end
 
 function solve!(meshset)
@@ -116,7 +136,7 @@ function solve!(meshset; method="elastic")
   assert(count_filtered_correspondences(meshset) >= 3)
 
 	if method == "elastic" return elastic_solve!(meshset); end
-	if method == "translate" return translate_solve!(meshset); end
+	if method == "translation" return translation_solve!(meshset); end
 	if method == "rigid" return rigid_solve!(meshset); end
 	if method == "regularized" return regularized_solve!(meshset; lambda = meshset.properties["params"]["solve"]["lambda"]); end
 	if method == "affine" return affine_solve!(meshset); end
