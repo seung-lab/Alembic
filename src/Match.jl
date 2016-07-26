@@ -380,12 +380,14 @@ end
 # if from_disk src_image / dst_image are paths
 function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma; from_disk = false)
 
-
+  	# the following two if statements should only ever be called together
 	if size(SRC_PATCH_FULL) != map(length,src_range)
 		global SRC_PATCH_FULL = Array{Float64, 2}(map(length, src_range)...);
 	end
 	if size(DST_PATCH_FULL) != map(length,dst_range_full)
 		global DST_PATCH_FULL = Array{Float64, 2}(map(length, dst_range_full)...);
+	      else
+		DST_PATCH_FULL[:] = 0;
 	end
 
 	indices_within_range = findin(dst_range_full[1], dst_range[1]), findin(dst_range_full[2], dst_range[2])
@@ -458,6 +460,8 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
 		@fastmath Images.imfilter_gaussian_no_nans!(DST_PATCH_G, [highpass_sigma, highpass_sigma])
 		elwise_sub!(DST_PATCH, DST_PATCH_G);
       end
+
+      return SRC_PATCH, DST_PATCH
 end
 
 function get_match(pt, ranges, src_image, dst_image, params)
@@ -525,8 +529,8 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, highpass_sigma
 	xc = normxcorr2_preallocated(src_image[src_range[1], src_range[2]], dst_image[dst_range[1], dst_range[2]]);
 	end
 	=#
-	# if(prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma) == nothing) return nothing end;
-	prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma)
+ if(prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma) == nothing) return nothing end;
+#	prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma)
 	xc = normxcorr2_preallocated(SRC_PATCH, DST_PATCH);
 #=
 	if dst_range != dst_range_full

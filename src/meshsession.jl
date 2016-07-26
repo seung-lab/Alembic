@@ -351,12 +351,24 @@ function find_translation(overlap)
   return mindex, findex, moving_bb, fixed_bb, dv
 end
 
-function find_translation(moving_index::Index, fixed_index::Index, mbb=get_bb(moving_index), fbb=get_bb(fixed_index); scale=0.5)
+function find_translation(moving_index::Index, fixed_index::Index, mbb=get_bb(moving_index), fbb=get_bb(fixed_index); scale=0.5, highpass_sigma = 10)
   println("Translating $moving_index to $fixed_index")
   overlap_bb = get_bb(moving_index) - get_bb(fixed_index)
   println("Overlap area: ", get_area(overlap_bb), " px^2")
   moving = get_slice(moving_index, overlap_bb, scale, is_global=true)
   fixed = get_slice(fixed_index, overlap_bb, scale, is_global=true) 
+	if highpass_sigma != 0
+		highpass_sigma = highpass_sigma / scale
+	  	moving = Array{Float64, 2}(moving);
+	  	moving_g = copy(moving)
+		@fastmath Images.imfilter_gaussian_no_nans!(moving_g, [highpass_sigma, highpass_sigma])
+		elwise_sub!(moving, moving_g);
+
+	  	fixed = Array{Float64, 2}(fixed);
+	  	fixed_g = copy(fixed)
+		@fastmath Images.imfilter_gaussian_no_nans!(fixed_g, [highpass_sigma, highpass_sigma])
+		elwise_sub!(fixed, fixed_g);
+      end
   xc = normxcorr2(moving, fixed; shape="full")
   return xc, moving, fixed
 end
