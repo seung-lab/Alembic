@@ -358,7 +358,7 @@ function find_translation(moving_index::Index, fixed_index::Index, mbb=get_bb(mo
   moving = get_slice(moving_index, overlap_bb, scale, is_global=true)
   fixed = get_slice(fixed_index, overlap_bb, scale, is_global=true) 
 	if highpass_sigma != 0
-		highpass_sigma = highpass_sigma / scale
+		highpass_sigma = highpass_sigma * scale
 	  	moving = Array{Float64, 2}(moving);
 	  	moving_g = copy(moving)
 		@fastmath Images.imfilter_gaussian_no_nans!(moving_g, [highpass_sigma, highpass_sigma])

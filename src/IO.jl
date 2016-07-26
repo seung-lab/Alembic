@@ -36,14 +36,15 @@ end
 function load(path::String)
 	println("Loading data from ", path)
 	if !isfile(path) return nothing end
-  	ext = splitext(path)[2];
+	ext = splitext(path)[2];
 	if ext == ".h5"
+    data = get_image_disk(path)
 	elseif ext == ".jls"
-	data = open(deserialize, path)
-      	elseif ext == ".jld"
-	data = load(path, "data")
-      	end
-	println("Loaded $(typeof(data)) from ", path)
+  	data = open(deserialize, path)
+	elseif ext == ".jld"
+  	data = load(path, "data")
+	end
+  println("Loaded $(typeof(data)) from ", path)
 	return data
 end
 
