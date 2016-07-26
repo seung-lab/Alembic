@@ -25,8 +25,11 @@ function render(index::Index; render_full=true)
       f = h5open(get_path(index), "w")
       chunksize = min(1000, min(size(img)...))
       @time f["img", "chunk", (chunksize,chunksize)] = img
+        f["dtype"] = string(typeof(img[1]))
+        f["offset"] = offset
+        f["size"] = [size(img)...]
       close(f)
-      update_offset(index, [0,0], size(img))
+      update_offset(index, offset, size(img))
 
     #=
     warps = map(meshwarp_mesh, meshset.meshes);
