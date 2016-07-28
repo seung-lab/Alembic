@@ -93,6 +93,7 @@ function get_subdir(string::String)
   elseif string == "stats"     return STATS_DIR, ".txt"
   elseif string == "mask"     return MASK_DIR, ".png"
   elseif string == "outline"     return OUTLINE_DIR, ".png"
+  elseif string == "expunge"     return EXPUNGED_DIR, ".h5"
   end
 end
 
