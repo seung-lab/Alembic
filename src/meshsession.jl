@@ -341,7 +341,7 @@ function premontage(firstindex::Index, lastindex::Index)
       end
     end
     update_offsets(tile_indices, offsets, sizes)
-    # save_premontage_review(tile_indices[1])
+    save_premontage_review(tile_indices[1])
   end
 end
 
@@ -369,7 +369,7 @@ function find_translation(moving_index::Index, fixed_index::Index, mbb=get_bb(mo
 		@fastmath Images.imfilter_gaussian_no_nans!(fixed_g, [highpass_sigma, highpass_sigma])
 		elwise_sub!(fixed, fixed_g);
       end
-  xc = normxcorr2(moving, fixed; shape="full")
+  xc = normxcorr2_preallocated(moving, fixed; shape="full")
   return xc, moving, fixed
 end
 
