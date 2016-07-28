@@ -563,8 +563,14 @@ preceding_pairs = Pairings(0)
 succeeding_pairs = Pairings(0)
 
   for i in 1:length(meshes), j in 1:length(meshes)
-    if is_adjacent(get_index(meshes[i]), get_index(meshes[j])) push!(adjacent_pairs, (i, j)); end
-    if is_diagonal(get_index(meshes[i]), get_index(meshes[j])) push!(diagonal_pairs, (i, j)); end
+    if is_adjacent(get_index(meshes[i]), get_index(meshes[j])) 
+      if i < j push!(adjacent_pairs, (i, j)); 
+      elseif reflexive push!(adjacent_pairs, (i, j)); 
+      end
+    if is_diagonal(get_index(meshes[i]), get_index(meshes[j])) 
+      if i < j push!(diagonal_pairs, (i, j)); 
+      elseif reflexive push!(diagonal_pairs, (i, j)); 
+      end
     if is_preceding(get_index(meshes[i]), get_index(meshes[j]), within) 
     	push!(preceding_pairs, (i, j)); 
 	if reflexive    	push!(succeeding_pairs, (j, i)); end
@@ -573,6 +579,7 @@ succeeding_pairs = Pairings(0)
 
   pairs = vcat(adjacent_pairs, diagonal_pairs, preceding_pairs, succeeding_pairs)
   sort!(pairs)
+  pairs = unique(pairs)
   println("$(length(pairs)) pairs found")
   return pairs
 end

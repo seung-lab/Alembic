@@ -286,6 +286,12 @@ function get_ranges(pt, src_index, src_offset, src_img_size, dst_index, dst_offs
 	dst_range_full = dst_pt[1] + search_range, dst_pt[2] + search_range;
 
 	range_in_src = intersect(src_range_full[1], 1:src_img_size[1]), intersect(src_range_full[2], 1:src_img_size[2]);
+	if length(range_in_src[1]) % 2 != 1
+	  range_in_src = range_in_src[1][1:end-1], range_in_src[2];
+	end
+	if length(range_in_src[2]) % 2 != 1
+	  range_in_src = range_in_src[1], range_in_src[2][1:end-1];
+	end
 	range_in_dst = intersect(dst_range_full[1], 1:dst_img_size[1]), intersect(dst_range_full[2], 1:dst_img_size[2]);
 
 	src_pt_locs = findfirst(range_in_src[1] .== src_pt[1]), findfirst(range_in_src[2] .== src_pt[2]);
@@ -563,9 +569,22 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, highpass_sigma
     		i_max = size(xc, 1)
   	end
 
-	if i_max != 1 && j_max != 1 && i_max != size(xc, 1) && j_max != size(xc, 2)
+	#=if i_max != 1 && j_max != 1 && i_max != size(xc, 1) && j_max != size(xc, 2)
 		xc_w = sum(xc[i_max-1:i_max+1, j_max-1:j_max+1])
 		xc_i = sum(xc[i_max+1, j_max-1:j_max+1]) - sum(xc[i_max-1, j_max-1:j_max+1])
+		xc_j = sum(xc[i_max-1:i_max+1, j_max+1]) - sum(xc[i_max-1:i_max+1, j_max-1])
+		i_max += xc_i / xc_w 
+		j_max += xc_j / xc_w 
+		if isnan(i_max) || isnan(j_max) 
+		  println(xc_i)
+		  println(xc_j)
+		  println(xc_w)
+		  return nothing
+		end
+	end=#
+	if 2 < i_max < size(xc, 1) - 1 && 2 < j_max < size(xc, 2) - 1
+		xc_w = sum(xc[i_max-2:i_max+2, j_max-2:j_max+2])
+		xc_i = sum(xc[i_max+2, j_max-2:j_max+2]) * 2 + sum(xc[i_max+1, j_max-2:j_max+2]) - sum(xc[i_max-1, j_max-2:j_max+2]) - sum(xc[i_max-2, j_max-2:j_max+2]) * 2
 		xc_j = sum(xc[i_max-1:i_max+1, j_max+1]) - sum(xc[i_max-1:i_max+1, j_max-1])
 		i_max += xc_i / xc_w 
 		j_max += xc_j / xc_w 
