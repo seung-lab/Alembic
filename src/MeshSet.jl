@@ -564,16 +564,24 @@ succeeding_pairs = Pairings(0)
 
   for i in 1:length(meshes), j in 1:length(meshes)
     if is_adjacent(get_index(meshes[i]), get_index(meshes[j])) 
-      if i < j push!(adjacent_pairs, (i, j)); 
-      elseif reflexive push!(adjacent_pairs, (i, j)); 
+      if i < j 
+        push!(adjacent_pairs, (i, j)); 
+      elseif reflexive 
+        push!(adjacent_pairs, (i, j)); 
       end
+    end
     if is_diagonal(get_index(meshes[i]), get_index(meshes[j])) 
-      if i < j push!(diagonal_pairs, (i, j)); 
-      elseif reflexive push!(diagonal_pairs, (i, j)); 
+      if i < j 
+        push!(diagonal_pairs, (i, j)); 
+      elseif reflexive 
+        push!(diagonal_pairs, (i, j)); 
       end
+    end
     if is_preceding(get_index(meshes[i]), get_index(meshes[j]), within) 
     	push!(preceding_pairs, (i, j)); 
-	if reflexive    	push!(succeeding_pairs, (j, i)); end
+    	if reflexive 
+        push!(succeeding_pairs, (j, i)); 
+      end
     end
   end
 
