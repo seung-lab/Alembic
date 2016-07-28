@@ -33,7 +33,7 @@ def main():
 	dir = os.getcwd()
 	# file = sys.argv[1]
 	files = os.listdir(dir)
-	clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(63,63))
+	clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(127,127))
 	for file in files:
 		if file.endswith("1,1_prealigned.h5"):
 			print "Applying CLAHE to " + file

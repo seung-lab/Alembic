@@ -92,13 +92,13 @@ end
 if !(contains(gethostname(), "seunglab") || contains(gethostname(), "seungom"))
   using ImageView
   using MKLSparse
+  using PyCall
 end
 
 include("parallelism.jl")
 include("author.jl")
 include("Index.jl")
 include("registry.jl")
-include("import.jl")
 if ON_AWS
   include("dataset_zebrafish.jl")
   include("params_default.jl")
@@ -136,6 +136,7 @@ if !(contains(gethostname(), "seunglab") || contains(gethostname(), "seungom"))
   include("inspect.jl")
   include("check.jl")
   include("brushtool.jl")
+  include("import.jl")
 end
 
 
