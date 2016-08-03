@@ -1,7 +1,7 @@
 [![Build Status](https://travis-ci.org/seung-lab/Julimaps.svg?branch=master)](https://travis-ci.org/seung-lab/Julimaps)
 
-# Julimaps
-JULia IMAge Processing Suite:
+# Alembic
+ALignment of Electron Microscopy By Image Correlograms
 A set of tools for elastic image registration in Julia.
 
 # Process

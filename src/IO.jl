@@ -409,13 +409,13 @@ function save_stack(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, 
   # perm = [3,2,1]
   # stack = permutedims(stack, perm)
   orientation = "zyx"
-  dataset = cur_dataset
+  dataset = DATASET
   origin = [0,0]
   x_slice = [slice[1][1], slice[1][end]] + origin
   y_slice = [slice[2][1], slice[2][end]] + origin
   z_slice = [find_in_registry(firstindex), find_in_registry(lastindex)]
   phasename = is_prealigned(firstindex) ? "prealigned" : "aligned"
-  filename = string(cur_dataset, "_", phasename, "_", join([join(x_slice, "-"), join(y_slice, "-"), join(z_slice,"-")], "_"), ".h5")
+  filename = string(DATASET, "_", phasename, "_", join([join(x_slice, "-"), join(y_slice, "-"), join(z_slice,"-")], "_"), ".h5")
   filepath = joinpath(FINISHED_DIR_PATH, filename)
   println("\nSaving stack to ", filepath)
   f = h5open(filepath, "w")
@@ -434,7 +434,7 @@ function save_stack(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, 
   f["by"] = ENV["USER"]
   f["machine"] = gethostname()
   f["timestamp"] = string(now())
-  f["dataset"] = cur_dataset
+  f["dataset"] = DATASET
   close(f)
 end
 
