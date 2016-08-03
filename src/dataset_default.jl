@@ -127,6 +127,10 @@ end
 if contains(gethostname(), "seungworkstation")
  BUCKET = joinpath(homedir(), "seungmount/research/Julimaps/datasets")
 end
+
+if contains(gethostname(), "seungworkstation08")
+    BUCKET = "/media/tmacrina/4BED39E032CF5004/datasets"
+end
 #=
 tracerhostnames = ["seungworkstation04", "mycroft", "seungworkstation10", "hogwarts"]
 if gethostname() in tracerhostnames
@@ -148,7 +152,8 @@ datasets_dir_path = "research/Julimaps/datasets" =#
 # cur_dataset = "align_net"
 # cur_dataset = "elastic_test_crack"
 # cur_dataset = "elastic_real_crack_with_cropping"
-DATASET = "AIBS_actual_trial10_full"
+# DATASET = "AIBS_actual_trial10_full"
+DATASET = "AIBS_import"
 affine_dir_path = "~"
 
 function migrate_legacy()
