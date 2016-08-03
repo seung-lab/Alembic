@@ -86,10 +86,14 @@ end
 
 function render_montaged(meshset::MeshSet; render_full=false, render_review=true, flagged_only=true)
   assert(is_premontaged(meshset.meshes[1].index))
-  crop = [0, 0]
+  crop = [0,0]
+  thumbnail_scale = 0.02
   render_params = meshset.properties["params"]["render"]
   if haskey(render_params, "crop")
     crop = render_params["crop"]
+  end
+  if haskey(render_params, "thumbnail_scale")
+    thumbnail_scale = render_params["thumbnail_scale"]
   end
   index = montaged(meshset.meshes[1].index)
   if is_flagged(meshset) 
@@ -124,6 +128,9 @@ function render_montaged(meshset::MeshSet; render_full=false, render_review=true
       chunksize = min(1000, min(size(img)...))
       @time f["img", "chunk", (chunksize,chunksize)] = img
       close(f)
+      println("Creating thumbnail for $index @ $(thumbnail_scale)x")
+      thumbnail, _ = imscale(img, thumbnail_scale)
+      write_thumbnail(thumbnail, index, thumbnail_scale)
       update_offset(index, [0,0], size(img))
     end
   # catch e
@@ -146,7 +153,7 @@ Notes on transform composition:
     tform * translation * cumulative_tform
 
   * Be aware that aligned images are already positioned in global space, but
-    they are not *rescoped* to it (that's the finished images directory). So the
+    they are not *rescoped* to it. So the
     aligned image offset needs to be accounted for as an additional translation.
     If the image is fixed, it's assumed to be an aligned image, so we pull its
     offset, and calculate the additional translation.
@@ -171,7 +178,7 @@ function prepare_prealignment(index::Index, startindex=montaged(ROI_FIRST))
       dst_offset = get_offset(dst_index)
       translation = make_translation_matrix(dst_offset)*translation
     end
-    tform = regularized_solve(meshset, lambda=0.9)*translation
+    tform = regularized_solve(meshset)*translation
   end
   return src_index, dst_index, cumulative_tform, tform
 end
@@ -226,7 +233,8 @@ end
 
 function render_prealigned(src_index::Index, dst_index::Index, src_img, dst_img, 
                 cumulative_tform, tform; render_full=false, render_review=true)
-  scale = 0.05
+  scale = 0.02
+  thumbnail_scale = 0.125
   s = make_scale_matrix(scale)
 
   if render_review
@@ -260,8 +268,21 @@ function render_prealigned(src_index::Index, dst_index::Index, src_img, dst_img,
     f = h5open(path, "w")
     chunksize = min(1000, min(size(src_warped)...))
     @time f["img", "chunk", (chunksize,chunksize)] = src_warped
-    close(f)    
+    close(f)
+    println("Creating thumbnail for $index @ $(thumbnail_scale)x")
+    thumbnail, _ = imscale(img, thumbnail_scale)
+    write_thumbnail(thumbnail, index, thumbnail_scale)
   end
+end
+
+function render_prealigned_review(ms::MeshSet)
+  src_index = get_index(ms.meshes[1])
+  dst_index = get_index(ms.meshes[2])
+  src_offset = get_offset(src_index)
+  translation = make_translation_matrix(src_offset)
+  tform = regularized_solve(ms)*translation
+  render_prealigned(src_index, dst_index, get_image(src_index), 
+    get_image(dst_index), eye(3), tform; render_full=false, render_review=true)
 end
 
 function write_review_image(path, src_img, src_offset, dst_img, dst_offset, scale, tform)
@@ -357,6 +378,34 @@ end
       end
     end
   end
+end
+
+function write_thumbnail(index::Index; scale=0.02)
+  println("Creating thumbnail image for $index @ $(scale)x")
+  img = sdata(get_image(index, scale))
+  write_thumbnail(img, index, scale)
+end
+
+function write_thumbnail(img, index::Index, scale::Float64)
+  println("Writing thumbnail image for $index @ $(scale)x")
+  path = get_path("thumbnail", index)
+  f = h5open(path, "w")
+  chunksize = min(100, min(size(img)...))
+  @time f["img", "chunk", (chunksize, chunksize)] = img
+  f["scale"] = scale
+  close(f)
+end
+
+function write_thumbnails(firstindex::Index, lastindex::Index; scale=0.02)
+  for index in get_index_range(firstindex, lastindex)
+    write_thumbnail(index, scale=scale)
+  end
+end
+
+function crop(index::Index)
+  mask = load("mask", index)
+  scale = h5read(get_path("thumbnail", index), "scale")
+  img = load()
 end
 
 function split_prealigned(index::Index)
