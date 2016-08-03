@@ -138,18 +138,20 @@ function write_seams(meshset, imgs, offsets, indices, flagged_only=true)
   for (k, (i,j)) in enumerate(overlap_tuples)
     src_index, dst_index = indices[i], indices[j]
     ind = find_match_index(meshset, src_index, dst_index)
-    if !flagged_only || is_flagged(meshset.matches[ind])
-      println("Writing match #", k, " of ", total_seams, " seams")
-      path = get_path("review", (src_index, dst_index))
-      img, fuse_offset = imfuse(imgs[i], offsets[i], imgs[j], offsets[j])
-      bb = bbs[i] - bbs[j]
-      img_cropped = imcrop(img, fuse_offset, bb)
-      f = h5open(path, "w")
-      chunksize = min(50, min(size(img_cropped)...))
-      @time f["img", "chunk", (chunksize,chunksize)] = img_cropped
-      f["offset"] = [bb.i, bb.j]
-      f["scale"] = 1.0
-      close(f)
+    if ind > 0
+      if !flagged_only || is_flagged(meshset.matches[ind])
+        println("Writing match #", k, " of ", total_seams, " seams")
+        path = get_path("review", (src_index, dst_index))
+        img, fuse_offset = imfuse(imgs[i], offsets[i], imgs[j], offsets[j])
+        bb = bbs[i] - bbs[j]
+        img_cropped = imcrop(img, fuse_offset, bb)
+        f = h5open(path, "w")
+        chunksize = min(50, min(size(img_cropped)...))
+        @time f["img", "chunk", (chunksize,chunksize)] = img_cropped
+        f["offset"] = [bb.i, bb.j]
+        f["scale"] = 1.0
+        close(f)
+      end
     end
   end
 end
