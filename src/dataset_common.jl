@@ -94,6 +94,7 @@ function get_subdir(string::String)
   elseif string == "mask"     return MASK_DIR, ".png"
   elseif string == "outline"     return OUTLINE_DIR, ".png"
   elseif string == "expunge"     return EXPUNGED_DIR, ".h5"
+  elseif string == "thumbnail"     return THUMBNAIL_DIR, ".h5"
   end
 end
 
@@ -214,6 +215,7 @@ global CONTRAST_BIAS_DIR = "bias"
 global CONTRAST_AUTO_DIR = "auto"
 global STATS_DIR = "stats"
 global OUTLINE_DIR = "outline"
+global THUMBNAIL_DIR = "thumbnail"
 
 global OVERVIEW_DIR_PATH = joinpath(BUCKET, DATASET, OVERVIEW_DIR)
 global PREMONTAGED_DIR_PATH = joinpath(BUCKET, DATASET, PREMONTAGED_DIR)
@@ -246,7 +248,7 @@ function check_dirs(dataset_name::String = DATASET)
 
     dataset_dir = joinpath(BUCKET, dataset_name)
     dirs = [ OVERVIEW_DIR, PREMONTAGED_DIR, MONTAGED_DIR, PREALIGNED_DIR, ALIGNED_DIR, FINISHED_DIR ]
-    subdirs = [ MESH_DIR, MATCH_DIR, MESHSET_DIR, EXPUNGED_DIR, REVIEW_DIR, MASK_DIR, IMPORT_DIR, CONTRAST_BIAS_DIR, CONTRAST_AUTO_DIR, STATS_DIR, OUTLINE_DIR ]
+    subdirs = [ MESH_DIR, MATCH_DIR, MESHSET_DIR, EXPUNGED_DIR, REVIEW_DIR, MASK_DIR, IMPORT_DIR, CONTRAST_BIAS_DIR, CONTRAST_AUTO_DIR, STATS_DIR, OUTLINE_DIR, THUMBNAIL_DIR ]
 
     setup_dir(dataset_dir)
     for d in dirs

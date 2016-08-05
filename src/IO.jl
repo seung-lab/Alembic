@@ -1,5 +1,5 @@
 # size in bytes
-global const IMG_CACHE_SIZE = 8 * 2^30 # n * gibibytes
+global const IMG_CACHE_SIZE = 40 * 2^30 # n * gibibytes
 global const IMG_ELTYPE = UInt8
 
 if myid() == 1
@@ -43,6 +43,10 @@ function load(path::String)
   	data = open(deserialize, path)
 	elseif ext == ".jld"
   	data = load(path, "data")
+  elseif ext == ".png"
+    data = load_mask(path)
+  elseif ext == ".jpg"
+    data = load_mask(path)
 	end
   println("Loaded $(typeof(data)) from ", path)
 	return data
@@ -222,13 +226,14 @@ function get_slice(path::String, slice, scale=1.0)
 end
 
 function load_mask(index::Index; clean=true)
-    path = get_mask_path(index)
+    path = get_path("mask", index)
     return load_mask(path, clean=clean)
 end
 
 function load_mask(path; clean=true)
     img = Images.load(path).data'
     mask = reinterpret(UInt8, img)
+    mask = permutedims(mask[1,:,:], [2, 3, 1])[:,:,1]
     if clean
         clean_mask!(mask)
     end

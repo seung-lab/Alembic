@@ -97,7 +97,7 @@ end
 #="""
 Apply some weighted combination of affine and rigid, gauged by lambda
 """=#
-function regularized_solve(ms::MeshSet; k=1, lambda=0.9, globalized=false)
+function regularized_solve(ms::MeshSet; k=1, lambda=ms.properties["params"]["solve"]["lambda"], globalized=false)
   affine = affine_solve(ms; k=k, globalized=globalized)
   rigid = rigid_solve(ms; k=k, globalized=globalized)
   return lambda*affine + (1-lambda)*rigid

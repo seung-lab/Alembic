@@ -206,3 +206,12 @@ function segment_by_mask(img, crack_mask; include_crack=false)
     end
     return segments
 end
+
+"""
+Given roi_mask with 0 as ROI, produce cropped image
+"""
+function crop_roi(img, roi_mask)
+    roi_mask = label_components(roi_mask)
+    roi = roi_mask .== 0
+    return img .* roi
+end

@@ -14,9 +14,9 @@ FTOL_GD_MONTAGE = 1e-8
 ETA_NEWTON_MONTAGE = 0.6
 FTOL_NEWTON_MONTAGE = 1e-16
 
-MESH_LENGTH_PREALIGNMENT = 1500
+MESH_LENGTH_PREALIGNMENT = 7000
 GLOBAL_OFFSETS_PREALIGNMENT = false
-BLOCKMATCH_SCALE_PREALIGNMENT = 0.1
+BLOCKMATCH_SCALE_PREALIGNMENT = 0.25
 BLOCK_R_PREALIGNMENT = 800
 SEARCH_R_PREALIGNMENT = 3000
 PREMATCH_PREALIGNMENT = true
@@ -69,7 +69,8 @@ global PARAMS_MONTAGE = Dict(
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 2.5)
 					      ),
 			     "render" => Dict(
-			     		"crop" => [250, 250]
+			     		"crop" => [300, 300],
+			     		"thumbnail_scale" => 0.02
 					      ),
 			     "review" => Dict(
 						# "too_few_corresps" => (:count_correspondences, <, 10),
@@ -119,6 +120,7 @@ global PARAMS_PREALIGNMENT = Dict(
 			     		"norm_filter" => (:get_norms_std_sigmas, >, 5)
 					      ),
 			     "render" => Dict(
+			     		"thumbnail_scale" => 0.125
 					      ),
 			     "review" => Dict(
 				     	# "r_below" => (:count_filtered_properties, >, 0, "r_max", <, 0.2),
