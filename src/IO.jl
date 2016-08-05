@@ -25,7 +25,7 @@ function save(path::String, data; chunksize = 1000)
 	println("Saving $(typeof(data)) to ", path)
   	ext = splitext(path)[2];
 	if ext == ".h5"
-		f = h5open(path, "w"); @time f["img", "chunk", (chunksize, chunksize)] = img; close(f)
+		f = h5open(path, "w"); @time f["img", "chunk", (chunksize, chunksize)] = data; close(f)
 	elseif ext == ".jls"
 	open(path, "w") do file serialize(file, data) end
       	elseif ext == ".jld"

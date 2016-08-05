@@ -160,7 +160,10 @@ end
 
 function get_metadata(index)
   registry = get_registry(index);
-  return registry[find_in_registry(index), :];
+  if find_in_registry(index) == 0 return [get_name(index) index 0 0 0 0 0 false]
+  else
+    return registry[find_in_registry(index), :];
+  end
 end
 
 function get_offset(index)
@@ -169,17 +172,30 @@ function get_offset(index)
 		if myid() != IO_PROC return remotecall_fetch(IO_PROC, get_offset, index) end
 	#end
 	metadata = get_metadata(index);
-	return Point(metadata[3:4]);
+	return Point(metadata[4:5]);
 end
 
-function get_image_size(index)
+function get_rotation(index)
+		if myid() != IO_PROC return remotecall_fetch(IO_PROC, get_rotation, index) end
 	metadata = get_metadata(index);
-	return Array{Int64, 1}(metadata[5:6]);
+	return Float64(metadata[3])
 end
 
-function needs_render(index)
+function get_image_size(index; rotated = false)
+		if myid() != IO_PROC return remotecall_fetch(IO_PROC, get_image_size, index) end
 	metadata = get_metadata(index);
-	return Bool(metadata[7])
+	size_raw = Array{Int64, 1}(metadata[6:7]);
+	if rotated
+	  tform = make_rotation_matrix(get_rotation(index));
+	  size_rotated = bb_to_sz(tform_bb(sz_to_bb(size_raw), tform))
+	  return collect(size_rotated)
+	else return size_raw
+	end
+end
+
+function is_rendered(index)
+	metadata = get_metadata(index);
+	return Bool(metadata[8])
 end
 
 function get_preceding(index, num = 1)
@@ -312,6 +328,31 @@ function reset_offset(index)
   update_offset(index, [0,0])
 end
 
+function update_registry(index; rotation::Union{Float64, Int64} = get_rotation(index), offset::Union{Point, Array{Int64, 1}} = get_offset(index), image_size::Array{Int64, 1} = get_image_size(index), rendered::Bool = is_rendered(index))
+  if myid() != IO_PROC return remotecall_fetch(IO_PROC, update_registry, index, rotation = rotation, offset = offset, image_size = image_size, rendered = rendered) end
+  image_fn = string(get_name(index));
+  registry_fp = get_registry_path(index)
+  println("Updating registry for ", image_fn, " in:\n", registry_fp, ": rotation: $rotation, offset: $offset, image_size: $image_size")
+
+  if !isfile(registry_fp)
+    f = open(registry_fp, "w")
+    close(f)
+    registry = [image_fn, rotation, offset..., image_size..., rendered]'
+  else  
+    registry = readdlm(registry_fp)
+    registry_line = [image_fn, rotation, offset..., image_size..., rendered]
+    idx = findfirst(registry[:,1], image_fn)
+    if idx != 0
+      registry[idx, :] = registry_line';
+    else
+      registry = vcat(registry, registry_line')
+    end
+  end
+  registry = registry[sortperm(registry[:, 1], by=parse_name), :];
+  writedlm(registry_fp, registry)
+  reload_registry(index);
+end
+
 """
 Edit the offset_log text file associated with an index
 
@@ -330,23 +371,24 @@ end
 
 function update_offset(index::Index, registry_fp::String, offset::Array, sz=[0,0], needs_render=false)
   image_fn = string(get_name(index));
+  rotation = get_rotation(index);
 
   println("Updating registry for ", image_fn, " in:\n", registry_fp, ": offset is now ", offset)
 
   if !isfile(registry_fp)
     f = open(registry_fp, "w")
     close(f)
-    registry = [image_fn, offset..., sz..., needs_render]'
+    registry = [image_fn, 0, offset..., sz..., needs_render]'
   else  
     registry = readdlm(registry_fp)
     idx = findfirst(registry[:,1], image_fn)
     if idx != 0
-      registry[idx, 2:3] = collect(offset)
+      registry[idx, 3:4] = collect(offset)
       if sz != [0, 0]
-        registry[idx, 4:5] = collect(sz)
+        registry[idx, 5:6] = collect(sz)
       end
     else
-      registry_line = [image_fn, offset..., sz..., needs_render]
+      registry_line = [image_fn, rotation, offset..., sz..., needs_render]
       registry = vcat(registry, registry_line')
     end
   end
@@ -363,7 +405,7 @@ function update_offsets(indices, offsets, sizes, needs_render=falses(length(indi
   if !isfile(registry_fp)
     f = open(registry_fp, "w")
     close(f)
-    registry = [[f, o..., s..., n] for (f,o,s,n) in zip(filenames, offsets, sizes, needs_render)]
+    registry = [[f, 0, o..., s..., n] for (f,o,s,n) in zip(filenames, offsets, sizes, needs_render)]
     registry = hcat(registry...)'
     println("Block line updating registry with ", registry, " in:\n", registry_fp)
   else
@@ -371,7 +413,7 @@ function update_offsets(indices, offsets, sizes, needs_render=falses(length(indi
     locations = map(findfirst, repeated(registry), filenames)
     for (k, i) in enumerate(locations)
       println("Updating registry for ", filenames[k], " in:\n", registry_fp, ": offset is now ", offsets[k])
-      registry_line = [filenames[k], offsets[k]..., sizes[k]..., needs_render[k]]
+      registry_line = [filenames[k], 0, offsets[k]..., sizes[k]..., needs_render[k]]
       if i > 0
         registry[i,:] = registry_line
       else

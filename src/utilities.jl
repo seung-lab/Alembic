@@ -48,7 +48,7 @@ end
 """
 Create scaling transform and apply to image
 """
-function imscale(img, scale_factor)
+function imscale(img, scale_factor; kwargs...)
   tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
   return imwarp(img, tform);
 end
@@ -63,38 +63,19 @@ function imscale!(result, img, scale_factor)
   return imwarp!(result, img, tform);
 end=#
 
-function imscale_register_a!(img, scale_factor)
-  tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
-  bb = BoundingBox{Float64}(0,0, size(img, 1), size(img, 2))
-  wbb = tform_bb(bb, tform)
-  tbb = snap_bb(wbb)
-  if size(REGISTER_A) != (tbb.h, tbb.w)
-   global REGISTER_A = zeros(eltype(img), tbb.h, tbb.w)
-   end
-  return ImageRegistration.imwarp!(REGISTER_A, img, tform);
-end
-
-function imscale_register_b!(img, scale_factor)
-  tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
-  bb = BoundingBox{Float64}(0,0, size(img, 1), size(img, 2))
-  wbb = tform_bb(bb, tform)
-  tbb = snap_bb(wbb)
-  if size(REGISTER_B) != (tbb.h, tbb.w)
-   global REGISTER_B = zeros(eltype(img), tbb.h, tbb.w)
-   end
-  return ImageRegistration.imwarp!(REGISTER_B, img, tform);
-end
-
 """
 Create rotation transform and apply to image (degrees)
 """
-function imrotate(img, angle)
+function imrotate(img, angle; kwargs...)
   tform = make_rotation_matrix(angle)
-  return imwarp(img, tform);
+  return imwarp(img, tform; kwargs...);
 end
 
 function make_rotation_matrix(angle)
-  return [cos(angle) -sin(angle) 0; sin(angle) cos(angle) 0; 0 0 1]
+  angle = deg2rad(angle)
+  rot = [cos(angle) sin(angle) 0; -sin(angle) cos(angle) 0; 0 0 1]
+  rot[abs(rot) .< eps] = 0
+  return rot;
 end
 
 function make_translation_matrix(offset)

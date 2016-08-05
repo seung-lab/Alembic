@@ -460,8 +460,8 @@ function prealign(index; params=get_params(index), to_fixed=false)
 	meshset = MeshSet();
 	meshset.properties["params"] = params;
 	meshset.properties["meta"] = Dict{Any, Any}();
-	push!(meshset.meshes, make_mesh(src_index, params))
-	push!(meshset.meshes, make_mesh(dst_index, params, to_fixed))
+	push!(meshset.meshes, Mesh(src_index, params))
+	push!(meshset.meshes, Mesh(dst_index, params, to_fixed))
 	push!(meshset.matches, Match(meshset.meshes[1], meshset.meshes[2], params))
 	filter!(meshset);
 	check!(meshset);
@@ -484,7 +484,7 @@ function MeshSet(first_index, last_index; params=get_params(first_index), solve=
 end
 
 function MeshSet(indices::Array; params=get_params(indices[1]), solve=true, solve_method="elastic")
-  meshes = pmap(make_mesh, indices, repeated(params))
+  meshes = pmap(Mesh, indices, repeated(params))
   sort!(meshes; by=get_index)
   matches = Array{Match, 1}(0)    
   properties = Dict{Any, Any}(  "params"  => params,
@@ -515,7 +515,7 @@ end
 #   if length(indices) == 0 
 #     return nothing; 
 #   end
-#   meshes = pmap(make_mesh, indices, repeated(params));
+#   meshes = pmap(Mesh, indices, repeated(params));
 #   sort!(meshes; by=get_index)
 #   map(fix!, fixed_meshes)
 #   merge_meshes!(meshes, fixed_meshes) # merge meshes into fixed_meshes
@@ -917,7 +917,7 @@ function autoblockmatch(index; params=get_params(index))
   if length(indices) == 0 
     return nothing; 
   end
-  meshes = pmap(make_mesh, indices, repeated(params));
+  meshes = pmap(Mesh, indices, repeated(params));
   sort!(meshes; by=get_index)
   matches = Array{Match, 1}(0)
   properties = Dict{Any, Any}(  

@@ -17,101 +17,39 @@ type Match
   properties::Dict{Any, Any}
 end
 
+### index related
+function get_src_index(match::Match)
+  return match.src_index
+end
+function get_dst_index(match::Match)
+  return match.dst_index
+end
+function get_index(match::Match)
+	return get_src_and_dst_indices(match::Match)
+end
+function get_src_and_dst_indices(match::Match)
+  return match.src_index, match.dst_index
+end
+
 ### counting
 function count_correspondences(match::Match) return size(match.src_points, 1);	end
 function count_filtered_correspondences(match::Match) return length(get_filtered_indices(match)); end
 function count_rejected_correspondences(match::Match) return length(get_rejected_indices(match)); end
-function count_filters(match::Match) return length(match.filters); end
 
+function count_filters(match::Match) return length(match.filters); end
 function count_filtered_properties(match::Match, property_name, compare, threshold)
  return sum(compare(get_filtered_properties(match::Match, property_name), threshold))
 end
 
-function get_src_index(match::Match)
-  return match.src_index
+### correspondences related
+function get_filtered_indices(match::Match)
+	return setdiff(1:count_correspondences(match), union(map(getindex, match.filters, repeated("rejected"))...));
 end
-
-function get_dst_index(match::Match)
-  return match.dst_index
+function get_rejected_indices(match::Match)
+	return union(map(getindex, match.filters, repeated("rejected"))...)
 end
-
-function get_index(match::Match)
-	return get_src_and_dst_indices(match::Match)
-end
-
-function get_src_and_dst_indices(match::Match)
-  return match.src_index, match.dst_index
-end
-#=
-function get_name(match::Match)
-	return join(get_src_and_dst_indices(match), ",")
-end
-=#
-function get_ratio_filtered(match::Match, min_corresps = 0) 
-  if count_correspondences(match) < min_corresps return 1.0 end # ignore low match cases
-return count_filtered_correspondences(match) / max(count_correspondences(match), 1); end
-
-function get_ratio_rejected(match::Match, min_corresps = 0) 
-  if count_correspondences(match) < min_corresps return 0.0 end # ignore low match cases
-return count_rejected_correspondences(match) / max(count_correspondences(match), 1); end
-
-function get_ratio_edge_proximity(match::Match)
-     if count_filtered_correspondences(match) == 0 return 0.0 end
-     norms = map(norm, get_filtered_properties(match, "dv"))
-return maximum(norms) / match.properties["params"]["match"]["search_r"]; end
-
-function count_outlier_norms(match::Match, sigma=3)
-	return sum(get_norms_std_sigmas(match) .> sigma)
-end
-
-function get_median_dv(match::Match)
-	if count_filtered_correspondences(match) == 0 
-		return 0.0
-	end
-	dvs = get_filtered_properties(match, "dv")
-	x, y = [dv[1] for dv in dvs], [dv[2] for dv in dvs]
-	return [median(x), median(y)]
-end
-
-function get_maximum_centered_norm(match::Match)
-	if count_filtered_correspondences(match) == 0 
-		return 0.0
-	end
-	dvs = get_filtered_properties(match, "dv")
-	x, y = [dv[1] for dv in dvs], [dv[2] for dv in dvs]
-	med = [median(x), median(y)]
-	norms = map(norm, [dv - med for dv in dvs])
-	return maximum(norms)
-end
-
-function get_centered_norms(match::Match)
-	if count_correspondences(match) == 0 
-		return nothing
-	end
-	dvs = get_properties(match, "dv")
-	x, y = [dv[1] for dv in dvs], [dv[2] for dv in dvs]
-	med = [median(x), median(y)]
-	norms = map(norm, [dv - med for dv in dvs])
-	return norms
-end
-
-function get_norm_std(match::Match)
-	if count_filtered_correspondences(match) == 0 
-		return 0.0
-	end
-	norms = convert(Array{Float64}, map(norm, get_filtered_properties(match, "dv")))
-	return std(convert(Array{Float64}, norms))
-end
-
-function get_norms_std_sigmas(match::Match)
-	if count_filtered_correspondences(match) == 0 
-		return 0.0
-	end
-	norms = convert(Array{Float64}, map(norm, get_properties(match, "dv")))
-	filtered_norms = convert(Array{Float64}, map(norm, get_filtered_properties(match, "dv")))
-	mu = mean(filtered_norms)
-	stdev = std(filtered_norms)
-	return (norms - mu) / stdev
+function get_filtered_correspondence_properties(match::Match)
+	return match.correspondence_properties[get_filtered_indices(match)]
 end
 
 function get_correspondences(match::Match; globalized::Bool=false, global_offsets::Bool=true, filtered::Bool=false, use_post::Bool=false, src_mesh = nothing, dst_mesh = nothing)
@@ -132,39 +70,7 @@ function get_correspondences(match::Match; globalized::Bool=false, global_offset
 	return ret;
 end
 
-function get_filtered_correspondence_properties(match::Match)
-	return match.correspondence_properties[get_filtered_indices(match)]
-end
-
-function get_filtered_indices(match::Match)
-	return setdiff(1:count_correspondences(match), union(map(getindex, match.filters, repeated("rejected"))...));
-end
-
-function get_rejected_indices(match::Match)
-	return union(map(getindex, match.filters, repeated("rejected"))...)
-end
-
 ### property handling
-function get_properties(match::Match, property_name)
-	ret = map(get_dfs, match.correspondence_properties, repeated(property_name));
-	if length(ret) != 0
-		ret = Array{typeof(ret[1])}(ret);
-	end
-end
-
-function get_properties_ratios(match::Match, args...)
-  	props_den = get_properties(match, args[end])
-  	for arg in args[(end-1):-1:1]
-	props_num = get_properties(match, arg)
-	props_den = props_num ./ props_den
-      	end
-	return props_den
-end
-
-function get_properties(match::Match, fn::Function, args...)
-	return fn(match, args...)
-end
-
 function get_dfs(dict::Dict, keytofetch)
 	for key in keys(dict)
 		if key == keytofetch
@@ -176,6 +82,17 @@ function get_dfs(dict::Dict, keytofetch)
 		end
 	end
 	return nothing
+end
+
+function get_properties(match::Match, property_name)
+	ret = map(get_dfs, match.correspondence_properties, repeated(property_name));
+	if length(ret) != 0
+		ret = Array{typeof(ret[1])}(ret);
+	end
+end
+
+function get_properties(match::Match, fn::Function, args...)
+	return fn(match, args...)
 end
 
 function get_filtered_properties(match::Match, property_name)
@@ -309,12 +226,14 @@ end
 """
 Template match two images & record translation for source image - already scaled
 """
-function monoblock_match(src_index, dst_index, src_image, dst_image, params=get_params(src_index))
-  println("monoblock:")
-	if params["match"]["monoblock_match"] == false return; end
-	scale = params["match"]["monoblock_scale"];
-	highpass_sigma = params["match"]["highpass_sigma"];
-	ratio = params["match"]["monoblock_ratio"];
+function prematch(src_index, dst_index, src_image, dst_image, params=get_params(src_index))
+  println("rigid:")
+	if params["match"]["prematch"] == false return; end
+	scale = params["match"]["prematch_scale"];
+	ratio = params["match"]["prematch_template_ratio"];
+	angles = params["match"]["prematch_angles"];
+	highpass_sigma = 0
+	#highpass_sigma = params["match"]["highpass_sigma"];
 
 	scaled_rads = ceil(Int64, ratio * size(src_image, 1) / 2), round(Int64, ratio * size(src_image, 2) / 2)
 	range_in_src = ceil(Int64, size(src_image, 1) / 2) + (-scaled_rads[1]:scaled_rads[1]), round(Int64, size(src_image, 2) / 2) + (-scaled_rads[2]:scaled_rads[2])
@@ -734,19 +653,27 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 	# end
 
   	src_index = get_index(src_mesh); dst_index = get_index(dst_mesh);
-	src_img = get_image(src_index);
-	dst_img = get_image(dst_index);
+	src_img = get_image(src_index);  dst_img = get_image(dst_index);
 
-@everywhere global REGISTER_A = Array(Float64, 0, 0);
-@everywhere global REGISTER_B = Array(Float64, 0, 0);
-
-	if params["match"]["monoblock_match"]
-	#monoblock_match(src_index, dst_index, get_image(src_index, params["match"]["monoblock_scale"]), get_image(dst_index, params["match"]["monoblock_scale"]), params);
-	monoblock_match(src_index, dst_index, src_img, dst_img, params);
+	if params["match"]["prematch"]
+	prematch(src_index, dst_index, src_img, dst_img, params);
         end
 
+	src_offset = get_offset(src_index); dst_offset = get_offset(dst_index);
+	src_size = get_image_size(src_index); dst_size = get_image_size(dst_index);
+
+	if get_rotation(src_index) != 0
+	  src_img = imrotate(src_img, get_rotation(src_index); parallel = true);
+	  src_size = get_image_size(src_index; rotated = true);
+	end
+
+	if params["global_offsets"] && get_rotation(dst_index) != 0
+	  println("rotation in the dst image detected with global offsets - aborting...")
+	  return nothing
+	end
+
 	print("computing ranges:")
-	@time ranges = map(get_ranges, src_mesh.src_nodes, repeated(src_index), repeated(get_offset(src_index)), repeated(get_image_size(src_index)), repeated(dst_index), repeated(get_offset(dst_index)), repeated(get_image_size(dst_index)), repeated(params["match"]["block_r"]), repeated(params["match"]["search_r"]), repeated(params["registry"]["global_offsets"]));
+	@time ranges = map(get_ranges, src_mesh.src_nodes, repeated(src_index), repeated(src_offset), repeated(src_size), repeated(dst_index), repeated(dst_offset), repeated(dst_size), repeated(params["match"]["block_r"]), repeated(params["match"]["search_r"]), repeated(params["registry"]["global_offsets"]));
 	ranged_inds = find(i -> i != nothing, ranges);
 	ranges = ranges[ranged_inds];
 	print("    ")

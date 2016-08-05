@@ -13,13 +13,13 @@ end
 function is_adjacent(Am::Mesh, Bm::Mesh)		return is_adjacent(Am.index, Bm.index);			end
 function is_diagonal(Am::Mesh, Bm::Mesh)		return is_diagonal(Am.index, Bm.index);			end
 function is_preceding(Am::Mesh, Bm::Mesh, within = 1)	return is_preceding(Am.index, Bm.index, within);	end
-
-### PARAMS.jl EXTENSIONS
-function get_params(mesh::Mesh)				return get_params(mesh.index);				end
 function globalize!(pts::Points, mesh::Mesh)
   offset = get_offset(mesh)
   @simd for i in 1:length(pts) @fastmath @inbounds pts[i] = pts[i] + offset; end
 end
+
+### PARAMS.jl EXTENSIONS
+function get_params(mesh::Mesh)				return get_params(mesh.index);				end
 	     
 ### META.jl EXTENSIONS
 function get_offset(mesh::Mesh)				return get_offset(mesh.index);				end
@@ -38,8 +38,6 @@ function get_nodes(mesh::Mesh; globalized::Bool = false, use_post::Bool=false)
 	globalized ? globalize!(nodes, mesh) : nothing
 	return nodes
 end
-
-### IO
 
 ### counting
 function count_nodes(mesh::Mesh)			return size(mesh.src_nodes, 1);				end
@@ -124,7 +122,8 @@ function get_edge_lengths(mesh::Mesh; kwargs...)
 	end
       return edgelengths
 end
-
+#=
+# removes the edge at ind
 function remove_edge!(mesh::Mesh, ind)
 	if !haskey(mesh.properties, "removed_indices")
 		mesh.properties["removed_indices"] = Set{Int64}()
@@ -161,10 +160,10 @@ end
 function isequal(meshA::Mesh, meshB::Mesh)
   return get_index(meshA) == get_index(meshB)
 end
-
+=#
 
 ### INIT
-function make_mesh(index, params = get_params(index), fixed=false)
+function Mesh(index, params = get_params(index), fixed=false)
 	println("Creating mesh for $index")
 	# mesh lengths in each dimension
 	dists = [params["mesh"]["mesh_length"] * sin(pi / 3); params["mesh"]["mesh_length"]];
@@ -228,9 +227,9 @@ end
 function find_mesh_triangle(mesh::Mesh, point::Point)
   @inbounds begin	
 	dims, dists = get_dims_and_dists(mesh); 
-	point_padded = point - get_topleft_offset(mesh);
+	@fastmath point_padded = point - get_topleft_offset(mesh);
 
-	indices_raw = point_padded ./ dists
+	@fastmath indices_raw = point_padded ./ dists
 
 
 	# find which rows the point belongs to
@@ -390,11 +389,9 @@ function get_tripoint_dst(mesh::Mesh, triangles::Triangles, weights::Weights)
 end
 
 function get_tripoint_dst(mesh::Mesh, triangle::Triangle, weight::Weight)
-  @fastmath @inbounds begin
 	if triangle == NO_TRIANGLE return NO_POINT; end
-	dst_trinodes = mesh.dst_nodes[triangle[1]], mesh.dst_nodes[triangle[2]], mesh.dst_nodes[triangle[3]]
-	dst_point = dst_trinodes[1] * weight[1] + dst_trinodes[2] * weight[2] + dst_trinodes[3] * weight[3];
-      end #fmib
+	@fastmath @inbounds dst_trinodes = mesh.dst_nodes[triangle[1]], mesh.dst_nodes[triangle[2]], mesh.dst_nodes[triangle[3]]
+	@fastmath @inbounds dst_point = dst_trinodes[1] * weight[1] + dst_trinodes[2] * weight[2] + dst_trinodes[3] * weight[3];
 	return dst_point;
 end
 
