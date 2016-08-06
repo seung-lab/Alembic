@@ -1,4 +1,4 @@
-global loadfile = readdlm("/media/tmacrina/667FB0797A5072D7/3D_align/mosaiced_images_160720_google_cloud_upload.csv",',')
+#global loadfile = readdlm("/media/tmacrina/667FB0797A5072D7/3D_align/mosaiced_images_160720_google_cloud_upload.csv",',')
 
 function get_src_dir(z_index)
 	return joinpath("/media/tmacrina/", loadfile[findfirst(i -> i == z_index, loadfile[:,1]), 2])

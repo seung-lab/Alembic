@@ -29,7 +29,7 @@ function render(index::Index; render_full=true)
         f["offset"] = offset
         f["size"] = [size(img)...]
       close(f)
-      update_offset(index, offset, size(img))
+      update_registry(index; offset = offset, image_size = size(img))
 
     #=
     warps = map(meshwarp_mesh, meshset.meshes);
@@ -56,7 +56,7 @@ function render(index::Index; render_full=true)
       chunksize = min(1000, min(size(img)...))
       @time f["img", "chunk", (chunksize,chunksize)] = img
       close(f)
-      update_offset(index, [0,0], size(img))
+      update_registry(index; offset = [0,0], image_size = size(img))
     end
 
     render_montaged(meshset; render_full=render_full, render_review=render_review)
@@ -131,7 +131,7 @@ function render_montaged(meshset::MeshSet; render_full=false, render_review=true
       println("Creating thumbnail for $index @ $(thumbnail_scale)x")
       thumbnail, _ = imscale(img, thumbnail_scale)
       write_thumbnail(thumbnail, index, thumbnail_scale)
-      update_offset(index, [0,0], size(img))
+      update_registry(index; offset = [0,0], image_size = size(img))
     end
   # catch e
   #   println(e)
@@ -262,7 +262,7 @@ function render_prealigned(src_index::Index, dst_index::Index, src_img, dst_img,
     src_index = prealigned(src_index)
     println("Warping full image... 1/1")
     @time src_warped, src_offset = imwarp(src_img, tform*cumulative_tform, [0,0])
-    update_offset(src_index, src_offset, size(src_warped))
+    update_registry(src_index; offset = src_offset, image_size = size(src_warped))
     path = get_path(src_index)
     println("Writing full image:\n ", path)
     f = h5open(path, "w")
@@ -374,7 +374,7 @@ end
         f["size"] = [size(img)...]
         close(f)
         # Log image offsets
-        update_offset(aligned(index), offset, size(img))
+        update_registry(aligned(index); offset = offset, image_size = size(img))
       end
     end
   end
@@ -429,7 +429,7 @@ function split_prealigned(index::Index)
       f["size"] = [size(subimg)...]
       close(f)
       # Log image offsets
-      update_offset(subindex, offset, size(subimg))
+      update_registry(subindex, offset = offset, image_size = size(subimg))
     end
   end
 end

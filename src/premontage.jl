@@ -170,7 +170,7 @@ function snap(index::Index, overlap=[880, 690])
     end
   end
   println("$index, $offset -> ($vertical, $horizontal)")
-  update_offset(index, [vertical, horizontal], (h,w))
+  update_registry(index; offset = [vertical, horizontal], image_size = [h,w])
   save_premontage_review(index)
 end
 
@@ -211,7 +211,7 @@ function premontage_to_overview(wafer, start, tile_size = [8000,8000], scale = 0
 
     offsets = pmap(find_patch_locs, images, repeated(overview_image))
     for i in 1:length(tile_indices)
-      update_offset(tile_indices[i], offsets[i], tile_size)
+      update_registry(tile_indices[i]; offset = offsets[i], image_size = tile_size)
     end
     
 # end

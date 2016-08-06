@@ -227,17 +227,31 @@ end
 Template match two images & record translation for source image - already scaled
 """
 function prematch(src_index, dst_index, src_image, dst_image, params=get_params(src_index))
-  println("rigid:")
+  println("prematch:")
 	if params["match"]["prematch"] == false return; end
 	scale = params["match"]["prematch_scale"];
 	ratio = params["match"]["prematch_template_ratio"];
 	angles = params["match"]["prematch_angles"];
 	highpass_sigma = 0
 	#highpass_sigma = params["match"]["highpass_sigma"];
+	if angles > 1
+	angles_to_try = linspace(0, 360, angles + 1);
+	else angles_to_try = [0]	
+      	end
 
-	scaled_rads = ceil(Int64, ratio * size(src_image, 1) / 2), round(Int64, ratio * size(src_image, 2) / 2)
-	range_in_src = ceil(Int64, size(src_image, 1) / 2) + (-scaled_rads[1]:scaled_rads[1]), round(Int64, size(src_image, 2) / 2) + (-scaled_rads[2]:scaled_rads[2])
+	cur_max_r = 0.0
+	cur_rot = 0.0
+	cur_offset = 0.0
 
+	for angle in angles_to_try
+	  if angle != 0
+	    src_image_rotated = imrotate(src_image, angle; parallel = true)[1]
+	  else 
+	    src_image_rotated = src_image;
+	  end
+
+	scaled_rads = floor(Int64, ratio * size(src_image_rotated, 1) / 2), floor(Int64, ratio * size(src_image_rotated, 2) / 2)
+	range_in_src = ceil(Int64, size(src_image_rotated, 1) / 2) + (-scaled_rads[1]:scaled_rads[1]), ceil(Int64, size(src_image_rotated, 2) / 2) + (-scaled_rads[2]:scaled_rads[2])
 	range_in_dst = 1:size(dst_image, 1), 1:size(dst_image, 2);
 	dst_range_full = 1:size(dst_image, 1), 1:size(dst_image, 2);
 	src_pt_locs = [1, 1]; 
@@ -246,28 +260,33 @@ function prematch(src_index, dst_index, src_image, dst_image, params=get_params(
 	rel_offset = [0,0]
 
 	ranges = src_index, range_in_src, src_pt_locs, dst_index, range_in_dst, dst_range_full, dst_pt_locs, dst_pt_locs_full, rel_offset
+	if angle == 90
+		ImageView.view(src_image[range_in_src...] / 255)
+		ImageView.view(dst_image / 255)
+	end
 
-	match = get_match(src_pt_locs, ranges, src_image, dst_image, scale, highpass_sigma)
+	match = get_match(src_pt_locs, ranges, src_image_rotated, dst_image, scale, highpass_sigma)
 
-	if match == nothing
-		error("MONOBLOCK_MATCH FAILED: Cross correlogram maximum is NaN. Check that images have variance.")
+	if match == nothing continue
 	else
+		r = match[3]["xcorr"]["r_max"]
 		dv = match[3]["vects"]["dv"]
 
-		#=view(src_image_scaled[range_in_src...]/255)
-		view(dst_image_scaled[range_in_dst...]/255)
-		println(dst_pt_locs + dv)
-		img = normxcorr2_preallocated(src_image_scaled[range_in_src...], dst_image_scaled[range_in_dst...]);
-		view(img / maximum(img)) =#
 		if params["registry"]["global_offsets"]
 		offset = get_offset(dst_index) + round(Int64, dv) #/ scale
 		else
 		offset = round(Int64, dv) #/ scale
 		end
-		update_offset(src_index, offset);
-		print("    ")
-		println("Monoblock matched... relative displacement calculated at $offset")
+		if r > cur_max_r 
+		  cur_max_r = r
+		  cur_rot = angle
+		  cur_offset = offset
+		end
 	end
+      end
+		update_registry(src_index; rotation = cur_rot, offset = cur_offset);
+		print("    ")
+		println("Prematch complete... rotation: $cur_rot, offset: $cur_offset")
 end
 
 function zeropad_to_meanpad!(img)
@@ -667,7 +686,7 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 	  src_size = get_image_size(src_index; rotated = true);
 	end
 
-	if params["global_offsets"] && get_rotation(dst_index) != 0
+	if params["registry"]["global_offsets"] && get_rotation(dst_index) != 0
 	  println("rotation in the dst image detected with global offsets - aborting...")
 	  return nothing
 	end

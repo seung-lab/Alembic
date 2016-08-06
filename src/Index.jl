@@ -136,6 +136,7 @@ end
 
 function find_in_registry(index)
   registry = get_registry(index);
+  if length(registry) == 0 return 0 end
   return findfirst(registry[:,2], index);
 end
 
@@ -325,10 +326,10 @@ function is_first_section(index)
 end
 
 function reset_offset(index)
-  update_offset(index, [0,0])
+  update_registry(index; offset = [0,0])
 end
 
-function update_registry(index; rotation::Union{Float64, Int64} = get_rotation(index), offset::Union{Point, Array{Int64, 1}} = get_offset(index), image_size::Array{Int64, 1} = get_image_size(index), rendered::Bool = is_rendered(index))
+function update_registry(index; rotation::Union{Float64, Int64} = get_rotation(index), offset::Union{Point, Array{Int64, 1}} = get_offset(index), image_size::Union{Array{Int64, 1}, Tuple{Int64, Int64}} = get_image_size(index), rendered::Bool = is_rendered(index))
   if myid() != IO_PROC return remotecall_fetch(IO_PROC, update_registry, index, rotation = rotation, offset = offset, image_size = image_size, rendered = rendered) end
   image_fn = string(get_name(index));
   registry_fp = get_registry_path(index)
@@ -351,51 +352,6 @@ function update_registry(index; rotation::Union{Float64, Int64} = get_rotation(i
   registry = registry[sortperm(registry[:, 1], by=parse_name), :];
   writedlm(registry_fp, registry)
   reload_registry(index);
-end
-
-"""
-Edit the offset_log text file associated with an index
-
-index: 4-element tuple for section identifier
-offset: 2-element collection for the i,j offset
-sz: 2-element collection for the i,j height and width
-"""
-function update_offset(index::Index, offset::Array, sz=[0, 0], needs_render=false)
-  registry_fp = get_registry_path(index)
-  update_offset(index, registry_fp, offset, sz, needs_render)
-end
-
-function update_offset(name::String, offset::Array, sz=[0, 0], needs_render=false)
-  update_offset(parse_name(name), offset, sz, needs_render);
-end
-
-function update_offset(index::Index, registry_fp::String, offset::Array, sz=[0,0], needs_render=false)
-  image_fn = string(get_name(index));
-  rotation = get_rotation(index);
-
-  println("Updating registry for ", image_fn, " in:\n", registry_fp, ": offset is now ", offset)
-
-  if !isfile(registry_fp)
-    f = open(registry_fp, "w")
-    close(f)
-    registry = [image_fn, 0, offset..., sz..., needs_render]'
-  else  
-    registry = readdlm(registry_fp)
-    idx = findfirst(registry[:,1], image_fn)
-    if idx != 0
-      registry[idx, 3:4] = collect(offset)
-      if sz != [0, 0]
-        registry[idx, 5:6] = collect(sz)
-      end
-    else
-      registry_line = [image_fn, rotation, offset..., sz..., needs_render]
-      registry = vcat(registry, registry_line')
-    end
-  end
-  registry = registry[sortperm(registry[:, 1], by=parse_name), :];
-  writedlm(registry_fp, registry)
-  reload_registry(index)
-  remotecall_fetch(IO_PROC, reload_registry, index)
 end
 
 function update_offsets(indices, offsets, sizes, needs_render=falses(length(indices)))

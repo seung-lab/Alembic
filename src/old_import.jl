@@ -13,7 +13,7 @@ function import_trakem_dir_tifs(src_folder, suffix="_prealigned", dst_folder=src
 		chunksize = 1000;
 		@time f["img", "chunk", (chunksize,chunksize)] = img
 		close(f)
-		update_offset(prealigned(1, int(tif[1:3])), [0, 0], [size(img)...])
+		update_registry(prealigned(1, int(tif[1:3])); offset = [0, 0], image_size = [size(img)...])
 	end
 end
 
@@ -53,7 +53,7 @@ function clean_up_nicks_data(src_folder, dst_folder)
 		chunksize = 100;
 		@time f["img", "chunk", (chunksize,chunksize)] = img
 		close(f)
-		update_offset(parse_name(fn), [0, 0], [size(img)...])
+		update_registry(parse_name(fn), offset = [0, 0], image_size = [size(img)...])
 	end
 end
 

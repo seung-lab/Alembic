@@ -144,7 +144,7 @@ function copy_through_first_section(index::Index)
     fn = string(get_name(index), ".h5")
     dir = get_dir_path(index)
 
-    update_offset(index, [0,0], size(img))
+    update_registry(index; offset = [0,0], image_size = size(img))
     println("Writing image:\n\t", fn)
     # @time imwrite(stage["img"], joinpath(dir, fn))
     f = h5open(joinpath(dir, fn), "w")

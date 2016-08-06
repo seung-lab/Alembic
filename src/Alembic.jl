@@ -100,8 +100,10 @@ include("author.jl")
 include("Index.jl")
 include("registry.jl")
 if ON_AWS
-  include("dataset_zebrafish.jl")
-  include("params_default.jl")
+#  include("dataset_zebrafish.jl")
+  include("dataset_pinky.jl")
+  #include("params_default.jl")
+  include("params_pinky.jl")
 else
  include("dataset_default.jl")
   # include("dataset_zebrafish.jl")
