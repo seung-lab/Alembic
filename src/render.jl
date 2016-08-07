@@ -171,14 +171,19 @@ function prepare_prealignment(index::Index, startindex=montaged(ROI_FIRST))
     meshset = load("MeshSet",(src_index, dst_index))
     dst_index = get_index(meshset.meshes[2])
     src_offset = get_offset(src_index)
+    src_rotation = get_rotation(src_index)
+    rotation = make_rotation_matrix(src_rotation)
+    rotation_bb = snap_bb(tform_bb(sz_to_bb(get_image_size(src_index)), rotation))
+    rotation_offset = [rotation_bb.i, rotation_bb.j]
+    translation_rot = make_translation_matrix(-rotation_offset)
     translation = make_translation_matrix(src_offset)
     if is_fixed(meshset.meshes[2])
-      println("FIXED")
+      println("FIXED - currently doesn't support rotation")
       cumulative_tform = eye(3)
       dst_offset = get_offset(dst_index)
       translation = make_translation_matrix(dst_offset)*translation
     end
-    tform = regularized_solve(meshset)*translation
+    tform = rotation*translation_rot*regularized_solve(meshset)*translation
   end
   return src_index, dst_index, cumulative_tform, tform
 end
@@ -270,7 +275,7 @@ function render_prealigned(src_index::Index, dst_index::Index, src_img, dst_img,
     @time f["img", "chunk", (chunksize,chunksize)] = src_warped
     close(f)
     println("Creating thumbnail for $index @ $(thumbnail_scale)x")
-    thumbnail, _ = imscale(img, thumbnail_scale)
+    thumbnail, _ = imscale(src_warped, thumbnail_scale)
     write_thumbnail(thumbnail, index, thumbnail_scale)
   end
 end
@@ -279,8 +284,14 @@ function render_prealigned_review(ms::MeshSet)
   src_index = get_index(ms.meshes[1])
   dst_index = get_index(ms.meshes[2])
   src_offset = get_offset(src_index)
-  translation = make_translation_matrix(src_offset)
-  tform = regularized_solve(ms)*translation
+    src_rotation = get_rotation(src_index)
+    rotation = make_rotation_matrix(src_rotation)
+    rotation_bb = snap_bb(tform_bb(sz_to_bb(get_image_size(src_index)), rotation))
+    rotation_offset = [rotation_bb.i, rotation_bb.j]
+    translation_rot = make_translation_matrix(-rotation_offset)
+    translation = make_translation_matrix(src_offset)
+  #translation = make_translation_matrix(src_offset)
+  tform = rotation*translation_rot*regularized_solve(ms)*translation
   render_prealigned(src_index, dst_index, get_image(src_index), 
     get_image(dst_index), eye(3), tform; render_full=false, render_review=true)
 end

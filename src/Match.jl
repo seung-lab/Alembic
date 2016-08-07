@@ -156,23 +156,25 @@ function unflag!(match::Match, filter_name = nothing)
 end
 
 function get_correspondence_patches(match::Match, ind)
-	src_path = get_path(match.src_index);
-	dst_path = get_path(match.dst_index);
+	src_path = match.src_index;
+	dst_path = match.dst_index;
 	#assert(src_path[end-1:end] == "h5")
 
 	props = match.correspondence_properties[ind]
 
 		scale = props["ranges"]["scale"];
 		highpass_sigma = match.properties["params"]["match"]["highpass_sigma"]
-		src_patch = h5read(src_path, "img", props["ranges"]["src_range"])
+		#src_patch = h5read(src_path, "img", props["ranges"]["src_range"])
 		src_pt_loc = props["ranges"]["src_pt_loc"];
-		dst_patch = h5read(dst_path, "img", props["ranges"]["dst_range"])
+		#dst_patch = h5read(dst_path, "img", props["ranges"]["dst_range"])
 		dst_pt_loc = props["ranges"]["dst_pt_loc"];
 
 		src_pt = src_pt_loc
 		dst_pt = dst_pt_loc
 
 	prepare_patches(src_path, dst_path, props["ranges"]["src_range"], props["ranges"]["dst_range"], props["ranges"]["dst_range_full"], scale, highpass_sigma; from_disk = true)
+	src_patch = round(UInt8, SRC_PATCH);
+	dst_patch = round(UInt8, DST_PATCH);
 
 	#return SRC_PATCH, DST_PATCH
 	xc = normxcorr2_preallocated(SRC_PATCH, DST_PATCH);
@@ -235,7 +237,7 @@ function prematch(src_index, dst_index, src_image, dst_image, params=get_params(
 	#highpass_sigma = 0
 	highpass_sigma = params["match"]["highpass_sigma"];
 	if angles > 1
-	angles_to_try = linspace(0, 360, angles + 1);
+	angles_to_try = linspace(0, 360, angles + 1)[1:end-1];
 	else angles_to_try = [0]	
       	end
 
@@ -260,10 +262,11 @@ function prematch(src_index, dst_index, src_image, dst_image, params=get_params(
 	rel_offset = [0,0]
 
 	ranges = src_index, range_in_src, src_pt_locs, dst_index, range_in_dst, dst_range_full, dst_pt_locs, dst_pt_locs_full, rel_offset
-	#=if angle == 90
-		ImageView.view(src_image[range_in_src...] / 255)
-		ImageView.view(dst_image / 255)
-	end=#
+	#if angle == 90
+	if angle == 0	ImageView.view(dst_image / 255) end
+	#if angle == 0 || angle == 180 || angle == 300
+		# ImageView.view(src_image_rotated[range_in_src...] / 255)
+	#end=#
 
 	match = get_match(src_pt_locs, ranges, src_image_rotated, dst_image, scale, highpass_sigma; full = true)
 
@@ -321,7 +324,7 @@ function zeropad_to_meanpad!(img)
 	end
 end
 
-# if from_disk src_image / dst_image are paths
+# if from_disk src_image / dst_image are indices
 function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma; from_disk = false)
 
   	# the following two if statements should only ever be called together
@@ -339,8 +342,8 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
 	@inbounds SRC_PATCH_FULL[:] = src_image[src_range...]
 	@inbounds DST_PATCH_FULL[indices_within_range...] = dst_image[dst_range...]
       else
-	@inbounds SRC_PATCH_FULL[:] = h5read(src_image, "img", src_range)
-	@inbounds DST_PATCH_FULL[indices_within_range...] = h5read(dst_image, "img", dst_range)
+	@inbounds SRC_PATCH_FULL[:] = imrotate(h5read(get_path(src_image), "img"), get_rotation(src_image); parallel = true)[1][src_range...];
+	@inbounds DST_PATCH_FULL[indices_within_range...] = h5read(get_path(dst_image), "img", dst_range)
       end
 
 #	if isnan(mean(DST_PATCH_FULL)) || isnan(mean(SRC_PATCH_FULL)) return nothing; end
@@ -692,7 +695,7 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 	src_size = get_image_size(src_index); dst_size = get_image_size(dst_index);
 
 	if get_rotation(src_index) != 0
-	  src_img = imrotate(src_img, get_rotation(src_index); parallel = true);
+	  src_img = imrotate(src_img, get_rotation(src_index); parallel = true)[1];
 	  src_size = get_image_size(src_index; rotated = true);
 	  remesh!(src_mesh);
 	end
