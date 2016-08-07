@@ -163,7 +163,7 @@ end
 =#
 
 ### INIT
-function Mesh(index, params = get_params(index), fixed=false)
+function Mesh(index, params = get_params(index), fixed=false; rotated = false)
 	println("Creating mesh for $index")
 	# mesh lengths in each dimension
 	dists = [params["mesh"]["mesh_length"] * sin(pi / 3); params["mesh"]["mesh_length"]];
@@ -172,11 +172,11 @@ function Mesh(index, params = get_params(index), fixed=false)
 	# e.g. a mesh with 5-4-5-4-5-4-5-4 nodes in each row will have dims = (8, 5)
 	# 1 is added because of 1-indexing (in length)
 	# 2 is added to pad the mesh to extend it beyond by one meshpoint in each direction
-	dims = round(Int64, div(get_image_size(index), dists)) + 1 + 2;
+	dims = round(Int64, div(get_image_size(index, rotated = rotated), dists)) + 1 + 2;
 
 	# location of the first node (top left)
 	# TODO: Julia does not support rem() for two arrays, so divrem() cannot be used
-	topleft_offset = (get_image_size(index) .% dists) / 2 - dists;
+	topleft_offset = (get_image_size(index, rotated = rotated) .% dists) / 2 - dists;
 
 	n = maximum([get_mesh_index(dims, dims[1], dims[2]); get_mesh_index(dims, dims[1], dims[2]-1)]);
 	m = 0;
@@ -216,6 +216,15 @@ function Mesh(index, params = get_params(index), fixed=false)
 				    "fixed" => fixed);
 
 	return Mesh(index, src_nodes, dst_nodes, edges, properties);
+end
+
+function remesh!(mesh::Mesh)
+	newmesh = Mesh(mesh.index, mesh.properties["params"], mesh.properties["fixed"]; rotated = true);
+	mesh.src_nodes = copy(newmesh.src_nodes);
+	mesh.dst_nodes = copy(newmesh.dst_nodes);
+	mesh.edges = copy(newmesh.edges);
+	newmesh = 0;
+	return mesh
 end
 
 

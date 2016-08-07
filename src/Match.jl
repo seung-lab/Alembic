@@ -232,8 +232,8 @@ function prematch(src_index, dst_index, src_image, dst_image, params=get_params(
 	scale = params["match"]["prematch_scale"];
 	ratio = params["match"]["prematch_template_ratio"];
 	angles = params["match"]["prematch_angles"];
-	highpass_sigma = 0
-	#highpass_sigma = params["match"]["highpass_sigma"];
+	#highpass_sigma = 0
+	highpass_sigma = params["match"]["highpass_sigma"];
 	if angles > 1
 	angles_to_try = linspace(0, 360, angles + 1);
 	else angles_to_try = [0]	
@@ -260,12 +260,12 @@ function prematch(src_index, dst_index, src_image, dst_image, params=get_params(
 	rel_offset = [0,0]
 
 	ranges = src_index, range_in_src, src_pt_locs, dst_index, range_in_dst, dst_range_full, dst_pt_locs, dst_pt_locs_full, rel_offset
-	if angle == 90
+	#=if angle == 90
 		ImageView.view(src_image[range_in_src...] / 255)
 		ImageView.view(dst_image / 255)
-	end
+	end=#
 
-	match = get_match(src_pt_locs, ranges, src_image_rotated, dst_image, scale, highpass_sigma)
+	match = get_match(src_pt_locs, ranges, src_image_rotated, dst_image, scale, highpass_sigma; full = true)
 
 	if match == nothing continue
 	else
@@ -414,7 +414,7 @@ end
 """
 Template match two image patches to produce point pair correspondence
 """
-function get_match(pt, ranges, src_image, dst_image, scale = 1.0, highpass_sigma = 0)
+function get_match(pt, ranges, src_image, dst_image, scale = 1.0, highpass_sigma = 0; full = false)
 	src_index, src_range, src_pt_loc, dst_index, dst_range, dst_range_full, dst_pt_loc, dst_pt_loc_full, rel_offset = ranges;
 #=	if sum(src_image[src_range[1], first(src_range[2])]) == 0 && sum(src_image[src_range[1], last(src_range[2])]) == 0 &&
 			sum(src_image[first(src_range[1]), src_range[2]]) == 0 && sum(src_image[last(src_range[1]), src_range[2]]) == 0 return nothing end
@@ -473,9 +473,9 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, highpass_sigma
 	xc = normxcorr2_preallocated(src_image[src_range[1], src_range[2]], dst_image[dst_range[1], dst_range[2]]);
 	end
 	=#
- if(prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma) == nothing) return nothing end;
+ if (prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma) == nothing) return nothing end;
 #	prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma)
-	xc = normxcorr2_preallocated(SRC_PATCH, DST_PATCH);
+	xc = normxcorr2_preallocated(SRC_PATCH, DST_PATCH; shape = full ? "full" : "valid");
 #=
 	if dst_range != dst_range_full
 		indices_within_range = findin(dst_range_full[1], dst_range[1]), findin(dst_range_full[2], dst_range[2])
@@ -536,6 +536,10 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, highpass_sigma
 
 	if scale != 1.0
 	#length of the dst_range_full is always odd, so only need to care about the oddity / evenness of the source to decide the size of the xc in full
+	if full
+	  xc_i_len = length(dst_range_full[1]) + length(src_range[1]) - 1
+	  xc_j_len = length(dst_range_full[2]) + length(src_range[2]) - 1
+	else
 	if isodd(length(src_range[1])) 
 	  xc_i_len = length(dst_range_full[1]) - length(src_range[1]) + 1
           else
@@ -546,6 +550,7 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, highpass_sigma
           else
 	  xc_j_len = length(dst_range_full[2]) - length(src_range[2]) 
 	end
+      end
 	xc_i_locs = linspace(1, xc_i_len, size(xc, 1))
 	xc_j_locs = linspace(1, xc_j_len, size(xc, 2))
 #=	if myid() == 2
@@ -559,8 +564,13 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, highpass_sigma
 	j_max = (j_max - 1) * step(xc_j_locs) + 1
       end
 
+      if full
+	di = Float64(i_max + src_pt_loc[1] - dst_pt_loc_full[1] - length(src_range[1]))
+	dj = Float64(j_max + src_pt_loc[2] - dst_pt_loc_full[2] - length(src_range[2]))
+      else
 	di = Float64(i_max - 1 + src_pt_loc[1] - dst_pt_loc_full[1])
 	dj = Float64(j_max - 1 + src_pt_loc[2] - dst_pt_loc_full[2])
+      end
 
 	#= # version that treats each value as a bin and sends it to the centre
 	xc_i_locs = linspace(1, xc_i_len, size(xc, 1) + 1)
@@ -684,6 +694,7 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 	if get_rotation(src_index) != 0
 	  src_img = imrotate(src_img, get_rotation(src_index); parallel = true);
 	  src_size = get_image_size(src_index; rotated = true);
+	  remesh!(src_mesh);
 	end
 
 	if params["registry"]["global_offsets"] && get_rotation(dst_index) != 0
@@ -706,7 +717,7 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 
 	print("computing matches:")
         @time dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(src_img), repeated(dst_img), repeated(params["match"]["blockmatch_scale"]), repeated(params["match"]["highpass_sigma"])) 
-        # @time dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(src_img), repeated(dst_img), repeated(params["match"]["blockmatch_scale"])) 
+        #@time dst_allpoints = map(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(src_img), repeated(dst_img), repeated(params["match"]["blockmatch_scale"]), repeated(params["match"]["highpass_sigma"])) 
 
 	matched_inds = find(i -> i != nothing, dst_allpoints);
 	src_points = copy(src_mesh.src_nodes[ranged_inds][matched_inds]);
@@ -722,8 +733,5 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 				"author" => null_author()
 				) 
 			);
-@everywhere global REGISTER_A = Array(Float64, 0, 0);
-@everywhere global REGISTER_B = Array(Float64, 0, 0);
-
 	return Match(src_index, dst_index, src_points, dst_points, correspondence_properties, filters, properties);
 end

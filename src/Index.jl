@@ -330,7 +330,7 @@ function reset_offset(index)
 end
 
 function update_registry(index; rotation::Union{Float64, Int64} = get_rotation(index), offset::Union{Point, Array{Int64, 1}} = get_offset(index), image_size::Union{Array{Int64, 1}, Tuple{Int64, Int64}} = get_image_size(index), rendered::Bool = is_rendered(index))
-  if myid() != IO_PROC return remotecall_fetch(IO_PROC, update_registry, index, rotation = rotation, offset = offset, image_size = image_size, rendered = rendered) end
+  if myid() != IO_PROC return remotecall_fetch(IO_PROC, () ->update_registry(index, rotation = rotation, offset = offset, image_size = image_size, rendered = rendered)) end
   image_fn = string(get_name(index));
   registry_fp = get_registry_path(index)
   println("Updating registry for ", image_fn, " in:\n", registry_fp, ": rotation: $rotation, offset: $offset, image_size: $image_size")
