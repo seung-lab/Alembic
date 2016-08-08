@@ -1,5 +1,5 @@
-global BUCKET = "/usr/people/dih/datasets"
-global DATASET = "piriform"
+global BUCKET = "/usr/people/dih"
+global DATASET = "datasets/piriform"
 global ROI_FIRST = (1,2,0,0);
 global ROI_LAST = (8,173,0,0);
 global DATASET_RESOLUTION = [7,7,40]

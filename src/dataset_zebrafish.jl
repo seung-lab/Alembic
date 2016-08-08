@@ -1,5 +1,5 @@
-global BUCKET = "/home/ubuntu/datasets"
-global DATASET = "zebrafish"
+global BUCKET = "/home/ubuntu"
+global DATASET = "datasets/zebrafish"
 global ROI_FIRST = (2,33,0,0);
 global ROI_LAST = (9,164,0,0);
 global DATASET_RESOLUTION = [5,5,45]
