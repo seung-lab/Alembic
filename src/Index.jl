@@ -167,13 +167,21 @@ function get_metadata(index)
   end
 end
 
-function get_offset(index)
+# rotated offset is just the offset of the image once rotated around [0,0]
+function get_offset(index; rotated = false)
 #=function get_offset(index, get_from_master=false)
 	if get_from_master =#
 		if myid() != IO_PROC return remotecall_fetch(IO_PROC, get_offset, index) end
 	#end
 	metadata = get_metadata(index);
+	if rotated
+    	rotation = make_rotation_matrix(metadata[3])
+	if rotation == 0 return Point([0,0]) end
+    	rotation_bb = snap_bb(tform_bb(sz_to_bb(Point(metadata[6:7])), rotation))
+    	return Point([rotation_bb.i, rotation_bb.j])
+	else
 	return Point(metadata[4:5]);
+      end
 end
 
 function get_rotation(index)

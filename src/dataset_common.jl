@@ -46,7 +46,8 @@ end
 # used for saving - gets the canonical name of the object
 function get_name(object)		
 	  # hack for old names
-	if object == "MeshSet" || string(typeof(object)) == "MeshSet"
+	#if object == "MeshSet" || string(typeof(object)) == "MeshSet"
+	if string(typeof(object)) == "MeshSet"
 		firstindex = get_index(object.meshes[1]);
 		lastindex = get_index(object.meshes[end]);
 		if is_premontaged(firstindex) return "$(firstindex[1]),$(firstindex[2])_montaged";
@@ -78,37 +79,26 @@ function get_dir_path(object)
 end
 
 # gets the full directory of the object - e.g. .../1_premontaged
-function get_subdir(object)
-  return get_subdir(typeof(object))
-end
+function get_subdir(object)  			return get_subdir(typeof(object))	end
+function get_subdir(object_type::DataType)	return get_subdir(string(object_type));	end
 
 function get_subdir(string::String)
-  if 	 string == "Mesh"	return MESH_DIR, ".jls"
-  elseif string == "Match"      return MATCH_DIR, ".jls"
-  elseif string == "MeshSet"    return MESHSET_DIR, ".jls"
-  elseif string == "review"     return REVIEW_DIR, ".h5"
-  elseif string == "import"     return IMPORT_DIR, ".txt"
-  elseif string == "contrast_bias"     return CONTRAST_BIAS_DIR, ".h5"
-  elseif string == "contrast_auto"     return CONTRAST_AUTO_DIR, ".txt"
-  elseif string == "stats"     return STATS_DIR, ".txt"
-  elseif string == "mask"     return MASK_DIR, ".png"
-  elseif string == "outline"     return OUTLINE_DIR, ".png"
-  elseif string == "expunge"     return EXPUNGED_DIR, ".h5"
-  elseif string == "thumbnail"     return THUMBNAIL_DIR, ".h5"
+  if 	 string == "Mesh"		return MESH_DIR, ".jls"
+  elseif string == "Match"     		return MATCH_DIR, ".jls"
+  elseif string == "MeshSet"    	return MESHSET_DIR, ".jls"
+  elseif string == "review"     	return REVIEW_DIR, ".h5"
+  elseif string == "import"     	return IMPORT_DIR, ".txt"
+  elseif string == "contrast_bias"      return CONTRAST_BIAS_DIR, ".h5"
+  elseif string == "contrast_auto"      return CONTRAST_AUTO_DIR, ".txt"
+  elseif string == "stats"     		return STATS_DIR, ".txt"
+  elseif string == "mask"     		return MASK_DIR, ".png"
+  elseif string == "outline"     	return OUTLINE_DIR, ".png"
+  elseif string == "expunge"     	return EXPUNGED_DIR, ".h5"
+  elseif string == "thumbnail"     	return THUMBNAIL_DIR, ".h5"
   end
 end
 
 # 
-function get_subdir(object_type::DataType)
-  #=if 	 string(typeof(object)) == "Mesh"    || object == "Mesh"    return MESH_DIR
-  elseif string(typeof(object)) == "Match"   || object == "Match"   return MATCH_DIR
-  elseif string(typeof(object)) == "MeshSet" || object == "MeshSet" return MESHSET_DIR
-  end=#
-  if 	 string(object_type) == "Mesh"	     return MESH_DIR, ".jls"
-  elseif string(object_type) == "Match"      return MATCH_DIR, ".jls"
-  elseif string(object_type) == "MeshSet"    return MESHSET_DIR, ".jls"
-  end
-end
 
 # function get_path()
 # methods: 

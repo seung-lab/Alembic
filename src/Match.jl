@@ -247,7 +247,7 @@ function prematch(src_index, dst_index, src_image, dst_image, params=get_params(
 
 	for angle in angles_to_try
 	  if angle != 0
-	    src_image_rotated = imrotate(src_image, angle; parallel = true)[1]
+	    src_image_rotated = imrotate(src_image, angle; parallel = true)
 	  else 
 	    src_image_rotated = src_image;
 	  end
@@ -263,7 +263,7 @@ function prematch(src_index, dst_index, src_image, dst_image, params=get_params(
 
 	ranges = src_index, range_in_src, src_pt_locs, dst_index, range_in_dst, dst_range_full, dst_pt_locs, dst_pt_locs_full, rel_offset
 	#if angle == 90
-	if angle == 0	ImageView.view(dst_image / 255) end
+#	if angle == 0	ImageView.view(dst_image / 255) end
 	#if angle == 0 || angle == 180 || angle == 300
 		# ImageView.view(src_image_rotated[range_in_src...] / 255)
 	#end=#
@@ -342,7 +342,10 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
 	@inbounds SRC_PATCH_FULL[:] = src_image[src_range...]
 	@inbounds DST_PATCH_FULL[indices_within_range...] = dst_image[dst_range...]
       else
-	@inbounds SRC_PATCH_FULL[:] = imrotate(h5read(get_path(src_image), "img"), get_rotation(src_image); parallel = true)[1][src_range...];
+	if get_rotation(src_image) != 0 @inbounds SRC_PATCH_FULL[:] = imrotate(h5read(get_path(src_image), "img"), get_rotation(src_image); parallel = true)[src_range...];
+	else
+	@inbounds SRC_PATCH_FULL[:] = h5read(get_path(src_image), "img", src_range);
+        end
 	@inbounds DST_PATCH_FULL[indices_within_range...] = h5read(get_path(dst_image), "img", dst_range)
       end
 
@@ -695,7 +698,7 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 	src_size = get_image_size(src_index); dst_size = get_image_size(dst_index);
 
 	if get_rotation(src_index) != 0
-	  src_img = imrotate(src_img, get_rotation(src_index); parallel = true)[1];
+	  src_img = imrotate(src_img, get_rotation(src_index); parallel = true);
 	  src_size = get_image_size(src_index; rotated = true);
 	  remesh!(src_mesh);
 	end
