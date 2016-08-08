@@ -247,6 +247,7 @@ function prematch(src_index, dst_index, src_image, dst_image, params=get_params(
 
 	for angle in angles_to_try
 	  if angle != 0
+	    @everywhere gc()
 	    src_image_rotated = imrotate(src_image, angle; parallel = true)
 	  else 
 	    src_image_rotated = src_image;

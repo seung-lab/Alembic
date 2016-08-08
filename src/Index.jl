@@ -161,7 +161,7 @@ end
 
 function get_metadata(index)
   registry = get_registry(index);
-  if find_in_registry(index) == 0 return [get_name(index) index 0 0 0 0 0 false]
+  if index == NO_INDEX || find_in_registry(index) == 0 return [get_name(index) index 0 0 0 0 0 false]
   else
     return registry[find_in_registry(index), :];
   end
