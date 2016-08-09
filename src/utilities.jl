@@ -82,6 +82,18 @@ function make_offset_rotation_matrix(index)
 	return rotation_matrix * translation_matrix
 end
 
+function make_offset_rotation_matrix(angle, image_size)
+	rotation = angle;
+	if rotation == 0
+	  return [1 0 0; 0 1 0; 0 0 1]
+	end
+        rotation_matrix = make_rotation_matrix(rotation)
+    	rotation_bb = snap_bb(tform_bb(sz_to_bb(Point([image_size[1], image_size[2]])), rotation_matrix))
+    	rotation_offset = [rotation_bb.i, rotation_bb.j]
+	translation_matrix = make_translation_matrix(-rotation_offset);
+	return rotation_matrix * translation_matrix
+end
+
 function make_rotation_matrix(angle)
   angle = deg2rad(angle)
   rot = [cos(angle) sin(angle) 0; -sin(angle) cos(angle) 0; 0 0 1]
