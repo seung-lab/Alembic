@@ -93,18 +93,6 @@ function imrotate(img, angle)
   return imwarp(img, tform);
 end
 
-function make_rotation_matrix(angle)
-  return [cos(angle) -sin(angle) 0; sin(angle) cos(angle) 0; 0 0 1]
-end
-
-function make_translation_matrix(offset)
-  return [1 0 0; 0 1 0; offset[1] offset[2] 1]
-end
-
-function make_scale_matrix(scale)
-  return [scale 0 0; 0 scale 0; 0 0 1]
-end
-
 function user_approves(m="Are you sure?")
   println(m)
   println("(type 'yes')")

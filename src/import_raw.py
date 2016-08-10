@@ -9,51 +9,47 @@ import cv2
 # http://wiki.cmci.info/documents/120206pyip_cooking/python_imagej_cookbook#automatic_brightnesscontrast_button
 
 def open(fn):
+	print "Opening " + fn
 	ext = os.path.splitext(fn)
-	if ext == '.h5'
+	if ext == '.h5':
 		f = h5py.File(fn, 'r')
 		img = f['/img']
 		return np.array(img)
-	else
+	else:
 		img = Image.open(fn)
 		return np.array(img)
 
-def auto_adjust(img, minpercent=5, maxpercent=95):
-	minval = np.percentile(img[:], minpercent)
-	maxval = np.percentile(img[:], maxpercent)
-		distr = nquantile(img[:], 16)
-		minval = distr[2]; maxval = distr[16];
-		return min(1, max(0, (img-minval) / (maxval-minval)))
-
-
-def apply_clahe_to_H5(fn, clahe):
-	f = h5py.File(fn, "r+")
-	img = f["/img"]
-	# apply clahe
-	arr = clahe.apply(np.array(img))
-	# stretch distribution across 0-255 range
-	max_a = np.max(arr)
-	min_a = np.min(arr)
-	alpha = 255.0/(max_a - min_a)
-	beta = -alpha*min_a
-	arr = (alpha*arr + beta).astype(np.uint8)
-	# resave image
-	img[...] = arr
+def write_to_h5(fn, arr):
+	"""Write ndarray to H5 file under group "main"
+	"""
+	print "Writing to " + fn
+	sz = np.asarray(arr.shape)
+	f = h5py.File(fn, "w")
+	f.create_dataset("/img", data=arr.T, dtype=arr.dtype)
+	f.create_dataset("/size", data=sz, dtype=sz.dtype)
 	f.close()
 
-def main():
-	"""Make TIF images of all H5 matrices in directory
+def main(src_dir, dst_dir):
+	"""Make H5 files of all TIF images in directory
 	"""
-	dir = os.getcwd()
-	# file = sys.argv[1]
-	files = os.listdir(dir)
-	clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(63,63))
+	# src_dir = "/media/tmacrina/667FB0797A5072D7/3D_align"
+	# dst_dir = "/media/tmacrina/4BED39E032CF5004/datasets/AIBS_import/3_prealigned"
+	# src_dir = "/usr/people/tmacrina/seungmount/research/Julimaps/datasets/AIBS_aligned"	
+	# dst_dir = "/usr/people/tmacrina/seungmount/research/Julimaps/datasets/AIBS_aligned/3_prealigned"	
+	# src_dir = "/media/tmacrina/4BED39E032CF5004/datasets/AIBS_import/0_overview"
+	# dst_dir = "/media/tmacrina/4BED39E032CF5004/datasets/stage_stitch/3_prealigned"
+
+	files = os.listdir(src_dir)
 	for file in files:
-		if file.endswith("1,1_prealigned.h5"):
-			print "Applying CLAHE to " + file
-		# if file == 'Tile_r1-c7_S2-W001_sec15.h5':
-			fn = os.path.join(dir, file)
-			apply_clahe_to_H5(fn, clahe)
+		if file.endswith(".tif"):
+			print "Importing " + file
+			src_fn = os.path.join(src_dir, file)
+			dst_fn = os.path.join(dst_dir, "1," + str(file[2:6]) + "_montaged.h5")
+			# dst_fn = os.path.join(dst_dir, "1," + str(file[1:5]) + "_prealigned.h5")
+			if os.path.isfile(src_fn) and not os.path.isfile(dst_fn):
+				# print(src_fn, dst_fn)
+				arr = open(src_fn)
+				write_to_h5(dst_fn, arr)
 
 if __name__ == '__main__':
-	main()
+	main(sys.argv[1], sys.argv[2])

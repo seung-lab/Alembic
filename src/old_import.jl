@@ -1,19 +1,15 @@
-function import_trakem_dir_tifs(src_folder, suffix="_prealigned", dst_folder=src_folder)
-	for tif in sort_dir(src_folder, "tif")
-		println(tif)
-		img = Array{Float64, 2}(Images.load(joinpath(src_folder, tif)).data')
-		#	  img = img ./ NORMALIZER;
-		#	  distr = nquantile(img[:], 16)
-		#	  minval = distr[2]; maxval = distr[16];
-		#	  img = min(1, max(0, (img - minval) / (maxval-minval)))
-		img = Array{UInt8, 2}(round(UInt8, img * 255));
-		#f = h5open(joinpath(to, import_frame_tif_to_wafer_section_h5(tif, wafer_num, sec_num)), "w")
-		f = h5open(joinpath(dst_folder, import_tif_to_wafer_section_h5(tif, suffix)), "w")
-		#    	chunksize = div(min(size(img)...), 4);
+function import_trakem_dir_tifs(src_dir)
+	for fn in sort_dir(src_dir, "tif")[1:2]
+		println(fn)
+		img = get_image_disk(joinpath(src_dir, fn), UInt8)
+		# img = convert_float64_to_uint8(img)
+		index = prealigned(1, fn[2:5])
+		dst_fn = get_path(index)
+		f = h5open(dst_fn, "w")
 		chunksize = 1000;
 		@time f["img", "chunk", (chunksize,chunksize)] = img
 		close(f)
-		update_offset(prealigned(1, int(tif[1:3])), [0, 0], [size(img)...])
+		update_offset(index, [0,0], [size(img)...])
 	end
 end
 

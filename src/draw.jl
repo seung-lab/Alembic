@@ -2,7 +2,7 @@ function create_drawing(img::Array{UInt32,2})
   return Cairo.CairoRGBSurface(img)
 end
 
-function create_context(surface::Cairo.CairoSurface)
+function get_context(surface::Cairo.CairoSurface)
   return Cairo.CairoContext(surface)
 end
 
@@ -15,6 +15,20 @@ function draw_vectors(ctx::Cairo.CairoContext, vectors, color, factor=1)
     Cairo.line_to(ctx, line[1]+diff*factor...)
   end
   Cairo.set_line_width(ctx, 3.0)
+  Cairo.stroke(ctx)
+  return ctx
+end
+
+function draw_poly(ctx::Cairo.CairoContext, vertices, color=(0,0,0), thickness=2.0)
+  Cairo.save(ctx)
+  Cairo.set_source_rgb(ctx, color...)
+  Cairo.move_to(ctx, vertices[1,2], vertices[1,1])
+  for i in 1:size(vertices,1)
+    vertex = vertices[i,:]
+    Cairo.line_to(ctx, vertex[2], vertex[1])
+  end
+  Cairo.close_path(ctx)
+  Cairo.set_line_width(ctx, thickness)
   Cairo.stroke(ctx)
   return ctx
 end

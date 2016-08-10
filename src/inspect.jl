@@ -305,7 +305,7 @@ function xcsurface(xc)
   x = linspace(0, N, N)
   y = linspace(0, M, M)
   xgrid = repmat(x, 1, M)
-  ygrid = repmat(y', N, 1)
+  ygrid = repmat(y', N, 1) #'
 
   fig = figure("xc") #,figsize=(10,10))
   PyPlot.clf()
@@ -352,15 +352,15 @@ function view_blockmatch(match, match_ind, params)
   imgc, img2 = ImageView.view(cgrid[1,1], src; opts...)
   imgc, img2 = ImageView.view(cgrid[2,1], dst; opts...)
   imgc, img2 = ImageView.view(cgrid[2,2], fused_img; opts...)
-  imgc, img2 = ImageView.view(cgrid[1,2], xc_color'; opts...)
-  imgc, img2 = ImageView.view(cgrid[1,3], xc_beta_color'; opts...)
+  imgc, img2 = ImageView.view(cgrid[1,2], xc_color'; opts...) #'
+  imgc, img2 = ImageView.view(cgrid[1,3], xc_beta_color'; opts...) #'
   c = canvas(imgc)
   win = Tk.toplevel(c)
   return win
 end
 
 function xcorr2Image(xc)
-  b = xc' / maximum(xc)
+  b = xc' / maximum(xc) #'
   b[b .> 1] = 1
   b[b .< 0] = 0
   # b = b.*b / maximum(b.*b) * 254 + 1
