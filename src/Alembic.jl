@@ -85,7 +85,6 @@ using Distributions
 using Compat
 using Images
 using StatsBase
-#using RegERMs
 if USE_PYPLOT
   using PyPlot
 end
@@ -126,7 +125,7 @@ end
 include("datasets/dataset_common.jl")
 
 include("render/render.jl")
-include("render/ImageProcessing.jl")
+include("render/imageprocessing.jl")
 
 include("archive/evaluate.jl")
 include("archive/check.jl")
@@ -134,9 +133,8 @@ include("archive/meshsession.jl")
 include("archive/tiletooverview.jl")
 
 include("import/premontage.jl")
-include("import/imageprocessing.jl")
 include("import/import.jl")
-include("import/old_import.jl")
+#include("import/old_import.jl")
 include("import/upload.jl")
 
 include("review/review.jl")
