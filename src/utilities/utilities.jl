@@ -71,43 +71,12 @@ function imrotate(img, angle; kwargs...)
   return imwarp(img, tform; kwargs...)[1];
 end
 
-function make_offset_rotation_matrix(index)
+function make_rotation_matrix(index::Index)
 	rotation = get_rotation(index);
-	if rotation == 0
-	  return [1 0 0; 0 1 0; 0 0 1]
-	end
-	rotation_offset = get_offset(index; rotated = true)
-	rotation_matrix = make_rotation_matrix(rotation)
-	translation_matrix = make_translation_matrix(-rotation_offset);
-	return rotation_matrix * translation_matrix
+	image_size = get_image_size(index);
+	return make_rotation_matrix(rotation, image_size);
 end
 
-function make_offset_rotation_matrix(angle, image_size)
-	rotation = angle;
-	if rotation == 0
-	  return [1 0 0; 0 1 0; 0 0 1]
-	end
-        rotation_matrix = make_rotation_matrix(rotation)
-    	rotation_bb = snap_bb(tform_bb(sz_to_bb(Point([image_size[1], image_size[2]])), rotation_matrix))
-    	rotation_offset = [rotation_bb.i, rotation_bb.j]
-	translation_matrix = make_translation_matrix(-rotation_offset);
-	return rotation_matrix * translation_matrix
-end
-
-function make_rotation_matrix(angle)
-  angle = deg2rad(angle)
-  rot = [cos(angle) sin(angle) 0; -sin(angle) cos(angle) 0; 0 0 1]
-  rot[abs(rot) .< eps] = 0
-  return rot;
-end
-
-function make_translation_matrix(offset)
-  return [1 0 0; 0 1 0; offset[1] offset[2] 1]
-end
-
-function make_scale_matrix(scale)
-  return [scale 0 0; 0 scale 0; 0 0 1]
-end
 
 function user_approves(m="Are you sure?")
   println(m)

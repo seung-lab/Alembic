@@ -269,8 +269,8 @@ function prematch(src_index, dst_index, src_image, dst_image, params=get_params(
 	  src_image_rotated = imrotate(src_image_patch, angle; parallel = false)
 	  range_in_src_rotated = 1:size(src_image_rotated, 1), 1:size(src_image_rotated, 2)
 
-	  tform = make_offset_rotation_matrix(angle, size(src_image))
-	  tform_patch = make_offset_rotation_matrix(angle, size(src_image_patch))
+	  tform = make_rotation_matrix(angle, size(src_image))
+	  tform_patch = make_rotation_matrix(angle, size(src_image_patch))
 
 	  # set the top left of the original patch to be the location of the point; the global location is just the first point in the src
 	  src_pt_locs = [1,1]
