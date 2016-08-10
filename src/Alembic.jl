@@ -138,6 +138,7 @@ if !(contains(gethostname(), "seunglab") || contains(gethostname(), "seungom"))
   include("check.jl")
   include("brushtool.jl")
   include("import.jl")
+  include("cpselect.jl")
 end
 
 

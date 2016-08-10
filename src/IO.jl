@@ -47,6 +47,8 @@ function load(path::String)
     data = load_mask(path)
   elseif ext == ".jpg"
     data = load_mask(path)
+  elseif ext == ".txt"
+    data = readdlm(path)
 	end
   println("Loaded $(typeof(data)) from ", path)
 	return data
