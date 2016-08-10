@@ -6,7 +6,7 @@ function meshwarp_mesh(mesh::Mesh)
   src_nodes = hcat(get_nodes(mesh; globalized = true, use_post = false)...)'
   dst_nodes = hcat(get_nodes(mesh; globalized = true, use_post = true)...)'
   offset = get_offset(mesh);
-  node_dict = incidence_to_dict(mesh.edges')
+  node_dict = incidence_to_dict(mesh.edges') #'
   triangles = dict_to_triangles(node_dict)
   return @time meshwarp(img, src_nodes, dst_nodes, triangles, offset), get_index(mesh)
 end
@@ -230,6 +230,42 @@ function render_prealigned(firstindex::Index, lastindex::Index;
     println("Swapping src_image to dst_image")
     dst_img = copy(src_img)
   end
+end
+
+function compile_affines(firstindex::Index, lastindex::Index)
+  cumulative_tform = eye(3)
+  for index in get_index_range(firstindex, lastindex)
+    if index != firstindex
+      tform = load("relative_tform", index)
+      cumulative_tform = tform*cumulative_tform
+      cumulative_tform[:,3] = [0, 0, 1]
+    end
+    println("Writing cumulative tform for $index")
+    path = get_path("cumulative_tform", index)
+    writedlm(path, cumulative_tform)
+  end
+end
+
+function render_prealigned_full(firstindex::Index, lastindex::Index)
+  compile_affines(firstindex, lastindex)
+  for index in get_index_range(firstindex, lastindex)
+    render_prealigned_full(index)
+  end
+end
+
+function render_prealigned_full(index::Index)
+  img = load(index)
+  tform = load("cumulative_tform", index)
+  @time warped, offset = imwarp(img, tform, [0,0])
+
+  index = prealigned(index)
+  update_offset(index, offset, size(warped))
+  path = get_path(index)
+  println("Writing full image:\n ", path)
+  f = h5open(path, "w")
+  chunksize = min(1000, min(size(warped)...))
+  @time f["img", "chunk", (chunksize,chunksize)] = warped
+  close(f)
 end
 
 function render_prealigned(src_index::Index, dst_index::Index, src_img, dst_img, 

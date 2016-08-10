@@ -115,13 +115,3 @@ function user_approves(m="Are you sure?")
   a = readline()
   return chomp(a) == "yes"
 end
-#=
-function flatten_dict(dict::Dict)
-	for key in keys(dict)
-		if typeof(key) :< Dict
-
-	end
-end=#
-
-
-

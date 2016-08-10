@@ -362,14 +362,14 @@ function update_registry(index; rotation::Union{Float64, Int64} = get_rotation(i
   reload_registry(index);
 end
 
-function update_offsets(indices, offsets, sizes, needs_render=falses(length(indices)))
+function update_offsets(indices, offsets, sizes, rendered=trues(length(indices)))
   index = indices[1]
   registry_fp = get_registry_path(index)
   filenames = map(get_name, indices)
   if !isfile(registry_fp)
     f = open(registry_fp, "w")
     close(f)
-    registry = [[f, 0, o..., s..., n] for (f,o,s,n) in zip(filenames, offsets, sizes, needs_render)]
+    registry = [[f, 0, o..., s..., n] for (f,o,s,n) in zip(filenames, offsets, sizes, rendered)]
     registry = hcat(registry...)'
     println("Block line updating registry with ", registry, " in:\n", registry_fp)
   else
@@ -377,7 +377,7 @@ function update_offsets(indices, offsets, sizes, needs_render=falses(length(indi
     locations = map(findfirst, repeated(registry), filenames)
     for (k, i) in enumerate(locations)
       println("Updating registry for ", filenames[k], " in:\n", registry_fp, ": offset is now ", offsets[k])
-      registry_line = [filenames[k], 0, offsets[k]..., sizes[k]..., needs_render[k]]
+      registry_line = [filenames[k], 0, offsets[k]..., sizes[k]..., rendered[k]]
       if i > 0
         registry[i,:] = registry_line
       else

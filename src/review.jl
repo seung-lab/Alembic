@@ -3,75 +3,6 @@ function get_bb(index::Index)
 end
 
 """
-Boolean if bounding boxes intersect
-"""
-function intersects(bbA::BoundingBox, bbB::BoundingBox)
-  bb = bbA - bbB
-  return !isnan(bb.i)
-end
-
-"""
-Get bounding box offset
-"""
-function get_offset(bb::BoundingBox)
-  return [bb.i, bb.j]
-end
-
-function get_size(bb::BoundingBox)
-  return [bb.h, bb.w]
-end
-
-function get_bounds(bb::BoundingBox)
-  return (bb.i, bb.j, bb.i+bb.h, bb.j+bb.w)
-end
-
-function get_rect(bb::BoundingBox)
-  return (bb.j, bb.i, bb.w, bb.h)
-end
-
-function get_area(bb::BoundingBox)
-  return bb.w*bb.h
-end
-
-"""
-Shift bounding box by 2-element array
-"""
-function translate_bb(bb::BoundingBox, offset)
-  return BoundingBox(bb.i + offset[1], bb.j + offset[2], bb.h, bb.w)
-end
-
-function scale_bb(bb::BoundingBox{Int64}, scale)
-  tform = make_scale_matrix(scale)
-  tbb = tform_bb(bb, tform)
-  return snap_bb(tbb)
-end
-
-function scale_bb(bb::BoundingBox{Float64}, scale)
-  tform = make_scale_matrix(scale)
-  return tform_bb(bb, tform)
-end
-
-"""
-Convert bounding box to tuple of ranges for easy array slicing
-"""
-function bb_to_slice(bb::BoundingBox{Int64})
-  return (bb.i+1):(bb.i+bb.h), (bb.j+1):(bb.j+bb.w)
-end
-
-function bb_to_slice(bb::BoundingBox{Float64})
-  return round(Int64, bb.i+1):round(Int64, bb.i+bb.h), 
-              round(Int64, bb.j+1):round(Int64, bb.j+bb.w)
-end
-
-"""
-Convert tuple of ranges to bounding box
-"""
-function slice_to_bb(slice)
-  return BoundingBox(slice[1][1], slice[2][1], 
-                      slice[1][end]-slice[1][1], slice[2][end]-slice[2][1])
-end
-
-"""
 Is point contained within the bounding box (border included)?
 """
 function point_is_contained(bb::BoundingBox, pt::Point)
@@ -157,18 +88,17 @@ function write_seams(meshset, imgs, offsets, indices, flagged_only=true)
 end
 
 """
-Create CairoSurface of tile outlines based on premontage registry
+Create CairoSurface of bounding boxes
 """
-function draw_premontage_review(index::Index; scale=0.05)
+function draw_bbs(bbs, indices)
   padding = [100, 100]
   fontsize = 36
-  indices = get_index_range(premontaged(index), premontaged(index))
-  bbs = map(scale_bb, map(get_bb, indices), repeated(scale))
+  index = indices[1]
   global_bb = snap_bb(sum(bbs))
   bbs = map(translate_bb, bbs, repeated(-get_offset(global_bb)+padding))
   sz = get_size(global_bb) + 2*padding
   drw = create_drawing(ones(UInt32, sz...))
-  ctx = create_context(drw)
+  ctx = get_context(drw)
   rects = map(get_rect, bbs)
   colors = ([1,0,1], [0,1,1])
   txt = join(index[1:2], ",")
@@ -180,6 +110,60 @@ function draw_premontage_review(index::Index; scale=0.05)
     draw_text(ctx, txt, ctr, [0,-10], fontsize, colors[k%2+1])
   end
   return drw
+end
+
+function draw_polys(polys, indices, roi=nothing)
+  padding = [100, 100]
+  fontsize = 36
+  index = indices[1]
+  x = vcat([vertices[:,1] for vertices in polys]...)
+  y = vcat([vertices[:,2] for vertices in polys]...)
+  min_x = minimum(x)
+  min_y = minimum(y)
+  max_x = maximum(x)
+  max_y = maximum(y)
+  sz = [max_x-min_x+1, max_y-min_y+1] + 2*padding
+  sz = round(Int64, sz)
+  polys = [[vertices[:,1]+padding[1]-min_x vertices[:,2]+padding[2]-min_y] for vertices in polys]
+  drw = create_drawing(ones(UInt32, sz...))
+  ctx = get_context(drw)
+  colors = ([1,0,1], [0,1,1])
+  txt = join(index[1:2], ",")
+  draw_text(ctx, txt, [50,50], [-10,-10], fontsize, [1,1,1])
+  for (k, (idx, poly)) in enumerate(zip(indices, polys))
+    draw_poly(ctx, poly, colors[k%2+1])
+    min_poly_x = minimum(poly[:,1])
+    max_poly_x = maximum(poly[:,1])
+    min_poly_y = minimum(poly[:,2])
+    max_poly_y = maximum(poly[:,2])
+    ctr = [(max_poly_y-min_poly_y)/2 + min_poly_y, (max_poly_x-min_poly_x)/2 + min_poly_x]
+    txt = join(idx[3:4], ",")
+    draw_text(ctx, txt, ctr, [0,-10], fontsize, colors[k%2+1])
+  end
+  roi = [roi[:,1]+padding[1]-min_x roi[:,2]+padding[2]-min_y] 
+  draw_poly(ctx, roi, [1,0,0])
+  return drw
+end
+
+function view_polys(polys, indices, roi=nothing)
+  drw = draw_polys(polys, indices, roi)
+  img = convert_drawing(get_drawing(drw))'
+  return ImageView.view(img, pixelspacing=[1,1])
+end
+
+function view_bbs(bbs::Array{BoundingBox, 1}, indices)
+  drw = draw_bbs(bbs, indices)
+  img = convert_drawing(get_drawing(drw))'
+  return ImageView.view(img, pixelspacing=[1,1])
+end
+
+"""
+Create CairoSurface of tile outlines based on premontage registry
+"""
+function draw_premontage_review(index::Index; scale=0.05)
+  indices = get_index_range(premontaged(index), premontaged(index))
+  bbs = map(scale_bb, map(get_bb, indices), repeated(scale))
+  return draw_bbs(bbs, indices)
 end
 
 function view_premontage_review(index::Index; scale=0.05)
@@ -330,9 +314,9 @@ function dict_of_stack_errors(meshset, path)
     match_index = pts[i,7]
     frames = readdlm(IOBuffer(pts[i,8]), ',', Int)
     d[match_index] = []
-    push!(d[match_index], push!(indices'[frames .== 1], 0))
-    push!(d[match_index], push!(indices'[frames .== 2], 0))
-    push!(d[match_index], push!(indices'[frames .== 3], 0))
+    push!(d[match_index], push!(indices'[frames .== 1], 0)) #'
+    push!(d[match_index], push!(indices'[frames .== 2], 0)) #'
+    push!(d[match_index], push!(indices'[frames .== 3], 0)) #'
     push!(d[match_index], pts[i,4:7])
   end
   return d
