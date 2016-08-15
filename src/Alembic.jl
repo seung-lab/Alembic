@@ -153,7 +153,9 @@ include("review/brushtool.jl")
 include("review/cpselect.jl")
 end
 
-#include("tasks/BlockMatchTask.jl")
+include("tasks/tasks_env.jl")
+include("tasks/BlockMatchTask.jl")
+include("tasks/awsscheduler.jl")
 
 include("utilities/migrate.jl")
 

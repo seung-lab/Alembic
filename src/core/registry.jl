@@ -1,3 +1,5 @@
+#global REGISTRY_UPDATES = Array{Any, 1}();
+
 # functions to get indices in different pipeline stages
 # index -> index
 function overview(index)		return (index[1], index[2], OVERVIEW_INDEX, OVERVIEW_INDEX);		end
@@ -168,7 +170,7 @@ function get_metadata(index)
 end
 
 # rotated offset is just the offset of the image once rotated around [0,0]
-function get_offset(index; rotated = false)
+function get_offset(index::Index; rotated = false)
 #=function get_offset(index, get_from_master=false)
 	if get_from_master =#
 		if myid() != IO_PROC return remotecall_fetch(IO_PROC, get_offset, index) end

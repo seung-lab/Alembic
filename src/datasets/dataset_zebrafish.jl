@@ -78,7 +78,7 @@ function migrate_legacy()
   run(`mv $(joinpath(ALIGNED_DIR_PATH, "registry_aligned.txt")) $(get_registry_path(aligned(1,1)))`)
 end
 
-function parse_name_legacy(name::String)
+function parse_name_legacy(name::AbstractString)
 
     ret = (0, 0, 0, 0)
     # singleton tile

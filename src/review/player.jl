@@ -144,7 +144,7 @@ function view_stack(stack; offset=[0,0], scale=1.0, annotations=Dict(), include_
   if include_reverse
     img_stack = cat(3, img_stack, img_stack[:,:,end:-1:1])
   end
-  imgc, img2 = ImageView.view(Image(img_stack, timedim=3), pixelspacing=DATASET_RESOLUTION[perm[2:-1:1]])
+  imgc, img2 = ImageView.view(Images.Image(img_stack, timedim=3), pixelspacing=DATASET_RESOLUTION[perm[2:-1:1]])
   override_xy_label(imgc, img2, offset, 1/scale)
 
   c = canvas(imgc)
@@ -217,7 +217,7 @@ end
 
 function compile_match_annotations(meshset::MeshSet, match::Match, bb::ImageRegistration.BoundingBox)
   match_ind = find_match_index(meshset, match)
-  offset = get_offset(bb)
+  offset = ImageRegistration.get_offset(bb)
   local_bb = translate_bb(bb, -offset)
   (src, dst), accepted_inds = make_vectors(meshset::MeshSet, match_ind::Int, offset)
   if length(src) > 0

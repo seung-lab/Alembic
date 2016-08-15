@@ -3,7 +3,7 @@ global const IMG_CACHE_SIZE = 40 * 2^30 # n * gibibytes
 global const IMG_ELTYPE = UInt8
 
 if myid() == 1
-	global const IMG_CACHE_DICT = Dict{Tuple{ASCIIString, Float64}, SharedArray}()
+	global const IMG_CACHE_DICT = Dict{Tuple{AbstractString, Float64}, SharedArray}()
 	global const IMG_CACHE_LIST = Array{Any, 1}();
 end
 
@@ -15,13 +15,13 @@ global const WORKER_PROCS = setdiff(procs(), [1]);
 end
 
 #=
-function save(path::String, img::Array)
+function save(path::AbstractString, img::Array)
 	f = h5open(path, "w")
 	@time f["img", "chunk", (1000,1000)] = img
         close(f)
 end=#
 
-function save(path::String, data; chunksize = 1000)
+function save(path::AbstractString, data; chunksize = 1000)
 	println("Saving $(typeof(data)) to ", path)
   	ext = splitext(path)[2];
 	if ext == ".h5"
@@ -33,7 +33,7 @@ function save(path::String, data; chunksize = 1000)
       	end
 end
 
-function load(path::String)
+function load(path::AbstractString)
 	println("Loading data from ", path)
 	if !isfile(path) return nothing end
 	ext = splitext(path)[2];
@@ -65,7 +65,7 @@ end
 # extensions:
 # Mesh.jl	get_image(mesh::Mesh)
 # filesystem.jl	get_image() 
-function get_image_disk(path::String, dtype = IMG_ELTYPE; shared = false)
+function get_image_disk(path::AbstractString, dtype = IMG_ELTYPE; shared = false)
 	ext = splitext(path)[2];
   if ext == ".tif"
     img = data(FileIO.load(path))
@@ -115,12 +115,12 @@ function get_image_disk_async(index, scale=1.0, dtype = IMG_ELTYPE)
 	return nothing;
 end
 
-function load_image(path::String, scale, img::Array, dtype = IMG_ELTYPE)
+function load_image(path::AbstractString, scale, img::Array, dtype = IMG_ELTYPE)
 	    push!(IMG_CACHE_LIST, (path, scale))
 	    IMG_CACHE_DICT[(path, scale)] = img;
 end
 
-function load_image(path::String, scale, imgref::RemoteRef, dtype = IMG_ELTYPE)
+function load_image(path::AbstractString, scale, imgref::RemoteRef, dtype = IMG_ELTYPE)
             img = take!(imgref);
 	    close(imgref);
 	    load_image(path, scale, img, dtype);
@@ -144,7 +144,7 @@ function clean_cache()
 	println("current cache usage: $cur_cache_size / $IMG_CACHE_SIZE (bytes), $(round(Int64, cur_cache_size/IMG_CACHE_SIZE * 100))%")
 end
 
-function get_image(path::String, scale=1.0, dtype = IMG_ELTYPE)
+function get_image(path::AbstractString, scale=1.0, dtype = IMG_ELTYPE)
 #=  	if myid() != IO_PROC
 	  return remotecall_fetch(IO_PROC, get_image, path, scale, dtype);
 	end =#
@@ -202,7 +202,7 @@ function ufixed8_to_uint8(img)
   reinterpret(UInt8, -img)
 end
 
-function get_slice(index::Index, bb::ImageRegistration.BoundingBox, scale=1.0; is_global=true)
+function get_slice(index::Index, bb::ImageRegistration.ImageRegistration.BoundingBox, scale=1.0; is_global=true)
   if is_global
     offset = get_offset(index)
     bb = translate_bb(bb, -offset)
@@ -214,7 +214,7 @@ function get_slice(index::Index, slice::Tuple{UnitRange{Int64},UnitRange{Int64}}
   return get_slice(get_path(index), slice, scale)
 end
 
-function get_slice(path::String, slice, scale=1.0)
+function get_slice(path::AbstractString, slice, scale=1.0)
   # return reinterpret(Ufixed8, h5read(path, "img", slice))
   if splitext(path)[2] != ".h5" 
     img = get_image(path)[slice...]
@@ -242,12 +242,12 @@ function load_mask(path; clean=true)
     return mask
 end
 
-function load_affine(path::String)
+function load_affine(path::AbstractString)
   affinePath = joinpath(AFFINE_DIR_PATH, string(path, ".csv"))
   return readcsv(path)
 end
 
-function parse_rough_align(info_path::String)
+function parse_rough_align(info_path::AbstractString)
   file = readdlm(info_path)
   session = cell(size(file, 1), 4); # name, index, dx, dy
   for i in 1:size(file, 1)
@@ -267,7 +267,7 @@ function load_section_images(session, section_num)
   indices = find(i -> session[i,2][2] == section_num, 1:size(session, 1))
   max_tile_size = 0
   num_tiles = length(indices)
-  paths = Array{String, 1}(num_tiles)
+  paths = Array{AbstractString, 1}(num_tiles)
   for i in 1:num_tiles
     name = session[i, 1]
     paths[i] = get_path(name)
@@ -366,7 +366,7 @@ function make_stack(firstindex::Index, lastindex::Index, slice=(1:255, 1:255); s
   dtype = UInt8
   stack_offset = [slice[1][1], slice[2][1]] # - [1,1]
   stack_size = map(length, slice)
-  global_bb = BoundingBox(stack_offset..., stack_size...)
+  global_bb = ImageRegistration.BoundingBox(stack_offset..., stack_size...)
   imgs = []
 
   stack_bb = sz_to_bb(stack_size)
@@ -379,7 +379,7 @@ function make_stack(firstindex::Index, lastindex::Index, slice=(1:255, 1:255); s
     img = zeros(dtype, scaled_size...)
     offset = get_offset(index)
     sz = get_image_size(index)
-    bb = BoundingBox(offset..., sz...)
+    bb = ImageRegistration.BoundingBox(offset..., sz...)
     if intersects(bb, global_bb)
       shared_bb = global_bb - bb
       stack_roi = snap_bb(scale_bb(translate_bb(shared_bb, -stack_offset), scale))
@@ -440,7 +440,7 @@ function save_stack(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, 
   close(f)
 end
 
-# function save_tif(filepath::AbstractString, img::Array{UInt8,2})
+# function save_tif(filepath::AbstractAbstractString, img::Array{UInt8,2})
 #   println("Saving to $filepath")
 #   imwrite(img, filepath)
 # end

@@ -642,7 +642,7 @@ end
 
 # JLS SAVE
 #=
-function save(filename::String, meshset::MeshSet)
+function save(filename::AbstractString, meshset::MeshSet)
   println("Saving meshset to ", filename)
   open(filename, "w") do file
     serialize(file, meshset)
@@ -663,7 +663,7 @@ function save(meshset::MeshSet)
 end
 =#
 
-function parse_meshset_filename(name::String)
+function parse_meshset_filename(name::AbstractString)
     indexA, indexB = NO_INDEX, NO_INDEX
     # aligned-section
     m = Base.match(r"(\d*),(\d*)-(\d*),(\d*)_aligned", name)
@@ -791,7 +791,7 @@ function load(index)
   end
 end=#
 #=
-function load(filename::String)
+function load(filename::AbstractString)
   if !isfile(filename) return nothing end
   return open(deserialize, filename)
 end=#

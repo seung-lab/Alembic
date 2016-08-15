@@ -24,7 +24,7 @@ function get_name(index::Index)
     end
 end
 # used for loading - i.e. getting the name of the Mesh by calling get_name((2,3,1,4), Mesh) returns "Mesh((2,3,1,4))"
-function get_name(object_type::Union{DataType, String}, index)	
+function get_name(object_type::Union{DataType, AbstractString}, index)	
 	if object_type == "MeshSet" || string(object_type) == "MeshSet"
 	  # hack for old names
 	  if typeof(index) == Tuple{Index, Index}
@@ -82,7 +82,7 @@ end
 function get_subdir(object)  			return get_subdir(typeof(object))	end
 function get_subdir(object_type::DataType)	return get_subdir(string(object_type));	end
 
-function get_subdir(string::String)
+function get_subdir(string::AbstractString)
   if 	 string == "Mesh"	return MESH_DIR, ".jls"
   elseif string == "Match"      return MATCH_DIR, ".jls"
   elseif string == "MeshSet"    return MESHSET_DIR, ".jls"
@@ -107,7 +107,7 @@ end
 function get_path(index::Index, ext = ".h5")
   return joinpath(get_dir_path(index), string(get_name(index), ext))
 end
-function get_path(object_type::Union{DataType, String}, index)
+function get_path(object_type::Union{DataType, AbstractString}, index)
   # hack to support singleton load for meshsets
   if (object_type == "MeshSet" || string(object_type) == "MeshSet") && typeof(index) == Index
   return joinpath(get_dir_path(prevstage(index)), get_subdir(object_type)[1], string(get_name(object_type, index), get_subdir(object_type)[2]))
@@ -118,16 +118,16 @@ function get_path(object)
   index = get_index(object); if typeof(index) != Index index = index[1]	end
   return joinpath(get_dir_path(index), get_subdir(object)[1], string(get_name(object), get_subdir(object)[2]))
 end
-function get_path(name::String)
+function get_path(name::AbstractString)
     return get_path(parse_name(name))
 end
 
-function parse_index(s::String)
+function parse_index(s::AbstractString)
     m = Base.match(r"(\d+),(\d+),(\-\d+|\d+),(\-\d+|\d+)", s)
     return (parse(Int, m[1]), parse(Int, m[2]), parse(Int, m[3]), parse(Int, m[4]))
 end
 
-function parse_name(name::String)
+function parse_name(name::AbstractString)
 
     ret = (0, 0, 0, 0)
     # singleton tile
@@ -169,7 +169,7 @@ function parse_name(name::String)
     return ret
 end
 
-function parse_registry(path::String)
+function parse_registry(path::AbstractString)
     registry = cell(0, 0)
     if isfile(path)
         file = readdlm(path)
@@ -229,7 +229,7 @@ function get_registry_path(index)
     end
 end
 
-function check_dirs(dataset_name::String = DATASET)
+function check_dirs(dataset_name::AbstractString = DATASET)
     function setup_dir(dir)
         if !isdir(dir)
             println("Creating $dir")
