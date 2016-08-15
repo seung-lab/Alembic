@@ -1,3 +1,5 @@
+#module Alembic
+
 # TypeAliases
 export Index
 export Triangle, Triangles
@@ -74,6 +76,7 @@ PKGS_USED_CLONABLE = ["https://github.com/JuliaSparse/MKLSparse.jl.git",
 
 using HDF5
 using JLD
+using Tk
 using Colors
 using FixedPointNumbers
 using Base.Test
@@ -84,6 +87,7 @@ using Optim
 using Distributions
 using Compat
 using Images
+using Graphics
 using StatsBase
 if USE_PYPLOT
   using PyPlot
@@ -93,6 +97,7 @@ if !(contains(gethostname(), "seunglab") || contains(gethostname(), "seungom"))
   using MKLSparse
   using PyCall
 end
+using SimpleTasks
 
 include("math/meshconjgrad.jl")
 include("math/meshgradnewton.jl")
@@ -113,8 +118,8 @@ include("core/MeshSet.jl")
 include("core/solve.jl")
 
 if ON_AWS
-#  include("dataset_zebrafish.jl")
-  include("datasets/dataset_pinky.jl")
+  include("datasets/dataset_zebrafish.jl")
+#  include("datasets/dataset_pinky.jl")
   #include("params_default.jl")
   include("params/params_pinky.jl")
 else
@@ -148,4 +153,8 @@ include("review/brushtool.jl")
 include("review/cpselect.jl")
 end
 
+#include("tasks/BlockMatchTask.jl")
+
 include("utilities/migrate.jl")
+
+#end

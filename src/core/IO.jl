@@ -202,7 +202,7 @@ function ufixed8_to_uint8(img)
   reinterpret(UInt8, -img)
 end
 
-function get_slice(index::Index, bb::BoundingBox, scale=1.0; is_global=true)
+function get_slice(index::Index, bb::ImageRegistration.BoundingBox, scale=1.0; is_global=true)
   if is_global
     offset = get_offset(index)
     bb = translate_bb(bb, -offset)

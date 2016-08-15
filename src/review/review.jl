@@ -1,18 +1,18 @@
 function get_bb(index::Index)
-  return BoundingBox(get_offset(index)..., get_image_size(index)...)
+  return ImageRegistration.BoundingBox(get_offset(index)..., get_image_size(index)...)
 end
 
 """
 Is point contained within the bounding box (border included)?
 """
-function point_is_contained(bb::BoundingBox, pt::Point)
+function point_is_contained(bb::ImageRegistration.BoundingBox, pt::Point)
   return (bb.i <= pt[1] <= (bb.i+bb.h)) && (bb.j <= pt[2] <= (bb.j+bb.w))
 end
 
 """
 At least one point of line is contained within bounding box (border included)?
 """
-function line_is_contained(bb::BoundingBox, line)
+function line_is_contained(bb::ImageRegistration.BoundingBox, line)
   return point_is_contained(bb, line[1:2]) || point_is_contained(bb, line[3:4])
 end
 
@@ -46,7 +46,7 @@ Crop image with offset to bounding box
 """
 function imcrop(img, offset, bb)
   o = zeros(eltype(img), ceil(bb.h)+1, ceil(bb.w)+1)
-  ibb = BoundingBox(offset..., size(img)...)
+  ibb = ImageRegistration.BoundingBox(offset..., size(img)...)
   d = bb - ibb
   o_start = abs(bb.i-d.i)+1:abs(bb.i-d.i) + d.h
   o_end = abs(bb.j-d.j)+1:abs(bb.j-d.j) + d.w
@@ -62,7 +62,7 @@ end
 function write_seams(meshset, imgs, offsets, indices, flagged_only=true)
   bbs = []
   for (img, offset) in zip(imgs, offsets)
-      push!(bbs, BoundingBox(offset..., size(img)...))
+      push!(bbs, ImageRegistration.BoundingBox(offset..., size(img)...))
   end
   overlap_tuples = find_overlaps(bbs) # could include tag for asymmetric list
   total_seams = flagged_only ? count_flags(meshset) : length(overlap_tuples)
@@ -151,7 +151,7 @@ function view_polys(polys, indices, roi=nothing)
   return ImageView.view(img, pixelspacing=[1,1])
 end
 
-function view_bbs(bbs::Array{BoundingBox, 1}, indices)
+function view_bbs(bbs::Array{ImageRegistration.BoundingBox, 1}, indices)
   drw = draw_bbs(bbs, indices)
   img = convert_drawing(get_drawing(drw))'
   return ImageView.view(img, pixelspacing=[1,1])
@@ -186,7 +186,7 @@ review_stack(username, meshset, area, slice, 1, true)
 """
 function load_stack_params(username)
   meshset = load((1,2,-3,-3), (1,167,-3,-3))
-  area = BoundingBox(5000,5000,28000,28000)
+  area = ImageRegistration.BoundingBox(5000,5000,28000,28000)
   slice = [400, 400]
   path = get_stack_errors_path(meshset, username)
   return meshset, area, slice, username, path

@@ -1,6 +1,6 @@
 #global LOADFILE = readdlm("/media/tmacrina/667FB0797A5072D7/3D_align/mosaiced_images_160729_google_cloud_upload_seung_import.csv",',')
 global OVERVIEW_RESOLUTION = 86/3000
-global IMPORT_ROI_BB = BoundingBox(10110,19850,39000,28000)
+global IMPORT_ROI_BB = ImageRegistration.BoundingBox(10110,19850,39000,28000)
 
 function get_src_dir(z_index)
 	i = findfirst(i -> i == z_index, LOADFILE[:,1])
@@ -348,7 +348,7 @@ end
 function get_bbs(z_index::Int64, sz=[3840,3840])
 	import_table = load_import_table(z_index)
 	offsets = get_import_offsets(import_table)
-	return [BoundingBox(offset..., sz...) for offset in offsets]
+	return [ImageRegistration.BoundingBox(offset..., sz...) for offset in offsets]
 end
 
 function get_tform_bbs(z_index::Int64, tform=eye(3), sz=[3840,3840])
@@ -382,7 +382,7 @@ function view_import_bb(z_index::Int64, tform=eye(3))
 	view_polys(polys, indices)
 end
 
-function view_roi(z_index::Int64, roi::BoundingBox=IMPORT_ROI_BB, tform=get_tform(overview(1,z_index), OVERVIEW_RESOLUTION))
+function view_roi(z_index::Int64, roi::ImageRegistration.BoundingBox=IMPORT_ROI_BB, tform=get_tform(overview(1,z_index), OVERVIEW_RESOLUTION))
 	scale = 0.05
 	polys = make_import_outline(z_index, tform)
 	# polys = [poly[1:4,:] for poly in polys]
@@ -397,7 +397,7 @@ function make_import_outline(z_index::Int64, tform=eye(3))
 	return tform_bbs_pts(pts, tform)
 end
 
-function get_roi_mask(z_index::Int64, roi::BoundingBox=IMPORT_ROI_BB, tform=get_tform(overview(1,z_index), OVERVIEW_RESOLUTION))
+function get_roi_mask(z_index::Int64, roi::ImageRegistration.BoundingBox=IMPORT_ROI_BB, tform=get_tform(overview(1,z_index), OVERVIEW_RESOLUTION))
 	# possible speed up: run bounding box intersection first
 	# all_bbs = get_tform_bbs(z_index)
 	# roi_intersects = convert(BitArray, [intersects(bb, roi) for bb in all_bbs])
@@ -407,18 +407,18 @@ function get_roi_mask(z_index::Int64, roi::BoundingBox=IMPORT_ROI_BB, tform=get_
 	return convert(BitArray, [poly_intersects(tile, bb_to_pts(roi)) for tile in tiles])
 end
 
-function get_tile_indices(z_index::Int64, roi::BoundingBox=IMPORT_ROI_BB, tform=get_tform(overview(1,z_index), OVERVIEW_RESOLUTION))
+function get_tile_indices(z_index::Int64, roi::ImageRegistration.BoundingBox=IMPORT_ROI_BB, tform=get_tform(overview(1,z_index), OVERVIEW_RESOLUTION))
 	all_indices = get_import_indices(z_index)
 	roi_mask = get_roi_mask(z_index, roi, tform)
 	return all_indices[roi_mask]
 end
 
-function get_roi_existing_mask(z_index::Int64, roi::BoundingBox=IMPORT_ROI_BB, tform=get_tform(overview(1,z_index), OVERVIEW_RESOLUTION))
+function get_roi_existing_mask(z_index::Int64, roi::ImageRegistration.BoundingBox=IMPORT_ROI_BB, tform=get_tform(overview(1,z_index), OVERVIEW_RESOLUTION))
 	import_table = load_import_table(z_index)
 	return get_roi_mask(z_index, roi, tform) & get_import_src_isfile(import_table)
 end
 
-function get_roi_existing_indices(z_index::Int64, roi::BoundingBox=IMPORT_ROI_BB, tform=get_tform(overview(1,z_index), OVERVIEW_RESOLUTION))
+function get_roi_existing_indices(z_index::Int64, roi::ImageRegistration.BoundingBox=IMPORT_ROI_BB, tform=get_tform(overview(1,z_index), OVERVIEW_RESOLUTION))
 	import_table = load_import_table(z_index)
 	roi_mask = get_roi_mask(z_index, roi, tform)
 	return collect(1:size(import_table,1))[roi_mask]

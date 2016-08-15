@@ -475,6 +475,7 @@ end
 function MeshSet(index::Index; kwargs...)
 	if is_premontaged(index) return MeshSet(index, index; kwargs...); end
 	if is_montaged(index) return MeshSet(premontaged(index), premontaged(index); kwargs...); end
+	if is_prealigned(index) return prealign(montaged(index)) end
 end
 
 function MeshSet(first_index, last_index; params=get_params(first_index), solve=true, solve_method="elastic")

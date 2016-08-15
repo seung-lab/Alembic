@@ -104,9 +104,6 @@ end
 
 # function get_path()
 # methods: 
-#     
-# extensions:
-# Mesh.jl: get_path(mesh::Mesh)
 function get_path(index::Index, ext = ".h5")
   return joinpath(get_dir_path(index), string(get_name(index), ext))
 end

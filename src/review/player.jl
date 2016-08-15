@@ -215,7 +215,7 @@ function filter_contained_lines(vectors, bb)
   return filter(i->line_is_contained(bb, i), vectors)
 end
 
-function compile_match_annotations(meshset::MeshSet, match::Match, bb::BoundingBox)
+function compile_match_annotations(meshset::MeshSet, match::Match, bb::ImageRegistration.BoundingBox)
   match_ind = find_match_index(meshset, match)
   offset = get_offset(bb)
   local_bb = translate_bb(bb, -offset)
@@ -232,7 +232,7 @@ function compile_match_annotations(meshset::MeshSet, match::Match, bb::BoundingB
   end
 end
 
-function compile_mesh_annotations(mesh::Mesh, bb::BoundingBox, use_prealigned::Bool)
+function compile_mesh_annotations(mesh::Mesh, bb::ImageRegistration.BoundingBox, use_prealigned::Bool)
   offset = get_offset(bb)
   local_bb = translate_bb(bb, -offset)
   endpoints_a, endpoints_b = get_edge_endpoints(mesh; use_post = !use_prealigned)
