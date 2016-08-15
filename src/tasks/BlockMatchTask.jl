@@ -16,6 +16,8 @@ type BlockMatchTaskDetails <: DaemonTaskDetails
     payload_info::AlembicPayloadInfo
 end
 
+BlockMatchTaskDetails{String <: AbstractString}(basic_info::BasicTask.Info, dict::Dict{String, Any}) = BlockMatchTaskDetails(basic_info, AlembicPayloadInfo(dict));
+
 const NAME = "BLOCKMATCH_TASK"
 #const OUTPUT_FOLDER = "output"
 
@@ -41,7 +43,7 @@ end
 function DaemonTask.prepare(task::BlockMatchTaskDetails,
         datasource::DatasourceService)
     Datasource.get(datasource,
-        map((input) -> full_input_path(task, input), task.basic_info.inputs))
+        map((input) -> full_input_path(task, input), task.basic_info.inputs); override_cache = true)
 end
 
 function DaemonTask.execute(task::BlockMatchTaskDetails,

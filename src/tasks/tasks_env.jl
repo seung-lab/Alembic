@@ -11,3 +11,8 @@ type AlembicPayloadInfo
 	outputs::Array{Any, 1} # array of outputs
 #	registry_updates::Array{Any, 1} # array of updates to the registry
 end
+
+function AlembicPayloadInfo{String <: AbstractString}(dict::Dict{String, Any})
+  # do your parsing from JSON parsed dictionary here
+  return AlembicPayloadInfo([tuple(index_array...) for index_array in dict["indices"]], dict["outputs"])
+end
