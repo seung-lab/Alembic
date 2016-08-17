@@ -125,14 +125,14 @@ end
 Cycle through sections of the stack stack, with images staged for easier viewing
 """
 function view_stack(firstindex::Index, lastindex::Index, center, radius;
-                                        include_reverse=false, perm=[1,2,3], scale=1.0)
+                                        include_reverse=false, perm=[1,2,3], scale=1.0, thumb=false)
   slice = make_slice(center, radius)
-  return view_stack(firstindex, lastindex, slice, include_reverse=include_reverse, perm=perm, scale=scale)
+  return view_stack(firstindex, lastindex, slice, include_reverse=include_reverse, perm=perm, scale=scale, thumb=thumb)
 end
 
-function view_stack(firstindex::Index, lastindex::Index, slice=(1:200,1:200); include_reverse=false, perm=[1,2,3], scale=1.0)
-  stack = make_stack(firstindex, lastindex, slice, scale=scale)
-  offset = get_offset(slice_to_bb(slice))
+function view_stack(firstindex::Index, lastindex::Index, slice=(1:200,1:200); include_reverse=false, perm=[1,2,3], scale=1.0, thumb=false)
+  stack = make_stack(firstindex, lastindex, slice, scale=scale, thumb=thumb)
+  offset = ImageRegistration.get_offset(slice_to_bb(slice))
   indices = get_index_range(firstindex, lastindex)
   annotations = Dict("indices" => [indices, reverse(indices)], "slice"=>slice, "scale"=>scale)
   imgc, img2 = view_stack(stack, offset=offset, scale=scale, annotations=annotations, include_reverse=include_reverse, perm=perm)
@@ -217,7 +217,7 @@ end
 
 function compile_match_annotations(meshset::MeshSet, match::Match, bb::BoundingBox)
   match_ind = find_match_index(meshset, match)
-  offset = get_offset(bb)
+  offset = ImageRegistration.get_offset(bb)
   local_bb = translate_bb(bb, -offset)
   (src, dst), accepted_inds = make_vectors(meshset::MeshSet, match_ind::Int, offset)
   if length(src) > 0
@@ -233,7 +233,7 @@ function compile_match_annotations(meshset::MeshSet, match::Match, bb::BoundingB
 end
 
 function compile_mesh_annotations(mesh::Mesh, bb::BoundingBox, use_prealigned::Bool)
-  offset = get_offset(bb)
+  offset = ImageRegistration.get_offset(bb)
   local_bb = translate_bb(bb, -offset)
   endpoints_a, endpoints_b = get_edge_endpoints(mesh; use_post = !use_prealigned)
   edges = [[endpoints_a[i] - offset, endpoints_b[i] - offset] for i in 1:length(endpoints_a)]
@@ -374,7 +374,7 @@ function make_stack(annotations)
 end
 
 function view_stack(annotations::Dict; include_reverse=false)
-  offset = get_offset(annotations["bb"])
+  offset = ImageRegistration.get_offset(annotations["bb"])
   scale = annotations["scale"]
   stack = make_stack(annotations)
   imgc, img2 = view_stack(stack, offset=offset, scale=scale, annotations=annotations, include_reverse=include_reverse)
@@ -388,7 +388,7 @@ function view_annotated_stack(annotations; include_reverse=false)
 end
 
 function view_annotated_stack(stack, annotations; include_reverse=false)
-  offset = get_offset(annotations["bb"])
+  offset = ImageRegistration.get_offset(annotations["bb"])
   scale = annotations["scale"]
   imgc, img2 = view_stack(stack, offset=offset, scale=scale, annotations=annotations, include_reverse=include_reverse)
   display_annotations(imgc, img2, annotations, include_reverse=include_reverse)

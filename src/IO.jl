@@ -1,5 +1,5 @@
 # size in bytes
-global const IMG_CACHE_SIZE = 40 * 2^30 # n * gibibytes
+global const IMG_CACHE_SIZE = 120 * 2^30 # n * gibibytes
 global const IMG_ELTYPE = UInt8
 
 if myid() == 1
@@ -49,6 +49,8 @@ function load(path::String)
     data = load_mask(path)
   elseif ext == ".txt"
     data = readdlm(path)
+  elseif ext == ".json"
+    data = JSON.parsefile(path; dicttype=Dict, use_mmap=true)
 	end
   println("Loaded $(typeof(data)) from ", path)
 	return data
@@ -202,29 +204,47 @@ function ufixed8_to_uint8(img)
   reinterpret(UInt8, -img)
 end
 
-function get_slice(index::Index, bb::BoundingBox, scale=1.0; is_global=true)
+function get_slice(index::Index, bb::BoundingBox, scale=1.0; is_global=true, thumb=false)
   if is_global
     offset = get_offset(index)
-    bb = translate_bb(bb, -offset)
+    bb = translate_bb(bb, -offset+[1,1])
   end
-  return get_slice(index, bb_to_slice(bb), scale)
+  return get_slice(index, bb_to_slice(bb), scale, thumb=thumb)
 end
 
-function get_slice(index::Index, slice::Tuple{UnitRange{Int64},UnitRange{Int64}}, scale=1.0)
-  return get_slice(get_path(index), slice, scale)
+function get_slice(index::Index, slice::Tuple{UnitRange{Int64},UnitRange{Int64}}, scale=1.0; thumb=false)
+  path = thumb ? get_path("thumbnail", index) : get_path(index)
+  return get_slice(path, slice, scale)
 end
 
 function get_slice(path::String, slice, scale=1.0)
-  # return reinterpret(Ufixed8, h5read(path, "img", slice))
-  if splitext(path)[2] != ".h5" 
-    img = get_image(path)[slice...]
-  else
-    img = h5read(path, "img", slice)
+  dtype = UInt8
+  output_bb = slice_to_bb(slice)
+  scaled_output_bb = snap_bb(scale_bb(output_bb, scale))
+  output = zeros(dtype, get_size(scaled_output_bb)...)
+  o = [1,1]
+
+  fid = h5open(path, "r")
+  dset = fid["img"]
+  data_size = size(dset)
+  image_bb = BoundingBox(o..., data_size...)
+
+  if intersects(output_bb, image_bb)
+    shared_bb = image_bb - output_bb
+    image_slice = bb_to_slice(shared_bb)
+    img = h5read(path, "img", image_slice)
+
+    if scale != 1.0
+      img, _ = imscale(img, scale)
+    end
+
+    output_offset = ImageRegistration.get_offset(output_bb)
+    output_roi = translate_bb(shared_bb, -output_offset+o)
+    output_roi = translate_bb(scale_bb(translate_bb(output_roi, -o), scale), o)
+    output_slice = bb_to_slice(snap_bb(output_roi))
+    output[output_slice...] = img
   end
-  if scale != 1.0
-    img = imscale(img, scale)[1]
-  end
-  return img
+  return output
 end
 
 function load_mask(index::Index; clean=true)
@@ -341,32 +361,12 @@ function is_expunged(index::Index)
   return assert(isfile(expunged_path) && !isfile(included_path))
 end
 
-function make_stack_from_finished(firstindex::Index, lastindex::Index, slice=(1:200, 1:200))
-    imgs = []
-    bb = nothing
-    for index in get_index_range(firstindex, lastindex)
-        index = finished(index)
-        print(string(join(index[1:2], ",") ,"|"))
-        img = get_slice(index, slice)
-        if bb == nothing
-            bb = h5read(get_path(index), "bb")
-        else
-            current_bb = h5read(get_path(index), "bb")
-            if current_bb != bb
-                error("FINISHED IMAGE, $index, NOT IN SAME BOUNDING BOX: $bb")
-            end
-        end
-        push!(imgs, img)
-    end
-    return cat(3, imgs...), bb
-end
-
-function make_stack(firstindex::Index, lastindex::Index, slice=(1:255, 1:255); scale=1.0)
+function make_stack(firstindex::Index, lastindex::Index, slice=(1:255, 1:255); scale=1.0, thumb=false)
   # dtype = h5read(get_path(firstindex), "dtype")
   dtype = UInt8
-  stack_offset = [slice[1][1], slice[2][1]] # - [1,1]
-  stack_size = map(length, slice)
-  global_bb = BoundingBox(stack_offset..., stack_size...)
+  global_bb = slice_to_bb(slice)
+  stack_offset = ImageRegistration.get_offset(global_bb)
+  stack_size = get_size(global_bb) + [1,1]
   imgs = []
 
   stack_bb = sz_to_bb(stack_size)
@@ -382,9 +382,9 @@ function make_stack(firstindex::Index, lastindex::Index, slice=(1:255, 1:255); s
     bb = BoundingBox(offset..., sz...)
     if intersects(bb, global_bb)
       shared_bb = global_bb - bb
-      stack_roi = snap_bb(scale_bb(translate_bb(shared_bb, -stack_offset), scale))
+      stack_roi = snap_bb(scale_bb(translate_bb(shared_bb, -stack_offset+[1,1]), scale))
       img_slice = bb_to_slice(stack_roi)
-      img[img_slice...] = get_slice(index, shared_bb, scale, is_global=true) 
+      img[img_slice...] = get_slice(index, shared_bb, scale, is_global=true, thumb=thumb) 
     end
     push!(imgs, img)
   end
@@ -393,7 +393,7 @@ end
 
 function make_slice(center, radius)
   x, y = center
-  return (x-radius):(x+radius), (y-radius):(y+radius)
+  return (x-radius+1):(x+radius), (y-radius+1):(y+radius)
 end
 
 function save_stack(firstindex::Index, lastindex::Index, center, radius; scale=1.0)

@@ -54,14 +54,18 @@ function premontage(index::Index)
     println("Finding overlap for $mindex")
     moving_bb = bbs[k]
     fixed_bbs = bbs[1:k-1]
-    overlap_area = [get_area(fixed_bb - moving_bb) for fixed_bb in fixed_bbs]
-    max_idx = selectperm(overlap_area, 1, rev=true, by=negative_nans)
-    if overlap_area[max_idx] > 100*100
-      findex = tile_indices[max_idx]
-      fixed_bb = fixed_bbs[max_idx]
-      push!(overlaps, (mindex, findex, moving_bb, fixed_bb, scale))
-    else
-      println("No overlap found")
+    overlap_bbs = [fixed_bb - moving_bb for fixed_bb in fixed_bbs]
+    overlap_area = map(get_area, overlap_bbs)
+    overlap_indices = sortperm(overlap_area, rev=true, by=negative_nans)
+    indices_limit = min(8, length(overlap_indices))
+    for idx in overlap_indices[1:indices_limit]
+      if maximum(get_size(overlap_bbs[idx])) > 1000
+        findex = tile_indices[idx]
+        fixed_bb = fixed_bbs[idx]
+        push!(overlaps, (mindex, findex, moving_bb, fixed_bb, scale))
+      else
+        continue
+      end
     end
   end
   
@@ -70,15 +74,24 @@ function premontage(index::Index)
   sizes = map(get_image_size, tile_indices)
   moving_indices = [i[1] for i in translations]
   for (i, index) in enumerate(tile_indices)
-    k = findfirst(i->i==index, moving_indices)
-    if k > 0
-      mindex, findex, moving_bb, fixed_bb, dv = translations[k]
+    ks = find(i->i==index, moving_indices)
+    if length(ks) > 0
+      best_k = ks[1]
+      best_r = 0
+      for k in ks
+        mindex, findex, moving_bb, fixed_bb, r, dv = translations[k]
+        if r > best_r
+          best_k = k
+          best_r = r
+        end
+      end
+      mindex, findex, moving_bb, fixed_bb, r, dv = translations[best_k]
       j = findfirst(i->i==findex, tile_indices)
       fixed_offset = offsets[j]
       moving_offset = offsets[i]
-      offsets[i] = fixed_offset - get_offset(fixed_bb) + moving_offset + dv
+      offsets[i] = fixed_offset - ImageRegistration.get_offset(fixed_bb) + moving_offset + dv
       # update_offset(mindex, offset, get_image_size(mindex));
-      # offset = get_offset(findex) - get_offset(fixed_bb) + get_offset(mindex) + dv
+      # offset = get_offset(findex) - ImageRegistration.get_offset(fixed_bb) + get_offset(mindex) + dv
     end
   end
   update_offsets(tile_indices, offsets, sizes)
@@ -95,28 +108,31 @@ end
 
 function find_translation(overlap)
   mindex, findex, moving_bb, fixed_bb, scale = overlap
-  dv = find_translation_offset(mindex, findex, moving_bb, fixed_bb, scale=scale)
-  return mindex, findex, moving_bb, fixed_bb, dv
+  r, dv = find_translation_offset(mindex, findex, moving_bb, fixed_bb, scale=scale)
+  return mindex, findex, moving_bb, fixed_bb, r, dv
 end
 
 function find_translation(moving_index::Index, fixed_index::Index, mbb=get_bb(moving_index), fbb=get_bb(fixed_index); scale=0.5, highpass_sigma = 10)
   println("Translating $moving_index to $fixed_index")
-  overlap_bb = get_bb(moving_index) - get_bb(fixed_index)
-  println("Overlap area: ", get_area(overlap_bb), " px^2")
-  moving = get_slice(moving_index, overlap_bb, scale, is_global=true)
-  fixed = get_slice(fixed_index, overlap_bb, scale, is_global=true) 
+  overlap_bb = mbb - fbb
+  moving = get_slice(moving_index, overlap_bb, is_global=true)
+  fixed = get_slice(fixed_index, overlap_bb, is_global=true) 
 	if highpass_sigma != 0
-		highpass_sigma = highpass_sigma * scale
-	  	moving = Array{Float64, 2}(moving);
-	  	moving_g = copy(moving)
-		@fastmath Images.imfilter_gaussian_no_nans!(moving_g, [highpass_sigma, highpass_sigma])
-		elwise_sub!(moving, moving_g);
+    highpass_sigma = highpass_sigma
+    moving = Array{Float64, 2}(moving);
+    moving_g = copy(moving)
+    @fastmath Images.imfilter_gaussian_no_nans!(moving_g, [highpass_sigma, highpass_sigma])
+    elwise_sub!(moving, moving_g);
 
-	  	fixed = Array{Float64, 2}(fixed);
-	  	fixed_g = copy(fixed)
-		@fastmath Images.imfilter_gaussian_no_nans!(fixed_g, [highpass_sigma, highpass_sigma])
-		elwise_sub!(fixed, fixed_g);
-      end
+    fixed = Array{Float64, 2}(fixed);
+    fixed_g = copy(fixed)
+    @fastmath Images.imfilter_gaussian_no_nans!(fixed_g, [highpass_sigma, highpass_sigma])
+    elwise_sub!(fixed, fixed_g);
+  end
+  if scale != 1.0   
+    moving, _ = imscale(moving, scale)
+    fixed, _ = imscale(fixed, scale)
+  end
   xc = normxcorr2_preallocated(moving, fixed; shape="full")
   return xc, moving, fixed
 end
@@ -127,7 +143,7 @@ function find_translation_offset(moving_index::Index, fixed_index::Index, mbb=ge
   i_max, j_max = ind2sub(xc, ind);
   i = 1/scale * (i_max - median(1:size(xc, 1)))
   j = 1/scale * (j_max - median(1:size(xc, 2)))
-  return [i,j]
+  return rm, [i,j]
 end
 
 function get_major_overlaps(indices)
