@@ -478,7 +478,7 @@ function filter_stats(stats, filters)
       for filter in filters
         push!(m, get(v, filter, 0))
       end
-      push!(f, [parse(Int64, k), m...])
+      push!(f, [k, m...])
     end
   else
     for (k, v) in stats
@@ -491,6 +491,11 @@ function filter_stats(stats, filters)
   end
   f = hcat(f...)'
   return f[sortperm(f[:,1]),:]
+end
+
+function calculate_stats(index::Index)
+  ms = load(MeshSet, index)
+  return calculate_stats(ms)
 end
 
 @inbounds function calculate_stats(ms::MeshSet)
