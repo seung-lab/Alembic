@@ -96,7 +96,7 @@ function draw_bbs(bbs, indices)
   index = indices[1]
   global_bb = snap_bb(sum(bbs))
   bbs = map(translate_bb, bbs, repeated(-ImageRegistration.get_offset(global_bb)+padding))
-  sz = get_size(global_bb) + 2*padding
+  sz = ImageRegistration.get_size(global_bb) + 2*padding
   drw = create_drawing(ones(UInt32, sz...))
   ctx = get_context(drw)
   rects = map(get_rect, bbs)
