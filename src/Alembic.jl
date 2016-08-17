@@ -85,6 +85,7 @@ using Distributions
 using Compat
 using Images
 using StatsBase
+using JSON
 #using RegERMs
 if USE_PYPLOT
   using PyPlot
@@ -133,11 +134,11 @@ include("utilities.jl")
 include("transforms.jl")
 include("draw.jl")
 if !(contains(gethostname(), "seunglab") || contains(gethostname(), "seungom"))
+  include("import.jl")
   include("player.jl")
   include("inspect.jl")
   include("check.jl")
   include("brushtool.jl")
-  include("import.jl")
   include("cpselect.jl")
 end
 
