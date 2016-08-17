@@ -76,7 +76,6 @@ PKGS_USED_CLONABLE = ["https://github.com/JuliaSparse/MKLSparse.jl.git",
 
 using HDF5
 using JLD
-using Tk
 using Colors
 using FixedPointNumbers
 using Base.Test
@@ -94,6 +93,7 @@ if USE_PYPLOT
   using PyPlot
 end
 if !(contains(gethostname(), "seunglab") || contains(gethostname(), "seungom"))
+  using Tk
   using ImageView
   using MKLSparse
   using PyCall
@@ -146,7 +146,6 @@ include("import/upload.jl")
 include("review/review.jl")
 include("review/visualize.jl")
 include("review/draw.jl")
-include("review/brushtool.jl")
 if !(contains(gethostname(), "seunglab") || contains(gethostname(), "seungom"))
   include("review/inspect.jl")
   include("review/player.jl")

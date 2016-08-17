@@ -470,6 +470,9 @@ function compile_stats(firstindex::Index, lastindex::Index)
   return stats
 end
 
+"""
+Filters is array of strings
+"""
 function filter_stats(stats, filters)
   f = []
   if haskey(stats, "matches")
@@ -530,15 +533,15 @@ end
     m["avg_r"] = avg_r
     m["std_r"] = std_r
     m["min_r"] = min_r
-    m["avg_95σ"] = avg_95sig
-    m["std_95σ"] = std_95sig
-    m["max_95σ"] = max_95sig
-    m["avg_75σ"] = avg_75sig
-    m["std_75σ"] = std_75sig
-    m["max_75σ"] = max_75sig
-    m["avg_50σ"] = avg_50sig
-    m["std_50σ"] = std_50sig
-    m["max_50σ"] = max_50sig
+    m["avg_95sig"] = avg_95sig
+    m["std_95sig"] = std_95sig
+    m["max_95sig"] = max_95sig
+    m["avg_75sig"] = avg_75sig
+    m["std_75sig"] = std_75sig
+    m["max_75sig"] = max_75sig
+    m["avg_50sig"] = avg_50sig
+    m["std_50sig"] = std_50sig
+    m["max_50sig"] = max_50sig
     m["flagged"] = flagged
     return m
   end

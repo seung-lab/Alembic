@@ -655,3 +655,16 @@ function shift_rows!(z_index, row_range, shift_in_tiles)
 	save_import_table(z_index, import_table)
 end
 
+function initialize_montage_registry_from_overview_tform(index::Index)
+	tform = load("relative_transform", overview(index))
+	angle = acos(tform[1,1]) * 180/pi
+	translation = [tform[3,1:2]...]
+	# update_registry(montaged(index), rotation=angle, offset=translation)
+	update_registry(montaged(index), rotation=0, offset=[0,0])
+end
+
+function initialize_montage_registry_from_overview_tform(firstindex::Index, lastindex::Index)
+	for index in get_index_range(firstindex, lastindex)
+		initialize_montage_registry_from_overview_tform(index)
+	end
+end

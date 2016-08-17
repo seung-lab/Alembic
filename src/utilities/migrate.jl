@@ -146,6 +146,13 @@ function migrate_registries!(tile_height=3840)
 
     	global REGISTRY_MONTAGED = parse_registry(get_registry_path(montaged(0,0)));
 
+        if size(REGISTRY_MONTAGED, 2) == 7
+          println("MIGRATION: 2016-08-04: changing needs_render to is_rendered / added rotation to montaged registry");
+          montaged_reg = hcat(montaged_reg[:, 1], fill(0, size(montaged_reg, 1)), montaged_reg[:, 2:5], !(Array{Bool, 1}(montaged_reg[:, 6])))
+          writedlm(get_registry_path(montaged(0,0)), montaged_reg)
+        end
+        global REGISTRY_MONTAGED = parse_registry(get_registry_path(montaged(0,0)));
+
     end
     if isfile(prealigned_reg_fn)
         prealigned_reg = readdlm(prealigned_reg_fn);
