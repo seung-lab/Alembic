@@ -158,6 +158,10 @@ function view_match(meshset::MeshSet, match_ind)
   match = meshset.matches[match_ind]
   indexA = match.src_index
   indexB = match.dst_index
+  scale = 1.0
+  if is_prealigned(meshset) || is_aligned(meshset)
+    scale = 0.02
+  end
 
   path = get_path("review", (indexB, indexA))
   if !isfile(path)
@@ -165,12 +169,11 @@ function view_match(meshset::MeshSet, match_ind)
   end
   if !isfile(path)
     println("NO REVIEW IMAGE CREATED")
-    src_bb = get_bb(match.src_index)
-    dst_bb = get_bb(match.dst_index)
-    shared_bb = snap_bb(src_bb - dst_bb)
+    src_bb = snap_bb(scale_bb(get_bb(match.src_index), scale))
+    dst_bb = snap_bb(scale_bb(get_bb(match.dst_index), scale))
+    shared_bb = src_bb - dst_bb
     img_orig = zeros(UInt32, ImageRegistration.get_size(shared_bb)...)
     offset = ImageRegistration.get_offset(shared_bb)
-    scale = 1.0
   else
     img_orig = h5read(path, "img")
     offset = h5read(path, "offset")
@@ -301,7 +304,7 @@ end
 function view_sigma(match, match_ind)
   src_patch, src_pt, dst_patch, dst_pt, xc, offset = get_correspondence_patches(match, match_ind)
   xcsurface(xc)
-  grid("on")
+  PyPlot.grid("on")
   title("match $match_ind")
 end
 
@@ -738,14 +741,14 @@ function view_dv_dispersion(index::Index)
       subplot(211)
       plt[:scatter](dv_all_ind, dv_all[1,:], color="#bb0000", alpha=0.5)
       plt[:scatter](dv_ind, dv[1,:], color="#00bb00", alpha=0.5)
-      grid("on")
+      PyPlot.grid("on")
       title("x")
     end
     if size(dv, 2) > 1
       subplot(212)
       plt[:scatter](dv_all_ind, dv_all[2,:], color="#bb0000", alpha=0.5)
       plt[:scatter](dv_ind, dv[2,:], color="#00bb00", alpha=0.5)
-      grid("on")
+      PyPlot.grid("on")
       title("y")
     end
   end
@@ -764,7 +767,7 @@ function view_property_histogram(firstindex::Index, lastindex::Index, property_n
   attr = attr .* masknan
   fig = figure("histogram")
   p = plt[:hist](attr, nbins)
-  grid("on")
+  PyPlot.grid("on")
   title(property_name)
   return p
 end
@@ -776,7 +779,7 @@ function view_property_histogram(meshset::MeshSet, property_name, nbins=20)
   end
   fig = figure("histogram")
   p = plt[:hist](attr, nbins)
-  grid("on")
+  PyPlot.grid("on")
   title(property_name)
   return p
 end
@@ -792,7 +795,7 @@ function view_property_scatter(match, property_name)
   end
   fig = figure("scatter")
   p = plt[:scatter](xy[1,:], xy[2,:])
-  grid("on")
+  PyPlot.grid("on")
   title(property_name)
   return p
 end
@@ -811,7 +814,7 @@ function view_property_histogram(match::Match, property_name; filtered=true, nbi
     end
     if length(attr) > 1
       p = plt[:hist](attr, bins=bins, color=color)
-      grid("on")
+      PyPlot.grid("on")
       title(property_name)
       return p
     end
@@ -834,7 +837,7 @@ function view_dv_dispersion(match, sr; filtered=true, property_name="dv")
   if length(dv) > 1
     p = plt[:scatter](dv[2,:], -dv[1,:], color=color, alpha=0.5)
     p = plt[:scatter](dv_bounds[:,1], dv_bounds[:,2], color="#0f0f0f", marker="+", alpha=0.2)
-    grid("on")
+    PyPlot.grid("on")
     title(property_name)
     return p
   end
@@ -849,7 +852,7 @@ function view_mesh_strain(mesh, factor=10)
   # colors = [s <= 0 ? "#000099" : "#990000" for s in strain]
   # colors = ones(length(strain))*factor
   p = plt[:scatter](pts[2,:], -pts[1,:], s=ones(length(strain))*factor, c=strain, cmap=ColorMap("seismic"), edgecolors="face", alpha=0.5)
-  grid("on")
+  PyPlot.grid("on")
   title("mesh_displacement")
   ax = gca()
   ax[:xaxis][:set_visible](false)
@@ -869,7 +872,7 @@ function view_property_spatial_scatter(match, property_name; filtered=true, fact
   attr = properties_func(match, property_name)
   if length(attr) > 1
     p = plt[:scatter](pts[2,:], -pts[1,:], s=attr*factor, color=color, alpha=0.5)
-    grid("on")
+    PyPlot.grid("on")
     title(property_name)
     ax = gca()
     ax[:xaxis][:set_visible](false)

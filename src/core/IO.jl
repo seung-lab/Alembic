@@ -206,7 +206,11 @@ end
 
 function get_slice(index::Index, bb::ImageRegistration.BoundingBox, scale=1.0; is_global=true, thumb=false)
   if is_global
-    offset = get_offset(index)
+    if thumb
+      offset = [0,0]
+    else
+      offset = get_offset(index)
+    end
     bb = translate_bb(bb, -offset+[1,1])
   end
   return get_slice(index, bb_to_slice(bb), scale, thumb=thumb)
@@ -377,7 +381,7 @@ function make_stack(firstindex::Index, lastindex::Index, slice=(1:255, 1:255); s
   for index in get_index_range(firstindex, lastindex)
     print(string(join(index[1:2], ",") ,"|"))
     img = zeros(dtype, scaled_size...)
-    offset = get_offset(index)
+    offset = thumb ? [0,0] : get_offset(index)
     sz = get_image_size(index)
     bb = ImageRegistration.BoundingBox(offset..., sz...)
     if intersects(bb, global_bb)
