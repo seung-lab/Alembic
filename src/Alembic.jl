@@ -97,8 +97,8 @@ if !(contains(gethostname(), "seunglab") || contains(gethostname(), "seungom"))
   using ImageView
   using MKLSparse
   using PyCall
+  using SimpleTasks
 end
-using SimpleTasks
 
 include("math/meshconjgrad.jl")
 include("math/meshgradnewton.jl")
@@ -152,11 +152,10 @@ if !(contains(gethostname(), "seunglab") || contains(gethostname(), "seungom"))
   include("review/player.jl")
   include("review/brushtool.jl")
   include("review/cpselect.jl")
+  include("tasks/tasks_env.jl")
+  include("tasks/BlockMatchTask.jl")
+  include("tasks/awsscheduler.jl")
 end
-
-include("tasks/tasks_env.jl")
-include("tasks/BlockMatchTask.jl")
-include("tasks/awsscheduler.jl")
 
 include("utilities/migrate.jl")
 

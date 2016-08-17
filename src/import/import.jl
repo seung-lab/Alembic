@@ -605,7 +605,7 @@ function rename_files(subdir)
 	end
 end
 
-function need_to_reimage_for_bb(z_indices, bb::BoundingBox)
+function need_to_reimage_for_bb(z_indices, bb::ImageRegistration.BoundingBox)
 	outside_roi = Dict()
 	for z_index in z_indices
 		try
@@ -619,7 +619,7 @@ function need_to_reimage_for_bb(z_indices, bb::BoundingBox)
 	return outside_roi
 end
 
-function outside_import_roi(z_index::Int64, bb::BoundingBox)
+function outside_import_roi(z_index::Int64, bb::ImageRegistration.BoundingBox)
 	roi_tiles = get_tile_indices(z_index)
 	bb_tiles = get_tile_indices(z_index, bb)
 	return setdiff(bb_tiles, roi_tiles)
