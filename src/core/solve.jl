@@ -30,7 +30,7 @@ Return right-hand matrix for the mesh
 """=#
 function rigid_approximate(M::Mesh)
   pts_src, pts_dst = get_homogeneous_nodes(M)
-  return find_rigid(pts_src, pts_dst)
+  return calculate_rigid(pts_src, pts_dst)
 end
 
 #="""
@@ -39,7 +39,7 @@ Return the right-hand matrix for the mesh
 """=#
 function affine_approximate(M::Mesh)
   pts_src, pts_dst = get_homogeneous_nodes(M)
-  return find_affine(pts_src, pts_dst)
+  return calculate_affine(pts_src, pts_dst)
 end
 
 #="""
@@ -69,7 +69,7 @@ function affine_solve(ms::MeshSet; k=1, globalized=false)
 	for ind in 1:size(pts_dst, 1)
   	pts_dst[ind, 1:2] = pts_dst[ind, 1:2] - get_offset(ms.matches[k].src_index)'
 	end
-  return find_affine(pts_src, pts_dst)
+  return calculate_affine(pts_src, pts_dst)
 end
 
 function affine_solve!(ms::MeshSet; k=1, globalized=false)
@@ -86,7 +86,7 @@ function rigid_solve(ms::MeshSet; k=1, globalized=false)
 	for ind in 1:size(pts_dst, 1)
   	pts_dst[ind, 1:2] = pts_dst[ind, 1:2] - get_offset(ms.matches[k].src_index)'
 	end
-  return find_rigid(pts_src, pts_dst)
+  return calculate_rigid(pts_src, pts_dst)
 end
 
 function rigid_solve!(ms::MeshSet; k=1, globalized=false)

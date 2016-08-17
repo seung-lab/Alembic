@@ -110,7 +110,7 @@ function get_path(index::Index, ext = ".h5")
 end
 function get_path(object_type::Union{DataType, AbstractString}, index)
   # hack to support singleton load for meshsets
-  if (object_type == "MeshSet" || string(object_type) == "MeshSet") && typeof(index) == Index
+  if (object_type == "stats" || object_type == "MeshSet" || string(object_type) == "MeshSet") && typeof(index) == Index
   return joinpath(get_dir_path(prevstage(index)), get_subdir(object_type)[1], string(get_name(object_type, index), get_subdir(object_type)[2]))
   end
   return joinpath(get_dir_path(index), get_subdir(object_type)[1], string(get_name(object_type, index), get_subdir(object_type)[2]))

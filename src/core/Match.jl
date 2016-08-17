@@ -249,7 +249,7 @@ function prematch(src_index, dst_index, src_image, dst_image, params=get_params(
 	scaled_rads = floor(Int64, ratio * size(src_image, 1) / 2), floor(Int64, ratio * size(src_image, 2) / 2)
 
 	range_in_src = ceil(Int64, size(src_image, 1) / 2) + (-scaled_rads[1]:scaled_rads[1]), ceil(Int64, size(src_image, 2) / 2) + (-scaled_rads[2]:scaled_rads[2])
-	dst_range_full = ceil(Int64, size(src_image, 1) / 2) + (-3 * scaled_rads[1]:5 * scaled_rads[1]), ceil(Int64, size(src_image, 2) / 2) + (-3 * scaled_rads[2]: 3 * scaled_rads[2])
+	dst_range_full = ceil(Int64, size(src_image, 1) / 2) + (-3 * scaled_rads[1]:3 * scaled_rads[1]), ceil(Int64, size(src_image, 2) / 2) + (-3 * scaled_rads[2]: 3 * scaled_rads[2])
 	range_in_dst = intersect(dst_range_full[1], 1:size(dst_image, 1)), intersect(dst_range_full[2], 1:size(dst_image, 2));
 
 
@@ -265,65 +265,66 @@ function prematch(src_index, dst_index, src_image, dst_image, params=get_params(
 
 
 	function try_angle(angle, src_image, dst_image, range_in_src, range_in_dst, dst_range_full)
-	  src_image_patch = src_image[range_in_src...]
-	  src_image_rotated = imrotate(src_image_patch, angle; parallel = false)
-	  range_in_src_rotated = 1:size(src_image_rotated, 1), 1:size(src_image_rotated, 2)
+		print("try angle: $angle deg...")
+		src_image_patch = src_image[range_in_src...]
+		src_image_rotated = imrotate(src_image_patch, angle; parallel = false)
+		range_in_src_rotated = 1:size(src_image_rotated, 1), 1:size(src_image_rotated, 2)
 
-	  tform = make_rotation_matrix(angle, size(src_image))
-	  tform_patch = make_rotation_matrix(angle, size(src_image_patch))
+		tform = make_rotation_matrix(angle, size(src_image))
+		tform_patch = make_rotation_matrix(angle, size(src_image_patch))
 
-	  # set the top left of the original patch to be the location of the point; the global location is just the first point in the src
-	  src_pt_locs = [1,1]
-	  src_pt_g = first(range_in_src[1]), first(range_in_src[2])
+		# set the top left of the original patch to be the location of the point; the global location is just the first point in the src
+		src_pt_locs = [1,1]
+		src_pt_g = first(range_in_src[1]), first(range_in_src[2])
 
-	  # location of the median from above, in patch coordinate
-	  src_pt_locs_rotated = floor(Int64, ([src_pt_locs..., 1]' * tform_patch)[1:2])
-	  dst_pt = floor(Int64, ([src_pt_g..., 1]' * tform)[1:2])
+		# location of the median from above, in patch coordinate
+		src_pt_locs_rotated = floor(Int64, ([src_pt_locs..., 1]' * tform_patch)[1:2])
+		dst_pt = floor(Int64, ([src_pt_g..., 1]' * tform)[1:2])
 
-	  # dst_pt_locs is unused in this, so may be set to zeros; dst_pt_locs_full may actually lie outside, so we use direct calculation and not findfirst
-	  dst_pt_locs = [0,0];
-	  dst_pt_locs_full = [dst_pt[1] - dst_range_full[1][1] + 1, dst_pt[2] - dst_range_full[2][1] + 1];
+		# dst_pt_locs is unused in this, so may be set to zeros; dst_pt_locs_full may actually lie outside, so we use direct calculation and not findfirst
+		dst_pt_locs = [0,0];
+		dst_pt_locs_full = [dst_pt[1] - dst_range_full[1][1] + 1, dst_pt[2] - dst_range_full[2][1] + 1];
 
-  	  #println("src_pt_locs: $src_pt_locs_rotated, dst_pt: $dst_pt, dst_pt_locs: $dst_pt_locs, dst_pt_locs_full: $dst_pt_locs_full")
-	  rel_offset = [0,0]
+		  #println("src_pt_locs: $src_pt_locs_rotated, dst_pt: $dst_pt, dst_pt_locs: $dst_pt_locs, dst_pt_locs_full: $dst_pt_locs_full")
+		rel_offset = [0,0]
 
-	  ranges = src_index, range_in_src_rotated, src_pt_locs_rotated, dst_index, range_in_dst, dst_range_full, dst_pt_locs, dst_pt_locs_full, rel_offset
-	#if angle == 90
-#	if angle == 0	ImageView.view(dst_image / 255) end
-	#if angle == 0 || angle == 180 || angle == 300
+		ranges = src_index, range_in_src_rotated, src_pt_locs_rotated, dst_index, range_in_dst, dst_range_full, dst_pt_locs, dst_pt_locs_full, rel_offset
+		#if angle == 90
+		#	if angle == 0	ImageView.view(dst_image / 255) end
+		#if angle == 0 || angle == 180 || angle == 300
 		# ImageView.view(src_image_rotated[range_in_src...] / 255)
-	#end=#
+		#end=#
 
-	  match = get_match(src_pt_locs, ranges, src_image_rotated, dst_image, scale, highpass_sigma; full = true)
+		match = get_match(src_pt_locs, ranges, src_image_rotated, dst_image, scale, highpass_sigma; full = true)
 
-	  if match == nothing return 0, 0, [0, 0] end
-	  
-	  r = match[3]["xcorr"]["r_max"]
-	  dv = match[3]["vects"]["dv"]
-	  offset = round(Int64, dv) #/ scale
+		if match == nothing return 0, 0, [0, 0] end
 
-	  println("trying $angle degrees... r: $r, dv: $offset")
-	    #    println("trying $angle degrees... r: $r, dv: $dv")
-	#	if params["registry"]["global_offsets"]
-	#	offset = get_offset(dst_index) + round(Int64, dv) #/ scale
+		r = match[3]["xcorr"]["r_max"]
+		dv = match[3]["vects"]["dv"]
+		offset = round(Int64, dv) #/ scale
 
-	  return r, angle, offset
-      end
-      prematches = pmap(try_angle, angles_to_try, repeated(src_image), repeated(dst_image), repeated(range_in_src), repeated(range_in_dst), repeated(dst_range_full))
-      prematches = prematches[prematches .!= nothing]
+		println("trying $angle degrees... r: $r, dv: $offset")
+		#    println("trying $angle degrees... r: $r, dv: $dv")
+		#	if params["registry"]["global_offsets"]
+		#	offset = get_offset(dst_index) + round(Int64, dv) #/ scale
+
+		return r, angle, offset
+	end
+	prematches = pmap(try_angle, angles_to_try, repeated(src_image), repeated(dst_image), repeated(range_in_src), repeated(range_in_dst), repeated(dst_range_full))
+	prematches = prematches[prematches .!= nothing]
 	cur_max_r = 0.0
 	cur_rot = 0.0
 	cur_offset = 0.0
 	for prematch in prematches
-	  if prematch[1] > cur_max_r
-	  	cur_max_r = prematch[1]
-		cur_rot = prematch[2]
-		cur_offset = prematch[3]
-	      end
+		if prematch[1] > cur_max_r
+		  	cur_max_r = prematch[1]
+			cur_rot = prematch[2]
+			cur_offset = prematch[3]
+		end
 	end
-		update_registry(src_index; rotation = cur_rot, offset = cur_offset);
-		print("    ")
-		println("Prematch complete... rotation: $cur_rot, offset: $cur_offset")
+	update_registry(src_index; rotation = cur_rot, offset = cur_offset);
+	print("    ")
+	println("Prematch complete... rotation: $cur_rot, offset: $cur_offset")
 end
 
 function zeropad_to_meanpad!(img)
@@ -391,14 +392,14 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
 	function imscale_src_patch!(img, scale_factor)
   	if scale == 1.0
   		if size(SRC_PATCH) != size(img)
-  			bb = BoundingBox{Int64}(0,0, size(img, 1), size(img, 2))
+  			bb = ImageRegistration.BoundingBox{Int64}(0,0, size(img, 1), size(img, 2))
    			global SRC_PATCH = zeros(Float64, bb.h, bb.w)
    			global SRC_PATCH_G = zeros(Float64, bb.h, bb.w)
    		end
 		@inbounds SRC_PATCH[:] = img
 	else
   		tform = make_scale_matrix(scale_factor)
-  		bb = BoundingBox{Float64}(0,0, size(img, 1), size(img, 2))
+  		bb = ImageRegistration.BoundingBox{Float64}(0,0, size(img, 1), size(img, 2))
   		wbb = tform_bb(bb, tform)
   		tbb = snap_bb(wbb)
   		if size(SRC_PATCH) != (tbb.h, tbb.w)
@@ -414,14 +415,14 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
 	function imscale_dst_patch!(img, scale_factor)
 		if scale == 1.0
 			if size(DST_PATCH) != size(img)
-				bb = BoundingBox{Int64}(0,0, size(img, 1), size(img, 2))
+				bb = ImageRegistration.BoundingBox{Int64}(0,0, size(img, 1), size(img, 2))
 				global DST_PATCH = zeros(Float64, bb.h, bb.w)
 				global DST_PATCH_G = zeros(Float64, bb.h, bb.w)
 			end
 			@inbounds DST_PATCH[:] = img
 		else
 			tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
-			bb = BoundingBox{Float64}(0,0, size(img, 1), size(img, 2))
+			bb = ImageRegistration.BoundingBox{Float64}(0,0, size(img, 1), size(img, 2))
 			wbb = tform_bb(bb, tform)
 			tbb = snap_bb(wbb)
 			if size(DST_PATCH) != (tbb.h, tbb.w)

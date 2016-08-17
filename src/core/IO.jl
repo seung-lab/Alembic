@@ -221,13 +221,13 @@ function get_slice(path::AbstractString, slice, scale=1.0)
   dtype = UInt8
   output_bb = slice_to_bb(slice)
   scaled_output_bb = snap_bb(scale_bb(output_bb, scale))
-  output = zeros(dtype, get_size(scaled_output_bb)...)
+  output = zeros(dtype, ImageRegistration.get_size(scaled_output_bb)...)
   o = [1,1]
 
   fid = h5open(path, "r")
   dset = fid["img"]
   data_size = size(dset)
-  image_bb = BoundingBox(o..., data_size...)
+  image_bb = ImageRegistration.BoundingBox(o..., data_size...)
 
   if intersects(output_bb, image_bb)
     shared_bb = image_bb - output_bb
