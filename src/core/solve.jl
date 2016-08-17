@@ -657,9 +657,6 @@ end
 
 @inbounds function stats(meshset::MeshSet, first_ind = 1, last_ind = count_matches(meshset); flagged_only::Bool = false, summary::Bool = false)
 
-  path = get_path("stats", (get_index(meshset.meshes[1]), get_index(meshset.meshes[end])))
-  f = open(path, "w")
-
   println("Computing statistics... sigma is computed at beta = 0.95")
   println("Writing stats to $path")
 
@@ -709,11 +706,9 @@ end
 	header = string(header, "flags")
   header = string(header, "\n")
   print(header)
-  write(f, header)
 
   divider = string(join(fill('-', 190)), "\n")
   print(divider)
-  write(f, divider)
 
   for match in meshset.matches[first_ind:last_ind]
     if flagged_only && !is_flagged(match) continue; end
@@ -730,7 +725,6 @@ end
   		body = string(body, @sprintf("%6i", count_filtered_correspondences(match)))
       body = string(body, "\n")
   		print(body)
-      write(f, body)
   		continue;
   	end
 
@@ -833,7 +827,6 @@ end
       	end
       	body = string(body, "\n")
         print(body)
-        write(f, body)
 
       end
 
@@ -857,7 +850,6 @@ end
 
   divider = string(join(fill('=', 190)), "\n")
   print(divider)
-  write(f, divider)
 
   res_norm = Array{Float64}(map(norm, residuals_pre))
   rms_pre = sqrt(mean(res_norm.^2))
@@ -938,11 +930,9 @@ end
 	end
 	footer = string(footer, "\n")
   print(footer)
-  write(f, footer)
 
   divider = string(join(fill('-', 190)), "\n")
   print(divider)
-  write(f, divider)
 
   postscript = ""
   postscript = string(postscript, "Statistics on $(length(first_ind:last_ind)) matches from $first_ind -> $last_ind")
@@ -953,8 +943,6 @@ end
   postscript = string(postscript, "$(length(matches_to_review)) matches flagged for review: $matches_to_review")
   postscript = string(postscript, "\n")
   print(postscript)
-  write(f, postscript)
-  close(f)
 end
 
 function decomp_affine(tform::Array{Float64, 2})
