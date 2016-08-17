@@ -265,17 +265,10 @@ function prematch(src_index, dst_index, src_image, dst_image, params=get_params(
 
 
 	function try_angle(angle, src_image, dst_image, range_in_src, range_in_dst, dst_range_full)
-<<<<<<< HEAD
 		print("try angle: $angle deg...")
 		src_image_patch = src_image[range_in_src...]
 		src_image_rotated = imrotate(src_image_patch, angle; parallel = false)
 		range_in_src_rotated = 1:size(src_image_rotated, 1), 1:size(src_image_rotated, 2)
-=======
-	  src_image_patch = src_image[range_in_src...]
-#	  println("$(typeof(src_image)) $(typeof(src_image_patch))")
-	  src_image_rotated = imrotate(src_image_patch, angle; parallel = false)
-	  range_in_src_rotated = 1:size(src_image_rotated, 1), 1:size(src_image_rotated, 2)
->>>>>>> fd36f7a396b3679e97f09878f32aca28d8c66b1e
 
 		tform = make_rotation_matrix(angle, size(src_image))
 		tform_patch = make_rotation_matrix(angle, size(src_image_patch))
