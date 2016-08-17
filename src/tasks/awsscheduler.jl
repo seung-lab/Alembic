@@ -17,9 +17,13 @@ import Main.AlembicPayloadInfo
 
 # creates a task to make a MeshSet for index
 function create_task(index::Main.Index)
+  #=
 	if Main.is_montaged(index)	indices = Main.get_index_range(Main.prevstage(index),Main.prevstage(index))
 	elseif Main.is_prealigned(index) indices = [Main.prevstage(index), Main.get_preceding(Main.prevstage(index))]
 	end
+	=#
+	indices = Main.ancestors(index);
+	possible_pairs = collect([(indexA, indexB) for indexA in indices, indexB in indices])
 
 	inputs_images = map(Main.truncate_path, map(Main.get_path, indices));
 	inputs_registry = map(Main.truncate_path, map(Main.get_registry_path, indices));
@@ -27,9 +31,12 @@ function create_task(index::Main.Index)
 	
 	output_meshset = Main.truncate_path(Main.get_path("MeshSet", index))
 	output_stats = Main.truncate_path(Main.get_path("stats", index))
+	output_reviews = map(Main.truncate_path, map((pair) -> Main.get_path("review", pair), possible_pairs))
+	outputs = unique([output_meshset, output_stats, output_reviews...])
+#	output_tform = 
 
 	basic_info = BasicTask.Info(0, NAME, Main.TASKS_BASE_DIRECTORY, inputs) 
-	task = BlockMatchTaskDetails(basic_info, AlembicPayloadInfo([index], [output, output_stats]));
+	task = BlockMatchTaskDetails(basic_info, AlembicPayloadInfo([index], outputs));
 #	return vcat(inputs..., output)
 	return task
 end

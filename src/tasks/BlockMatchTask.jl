@@ -45,6 +45,7 @@ function DaemonTask.execute(task::BlockMatchTaskDetails,
     end
 
     ms = Main.MeshSet([tuple(index_array...) for index_array in task.payload_info.indices]...);
+    Main.render(ms; review=true);
     Main.calculate_stats(ms);
 
     return DaemonTask.Result(true, task.payload_info.outputs)
