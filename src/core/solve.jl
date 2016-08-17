@@ -650,7 +650,7 @@ end
   end
   stats["summary"] = m
 
-  path = get_path("stats", get_index(ms.meshes[1])
+  path = get_path("stats", get_index(ms.meshes[1]))
   println("Writing stats to $path")
   f = open(path, "w")
   write(f, JSON.json(stats))
