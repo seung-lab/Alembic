@@ -206,7 +206,11 @@ end
 
 function get_slice(index::Index, bb::ImageRegistration.BoundingBox, scale=1.0; is_global=true, thumb=false)
   if is_global
-    offset = get_offset(index)
+    if thumb
+      offset = [0,0]
+    else
+      offset = get_offset(index)
+    end
     bb = translate_bb(bb, -offset+[1,1])
   end
   return get_slice(index, bb_to_slice(bb), scale, thumb=thumb)
@@ -221,13 +225,13 @@ function get_slice(path::AbstractString, slice, scale=1.0)
   dtype = UInt8
   output_bb = slice_to_bb(slice)
   scaled_output_bb = snap_bb(scale_bb(output_bb, scale))
-  output = zeros(dtype, get_size(scaled_output_bb)...)
+  output = zeros(dtype, ImageRegistration.get_size(scaled_output_bb)...)
   o = [1,1]
 
   fid = h5open(path, "r")
   dset = fid["img"]
   data_size = size(dset)
-  image_bb = BoundingBox(o..., data_size...)
+  image_bb = ImageRegistration.BoundingBox(o..., data_size...)
 
   if intersects(output_bb, image_bb)
     shared_bb = image_bb - output_bb
@@ -377,7 +381,7 @@ function make_stack(firstindex::Index, lastindex::Index, slice=(1:255, 1:255); s
   for index in get_index_range(firstindex, lastindex)
     print(string(join(index[1:2], ",") ,"|"))
     img = zeros(dtype, scaled_size...)
-    offset = get_offset(index)
+    offset = thumb ? [0,0] : get_offset(index)
     sz = get_image_size(index)
     bb = ImageRegistration.BoundingBox(offset..., sz...)
     if intersects(bb, global_bb)

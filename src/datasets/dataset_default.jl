@@ -78,7 +78,7 @@ function waferpaths_to_dict(waferpath_filename)
     return wdict
 end=#
 
-function parse_name_legacy(name::String)
+function parse_name_legacy(name::AbstractString)
     ret = (0, 0, 0, 0)
     # singleton tile
     m = Base.match(r"Tile_r(\d*)-c(\d*).*W(\d*)_sec(\d*)", name)

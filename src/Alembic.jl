@@ -125,9 +125,9 @@ if ON_AWS
   #include("params_default.jl")
   include("params/params_pinky.jl")
 else
- include("datasets/dataset_default.jl")
+  include("datasets/dataset_default.jl")
   # include("dataset_zebrafish.jl")
-  include("params/params_default.jl")
+  include("params/params_pinky.jl")
 end
 include("datasets/dataset_common.jl")
 

@@ -30,7 +30,7 @@ Return right-hand matrix for the mesh
 """=#
 function rigid_approximate(M::Mesh)
   pts_src, pts_dst = get_homogeneous_nodes(M)
-  return find_rigid(pts_src, pts_dst)
+  return calculate_rigid(pts_src, pts_dst)
 end
 
 #="""
@@ -39,7 +39,7 @@ Return the right-hand matrix for the mesh
 """=#
 function affine_approximate(M::Mesh)
   pts_src, pts_dst = get_homogeneous_nodes(M)
-  return find_affine(pts_src, pts_dst)
+  return calculate_affine(pts_src, pts_dst)
 end
 
 #="""
@@ -69,7 +69,7 @@ function affine_solve(ms::MeshSet; k=1, globalized=false)
 	for ind in 1:size(pts_dst, 1)
   	pts_dst[ind, 1:2] = pts_dst[ind, 1:2] - get_offset(ms.matches[k].src_index)'
 	end
-  return find_affine(pts_src, pts_dst)
+  return calculate_affine(pts_src, pts_dst)
 end
 
 function affine_solve!(ms::MeshSet; k=1, globalized=false)
@@ -86,7 +86,7 @@ function rigid_solve(ms::MeshSet; k=1, globalized=false)
 	for ind in 1:size(pts_dst, 1)
   	pts_dst[ind, 1:2] = pts_dst[ind, 1:2] - get_offset(ms.matches[k].src_index)'
 	end
-  return find_rigid(pts_src, pts_dst)
+  return calculate_rigid(pts_src, pts_dst)
 end
 
 function rigid_solve!(ms::MeshSet; k=1, globalized=false)
@@ -631,23 +631,26 @@ end
     stats["matches"][find_match_index(ms, match)] = m
   end
 
-  res_norm = Array{Float64}(map(norm, residuals_pre))
-  res_norm_post = Array{Float64}(map(norm, residuals_post))
-  avg_drifts = mean(avg_drifts)
+  if total_corresps == 0
+    m = make_stats_dict(get_index(ms.meshes[1]), get_index(ms.meshes[2]), total_corresps)
+  else
+    res_norm = Array{Float64}(map(norm, residuals_pre))
+    res_norm_post = Array{Float64}(map(norm, residuals_post))
+    avg_drifts = mean(avg_drifts)
 
-  index = nextstage(get_index(ms.meshes[1]))
-  m = make_stats_dict(index, index, total_corresps,
-                      sqrt(mean(res_norm.^2)), mean(res_norm), std(res_norm), maximum(res_norm),
-                      sqrt(mean(res_norm_post.^2)), mean(res_norm_post), std(res_norm_post), maximum(res_norm_post),
-                      avg_drifts[1], avg_drifts[2],
-                      mean(r_maxs), std(r_maxs), minimum(r_maxs),
-                      mean(sigmas95), std(sigmas95), maximum(sigmas95),
-                      mean(sigmas75), std(sigmas75), maximum(sigmas75),
-                      mean(sigmas50), std(sigmas50), maximum(sigmas50),
-                      is_flagged(ms))
+    m = make_stats_dict(get_index(ms.meshes[1]), get_index(ms.meshes[2]), total_corresps,
+                        sqrt(mean(res_norm.^2)), mean(res_norm), std(res_norm), maximum(res_norm),
+                        sqrt(mean(res_norm_post.^2)), mean(res_norm_post), std(res_norm_post), maximum(res_norm_post),
+                        avg_drifts[1], avg_drifts[2],
+                        mean(r_maxs), std(r_maxs), minimum(r_maxs),
+                        mean(sigmas95), std(sigmas95), maximum(sigmas95),
+                        mean(sigmas75), std(sigmas75), maximum(sigmas75),
+                        mean(sigmas50), std(sigmas50), maximum(sigmas50),
+                        is_flagged(ms))
+  end
   stats["summary"] = m
 
-  path = get_path("stats", index)
+  path = get_path("stats", get_index(ms.meshes[1])
   println("Writing stats to $path")
   f = open(path, "w")
   write(f, JSON.json(stats))
