@@ -249,7 +249,7 @@ function prematch(src_index, dst_index, src_image, dst_image, params=get_params(
 	scaled_rads = floor(Int64, ratio * size(src_image, 1) / 2), floor(Int64, ratio * size(src_image, 2) / 2)
 
 	range_in_src = ceil(Int64, size(src_image, 1) / 2) + (-scaled_rads[1]:scaled_rads[1]), ceil(Int64, size(src_image, 2) / 2) + (-scaled_rads[2]:scaled_rads[2])
-	dst_range_full = ceil(Int64, size(src_image, 1) / 2) + (-3 * scaled_rads[1]:5 * scaled_rads[1]), ceil(Int64, size(src_image, 2) / 2) + (-3 * scaled_rads[2]: 3 * scaled_rads[2])
+	dst_range_full = ceil(Int64, size(src_image, 1) / 2) + (-3 * scaled_rads[1]:3 * scaled_rads[1]), ceil(Int64, size(src_image, 2) / 2) + (-3 * scaled_rads[2]: 3 * scaled_rads[2])
 	range_in_dst = intersect(dst_range_full[1], 1:size(dst_image, 1)), intersect(dst_range_full[2], 1:size(dst_image, 2));
 
 
@@ -266,6 +266,7 @@ function prematch(src_index, dst_index, src_image, dst_image, params=get_params(
 
 	function try_angle(angle, src_image, dst_image, range_in_src, range_in_dst, dst_range_full)
 	  src_image_patch = src_image[range_in_src...]
+#	  println("$(typeof(src_image)) $(typeof(src_image_patch))")
 	  src_image_rotated = imrotate(src_image_patch, angle; parallel = false)
 	  range_in_src_rotated = 1:size(src_image_rotated, 1), 1:size(src_image_rotated, 2)
 
@@ -391,14 +392,14 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
 	function imscale_src_patch!(img, scale_factor)
   	if scale == 1.0
   		if size(SRC_PATCH) != size(img)
-  			bb = BoundingBox{Int64}(0,0, size(img, 1), size(img, 2))
+  			bb = ImageRegistration.BoundingBox{Int64}(0,0, size(img, 1), size(img, 2))
    			global SRC_PATCH = zeros(Float64, bb.h, bb.w)
    			global SRC_PATCH_G = zeros(Float64, bb.h, bb.w)
    		end
 		@inbounds SRC_PATCH[:] = img
 	else
   		tform = make_scale_matrix(scale_factor)
-  		bb = BoundingBox{Float64}(0,0, size(img, 1), size(img, 2))
+  		bb = ImageRegistration.BoundingBox{Float64}(0,0, size(img, 1), size(img, 2))
   		wbb = tform_bb(bb, tform)
   		tbb = snap_bb(wbb)
   		if size(SRC_PATCH) != (tbb.h, tbb.w)
@@ -414,14 +415,14 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
 	function imscale_dst_patch!(img, scale_factor)
 		if scale == 1.0
 			if size(DST_PATCH) != size(img)
-				bb = BoundingBox{Int64}(0,0, size(img, 1), size(img, 2))
+				bb = ImageRegistration.BoundingBox{Int64}(0,0, size(img, 1), size(img, 2))
 				global DST_PATCH = zeros(Float64, bb.h, bb.w)
 				global DST_PATCH_G = zeros(Float64, bb.h, bb.w)
 			end
 			@inbounds DST_PATCH[:] = img
 		else
 			tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
-			bb = BoundingBox{Float64}(0,0, size(img, 1), size(img, 2))
+			bb = ImageRegistration.BoundingBox{Float64}(0,0, size(img, 1), size(img, 2))
 			wbb = tform_bb(bb, tform)
 			tbb = snap_bb(wbb)
 			if size(DST_PATCH) != (tbb.h, tbb.w)

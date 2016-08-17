@@ -34,10 +34,10 @@ function full_input_path(task::BlockMatchTaskDetails,
 end
 
 function full_output_path(task::BlockMatchTaskDetails,
-        input::AbstractString)
+        output::AbstractString)
 #    path_end = rsearch(input, "/").start + 1
 
-    return "$(task.basic_info.base_directory)/$(task.payload_info)";
+    return "$(task.basic_info.base_directory)/$(output)";
 end
 
 function DaemonTask.prepare(task::BlockMatchTaskDetails,
@@ -54,8 +54,10 @@ function DaemonTask.execute(task::BlockMatchTaskDetails,
         return DaemonTask.Result(true, [])
     end
 
-    Main.MeshSet([tuple(index_array...) for index_array in task.payload_info.indices]...);
-
+#	println(task.payload_info.outputs);
+#	println(typeof(task.payload_info.outputs));
+    ms = Main.MeshSet([tuple(index_array...) for index_array in task.payload_info.indices]...);
+    Main.calculate_stats(ms);
     return DaemonTask.Result(true, task.payload_info.outputs)
 end
 
@@ -67,10 +69,16 @@ function DaemonTask.finalize(task::BlockMatchTaskDetails,
     else
         println("Task $(task.basic_info.id), $(task.basic_info.name) was " *
             "completed successfully, syncing outputs to remote datasource")
+
         Datasource.put!(datasource,
             map((output) -> full_output_path(task, output), result.outputs))
-	Datasource.remove!(datasource, map((output) -> full_output_path(task, output), result.outputs; only_cache = true))
-	Datasource.remove!(datasource, map((input) -> full_input_path(task, input), task.basic_info.inputs; only_cache = true))
+	    println(full_output_path(task, result.outputs[2]));
+	Datasource.remove!(datasource, map((output) -> full_output_path(task, output), result.outputs); only_cache = true)
+	Datasource.remove!(datasource, map((input) -> full_input_path(task, input), task.basic_info.inputs); only_cache = true)
+	Main.push_registry_updates();
+    # Main.REGISTRY_UPDATES
+    return DaemonTask.Result(true, task.payload_info.outputs)
+#	println("done")
     #	task_queue = AWSQueueService(AWS.AWSEnv(), registry_queue_name);
     end
 end

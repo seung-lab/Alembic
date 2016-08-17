@@ -20,10 +20,14 @@ function create_task(index::Main.Index)
 	if Main.is_montaged(index)	indices = Main.get_index_range(Main.prevstage(index),Main.prevstage(index))
 	elseif Main.is_prealigned(index) indices = [Main.prevstage(index), Main.get_preceding(Main.prevstage(index))]
 	end
+
 	inputs = map(BlockMatchTask.truncate_path, map(Main.get_path, indices));
+
 	output = BlockMatchTask.truncate_path(Main.get_path("MeshSet", index))
+	output_stats = BlockMatchTask.truncate_path(Main.get_path("stats", index))
+
 	basic_info = BasicTask.Info(0, NAME, Main.TASKS_BASE_DIRECTORY, inputs) 
-	task = BlockMatchTaskDetails(basic_info, AlembicPayloadInfo([index], [output]));
+	task = BlockMatchTaskDetails(basic_info, AlembicPayloadInfo([index], [output, output_stats]));
 #	return vcat(inputs..., output)
 	return task
 end

@@ -1,5 +1,55 @@
 #module Alembic
 
+if !haskey(ENV, "USER")
+  ENV["USER"] = "ubuntu"
+end
+
+if ENV["USER"] != "ubuntu"
+  global const ON_AWS = false;
+else
+  global const ON_AWS = true;
+end
+
+if contains(gethostname(), "seunglab") || contains(gethostname(), "seungom") || ENV["USER"] == "dih"
+  global const USE_PYPLOT = false;
+else
+  global const USE_PYPLOT = true;
+end
+
+
+PKGS_USED = ["HDF5", "JLD", "Images", "ImageView", "Colors", "FixedPointNumbers", "Cairo", "IterativeSolvers", "Optim", "Distributions", "RegERMs", "PyPlot"]
+
+PKGS_USED_CLONABLE = ["https://github.com/JuliaSparse/MKLSparse.jl.git", 
+                      "https://github.com/seung-lab/ImageRegistration.git", 
+		      "https://github.com/madeleineudell/ParallelSparseMatMul.jl.git",
+                      "https://github.com/macrintr/ImageView.jl.git"]
+
+using HDF5
+using JLD
+using Colors
+using FixedPointNumbers
+using Base.Test
+using Cairo
+using IterativeSolvers
+using ImageRegistration
+using Optim
+using Distributions
+using Compat
+using Images
+using Graphics
+using StatsBase
+using JSON
+if USE_PYPLOT
+  using PyPlot
+end
+if !(contains(gethostname(), "seunglab") || contains(gethostname(), "seungom"))
+  using Tk
+  using ImageView
+  using MKLSparse
+  using PyCall
+  using SimpleTasks
+end
+
 # TypeAliases
 export Index
 export Triangle, Triangles
@@ -50,55 +100,6 @@ global const eps_large = 1e-4;
 global const eps_rec = 1 / eps;
 
 
-if !haskey(ENV, "USER")
-  ENV["USER"] = "ubuntu"
-end
-
-if ENV["USER"] != "ubuntu"
-  global const ON_AWS = false;
-else
-  global const ON_AWS = true;
-end
-
-if contains(gethostname(), "seunglab") || contains(gethostname(), "seungom") || ENV["USER"] == "dih"
-  global const USE_PYPLOT = false;
-else
-  global const USE_PYPLOT = true;
-end
-
-
-PKGS_USED = ["HDF5", "JLD", "Images", "ImageView", "Colors", "FixedPointNumbers", "Cairo", "IterativeSolvers", "Optim", "Distributions", "RegERMs", "PyPlot"]
-
-PKGS_USED_CLONABLE = ["https://github.com/JuliaSparse/MKLSparse.jl.git", 
-                      "https://github.com/seung-lab/ImageRegistration.git", 
-		      "https://github.com/madeleineudell/ParallelSparseMatMul.jl.git",
-                      "https://github.com/macrintr/ImageView.jl.git"]
-
-using HDF5
-using JLD
-using Colors
-using FixedPointNumbers
-using Base.Test
-using Cairo
-using IterativeSolvers
-using ImageRegistration
-using Optim
-using Distributions
-using Compat
-using Images
-using Graphics
-using StatsBase
-using JSON
-if USE_PYPLOT
-  using PyPlot
-end
-if !(contains(gethostname(), "seunglab") || contains(gethostname(), "seungom"))
-  using Tk
-  using ImageView
-  using MKLSparse
-  using PyCall
-  using SimpleTasks
-end
 
 include("math/meshconjgrad.jl")
 include("math/meshgradnewton.jl")
