@@ -162,17 +162,24 @@ function view_match(meshset::MeshSet, match_ind)
   path = get_path("review", (indexB, indexA))
   if !isfile(path)
     path = get_path("review", (indexA, indexB))
-    if !isfile(path)
-      error("NO REVIEW IMAGE CREATED")
-    end
   end
-  img_orig = h5read(path, "img")
-  offset = h5read(path, "offset")
-  println("offset: ", offset)
-  scale = h5read(path, "scale")
+  if !isfile(path)
+    println("NO REVIEW IMAGE CREATED")
+    src_bb = get_bb(match.src_index)
+    dst_bb = get_bb(match.dst_index)
+    shared_bb = snap_bb(src_bb - dst_bb)
+    img_orig = zeros(UInt32, ImageRegistration.get_size(shared_bb)...)
+    offset = ImageRegistration.get_offset(shared_bb)
+    scale = 1.0
+  else
+    img_orig = h5read(path, "img")
+    offset = h5read(path, "offset")
+    println("offset: ", offset)
+    scale = h5read(path, "scale")
+  end
 
   # Add border to the image for vectors that extend
-  pad = 400
+  pad = 1000
   img = zeros(UInt32, size(img_orig,1)+pad*2, size(img_orig,2)+pad*2)
   img[pad:end-pad-1, pad:end-pad-1] = img_orig
 

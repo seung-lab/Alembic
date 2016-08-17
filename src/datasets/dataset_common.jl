@@ -89,10 +89,11 @@ function get_subdir(string::AbstractString)
   elseif string == "review"     return REVIEW_DIR, ".h5"
   elseif string == "import"     return IMPORT_DIR, ".txt"
   elseif string == "contrast_bias"     return CONTRAST_BIAS_DIR, ".h5"
-  elseif string == "contrast_stretch"     return CONTRAST_STRETCH_DIR, ".h5"
+  elseif string == "contrast_stretch"     return CONTRAST_STRETCH_DIR, ".txt"
   elseif string == "correspondence"     return CORRESPONDENCE_DIR, ".txt"
   elseif string == "relative_transform"     return RELATIVE_TRANSFORM_DIR, ".txt"
   elseif string == "cumulative_transform"     return CUMULATIVE_TRANSFORM_DIR, ".txt"
+  elseif string == "stats"     return STATS_DIR, ".json"
   elseif string == "mask"     return MASK_DIR, ".png"
   elseif string == "outline"     return OUTLINE_DIR, ".png"
   elseif string == "expunge"     return EXPUNGED_DIR, ".h5"
@@ -200,6 +201,7 @@ global EXPUNGED_DIR = "expunged"
 global REVIEW_DIR = "review"
 global MASK_DIR = "mask"
 global IMPORT_DIR = "import"
+global STATS_DIR = "stats"
 global CONTRAST_BIAS_DIR = "contrast_bias"
 global CONTRAST_STRETCH_DIR = "contrast_stretch"
 global OUTLINE_DIR = "outline"
@@ -239,7 +241,7 @@ function check_dirs(dataset_name::AbstractString = DATASET)
 
     dataset_dir = joinpath(BUCKET, dataset_name)
     dirs = [ OVERVIEW_DIR, PREMONTAGED_DIR, MONTAGED_DIR, PREALIGNED_DIR, ALIGNED_DIR, FINISHED_DIR ]
-    subdirs = [ MESH_DIR, MATCH_DIR, MESHSET_DIR, EXPUNGED_DIR, REVIEW_DIR, MASK_DIR, IMPORT_DIR, CONTRAST_BIAS_DIR, CONTRAST_STRETCH_DIR, OUTLINE_DIR, THUMBNAIL_DIR, CORRESPONDENCE_DIR, RELATIVE_TRANSFORM_DIR, CUMULATIVE_TRANSFORM_DIR ]
+    subdirs = [ MESH_DIR, MATCH_DIR, MESHSET_DIR, EXPUNGED_DIR, REVIEW_DIR, MASK_DIR, IMPORT_DIR, STATS_DIR, CONTRAST_BIAS_DIR, CONTRAST_STRETCH_DIR, OUTLINE_DIR, THUMBNAIL_DIR, CORRESPONDENCE_DIR, RELATIVE_TRANSFORM_DIR, CUMULATIVE_TRANSFORM_DIR ]
 
     setup_dir(dataset_dir)
     for d in dirs

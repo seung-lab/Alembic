@@ -89,6 +89,7 @@ using Compat
 using Images
 using Graphics
 using StatsBase
+using JSON
 if USE_PYPLOT
   using PyPlot
 end
@@ -147,10 +148,10 @@ include("review/visualize.jl")
 include("review/draw.jl")
 include("review/brushtool.jl")
 if !(contains(gethostname(), "seunglab") || contains(gethostname(), "seungom"))
-include("review/inspect.jl")
-include("review/player.jl")
-include("review/brushtool.jl")
-include("review/cpselect.jl")
+  include("review/inspect.jl")
+  include("review/player.jl")
+  include("review/brushtool.jl")
+  include("review/cpselect.jl")
 end
 
 include("tasks/tasks_env.jl")

@@ -95,7 +95,7 @@ function draw_bbs(bbs, indices)
   fontsize = 36
   index = indices[1]
   global_bb = snap_bb(sum(bbs))
-  bbs = map(translate_bb, bbs, repeated(-get_offset(global_bb)+padding))
+  bbs = map(translate_bb, bbs, repeated(-ImageRegistration.get_offset(global_bb)+padding))
   sz = get_size(global_bb) + 2*padding
   drw = create_drawing(ones(UInt32, sz...))
   ctx = get_context(drw)
@@ -140,8 +140,10 @@ function draw_polys(polys, indices, roi=nothing)
     txt = join(idx[3:4], ",")
     draw_text(ctx, txt, ctr, [0,-10], fontsize, colors[k%2+1])
   end
-  roi = [roi[:,1]+padding[1]-min_x roi[:,2]+padding[2]-min_y] 
-  draw_poly(ctx, roi, [1,0,0])
+  if roi != nothing
+    roi = [roi[:,1]+padding[1]-min_x roi[:,2]+padding[2]-min_y] 
+    draw_poly(ctx, roi, [1,0,0])
+  end    
   return drw
 end
 

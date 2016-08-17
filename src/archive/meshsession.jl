@@ -2,8 +2,11 @@ function montage(firstindex::Index, lastindex::Index)
   ind_range = get_index_range(premontaged(firstindex), premontaged(lastindex))
   ind_range = unique([montaged(i[1:2]...) for i in ind_range])
   for index in ind_range
+    # premontage(premontaged(index))
     ms = MeshSet(index)
-    render_montaged(ms; render_full=true, render_review=false)
+    render_montaged(ms; render_full=true, render_review=true, flagged_only=true)
+    clean_cache()
+    calculate_stats(ms)
     # if is_flagged(ms)
     #   render_montaged(ms; render_full=false, render_review=true, flagged_only=true)
     # else
