@@ -1,4 +1,4 @@
-#global REGISTRY_UPDATES = Array{Any, 1}();
+global REGISTRY_UPDATES = Array{Any, 1}();
 
 # functions to get indices in different pipeline stages
 # index -> index
@@ -339,8 +339,12 @@ function reset_offset(index)
   update_registry(index; offset = [0,0])
 end
 
+#function sync_registries(updates::Array{Any, 1})
+#  if myid() != IO_PROC return remotecall_fetch(IO_PROC, sync_registry, updates) end
+#end
+
 function update_registry(index; rotation::Union{Float64, Int64} = get_rotation(index), offset::Union{Point, Array{Int64, 1}} = get_offset(index), image_size::Union{Array{Int64, 1}, Tuple{Int64, Int64}} = get_image_size(index), rendered::Bool = is_rendered(index))
-  if myid() != IO_PROC return remotecall_fetch(IO_PROC, () ->update_registry(index, rotation = rotation, offset = offset, image_size = image_size, rendered = rendered)) end
+  if myid() != IO_PROC return remotecall_fetch(IO_PROC, () -> update_registry(index, rotation = rotation, offset = offset, image_size = image_size, rendered = rendered)) end
   image_fn = string(get_name(index));
   registry_fp = get_registry_path(index)
   println("Updating registry for ", image_fn, " in:\n", registry_fp, ": rotation: $rotation, offset: $offset, image_size: $image_size")
@@ -362,6 +366,7 @@ function update_registry(index; rotation::Union{Float64, Int64} = get_rotation(i
   registry = registry[sortperm(registry[:, 1], by=parse_name), :];
   writedlm(registry_fp, registry)
   reload_registry(index);
+  push!(REGISTRY_UPDATES, Dict{Any, Any}("index" => index, "rotation" => rotation, "offset" => offset, "image_size" => image_size, "rendered" => rendered));
 end
 
 function update_offsets(indices, offsets, sizes, rendered=trues(length(indices)))
