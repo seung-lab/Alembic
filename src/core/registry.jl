@@ -407,6 +407,11 @@ function reload_registry(index)
   end
 end
 
+function reload_registries()
+  indices = [premontaged(0,0), montaged(0,0), prealigned(0,0), aligned(0,0)]
+  for index in indices remotecall_fetch(IO_PROC, reload_registry, index) end
+end
+
 function globalize!(pts::Points, offset::Point)
   @simd for i in 1:length(pts) @fastmath @inbounds pts[i] = pts[i] + offset; end
 end
