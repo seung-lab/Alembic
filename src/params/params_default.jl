@@ -72,7 +72,7 @@ global PARAMS_MONTAGE = Dict(
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 2.5)
 					      ),
 			     "render" => Dict(
-			     		"crop" => [280, 280],
+			     		"crop" => [340, 340],
 			     		"thumbnail_scale" => 0.02
 					      ),
 			     "review" => Dict(
