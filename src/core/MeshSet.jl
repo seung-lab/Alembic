@@ -6,11 +6,8 @@ end
 
 ### IO.jl
 function get_index(meshset::MeshSet) 	return get_index(meshset.meshes[1]), get_index(meshset.meshes[end]) end
-
 function get_images(meshset::MeshSet, dtype = UInt8)	return map(get_image, meshset.meshes, repeated(dtype));	end
-
 function get_correspondence_patches(meshset::MeshSet, match_ind, corr_ind) return get_correspondence_patches(meshset.matches[match_ind], corr_ind)	end
-
 function get_params(meshset::MeshSet)			return meshset.properties["params"];		end
 
 #function get_fixed(meshset::MeshSet)			return meshset.properties["fixed"];		end

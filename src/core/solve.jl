@@ -479,7 +479,7 @@ function filter_stats(stats, filters)
     for (k, v) in stats["matches"]
       m = []
       for filter in filters
-        push!(m, get(v, filter, 0))
+        push!(m, Base.get(v, filter, 0))
       end
       push!(f, [k, m...])
     end
@@ -487,7 +487,7 @@ function filter_stats(stats, filters)
     for (k, v) in stats
       m = []
       for filter in filters
-        push!(m, get(v["summary"], filter, 0))
+        push!(m, Base.get(v["summary"], filter, 0))
       end
       push!(f, [(k...), m...])
     end

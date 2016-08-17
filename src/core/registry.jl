@@ -46,6 +46,15 @@ function prevstage(index)
     elseif is_finished(index) 		return aligned(index)		end
 end
 
+function ancestors(index)
+    if is_overview(index)		return [NO_INDEX]
+    elseif is_premontaged(index) 	return [NO_INDEX]
+    elseif is_montaged(index) 		return get_index_range(premontaged(index), premontaged(index))
+    elseif is_prealigned(index) 	return [montaged(index), get_preceding(montaged(index))]
+    elseif is_aligned(index) 		return get_index_range(prealigned(index), prealigned(index))
+    elseif is_finished(index) 		return [aligned(index)]		 end
+end
+
 # functions for checking whether two indices are next to each other
 function is_adjacent(A_index, B_index)
   if !(is_premontaged(A_index)) || !(is_premontaged(B_index))	return false end
@@ -405,6 +414,11 @@ function reload_registry(index)
   elseif is_aligned(index) global REGISTRY_ALIGNED = parse_registry(registry_fp);
   else global REGISTRY_PREMONTAGED = parse_registry(registry_fp);
   end
+end
+
+function reload_registries()
+  indices = [premontaged(0,0), montaged(0,0), prealigned(0,0), aligned(0,0)]
+  for index in indices remotecall_fetch(IO_PROC, reload_registry, index) end
 end
 
 function globalize!(pts::Points, offset::Point)
