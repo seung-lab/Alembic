@@ -44,10 +44,9 @@ function DaemonTask.execute(task::BlockMatchTaskDetails,
         return DaemonTask.Result(true, [])
     end
 
-#	println(task.payload_info.outputs);
-#	println(typeof(task.payload_info.outputs));
     ms = Main.MeshSet([tuple(index_array...) for index_array in task.payload_info.indices]...);
     Main.calculate_stats(ms);
+
     return DaemonTask.Result(true, task.payload_info.outputs)
 end
 
@@ -62,14 +61,12 @@ function DaemonTask.finalize(task::BlockMatchTaskDetails,
 
         Datasource.put!(datasource,
             map((output) -> full_output_path(task, output), result.outputs))
-            println(map((output) -> full_output_path(task, output), result.outputs))
 	Datasource.remove!(datasource, map((output) -> full_output_path(task, output), result.outputs); only_cache = true)
 	Datasource.remove!(datasource, map((input) -> full_input_path(task, input), task.basic_info.inputs); only_cache = true)
 	Main.push_registry_updates();
-    # Main.REGISTRY_UPDATES
+
     return DaemonTask.Result(true, task.payload_info.outputs)
-#	println("done")
-    #	task_queue = AWSQueueService(AWS.AWSEnv(), registry_queue_name);
+
     end
 end
 

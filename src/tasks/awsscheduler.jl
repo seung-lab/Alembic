@@ -25,7 +25,7 @@ function create_task(index::Main.Index)
 	inputs_registry = map(Main.truncate_path, map(Main.get_registry_path, indices));
 	inputs = unique(vcat(inputs_images, inputs_registry))
 	
-	output = Main.truncate_path(Main.get_path("MeshSet", index))
+	output_meshset = Main.truncate_path(Main.get_path("MeshSet", index))
 	output_stats = Main.truncate_path(Main.get_path("stats", index))
 
 	basic_info = BasicTask.Info(0, NAME, Main.TASKS_BASE_DIRECTORY, inputs) 

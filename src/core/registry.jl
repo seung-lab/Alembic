@@ -46,6 +46,15 @@ function prevstage(index)
     elseif is_finished(index) 		return aligned(index)		end
 end
 
+function ancestors(index)
+    if is_overview(index)		return [NO_INDEX]
+    elseif is_premontaged(index) 	return [NO_INDEX]
+    elseif is_montaged(index) 		return get_index_range(premontaged(index), premontaged(index))
+    elseif is_prealigned(index) 	return [montaged(index), get_preceding(montaged(index))]
+    elseif is_aligned(index) 		return get_index_range(prealigned(index), prealigned(index))
+    elseif is_finished(index) 		return [aligned(index)]		 end
+end
+
 # functions for checking whether two indices are next to each other
 function is_adjacent(A_index, B_index)
   if !(is_premontaged(A_index)) || !(is_premontaged(B_index))	return false end
