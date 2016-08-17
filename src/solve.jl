@@ -446,9 +446,214 @@ function rectify_drift(meshset::MeshSet, start_ind = 1, final_ind = count_meshes
 
 end
 
+function load_stats(ms::MeshSet)
+  index = nextstage(get_index(ms.meshes[1]))
+  path = get_path("stats", index)
+  if !isfile(path)
+    return calculate_stats(ms)
+  else
+    return load("stats", index)
+  end
+end  
+
+function compile_stats(firstindex::Index, lastindex::Index)
+  stats = Dict()
+  for index in get_index_range(firstindex, lastindex)
+    path = get_path("stats", index)
+    if !isfile(path)
+      ms = load(MeshSet, index)
+      stats[index] = calculate_stats(ms)
+    else
+      stats[index] = load("stats", index)
+    end
+  end
+  return stats
+end
+
+function filter_stats(stats, filters)
+  f = []
+  if haskey(stats, "matches")
+    for (k, v) in stats["matches"]
+      m = []
+      for filter in filters
+        push!(m, get(v, filter, 0))
+      end
+      push!(f, [parse(Int64, k), m...])
+    end
+  else
+    for (k, v) in stats
+      m = []
+      for filter in filters
+        push!(m, get(v["summary"], filter, 0))
+      end
+      push!(f, [(k...), m...])
+    end
+  end
+  f = hcat(f...)'
+  return f[sortperm(f[:,1]),:]
+end
+
+@inbounds function calculate_stats(ms::MeshSet)
+
+  stats = Dict()
+  stats["matches"] = Dict()
+
+  function make_stats_dict(src_index, dst_index, filtered_count,
+                            rms_pre=0, avg_pre=0, std_pre=0, max_pre=0,
+                            rms_post=0, avg_post=0, std_post=0, max_post=0,
+                            drift_i=0, drift_j=0,
+                            avg_r=0, std_r=0, min_r=0,
+                            avg_95sig=0, std_95sig=0, max_95sig=0,
+                            avg_75sig=0, std_75sig=0, max_75sig=0,
+                            avg_50sig=0, std_50sig=0, max_50sig=0,
+                            flagged=false)
+    m = Dict()
+    m["src_index"] = src_index
+    m["dst_index"] = dst_index
+    m["filtered_count"] = filtered_count
+
+    m["rms_pre"] = rms_pre
+    m["avg_pre"] = avg_pre
+    m["std_pre"] = std_pre
+    m["max_pre"] = max_pre
+    m["rms_post"] = rms_post
+    m["avg_post"] = avg_post
+    m["std_post"] = std_post
+    m["max_post"] = max_post
+    m["drift_i"] = drift_i
+    m["drift_j"] = drift_j
+    m["avg_r"] = avg_r
+    m["std_r"] = std_r
+    m["min_r"] = min_r
+    m["avg_95σ"] = avg_95sig
+    m["std_95σ"] = std_95sig
+    m["max_95σ"] = max_95sig
+    m["avg_75σ"] = avg_75sig
+    m["std_75σ"] = std_75sig
+    m["max_75σ"] = max_75sig
+    m["avg_50σ"] = avg_50sig
+    m["std_50σ"] = std_50sig
+    m["max_50σ"] = max_50sig
+    m["flagged"] = flagged
+    return m
+  end
+
+  println("Computing statistics...")
+
+  params = get_params(ms)
+
+  # these arrays have been reversed as necessary to get the right direction
+  residuals_pre = Points(0)
+  residuals_post = Points(0)
+  avg_drifts = Points(0)
+  total_corresps = 0;
+
+  r_maxs = Array{Float64}(0)
+  sigmas95 = Array{Float64}(0)
+  sigmas75 = Array{Float64}(0)
+  sigmas50 = Array{Float64}(0)
+  matches_to_review = Array{Int64, 1}(0)
+
+  meshes = Dict{Any, Any}();
+  for mesh in ms.meshes
+    meshes[get_index(mesh)] = mesh;
+  end
+
+  for match in ms.matches
+    src_mesh = meshes[get_src_index(match)]
+    dst_mesh = meshes[get_dst_index(match)]
+
+    m = make_stats_dict(get_index(src_mesh), get_index(dst_mesh), count_filtered_correspondences(match))
+    
+    if count_filtered_correspondences(match) > 1
+
+      g_src_pts, g_dst_pts, filtered = get_correspondences(match; global_offsets = params["registry"]["global_offsets"], globalized = true)
+      g_src_pts_after, g_dst_pts_after, filtered_after = get_correspondences(match; global_offsets = params["registry"]["global_offsets"], src_mesh = src_mesh, dst_mesh = dst_mesh, globalized = true, use_post = true)
+
+      props = get_filtered_correspondence_properties(match);
+      r_maxs_match = Array{Float64}(map(get_dfs, props, repeated("r_max")));
+      sigs95_match = Array{Float64}(map(get_dfs, props, repeated(0.95)));
+      sigs75_match = Array{Float64}(map(get_dfs, props, repeated(0.75)));
+      sigs50_match = Array{Float64}(map(get_dfs, props, repeated(0.50)));
+
+      g_src_pts = g_src_pts[filtered];
+      g_dst_pts = g_dst_pts[filtered];
+
+      g_src_pts_after = g_src_pts_after[filtered_after];
+      g_dst_pts_after = g_dst_pts_after[filtered_after];
+
+      @fastmath @inbounds begin
+
+        residuals_match_pre = g_dst_pts - g_src_pts;
+        residuals_match_post = g_dst_pts_after - g_src_pts_after;
+
+        avg_drift = mean(residuals_match_post);
+        res_norm = Array{Float64}(map(norm, residuals_match_pre))
+        res_norm_post = Array{Float64}(map(norm, residuals_match_post))
+        
+        m = make_stats_dict(get_index(src_mesh), get_index(dst_mesh), count_filtered_correspondences(match),
+                            sqrt(mean(res_norm.^2)), mean(res_norm), std(res_norm), maximum(res_norm),
+                            sqrt(mean(res_norm_post.^2)), mean(res_norm_post), std(res_norm_post), maximum(res_norm_post),
+                            avg_drift[1], avg_drift[2],
+                            mean(r_maxs_match), std(r_maxs_match), minimum(r_maxs_match),
+                            mean(sigs95_match), std(sigs95_match), maximum(sigs95_match),
+                            mean(sigs75_match), std(sigs75_match), maximum(sigs75_match),
+                            mean(sigs50_match), std(sigs50_match), maximum(sigs50_match),
+                            is_flagged(match))
+
+
+        # turning residuals around for drift calculation
+        if !is_preceding(get_index(src_mesh), get_index(dst_mesh), 5)
+          residuals_pre = -1 * residuals_pre;
+          residuals_post = -1 * residuals_post;
+          avg_drift = -1 * avg_drift;
+        end
+              
+        append!(residuals_pre, residuals_match_pre)
+        append!(residuals_post, residuals_match_post)
+        push!(avg_drifts, avg_drift)
+        append!(r_maxs, r_maxs_match)
+        append!(sigmas95, sigs95_match)
+        append!(sigmas75, sigs75_match)
+        append!(sigmas50, sigs50_match)
+        total_corresps += count_filtered_correspondences(match);
+
+      end #fmib
+    end
+    stats["matches"][find_match_index(ms, match)] = m
+  end
+
+  res_norm = Array{Float64}(map(norm, residuals_pre))
+  res_norm_post = Array{Float64}(map(norm, residuals_post))
+  avg_drifts = mean(avg_drifts)
+
+  index = nextstage(get_index(ms.meshes[1]))
+  m = make_stats_dict(index, index, total_corresps,
+                      sqrt(mean(res_norm.^2)), mean(res_norm), std(res_norm), maximum(res_norm),
+                      sqrt(mean(res_norm_post.^2)), mean(res_norm_post), std(res_norm_post), maximum(res_norm_post),
+                      avg_drifts[1], avg_drifts[2],
+                      mean(r_maxs), std(r_maxs), minimum(r_maxs),
+                      mean(sigmas95), std(sigmas95), maximum(sigmas95),
+                      mean(sigmas75), std(sigmas75), maximum(sigmas75),
+                      mean(sigmas50), std(sigmas50), maximum(sigmas50),
+                      is_flagged(ms))
+  stats["summary"] = m
+
+  path = get_path("stats", index)
+  println("Writing stats to $path")
+  f = open(path, "w")
+  write(f, JSON.json(stats))
+  close(f)
+  return stats
+end
+
 @inbounds function stats(meshset::MeshSet, first_ind = 1, last_ind = count_matches(meshset); flagged_only::Bool = false, summary::Bool = false)
 
+  path = get_path("stats", (get_index(meshset.meshes[1]), get_index(meshset.meshes[end])))
+  f = open(path, "w")
+
   println("Computing statistics... sigma is computed at beta = 0.95")
+  println("Writing stats to $path")
 
   params = get_params(meshset)
 
@@ -464,257 +669,284 @@ end
 
   meshes = Dict{Any, Any}();
   for mesh in meshset.meshes
-	meshes[get_index(mesh)] = mesh;
+  	meshes[get_index(mesh)] = mesh;
   end
 
-	print("index   ")
-	print("src_index      ")
-	print("dst_index      ")
-	print("corrs")
-	print(" | ")
-	print("rms_pre  ")
-	print("avg_pre  ")
-	print("std_pre  ")
-	print("max_pre")
-	print(" | ")
-	print("rms_post ")
-	print("avg_post ")
-	print("std_post ")
-	print("max_post ")
-	print("drift_i ")
-	print("drift_j")
-	print(" | ")
-	print("avg_r  ")
-	print("std_r  ")
-	print("min_r   ")
+  header = ""
+  header = string(header, "index   ")
+	header = string(header, "index   ")
+	header = string(header, "src_index      ")
+	header = string(header, "dst_index      ")
+	header = string(header, "corrs")
+	header = string(header, " | ")
+	header = string(header, "rms_pre  ")
+	header = string(header, "avg_pre  ")
+	header = string(header, "std_pre  ")
+	header = string(header, "max_pre")
+	header = string(header, " | ")
+	header = string(header, "rms_post ")
+	header = string(header, "avg_post ")
+	header = string(header, "std_post ")
+	header = string(header, "max_post ")
+	header = string(header, "drift_i ")
+	header = string(header, "drift_j")
+	header = string(header, " | ")
+	header = string(header, "avg_r  ")
+	header = string(header, "std_r  ")
+	header = string(header, "min_r   ")
+	header = string(header, "avg_σ  ")
+	header = string(header, "std_σ  ")
+	header = string(header, "max_σ ")
+	header = string(header, "  |  ")
+	header = string(header, "flags")
+  header = string(header, "\n")
+  print(header)
+  write(f, header)
 
-	print("avg_σ  ")
-	print("std_σ  ")
-	print("max_σ ")
-	print("  |  ")
-	print("flags")
-	println();
-println(join(fill('-', 190)))
+  divider = string(join(fill('-', 190)), "\n")
+  print(divider)
+  write(f, divider)
 
   for match in meshset.matches[first_ind:last_ind]
-        if flagged_only && !is_flagged(match) continue; end
+    if flagged_only && !is_flagged(match) continue; end
   	src_mesh = meshes[get_src_index(match)]
   	dst_mesh = meshes[get_dst_index(match)]
 
   	# handle for empty match
   	if count_filtered_correspondences(match) < 2
-  		print(@sprintf("%4i", findfirst(this -> meshset.matches[this] == match, 1:count_matches(meshset))));
-  		print(@sprintf("%14s", string(get_index(src_mesh))))
-  		print("->")
-  		print(@sprintf("%14s", string(get_index(dst_mesh))))
-  		print(@sprintf("%6i", count_filtered_correspondences(match)))
-  		println()
+      body = ""
+  		body = string(body, @sprintf("%4i", findfirst(this -> meshset.matches[this] == match, 1:count_matches(meshset))));
+  		body = string(body, @sprintf("%14s", string(get_index(src_mesh))))
+  		body = string(body, "->")
+  		body = string(body, @sprintf("%14s", string(get_index(dst_mesh))))
+  		body = string(body, @sprintf("%6i", count_filtered_correspondences(match)))
+      body = string(body, "\n")
+  		print(body)
+      write(f, body)
   		continue;
   	end
 
-	g_src_pts, g_dst_pts, filtered = get_correspondences(match; global_offsets = params["registry"]["global_offsets"], globalized = true)
-	g_src_pts_after, g_dst_pts_after, filtered_after = get_correspondences(match; global_offsets = params["registry"]["global_offsets"], src_mesh = src_mesh, dst_mesh = dst_mesh, globalized = true, use_post = true)
+  	g_src_pts, g_dst_pts, filtered = get_correspondences(match; global_offsets = params["registry"]["global_offsets"], globalized = true)
+  	g_src_pts_after, g_dst_pts_after, filtered_after = get_correspondences(match; global_offsets = params["registry"]["global_offsets"], src_mesh = src_mesh, dst_mesh = dst_mesh, globalized = true, use_post = true)
 
   	props = get_filtered_correspondence_properties(match);
   	r_maxs_match = Array{Float64}(map(get_dfs, props, repeated("r_max")));
   	sigs_match = Array{Float64}(map(get_dfs, props, repeated(0.95)));
 
-	g_src_pts = g_src_pts[filtered];
-	g_dst_pts = g_dst_pts[filtered];
+  	g_src_pts = g_src_pts[filtered];
+  	g_dst_pts = g_dst_pts[filtered];
 
-	g_src_pts_after = g_src_pts_after[filtered_after];
-	g_dst_pts_after = g_dst_pts_after[filtered_after];
+  	g_src_pts_after = g_src_pts_after[filtered_after];
+  	g_dst_pts_after = g_dst_pts_after[filtered_after];
 
-	@fastmath @inbounds begin
+  	@fastmath @inbounds begin
 
-  	residuals_match_pre = g_dst_pts - g_src_pts;
-  	residuals_match_post = g_dst_pts_after - g_src_pts_after;
+    	residuals_match_pre = g_dst_pts - g_src_pts;
+    	residuals_match_post = g_dst_pts_after - g_src_pts_after;
 
-	avg_drift = mean(residuals_match_post);
+    	avg_drift = mean(residuals_match_post);
 
-	if !summary
-   	res_norm = Array{Float64}(map(norm, residuals_match_pre))
-   	rms_pre = sqrt(mean(res_norm.^2))
-   	avg_pre = mean(res_norm)
-   	std_pre = std(res_norm)
-   	max_pre = maximum(res_norm)
+    	if !summary
+       	res_norm = Array{Float64}(map(norm, residuals_match_pre))
+       	rms_pre = sqrt(mean(res_norm.^2))
+       	avg_pre = mean(res_norm)
+       	std_pre = std(res_norm)
+       	max_pre = maximum(res_norm)
 
-   	res_norm_post = Array{Float64}(map(norm, residuals_match_post))
-   	rms_post = sqrt(mean(res_norm_post.^2))
-   	avg_post = mean(res_norm_post)
-   	std_post = std(res_norm_post)
-   	max_post = maximum(res_norm_post)
+       	res_norm_post = Array{Float64}(map(norm, residuals_match_post))
+       	rms_post = sqrt(mean(res_norm_post.^2))
+       	avg_post = mean(res_norm_post)
+       	std_post = std(res_norm_post)
+       	max_post = maximum(res_norm_post)
 
-   	avg_r = mean(r_maxs_match)
-   	std_r = std(r_maxs_match)
-   	min_r = minimum(r_maxs_match)
+       	avg_r = mean(r_maxs_match)
+       	std_r = std(r_maxs_match)
+       	min_r = minimum(r_maxs_match)
 
-   	avg_sig = mean(sigs_match)
-   	std_sig = std(sigs_match)
-   	max_sig = maximum(sigs_match)
+       	avg_sig = mean(sigs_match)
+       	std_sig = std(sigs_match)
+       	max_sig = maximum(sigs_match)
 
-   	rms_pre_s = @sprintf("%9.2f", rms_pre)
-   	avg_pre_s = @sprintf("%9.2f", avg_pre) 
-   	std_pre_s = @sprintf("%9.2f", std_pre)
-   	max_pre_s = @sprintf("%9.2f", max_pre)
+       	rms_pre_s = @sprintf("%9.2f", rms_pre)
+       	avg_pre_s = @sprintf("%9.2f", avg_pre) 
+       	std_pre_s = @sprintf("%9.2f", std_pre)
+       	max_pre_s = @sprintf("%9.2f", max_pre)
 
-   	rms_post_s = @sprintf("%9.2f", rms_post)
-   	avg_post_s = @sprintf("%9.2f", avg_post) 
-   	std_post_s = @sprintf("%9.2f", std_post)
-   	max_post_s = @sprintf("%9.2f", max_post)
+       	rms_post_s = @sprintf("%9.2f", rms_post)
+       	avg_post_s = @sprintf("%9.2f", avg_post) 
+       	std_post_s = @sprintf("%9.2f", std_post)
+       	max_post_s = @sprintf("%9.2f", max_post)
 
-   	avg_drift_di_s = @sprintf("%8.2f", avg_drift[1])
-   	avg_drift_dj_s = @sprintf("%8.2f", avg_drift[2])
+       	avg_drift_di_s = @sprintf("%8.2f", avg_drift[1])
+       	avg_drift_dj_s = @sprintf("%8.2f", avg_drift[2])
 
-   	avg_r_s = @sprintf("%7.3f", avg_r)
-   	std_r_s = @sprintf("%7.3f", std_r)
-   	min_r_s = @sprintf("%7.3f", min_r)
+       	avg_r_s = @sprintf("%7.3f", avg_r)
+       	std_r_s = @sprintf("%7.3f", std_r)
+       	min_r_s = @sprintf("%7.3f", min_r)
 
-   	avg_sig_s = @sprintf("%7.1f", avg_sig)
-   	std_sig_s = @sprintf("%7.1f", std_sig)
-   	max_sig_s = @sprintf("%7.1f", max_sig)
+       	avg_sig_s = @sprintf("%7.1f", avg_sig)
+       	std_sig_s = @sprintf("%7.1f", std_sig)
+       	max_sig_s = @sprintf("%7.1f", max_sig)
 
-  	print(@sprintf("%4i", find_match_index(meshset, match)));
-	print(" ")
-  	print(@sprintf("%13s", string(get_index(src_mesh))))
-  	print("->")
-  	print(@sprintf("%13s", string(get_index(dst_mesh))))
-  	print(@sprintf("%10i", count_filtered_correspondences(match)))
-  	#print(" ")
-  	print(rms_pre_s)
-  	print(avg_pre_s)
-  	print(std_pre_s)
-  	print(max_pre_s)
-  	print(" ")
-  	print(rms_post_s)
-  	print(avg_post_s)
-  	print(std_post_s)
-  	print(max_post_s)
-  	print(" ")
-  	print(avg_drift_di_s)
-  	print(avg_drift_dj_s)
-  	print("  ")
-  	print(avg_r_s)
-  	print(std_r_s)
-  	print(min_r_s)
-  	print(" ")
-  	print(avg_sig_s)
-  	print(std_sig_s)
-  	print(max_sig_s)
-  	print("        ")
+        body = ""
+      	body = string(body, @sprintf("%4i", find_match_index(meshset, match)));
+      	body = string(body, " ")
+      	body = string(body, @sprintf("%13s", string(get_index(src_mesh))))
+      	body = string(body, "->")
+      	body = string(body, @sprintf("%13s", string(get_index(dst_mesh))))
+      	body = string(body, @sprintf("%10i", count_filtered_correspondences(match)))
+      	body = string(body, " ")
+      	body = string(body, rms_pre_s)
+      	body = string(body, avg_pre_s)
+      	body = string(body, std_pre_s)
+      	body = string(body, max_pre_s)
+      	body = string(body, " ")
+      	body = string(body, rms_post_s)
+      	body = string(body, avg_post_s)
+      	body = string(body, std_post_s)
+      	body = string(body, max_post_s)
+      	body = string(body, " ")
+      	body = string(body, avg_drift_di_s)
+      	body = string(body, avg_drift_dj_s)
+      	body = string(body, "  ")
+      	body = string(body, avg_r_s)
+      	body = string(body, std_r_s)
+      	body = string(body, min_r_s)
+      	body = string(body, " ")
+      	body = string(body, avg_sig_s)
+      	body = string(body, std_sig_s)
+      	body = string(body, max_sig_s)
+      	body = string(body, "        ")
 
-  	# FLAG PARAMETERS
-  	if is_flagged(match)
-  		print("*")
-  		push!(matches_to_review, find_match_index(meshset, match))
-  	end
-  	println()
+      	# FLAG PARAMETERS
+      	if is_flagged(match)
+      		body = string(body, "*")
+      		push!(matches_to_review, find_match_index(meshset, match))
+      	end
+      	body = string(body, "\n")
+        print(body)
+        write(f, body)
 
       end
 
-	# turning residuals around for drift calculation
-	if !is_preceding(get_index(src_mesh), get_index(dst_mesh), 5)
-		residuals_pre = -1 * residuals_pre;
-		residuals_post = -1 * residuals_post;
-		avg_drift = -1 * avg_drift;
-	end
-  	      
-  	append!(residuals_pre, residuals_match_pre)
-  	append!(residuals_post, residuals_match_post)
-  	push!(avg_drifts, avg_drift)
-  	append!(r_maxs, r_maxs_match)
-  	append!(sigmas, sigs_match)
-	total_corresps += count_filtered_correspondences(match);
+      # turning residuals around for drift calculation
+      if !is_preceding(get_index(src_mesh), get_index(dst_mesh), 5)
+      	residuals_pre = -1 * residuals_pre;
+      	residuals_post = -1 * residuals_post;
+      	avg_drift = -1 * avg_drift;
+      end
+    	      
+      append!(residuals_pre, residuals_match_pre)
+      append!(residuals_post, residuals_match_post)
+      push!(avg_drifts, avg_drift)
+      append!(r_maxs, r_maxs_match)
+      append!(sigmas, sigs_match)
+      total_corresps += count_filtered_correspondences(match);
 
-      end #fmib
+    end #fmib
   end
-  #println("---SUMMARY ACROSS $(length(first_ind:last_ind)) MATCHES-------------------------------------------------------------------------------")
-println(join(fill('=', 190)))
+    #println("---SUMMARY ACROSS $(length(first_ind:last_ind)) MATCHES-------------------------------------------------------------------------------")
 
-   	res_norm = Array{Float64}(map(norm, residuals_pre))
-   	rms_pre = sqrt(mean(res_norm.^2))
-   	avg_pre = mean(res_norm)
-   	std_pre = std(res_norm)
-   	max_pre = maximum(res_norm)
+  divider = string(join(fill('=', 190)), "\n")
+  print(divider)
+  write(f, divider)
 
-   	res_norm_post = Array{Float64}(map(norm, residuals_post))
-   	rms_post = sqrt(mean(res_norm_post.^2))
-   	avg_post = mean(res_norm_post)
-   	std_post = std(res_norm_post)
-   	max_post = maximum(res_norm_post)
+  res_norm = Array{Float64}(map(norm, residuals_pre))
+  rms_pre = sqrt(mean(res_norm.^2))
+  avg_pre = mean(res_norm)
+  std_pre = std(res_norm)
+  max_pre = maximum(res_norm)
 
-  	avg_drifts = mean(avg_drifts)
+  res_norm_post = Array{Float64}(map(norm, residuals_post))
+  rms_post = sqrt(mean(res_norm_post.^2))
+  avg_post = mean(res_norm_post)
+  std_post = std(res_norm_post)
+  max_post = maximum(res_norm_post)
 
-   	avg_r = mean(r_maxs)
-   	std_r = std(r_maxs)
-   	min_r = minimum(r_maxs)
+  avg_drifts = mean(avg_drifts)
 
-   	avg_sig = mean(sigmas)
-   	std_sig = std(sigmas)
-   	max_sig = maximum(sigmas)
+  avg_r = mean(r_maxs)
+  std_r = std(r_maxs)
+  min_r = minimum(r_maxs)
 
-   	rms_pre_s = @sprintf("%9.2f", rms_pre)
-   	avg_pre_s = @sprintf("%9.2f", avg_pre) 
-   	std_pre_s = @sprintf("%9.2f", std_pre)
-   	max_pre_s = @sprintf("%9.2f", max_pre)
+  avg_sig = mean(sigmas)
+  std_sig = std(sigmas)
+  max_sig = maximum(sigmas)
 
-   	rms_post_s = @sprintf("%9.2f", rms_post)
-   	avg_post_s = @sprintf("%9.2f", avg_post) 
-   	std_post_s = @sprintf("%9.2f", std_post)
-   	max_post_s = @sprintf("%9.2f", max_post)
+  rms_pre_s = @sprintf("%9.2f", rms_pre)
+  avg_pre_s = @sprintf("%9.2f", avg_pre) 
+  std_pre_s = @sprintf("%9.2f", std_pre)
+  max_pre_s = @sprintf("%9.2f", max_pre)
 
-   	avg_drift_di_s = @sprintf("%8.2f", avg_drifts[1])
-   	avg_drift_dj_s = @sprintf("%8.2f", avg_drifts[2])
+  rms_post_s = @sprintf("%9.2f", rms_post)
+  avg_post_s = @sprintf("%9.2f", avg_post) 
+  std_post_s = @sprintf("%9.2f", std_post)
+  max_post_s = @sprintf("%9.2f", max_post)
 
-   	avg_r_s = @sprintf("%7.3f", avg_r)
-   	std_r_s = @sprintf("%7.3f", std_r)
-   	min_r_s = @sprintf("%7.3f", min_r)
+  avg_drift_di_s = @sprintf("%8.2f", avg_drifts[1])
+  avg_drift_dj_s = @sprintf("%8.2f", avg_drifts[2])
 
-   	avg_sig_s = @sprintf("%7.1f", avg_sig)
-   	std_sig_s = @sprintf("%7.1f", std_sig)
-   	max_sig_s = @sprintf("%7.1f", max_sig)
+  avg_r_s = @sprintf("%7.3f", avg_r)
+  std_r_s = @sprintf("%7.3f", std_r)
+  min_r_s = @sprintf("%7.3f", min_r)
 
-	print(" ALL")
-	print(" ")
-  	print(@sprintf("%13s", string(get_index(meshset.meshes[1]))))
-  	print("->")
-  	print(@sprintf("%13s", string(get_index(last(meshset.meshes)))))
-  	print(@sprintf("%10i", total_corresps))
-  	#print(" ")
-  	print(rms_pre_s)
-  	print(avg_pre_s)
-  	print(std_pre_s)
-  	print(max_pre_s)
-  	print(" ")
-  	print(rms_post_s)
-  	print(avg_post_s)
-  	print(std_post_s)
-  	print(max_post_s)
-  	print(" ")
-  	print(avg_drift_di_s)
-  	print(avg_drift_dj_s)
-  	print("  ")
-  	print(avg_r_s)
-  	print(std_r_s)
-  	print(min_r_s)
-  	print(" ")
-  	print(avg_sig_s)
-  	print(std_sig_s)
-  	print(max_sig_s)
-  	print("        ")
+  avg_sig_s = @sprintf("%7.1f", avg_sig)
+  std_sig_s = @sprintf("%7.1f", std_sig)
+  max_sig_s = @sprintf("%7.1f", max_sig)
 
-  	# FLAG PARAMETERS
-  	if is_flagged(meshset)
-  		print("*")
-  	end
-  	println()
+  footer = ""
+	footer = string(footer, " ALL")
+	footer = string(footer, " ")
+	footer = string(footer, @sprintf("%13s", string(get_index(meshset.meshes[1]))))
+	footer = string(footer, "->")
+	footer = string(footer, @sprintf("%13s", string(get_index(last(meshset.meshes)))))
+	footer = string(footer, @sprintf("%10i", total_corresps))
+	footer = string(footer, " ")
+	footer = string(footer, rms_pre_s)
+	footer = string(footer, avg_pre_s)
+	footer = string(footer, std_pre_s)
+	footer = string(footer, max_pre_s)
+	footer = string(footer, " ")
+	footer = string(footer, rms_post_s)
+	footer = string(footer, avg_post_s)
+	footer = string(footer, std_post_s)
+	footer = string(footer, max_post_s)
+	footer = string(footer, " ")
+	footer = string(footer, avg_drift_di_s)
+	footer = string(footer, avg_drift_dj_s)
+	footer = string(footer, "  ")
+	footer = string(footer, avg_r_s)
+	footer = string(footer, std_r_s)
+	footer = string(footer, min_r_s)
+	footer = string(footer, " ")
+	footer = string(footer, avg_sig_s)
+	footer = string(footer, std_sig_s)
+	footer = string(footer, max_sig_s)
+	footer = string(footer, "        ")
 
-println(join(fill('-', 190)))
+	# FLAG PARAMETERS
+	if is_flagged(meshset)
+		footer = string(footer, "*")
+	end
+	footer = string(footer, "\n")
+  print(footer)
+  write(f, footer)
 
-  print("Statistics on $(length(first_ind:last_ind)) matches from $first_ind -> $last_ind")
-  if flagged_only print(" --- only the flagged matches are included in the summary") end
-  println();
-  println("$(length(matches_to_review)) matches flagged for review: $matches_to_review")
+  divider = string(join(fill('-', 190)), "\n")
+  print(divider)
+  write(f, divider)
+
+  postscript = ""
+  postscript = string(postscript, "Statistics on $(length(first_ind:last_ind)) matches from $first_ind -> $last_ind")
+  if flagged_only 
+    postscript = string(postscript, " --- only the flagged matches are included in the summary") 
+  end
+  postscript = string(postscript, "\n")
+  postscript = string(postscript, "$(length(matches_to_review)) matches flagged for review: $matches_to_review")
+  postscript = string(postscript, "\n")
+  print(postscript)
+  write(f, postscript)
+  close(f)
 end
 
 function decomp_affine(tform::Array{Float64, 2})
