@@ -11,7 +11,7 @@ function meshwarp_mesh(mesh::Mesh)
   return @time meshwarp(img, src_nodes, dst_nodes, triangles, offset), get_index(mesh)
 end
 
-function render(ms::MeshSet, review=false)
+function render(ms::MeshSet; review=false)
   if is_montaged(ms)
     if review
       render_montaged(ms, render_full=false, render_review=true, flagged_only=true)

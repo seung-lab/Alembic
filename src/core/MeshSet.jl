@@ -470,6 +470,7 @@ function prealign(index; params=get_params(index), to_fixed=false)
 end
 
 function MeshSet(index::Index; kwargs...)
+#  return MeshSet(ancestors(index)...; kwargs...);
 	if is_premontaged(index) return MeshSet(index, index; kwargs...); end
 	if is_montaged(index) return MeshSet(premontaged(index), premontaged(index); kwargs...); end
 	if is_prealigned(index) return prealign(montaged(index)) end
@@ -485,7 +486,8 @@ function MeshSet(indices::Array; params=get_params(indices[1]), solve=true, solv
   meshes = pmap(Mesh, indices, repeated(params))
   sort!(meshes; by=get_index)
   matches = Array{Match, 1}(0)    
-  properties = Dict{Any, Any}(  "params"  => params,
+  properties = Dict{Any, Any}(  
+  	  "params"  => params,
           "author" => author(),
           "meta" => Dict{Any, Any}(
           "parent" => nothing,
