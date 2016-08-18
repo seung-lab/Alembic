@@ -74,10 +74,10 @@ end
 function get_dfs(dict::Dict, keytofetch)
 	for key in keys(dict)
 		if key == keytofetch
-		  return get(dict, key, nothing)
-		elseif typeof(get(dict, key, nothing)) <: Dict
-		  if get_dfs(get(dict, key, nothing), keytofetch) != nothing 
-		  	return get_dfs(get(dict, key, nothing), keytofetch) 
+		  return Base.get(dict, key, nothing)
+		elseif typeof(Base.get(dict, key, nothing)) <: Dict
+		  if get_dfs(Base.get(dict, key, nothing), keytofetch) != nothing 
+		  	return get_dfs(Base.get(dict, key, nothing), keytofetch) 
 		  end
 		end
 	end
@@ -173,8 +173,22 @@ function get_correspondence_patches(match::Match, ind)
 		dst_pt = dst_pt_loc
 
 	prepare_patches(src_path, dst_path, props["ranges"]["src_range"], props["ranges"]["dst_range"], props["ranges"]["dst_range_full"], scale, highpass_sigma; from_disk = true)
-	src_patch = round(UInt8, SRC_PATCH);
-	dst_patch = round(UInt8, DST_PATCH);
+
+	function rescale(img)
+	  img_new = copy(img)
+	  min = minimum(img)
+	  for i in 1:length(img_new)
+	    img_new[i] = img_new[i] - min
+	  end
+	  max = maximum(img_new)
+	  for i in 1:length(img_new)
+	    img_new[i] = img_new[i] / max
+	  end
+	  return round(UInt8, 255 * img_new)
+	end
+
+	src_patch = rescale(SRC_PATCH);
+	dst_patch = rescale(DST_PATCH);
 
 	#return SRC_PATCH, DST_PATCH
 	xc = normxcorr2_preallocated(SRC_PATCH, DST_PATCH);

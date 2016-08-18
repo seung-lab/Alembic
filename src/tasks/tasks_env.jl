@@ -14,7 +14,6 @@ using SimpleTasks.Services.BucketCacheDatasource
 using SimpleTasks.Services.Datasource
 using SimpleTasks.Services.Daemon
 
-
 type AlembicPayloadInfo
   	indices::Array{Index, 1} # array of input indices
 	outputs::Array{Any, 1} # array of outputs
