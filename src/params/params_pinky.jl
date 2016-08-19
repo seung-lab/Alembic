@@ -17,10 +17,10 @@ FTOL_NEWTON_MONTAGE = 1e-16
 
 MESH_LENGTH_PREALIGNMENT = 10000
 GLOBAL_OFFSETS_PREALIGNMENT = false
-BLOCKMATCH_SCALE_PREALIGNMENT = 0.25
-BLOCK_R_PREALIGNMENT = 800
-SEARCH_R_PREALIGNMENT = 6000
-PREMATCH_PREALIGNMENT = true
+BLOCKMATCH_SCALE_PREALIGNMENT = 0.125
+BLOCK_R_PREALIGNMENT = 600
+SEARCH_R_PREALIGNMENT = 8000
+PREMATCH_PREALIGNMENT = false
 PREMATCH_TEMPLATE_RATIO_PREALIGNMENT = 0.02
 PREMATCH_SCALE_PREALIGNMENT = 0.10
 PREMATCH_ANGLES_PREALIGNMENT = 20
@@ -124,7 +124,7 @@ global PARAMS_PREALIGNMENT = Dict(
 			     		"norm_filter" => (:get_norms_std_sigmas, >, 5)
 					      ),
 			     "render" => Dict(
-			     		"thumbnail_scale" => 0.125
+			     		"thumbnail_scale" => 0.02
 					      ),
 			     "review" => Dict(
 				     	# "r_below" => (:count_filtered_properties, >, 0, "r_max", <, 0.2),

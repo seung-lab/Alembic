@@ -122,24 +122,24 @@ function compile_affines(firstindex::Index, lastindex::Index)
   cumulative_tform = eye(3)
   for index in get_index_range(firstindex, lastindex)
     if index != firstindex
-      tform = load("relative_tform", index)
+      tform = load("relative_transform", index)
       cumulative_tform = tform*cumulative_tform
       cumulative_tform[:,3] = [0, 0, 1]
     end
     println("Writing cumulative tform for $index")
-    path = get_path("cumulative_tform", index)
+    path = get_path("cumulative_transform", index)
     writedlm(path, cumulative_tform)
   end
 end
 
 function render_prealigned_full(index::Index)
   thumbnail_scale = 0.02
-  render_params = meshset.properties["params"]["render"]
+  render_params = get_params(index)["render"]
   if haskey(render_params, "thumbnail_scale")
     thumbnail_scale = render_params["thumbnail_scale"]
   end
   img = load(index)
-  tform = load("cumulative_tform", index)
+  tform = load("cumulative_transform", index)
   @time warped, offset = imwarp(img, tform, [0,0])
   index = prealigned(index)
   update_registry(index, offset=offset, image_size=size(warped))
@@ -154,6 +154,32 @@ function render_prealigned_full(index::Index)
   write_thumbnail(thumbnail, index, thumbnail_scale)
 end
 
+function render_prealigned_review(src_index::Index, dst_index::Index, src_img, dst_img, 
+                cumulative_tform, tform)
+  scale = 0.02
+  thumbnail_scale = 0.125
+  s = make_scale_matrix(scale)
+
+  dst_offset = [0,0]
+  if is_aligned(dst_index)
+    dst_offset = get_offset(dst_index)
+    println("dst image is aligned, so translate:\t$dst_offset")
+  end
+  println("Warping prealigned review image... 1/2")
+  src_thumb, src_thumb_offset = imwarp(src_img, tform*s, [0,0])
+  println("Warping prealigned review image... 2/2")
+  dst_thumb, dst_thumb_offset = imwarp(dst_img, s, dst_offset)
+  path = get_path("review", (src_index, dst_index))
+  write_review_image(path, src_thumb, src_thumb_offset, dst_thumb, dst_thumb_offset, scale, tform)
+
+  println("Warping aligned review image... 1/2")
+  src_thumb, src_thumb_offset = imwarp(src_img, tform*cumulative_tform*s, [0,0])
+  println("Warping aligned review image... 2/2")
+  dst_thumb, dst_thumb_offset = imwarp(dst_img, cumulative_tform*s, [dst_offset])
+  aligned_path = get_path("review", (src_index, dst_index))
+  write_review_image(aligned_path, src_thumb, src_thumb_offset, dst_thumb, dst_thumb_offset, scale, tform*cumulative_tform)
+end
+
 function render_prealigned_review(ms::MeshSet)
   src_index = get_index(ms.meshes[1])
   dst_index = get_index(ms.meshes[2])
@@ -161,12 +187,28 @@ function render_prealigned_review(ms::MeshSet)
   rotation = make_rotation_matrix_from_index(src_index)
   translation = make_translation_matrix(src_offset)
   #translation = make_translation_matrix(src_offset)
-  tform = rotation*regularized_solve(ms)*translation
-  println("Writing relative tform for $index")
-  path = get_path("relative_tform", index)
+  tform = rotation*rigid_solve(ms)*translation
+  println("Writing relative tform for $src_index")
+  path = get_path("relative_transform", src_index)
   writedlm(path, tform)
-  render_prealigned(src_index, dst_index, get_image(src_index), 
-  get_image(dst_index), eye(3), tform; render_full=false, render_review=true)
+  render_prealigned_review(src_index, dst_index, get_image(src_index), 
+      get_image(dst_index), eye(3), tform)
+end
+
+function render_prematch_review(index::Index)
+  src_index = index
+  dst_index = get_preceding(index)
+  # src_offset = get_offset(src_index)
+  # rotation = make_rotation_matrix(get_rotation(src_index))
+  # translation = make_translation_matrix(src_offset)
+  #translation = make_translation_matrix(src_offset)
+  # tform = rotation*translation
+  # println("Writing relative tform for $src_index")
+  # path = get_path("relative_transform", src_index)
+  # writedlm(path, tform)
+  tform = load("relative_transform", src_index)
+  render_prealigned_review(src_index, dst_index, get_image(src_index), 
+      get_image(dst_index), eye(3), tform)
 end
 
 function write_review_image(path, src_img, src_offset, dst_img, dst_offset, scale, tform)
@@ -425,48 +467,3 @@ end
 #     println("Swapping src_image to dst_image")
 #     dst_img = copy(src_img)
 #   end
-# end
-
-# function render_prealigned(src_index::Index, dst_index::Index, src_img, dst_img, 
-#                 cumulative_tform, tform; render_full=false, render_review=true)
-#   scale = 0.02
-#   thumbnail_scale = 0.125
-#   s = make_scale_matrix(scale)
-
-#   if render_review
-#     dst_offset = [0,0]
-#     if is_aligned(dst_index)
-#       dst_offset = get_offset(dst_index)
-#       println("dst image is aligned, so translate:\t$dst_offset")
-#     end
-#     println("Warping prealigned review image... 1/2")
-#     src_thumb, src_thumb_offset = imwarp(src_img, tform*s, [0,0])
-#     println("Warping prealigned review image... 2/2")
-#     dst_thumb, dst_thumb_offset = imwarp(dst_img, s, dst_offset)
-#     path = get_path("review", (src_index, dst_index))
-#     write_review_image(path, src_thumb, src_thumb_offset, dst_thumb, dst_thumb_offset, scale, tform)
-
-#     println("Warping aligned review image... 1/2")
-#     src_thumb, src_thumb_offset = imwarp(src_img, tform*cumulative_tform*s, [0,0])
-#     println("Warping aligned review image... 2/2")
-#     dst_thumb, dst_thumb_offset = imwarp(dst_img, cumulative_tform*s, [dst_offset])
-#     aligned_path = get_path("review", (src_index, dst_index))
-#     write_review_image(aligned_path, src_thumb, src_thumb_offset, dst_thumb, dst_thumb_offset, scale, tform*cumulative_tform)
-#   end
-
-#   if render_full
-#     src_index = prealigned(src_index)
-#     println("Warping full image... 1/1")
-#     @time src_warped, src_offset = imwarp(src_img, tform*cumulative_tform, [0,0])
-#     update_registry(src_index; offset = src_offset, image_size = size(src_warped))
-#     path = get_path(src_index)
-#     println("Writing full image:\n ", path)
-#     f = h5open(path, "w")
-#     chunksize = min(1000, min(size(src_warped)...))
-#     @time f["img", "chunk", (chunksize,chunksize)] = src_warped
-#     close(f)
-#     println("Creating thumbnail for $index @ $(thumbnail_scale)x")
-#     thumbnail, _ = imscale(src_warped, thumbnail_scale)
-#     write_thumbnail(thumbnail, index, thumbnail_scale)
-#   end
-# end

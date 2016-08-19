@@ -182,6 +182,12 @@ function save_premontage_review(index::Index; scale=0.05)
   Cairo.write_to_png(drw, fn)
 end
 
+function view_prematch_review(index::Index)
+  path = get_path("review", (index, get_preceding(index))); 
+  img_orig = h5read(path, "img"); 
+  ImageView.view(img_orig);
+end
+
 """
 meshset, area, slice, username, path = load_stack_params("hmcgowan")
 review_stack(username, meshset, area, slice, 1, true)

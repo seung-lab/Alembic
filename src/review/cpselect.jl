@@ -10,17 +10,27 @@ function cpselect(moving, fixed)
     return mpts, fpts
 end
 
-function select_points(index::Index)
+function select_points(index::Index; thumb=false)
     moving_index = index
     assert(moving_index != NO_INDEX)
     fixed_index = get_preceding(index)
     assert(fixed_index != NO_INDEX)
-    return select_points(moving_index, fixed_index)
+    return select_points(moving_index, fixed_index, thumb=thumb)
 end
 
-function select_points(moving_index::Index, fixed_index::Index)
-    moving_img = load(moving_index)
-    fixed_img = load(fixed_index)
+"""
+Select corresponding points between two images
+
+* Use right-click to add a point in one image
+* Use control+right-click to remove the last point added in one image
+"""
+function select_points(moving_index::Index, fixed_index::Index; thumb=false)
+    scale = 1.0
+    if thumb
+        scale = h5read(get_path("thumbnail", moving_index), "scale")
+    end
+    moving_img = thumb ? load("thumbnail", moving_index) : load(moving_index)
+    fixed_img = thumb ? load("thumbnail", fixed_index) : load(fixed_index)
     moving_img = convert_uint8(moving_img)
     fixed_img = convert_uint8(fixed_img)
     cgrid = canvasgrid(1,2; pad=10)
@@ -30,10 +40,10 @@ function select_points(moving_index::Index, fixed_index::Index)
     # ms = MeshSet()
     mpts = bind_select_and_remove(moving_imgc, moving_img2, RGB(0,1,0))
     fpts = bind_select_and_remove(fixed_imgc, fixed_img2, RGB(1,0,0))
-    bind_save(moving_imgc, moving_img2, moving_index, mpts, fpts)
-    bind_save(fixed_imgc, fixed_img2, moving_index, mpts, fpts)
-    bind_go(moving_imgc, moving_img2, moving_index)
-    bind_go(fixed_imgc, fixed_img2, moving_index)
+    bind_save(moving_imgc, moving_img2, moving_index, mpts, fpts, scale, thumb)
+    bind_save(fixed_imgc, fixed_img2, moving_index, mpts, fpts, scale, thumb)
+    bind_go(moving_imgc, moving_img2, moving_index, thumb)
+    bind_go(fixed_imgc, fixed_img2, moving_index, thumb)
     bind_exit(moving_imgc, moving_img2)
     bind_exit(fixed_imgc, fixed_img2)
 end
@@ -55,19 +65,19 @@ function bind_select_and_remove(imgc, img2, color=RGB(1,0,0), pts=[], ann=[])
   return pts
 end
 
-function bind_save(imgc, img2, index, mpts, fpts)
+function bind_save(imgc, img2, index, mpts, fpts, scale, thumb)
     c = canvas(imgc)
     win = Tk.toplevel(c)
-    bind(win, "s", path->save_correspondences(win, index, mpts, fpts))
+    bind(win, "s", path->save_correspondences(win, index, mpts, fpts, scale, thumb))
 end
 
-function bind_go(imgc, img2, index)
+function bind_go(imgc, img2, index, thumb)
     c = canvas(imgc)
     win = Tk.toplevel(c)
     next = get_succeeding(index)
     previous = get_preceding(index)
-    bind(win, "<Control-Right>", path->go_to(win, next))
-    bind(win, "<Control-Left>", path->go_to(win, previous))
+    bind(win, "<Control-Right>", path->go_to(win, next, thumb))
+    bind(win, "<Control-Left>", path->go_to(win, previous, thumb))
 end
 
 function bind_exit(imgc, img2)
@@ -107,35 +117,35 @@ function recompute_tform(firstindex::Index, lastindex::Index)
     end
 end
 
-function save_correspondences(win, index, mpts, fpts)
+function save_correspondences(win, index, mpts, fpts, scale, thumb)
     println("Saving correspondences")
-    correspondences_path = get_path("import", index)
+    correspondences_path = get_path("correspondence", index)
     n = min(length(mpts), length(fpts))
     mpts = mpts[1:n]
     fpts = fpts[1:n]
     src_pts = hcat(mpts...)'
     dst_pts = hcat(fpts...)'
-    pts = hcat(src_pts, dst_pts)
+    pts = hcat(src_pts, dst_pts)*scale
     writedlm(correspondences_path, pts)
     println("Saving transform")
-    tform_path = get_path("stats", index)
+    tform_path = get_path("relative_transform", index)
     tform = compute_tform(src_pts, dst_pts)
     writedlm(tform_path, tform)
     next = get_succeeding(index)
-    go_to(win, next)
+    go_to(win, next, thumb)
 end
 
 function compute_tform(src_pts, dst_pts, lambda=0)
     n = size(src_pts, 1)
     src_pts = hcat(src_pts, ones(n))
     dst_pts = hcat(dst_pts, ones(n))
-    return lambda*find_affine(src_pts, dst_pts) + (1-lambda)*find_rigid(src_pts, dst_pts)
+    return lambda*calculate_affine(src_pts, dst_pts) + (1-lambda)*calculate_rigid(src_pts, dst_pts)
 end
 
-function go_to(win, index)
+function go_to(win, index, thumb)
     println("Go to $index")
     exit_cpselect(win)
-    select_points(index)
+    select_points(index, thumb=thumb)
 end
 
 function exit_cpselect(win)

@@ -1,6 +1,9 @@
-#global LOADFILE = readdlm("/media/tmacrina/667FB0797A5072D7/3D_align/mosaiced_images_160729_google_cloud_upload_seung_import.csv",',')
-global OVERVIEW_RESOLUTION = 86/3000
-global IMPORT_ROI_BB = ImageRegistration.BoundingBox(10110,19850,39000,28000)
+global LOADFILE = readdlm("/media/tmacrina/667FB0797A5072D7/3D_align/mosaiced_images_160729_google_cloud_upload_seung_import.csv",',')
+global PREVIOUS_OVERVIEW_RESOLUTION = 86/3000
+global PREVIOUS_IMPORT_BB = ImageRegistration.BoundingBox(10110,19850,39000,28000)
+global OVERVIEW_RESOLUTION = 95.3/3840 # 3.58/225.0 
+global OVERVIEW_IMPORT_BB = ImageRegistration.BoundingBox(290,570,1110,800)
+global IMPORT_BB = snap_bb(scale_bb(OVERVIEW_IMPORT_BB, 1/OVERVIEW_RESOLUTION))
 
 function get_src_dir(z_index)
 	i = findfirst(i -> i == z_index, LOADFILE[:,1])
@@ -58,12 +61,13 @@ function initialize_import_table(import_src_fn, z_index)
 	height = [0 for i in path_no_ext]
 	width = [0 for i in path_no_ext]
 	include = [true for i in path_no_ext]
+	roi = [true for i in path_no_ext]
 
 	# include full path to the file
 	dir = get_src_dir(z_index)
 	import_table[:,1] = [joinpath(dir, fn) for fn in import_table[:,1]]
 	# dst_path = map(get_path, zip(waf, sec, row, col))
-	import_table = hcat(import_table, [waf sec row col height width include])
+	import_table = hcat(import_table, [waf sec row col height width include roi])
 	save_import_table(z_index, import_table)
 end
 
@@ -204,6 +208,9 @@ function import_tiles(z_index; reset=false)
 	N = size(import_table, 1)
 
 	import_indices = get_included_indices(import_table)
+	if !reset
+		import_indices = get_unwritten_included_indices(import_table)
+	end
 	n = length(import_indices)
 	# contrast_clusters = get_contrast_clusters(import_table)
 	bias = load_bias_image(z_index, reset=reset)
@@ -354,11 +361,6 @@ function get_import_sizes(import_table)
 	return [(import_table[i,9:10]...) for i in 1:size(import_table,1)]
 end
 
-function create_included_mask(import_table; reset=true)
-	included = reset ? trues(length(import_table[:,11])) : import_table[:,11]
-	return convert(BitArray, included)
-end
-
 # function get_contrast_clusters(import_table)
 # 	return unique(import_table[:,12])
 # end
@@ -435,7 +437,13 @@ function view_import_bb(z_index::Int64, tform=eye(3))
 	view_polys(polys, indices)
 end
 
-function view_roi(z_index::Int64, roi::ImageRegistration.BoundingBox=IMPORT_ROI_BB, tform=get_tform(overview(1,z_index), OVERVIEW_RESOLUTION))
+function view_roi_previous(z_index::Int64)
+	roi = PREVIOUS_IMPORT_BB
+	tform = get_tform(overview(1,z_index), PREVIOUS_OVERVIEW_RESOLUTION)
+	return view_roi(z_index, roi=roi, tform=tform)
+end
+
+function view_roi(z_index::Int64; roi::ImageRegistration.BoundingBox=IMPORT_BB, tform=get_tform(overview(1,z_index), OVERVIEW_RESOLUTION))
 	scale = 0.05
 	import_table = load_import_table(z_index)
 	polys = make_import_outline(import_table, tform)
@@ -451,7 +459,7 @@ function make_import_outline(import_table, tform=eye(3))
 	return tform_bbs_pts(pts, tform)
 end
 
-function get_roi_mask(import_table, roi::ImageRegistration.BoundingBox=IMPORT_ROI_BB, tform=get_tform(overview(1,z_index), OVERVIEW_RESOLUTION))
+function get_roi_mask(import_table, roi::ImageRegistration.BoundingBox=IMPORT_BB, tform=get_tform(overview(1,z_index), OVERVIEW_RESOLUTION))
 	# possible speed up: run bounding box intersection first
 	# all_bbs = get_tform_bbs(z_index)
 	# roi_intersects = convert(BitArray, [intersects(bb, roi) for bb in all_bbs])
@@ -461,17 +469,18 @@ function get_roi_mask(import_table, roi::ImageRegistration.BoundingBox=IMPORT_RO
 	return convert(BitArray, [poly_intersects(tile, bb_to_pts(roi)) for tile in tiles])
 end
 
-function get_tile_indices(import_table, roi::ImageRegistration.BoundingBox=IMPORT_ROI_BB, tform=get_tform(overview(1,z_index), OVERVIEW_RESOLUTION))
+function get_tile_indices(z_index::Int64, roi::ImageRegistration.BoundingBox=IMPORT_BB, tform=get_tform(overview(1,z_index), OVERVIEW_RESOLUTION))
+	import_table = load_import_table(z_index)
 	all_indices = get_import_indices(import_table)
-	roi_mask = create_roi_mask(import_table, roi, tform)
+	roi_mask = get_roi_mask(import_table, roi, tform)
 	return all_indices[roi_mask]
 end
 
-function update_import_include!(z_index, import_table, roi::ImageRegistration.BoundingBox=IMPORT_ROI_BB, tform=get_tform(overview(1,z_index), OVERVIEW_RESOLUTION); reset=false)
-	include_mask = create_included_mask(import_table, reset=reset)
-	roi_mask = create_roi_mask(import_table, roi, tform)
+function update_import_include!(z_index, import_table, roi::ImageRegistration.BoundingBox=IMPORT_BB, tform=get_tform(overview(1,z_index), OVERVIEW_RESOLUTION))
+	include_mask = create_flagged_mask(import_table)
+	roi_mask = get_roi_mask(import_table, roi, tform)
 	exisiting_mask = create_src_isfile_mask(import_table)
-	import_table[:,11] = include_mask & roi_mask & exisiting_mask
+	import_table[:,12] = include_mask & roi_mask & exisiting_mask
 	save_import_table(z_index, import_table)
 end
 
@@ -481,116 +490,31 @@ function get_included_indices(import_table)
 	return indices[mask]
 end
 
-# function compile_adjusted_tile_based_stats(z_index, N=100)
-# 	println("Calculating statistics on original tiles for section $(z_index) using $N samples")
-# 	import_table = load_import_table(z_index)
-# 	bins = 20
+function get_included_indices(import_table)
+	indices =  collect(1:size(import_table,1))
+	mask = create_included_mask(import_table)
+	return indices[mask]
+end
 
-# 	bias = load_bias_image()
-# 	bias_mean = mean(bias)
-# 	dtype = Float64
-# 	# contrast_hist = load_contrast_histogram(z_index, reset=reset)
-# 	# minval = contrast_hist[2]
-# 	# maxval = contrast_hist[length(contrast_hist)-1]
-# 	maxval = dtype(typemax(UInt16))
-# 	minintensity = 39000 / maxval
-# 	maxintensity = 63000 / maxval
-# 	clahe = generate_clahe()
+function get_unwritten_included_indices(import_table)
+	indices =  collect(1:size(import_table,1))
+	included = create_included_mask(import_table)
+	unwritten = create_dst_isfile_mask(import_table)
+	mask = included & unwritten
+	return indices[mask]
+end
 
-# 	function calculate_stats(i)
-# 		index = get_import_index(import_table, i)
-# 		println("Calculating for $index")
-# 		src_fn = get_src_fn(import_table,i)
-# 		if isfile(src_fn)
-# 			img = get_image_disk(src_fn, dtype)
-# 			img = bias_correction(img, bias, bias_mean)
-# 			img = contrast_stretch(img, minintensity, maxintensity)
-# 			img = convert_float64_to_uint8(img)
-# 			# img = apply_clahe(img, clahe)
-# 			hist = nquantile(img[:], bins)
-# 			mu = mean(img[:])
-# 			stdev = std(img[:])
-# 			krt = kurtosis(img[:])
-# 			return [index[3:4]..., mu, stdev, krt, hist...]
-# 		end
-# 		return [index[3:4]..., 0, 0, 0, zeros(bins+1)...]
-# 	end
+function create_included_mask(import_table; reset=true)
+	return convert(BitArray, import_table[:,12])
+end
 
-# 	existing_indices = collect(1:size(import_table,1))[create_src_isfile_mask(import_table)]
-# 	samples = rand(existing_indices, N)
-# 	stats = pmap(calculate_stats, samples) 
-# 	stats = hcat(stats...)'
-# 	stats_fn = get_path("stats", premontaged(1, z_index))
-# 	writedlm(stats_fn, stats)
-# 	return stats
-# end
+function create_flagged_mask(import_table; reset=true)
+	return convert(BitArray, import_table[:,11])
+end
 
-# function compile_raw_tile_based_stats(z_index, N=300)
-# 	println("Calculating statistics on original tiles for section $(z_index) using $N samples")
-# 	import_table = load_import_table(z_index)
-# 	bins = 20
-
-# 	function calculate_stats(i)
-# 		index = get_import_index(import_table, i)
-# 		println("Calculating for $index")
-# 		fn = get_src_fn(import_table,i)
-# 		if isfile(fn)
-# 			img = get_image_disk(fn, Float64)
-# 			hist = nquantile(img[:], bins)
-# 			mu = mean(img[:])
-# 			stdev = std(img[:])
-# 			krt = kurtosis(img[:])
-# 			return [index[3:4]..., mu, stdev, krt, hist...]
-# 		end
-# 		return [index[3:4]..., 0, 0, 0, zeros(bins+1)...]
-# 	end
-
-# 	existing_indices = collect(1:size(import_table,1))[create_src_isfile_mask(import_table)]
-# 	samples = rand(existing_indices, N)
-# 	stats = pmap(calculate_stats, samples) 
-# 	stats = hcat(stats...)'
-# 	stats_fn = get_path("stats", premontaged(1, z_index))
-# 	writedlm(stats_fn, stats)
-# 	return stats
-# end
-
-# function is_adjusted_resin(img, n=20, z_index=0)
-# 	threshold = 100
-# 	if z_index == 3
-# 		threshold = 50
-# 	end
-# 	dist = nquantile(img[:], n)
-# 	return dist[2] > threshold
-# end
-
-# function is_original_resin(img, n=20, z_index=0)
-# 	thresholds = [0.79, 0.74, 0.75, 0.69, 0.75, 0.75]
-# 	dist = nquantile(img[:], n)
-# 	return dist[2] > thresholds[z_index]
-# end
-
-# function load_raw_tiles(z_index, file_indices; include_resin=false)
-# 	import_table = load_import_table(z_index)
-
-# 	function load_image(i)
-# 		index = get_import_index(import_table, i)
-# 		println("Loading $index")
-# 		fn = get_src_fn(import_table, i)
-# 		if isfile(fn)
-# 			img = get_image_disk(fn, Float64)
-# 			return index, img, !is_original_resin(img, 20, z_index), true
-# 		end
-# 		return index, Array{Float64,2}(), false, false
-# 	end
-
-# 	results = map(load_image, file_indices)
-# 	indices = [i[1] for i in results]
-# 	tiles = [i[2] for i in results]
-# 	has_tissue = [i[3] for i in results]
-# 	tile_exists = [i[4] for i in results]
-# 	mask = include_resin ? has_tissue : tile_exists
-# 	return indices[mask], tiles[mask]
-# end
+function reset_flagged_mask!(import_table)
+	import_table[:,11] = trues(length(import_table[:,11]))
+end
 
 function rename_files(subdir)
 	dir_path = OVERVIEW_DIR_PATH
@@ -619,10 +543,11 @@ function need_to_reimage_for_bb(z_indices, bb::ImageRegistration.BoundingBox)
 	return outside_roi
 end
 
-function outside_import_roi(z_index::Int64, bb::ImageRegistration.BoundingBox)
+function outside_import_roi(z_index::Int64)
+	import_table = load_import_table(z_index)
 	roi_tiles = get_tile_indices(z_index)
-	bb_tiles = get_tile_indices(z_index, bb)
-	return setdiff(bb_tiles, roi_tiles)
+	all_tiles = get_import_indices(import_table)
+	return setdiff(all_tiles, roi_tiles)
 end
 
 """
@@ -655,16 +580,82 @@ function shift_rows!(z_index, row_range, shift_in_tiles)
 	save_import_table(z_index, import_table)
 end
 
+function get_overview_size(index::Index)
+	path = get_path(overview(index))
+	fid = h5open(path, "r")
+	dset = fid["img"]
+	return [size(dset)...]
+end
+
+function get_overview_resolution(index::Index, tile_size=[3840,3840])
+	overview_size = get_overview_size(index)
+	z_index = index[2]
+	import_table = load_import_table(z_index)
+	overview_origin = get_overview_origin(import_table)
+	last_tile_offset = get_last_offset(import_table) + tile_size
+	resolutions = tile_size ./ (last_tile_offset - overview_origin) .* overview_size
+	return resolutions ./ tile_size
+end
+
+function get_width_in_tiles(import_table)
+	return maximum(import_table[:,8])
+end
+
+function get_height_in_tiles(import_table)
+	return maximum(import_table[:,7])
+end
+
+function get_overview_origin(z_index::Int64)
+	return get_overview_origin(load_import_table(z_index))
+end
+
+function get_overview_origin(import_table)
+	return [minimum(import_table[:,3]), minimum(import_table[:,2])]
+end
+
+function get_last_offset(import_table)
+	return [maximum(import_table[:,3]), maximum(import_table[:,2])]
+end
+
+function get_montage_original_offset(index::Index)
+	z_index = index[2]
+	import_table = load_import_table(z_index)
+	tiles = get_index_range(premontaged(index), premontaged(index))
+	rc = hcat([[t[3:4]...] for t in tiles]...)'
+	min_rc = minimum(rc[:,1]), minimum(rc[:,2])
+	indices = get_import_indices(import_table)
+	k = findfirst(i->i == (index[1:2]..., min_rc...), indices)
+	global_offset = get_import_offset(import_table, k)
+	overview_origin = get_overview_origin(import_table)
+	return global_offset - overview_origin
+end
+
+function get_montage_tform_from_overview(index::Index)
+	src_index = index
+	dst_index = get_preceding(index)
+	tform = load("relative_transform", overview(src_index))
+	moving_offset = get_montage_original_offset(src_index)
+	fixed_offset = get_montage_original_offset(dst_index)
+	moving_t = make_translation_matrix(moving_offset)
+	fixed_t = make_translation_matrix(fixed_offset)
+	src_scale = make_scale_matrix(get_overview_resolution(src_index)[1])
+	dst_scale = make_scale_matrix(get_overview_resolution(dst_index)[1])
+	return moving_t*src_scale*tform*dst_scale^-1*fixed_t^-1
+end
+
 function initialize_montage_registry_from_overview_tform(index::Index)
-	tform = load("relative_transform", overview(index))
-	angle = acos(tform[1,1]) * 180/pi
-	translation = [tform[3,1:2]...]
-	# update_registry(montaged(index), rotation=angle, offset=translation)
-	update_registry(montaged(index), rotation=0, offset=[0,0])
+	tform = get_montage_tform_from_overview(index)
+	update_registry(index, tform)
 end
 
 function initialize_montage_registry_from_overview_tform(firstindex::Index, lastindex::Index)
 	for index in get_index_range(firstindex, lastindex)
 		initialize_montage_registry_from_overview_tform(index)
+	end
+end
+
+function reset_montage_registry_tform(firstindex::Index, lastindex::Index)
+	for index in get_index_range(firstindex, lastindex)
+		update_registry(index, rotation=0, offset=[0,0])
 	end
 end
