@@ -37,7 +37,6 @@ function schedule_render(index; queue_name = Main.TASKS_TASK_QUEUE_NAME, bucket_
 end
 
 
-
 #=
 function schedule(queue_name, bucket_name)
     env = AWS.AWSEnv()
