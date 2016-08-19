@@ -14,7 +14,6 @@ using SimpleTasks.Services.BucketCacheDatasource
 using SimpleTasks.Services.Datasource
 using SimpleTasks.Services.Daemon
 
-
 type AlembicPayloadInfo
   	indices::Array{Index, 1} # array of input indices
 	outputs::Array{Any, 1} # array of outputs
@@ -37,6 +36,7 @@ function untruncate_path(path::AbstractString)
 end
 
 function push_registry_updates(queue_name = TASKS_REGISTRY_QUEUE_NAME)
+  if myid() != IO_PROC remotecall_fetch(push_registry_updates, queue_name) end
     env = AWS.AWSEnv()
     queue = SimpleTasks.Services.AWSQueue.AWSQueueService(env, queue_name)
 
