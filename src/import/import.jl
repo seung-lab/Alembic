@@ -1,4 +1,3 @@
-global LOADFILE = readdlm("/media/tmacrina/667FB0797A5072D7/3D_align/mosaiced_images_160729_google_cloud_upload_seung_import.csv",',')
 global PREVIOUS_OVERVIEW_RESOLUTION = 86/3000
 global PREVIOUS_IMPORT_BB = ImageRegistration.BoundingBox(10110,19850,39000,28000)
 global OVERVIEW_RESOLUTION = 95.3/3840 # 3.58/225.0 
@@ -6,6 +5,7 @@ global OVERVIEW_IMPORT_BB = ImageRegistration.BoundingBox(290,570,1110,800)
 global IMPORT_BB = snap_bb(scale_bb(OVERVIEW_IMPORT_BB, 1/OVERVIEW_RESOLUTION))
 
 function get_src_dir(z_index)
+	LOADFILE = readdlm("/media/tmacrina/667FB0797A5072D7/3D_align/mosaiced_images_160729_google_cloud_upload_seung_import.csv",',')
 	i = findfirst(i -> i == z_index, LOADFILE[:,1])
 	if i > 0
 		return joinpath("/media/tmacrina/", LOADFILE[i, 2])
