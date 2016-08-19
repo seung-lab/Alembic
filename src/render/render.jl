@@ -172,12 +172,12 @@ function render_prealigned_review(src_index::Index, dst_index::Index, src_img, d
   path = get_path("review", (src_index, dst_index))
   write_review_image(path, src_thumb, src_thumb_offset, dst_thumb, dst_thumb_offset, scale, tform)
 
-  println("Warping aligned review image... 1/2")
-  src_thumb, src_thumb_offset = imwarp(src_img, tform*cumulative_tform*s, [0,0])
-  println("Warping aligned review image... 2/2")
-  dst_thumb, dst_thumb_offset = imwarp(dst_img, cumulative_tform*s, [dst_offset])
-  aligned_path = get_path("review", (src_index, dst_index))
-  write_review_image(aligned_path, src_thumb, src_thumb_offset, dst_thumb, dst_thumb_offset, scale, tform*cumulative_tform)
+  # println("Warping aligned review image... 1/2")
+  # src_thumb, src_thumb_offset = imwarp(src_img, tform*cumulative_tform*s, [0,0])
+  # println("Warping aligned review image... 2/2")
+  # dst_thumb, dst_thumb_offset = imwarp(dst_img, cumulative_tform*s, [dst_offset])
+  # aligned_path = get_path("review", (src_index, dst_index))
+  # write_review_image(aligned_path, src_thumb, src_thumb_offset, dst_thumb, dst_thumb_offset, scale, tform*cumulative_tform)
 end
 
 function render_prealigned_review(ms::MeshSet)
