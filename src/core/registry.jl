@@ -159,7 +159,7 @@ end
 """
 Remove index from registry file & reload that registry
 """
-function purge_from_registry!(index)
+function purge_from_registry!(index::Index)
   # assert(is_premontaged(index))
   registry_path = get_registry_path(index)
   registry = readdlm(registry_path)
@@ -351,6 +351,13 @@ end
 #function sync_registries(updates::Array{Any, 1})
 #  if myid() != IO_PROC return remotecall_fetch(IO_PROC, sync_registry, updates) end
 #end
+
+# function update_registry(index, tform)
+#   assert(abs(det(tform)-1) < 1e-4)
+#   angle = acos(tform[1,1]) * 180/pi
+#   translation = [tform[3,1:2]...]
+#   update_registry(montaged(index), rotation=angle, offset=translation)
+# end
 
 function update_registry(index; rotation::Union{Float64, Int64} = get_rotation(index), offset::Union{Point, Array{Int64, 1}} = get_offset(index), image_size::Union{Array{Int64, 1}, Tuple{Int64, Int64}} = get_image_size(index), rendered::Bool = is_rendered(index))
   if myid() != IO_PROC return remotecall_fetch(IO_PROC, () -> update_registry(index, rotation = rotation, offset = offset, image_size = image_size, rendered = rendered)) end
