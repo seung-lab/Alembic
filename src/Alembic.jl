@@ -154,6 +154,7 @@ if !(contains(gethostname(), "seunglab") || contains(gethostname(), "seungom"))
   include("review/cpselect.jl")
   include("tasks/tasks_env.jl")
   include("tasks/BlockMatchTask.jl")
+  include("tasks/RenderTask.jl")
   include("tasks/awsscheduler.jl")
 end
 

@@ -27,6 +27,8 @@ function BlockMatchTaskDetails(index::Main.Index)
 	=#
 	indices = Main.ancestors(index);
 	possible_pairs = collect([(indexA, indexB) for indexA in indices, indexB in indices])
+	#note the flipped order for the prealignment
+	possible_pairs = possible_pairs[map(pair -> (Main.is_adjacent(pair[1], pair[2])) || (Main.is_diagonal(pair[1], pair[2])) || (Main.is_preceding(pair[2], pair[1])), possible_pairs)]
 
 	inputs_images = map(Main.truncate_path, map(Main.get_path, indices));
 	inputs_registry = map(Main.truncate_path, map(Main.get_registry_path, indices));
@@ -48,16 +50,19 @@ end
 function BlockMatchTaskDetails(first_index::Main.Index, last_index::Main.Index)
 	indices = Main.get_index_range(first_index, last_index);
 	possible_pairs = collect([(indexA, indexB) for indexA in indices, indexB in indices])
+	possible_pairs = possible_pairs[map(pair -> Main.is_preceding(pair[1], pair[2]), possible_pairs)]
 
 	inputs_images = map(Main.truncate_path, map(Main.get_path, indices));
 	inputs_registry = map(Main.truncate_path, map(Main.get_registry_path, indices));
 	inputs = unique(vcat(inputs_images, inputs_registry))
 	
-	output_meshset = Main.truncate_path(Main.get_path("MeshSet", index))
-	output_stats = Main.truncate_path(Main.get_path("stats", index))
-	output_transform = Main.truncate_path(Main.get_path("relative_transform", index))
+	#output_meshset = Main.truncate_path(Main.get_path("MeshSet", index))
+	output_meshes = map(Main.truncate_path, map(Main.get_path, repeated("Mesh"), indices))
+#	output_stats = Main.truncate_path(Main.get_path("stats", index))
+#	output_transform = Main.truncate_path(Main.get_path("relative_transform", index))
 	output_reviews = map(Main.truncate_path, map((pair) -> Main.get_path("review", pair), possible_pairs))
-	outputs = unique([output_meshset, output_stats, output_transform, output_reviews...])
+	output_matches = map(Main.truncate_path, map((pair) -> Main.get_path("Match", pair), possible_pairs))
+	outputs = unique([output_meshes..., output_matches..., output_reviews...])
 
 	basic_info = BasicTask.Info(0, NAME, Main.TASKS_BASE_DIRECTORY, inputs) 
 	task = BlockMatchTaskDetails(basic_info, AlembicPayloadInfo([first_index, last_index], outputs));
@@ -91,9 +96,15 @@ function DaemonTask.execute(task::BlockMatchTaskDetails,
         return DaemonTask.Result(true, [])
     end
 
+    if length(task.payload_info.indices) == 2
+    ms = Main.MeshSet([tuple(index_array...) for index_array in task.payload_info.indices]...; solve=false);
+    split_meshset(ms);
+    else
     ms = Main.MeshSet([tuple(index_array...) for index_array in task.payload_info.indices]...);
-    Main.render(ms; review=true);
     Main.calculate_stats(ms);
+    end
+    Main.render(ms; review=true);
+    #Main.calculate_stats(ms);
 
     return DaemonTask.Result(true, task.payload_info.outputs)
 end

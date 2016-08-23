@@ -12,6 +12,7 @@ using SimpleTasks.Services.FileSystemCache
 using SimpleTasks.Services.BucketCacheDatasource
 using SimpleTasks.Services.Daemon
 using BlockMatchTask
+using RenderTask
 
 #using BlockMatchTasks
 
@@ -48,6 +49,7 @@ function run(task_queue_name, error_queue_name, bucket_name,
         poll_frequency_seconds)
 
     register!(daemon, BlockMatchTask.NAME, BlockMatchTaskDetails)
+    register!(daemon, RenderTask.NAME, RenderTaskDetails)
 
     Daemon.run(daemon)
 end

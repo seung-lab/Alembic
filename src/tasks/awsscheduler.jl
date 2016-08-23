@@ -7,6 +7,7 @@ using SimpleTasks.Services.AWSQueue
 using SimpleTasks.Services.CLIBucket
 using SimpleTasks.Services.AWSCLIProvider
 using BlockMatchTask
+using RenderTask
 
 import AWS
 import JSON
@@ -16,13 +17,13 @@ import SimpleTasks.Tasks.BasicTask
 import Main.AlembicPayloadInfo
 
 
-function schedule_blockmatch(index; queue_name = Main.TASKS_TASK_QUEUE_NAME, bucket_name = Main.TASKS_BUCKET_NAME)
+function schedule_blockmatch(args...; queue_name = Main.TASKS_TASK_QUEUE_NAME, bucket_name = Main.TASKS_BUCKET_NAME)
     env = AWS.AWSEnv()
     queue = AWSQueueService(env, queue_name)
     bucket = CLIBucketService(AWSCLIProvider.Details(env), bucket_name)
 
     # create tasks from the inputs and add them to the queue
-    task = BlockMatchTask.BlockMatchTaskDetails(index);
+    task = BlockMatchTask.BlockMatchTaskDetails(args...);
     Queue.push_message(queue; message_body = JSON.json(task));
 end
 
