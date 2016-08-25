@@ -104,18 +104,18 @@ function remove_last_point(imgc, img2, pts, ann)
     end
 end
 
-function recompute_tform(firstindex::Index, lastindex::Index)
-    for index in get_index_range(firstindex, lastindex)
-        pts = load("import", index)
-        n = size(pts, 1)
-        src_pts = pts[:,1:2]
-        dst_pts = pts[:,3:4]
-        println("Resaving transform for $index")
-        tform_path = get_path("stats", index)
-        tform = compute_tform(src_pts, dst_pts)
-        writedlm(tform_path, tform)
-    end
-end
+# function recompute_tform(firstindex::Index, lastindex::Index)
+#     for index in get_index_range(firstindex, lastindex)
+#         pts = load("import", index)
+#         n = size(pts, 1)
+#         src_pts = pts[:,1:2]
+#         dst_pts = pts[:,3:4]
+#         println("Resaving transform for $index")
+#         tform_path = get_path("stats", index)
+#         tform = compute_tform(src_pts, dst_pts)
+#         writedlm(tform_path, tform)
+#     end
+# end
 
 function save_correspondences(win, index, mpts, fpts, scale, thumb)
     println("Saving correspondences")
@@ -123,14 +123,15 @@ function save_correspondences(win, index, mpts, fpts, scale, thumb)
     n = min(length(mpts), length(fpts))
     mpts = mpts[1:n]
     fpts = fpts[1:n]
-    src_pts = hcat(mpts...)'
-    dst_pts = hcat(fpts...)'
-    pts = hcat(src_pts, dst_pts)*scale
+    src_pts = hcat(mpts...)'/scale
+    dst_pts = hcat(fpts...)'/scale
+    pts = hcat(src_pts, dst_pts)
     writedlm(correspondences_path, pts)
-    println("Saving transform")
-    tform_path = get_path("relative_transform", index)
     tform = compute_tform(src_pts, dst_pts)
-    writedlm(tform_path, tform)
+    println("Saving transform")
+    # tform_path = get_path("relative_transform", index)
+    # writedlm(tform_path, tform)
+    update_registry(index, tform)
     next = get_succeeding(index)
     go_to(win, next, thumb)
 end
