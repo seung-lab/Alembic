@@ -483,7 +483,7 @@ function MeshSet(first_index, last_index; params=get_params(first_index), solve=
 end
 
 function MeshSet(indices::Array; params=get_params(indices[1]), solve=true, solve_method="elastic")
-  meshes = pmap(Mesh, indices, repeated(params))
+  meshes = map(Mesh, indices, repeated(params))
   sort!(meshes; by=get_index)
   matches = Array{Match, 1}(0)    
   properties = Dict{Any, Any}(  
