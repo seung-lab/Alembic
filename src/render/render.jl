@@ -118,7 +118,22 @@ function render_montaged(meshset::MeshSet; render_full=true, render_review=false
 
 end
 
-function compile_affines(firstindex::Index, lastindex::Index)
+function calculate_relative_transforms(firstindex::Index, lastindex::Index)
+  assert(is_montaged(firstindex) && is_montaged(lastindex))
+  for index in get_index_range(firstindex, lastindex)
+    ms = load(MeshSet, prealigned(index))
+    offset = get_offset(index)
+    rotation = make_rotation_matrix_from_index(index)
+    translation = make_translation_matrix(offset)
+    tform = rotation*regularized_solve(ms)*translation
+    println("Writing relative tform for $index")
+    path = get_path("relative_transform", index)
+    writedlm(path, tform)
+  end
+end
+
+function compile_cumulative_transforms(firstindex::Index, lastindex::Index)
+  assert(is_montaged(firstindex) && is_montaged(lastindex))
   cumulative_tform = eye(3)
   for index in get_index_range(firstindex, lastindex)
     if index != firstindex
@@ -133,13 +148,14 @@ function compile_affines(firstindex::Index, lastindex::Index)
 end
 
 function render_prealigned_full(index::Index)
-  thumbnail_scale = 0.02
+  thumbnail_scale = 0.05
   render_params = get_params(index)["render"]
   if haskey(render_params, "thumbnail_scale")
     thumbnail_scale = render_params["thumbnail_scale"]
   end
   img = load(index)
   tform = load("cumulative_transform", index)
+  println("Warping image")
   @time warped, offset = imwarp(img, tform, [0,0])
   index = prealigned(index)
   update_registry(index, offset=offset, image_size=size(warped))
@@ -150,15 +166,18 @@ function render_prealigned_full(index::Index)
   @time f["img", "chunk", (chunksize,chunksize)] = warped
   close(f)
   println("Creating thumbnail for $index @ $(thumbnail_scale)x")
-  thumbnail, _ = imscale(img, thumbnail_scale)
+  thumbnail, _ = imscale(warped, thumbnail_scale)
   write_thumbnail(thumbnail, index, thumbnail_scale)
 end
 
 function render_prealigned_review(src_index::Index, dst_index::Index, src_img, dst_img, 
                 cumulative_tform, tform)
-  scale = 0.02
-  thumbnail_scale = 0.125
-  s = make_scale_matrix(scale)
+  review_scale = 0.02
+  render_params = get_params(src_index)["render"]
+  if haskey(render_params, "review_scale")
+    review_scale = render_params["review_scale"]
+  end
+  s = make_scale_matrix(review_scale)
 
   dst_offset = [0,0]
   if is_aligned(dst_index)
@@ -170,7 +189,7 @@ function render_prealigned_review(src_index::Index, dst_index::Index, src_img, d
   println("Warping prealigned review image... 2/2")
   dst_thumb, dst_thumb_offset = imwarp(dst_img, s, dst_offset)
   path = get_path("review", (src_index, dst_index))
-  write_review_image(path, src_thumb, src_thumb_offset, dst_thumb, dst_thumb_offset, scale, tform)
+  write_review_image(path, src_thumb, src_thumb_offset, dst_thumb, dst_thumb_offset, review_scale, tform)
 
   # println("Warping aligned review image... 1/2")
   # src_thumb, src_thumb_offset = imwarp(src_img, tform*cumulative_tform*s, [0,0])
@@ -198,15 +217,14 @@ end
 function render_prematch_review(index::Index)
   src_index = index
   dst_index = get_preceding(index)
-  # src_offset = get_offset(src_index)
-  # rotation = make_rotation_matrix(get_rotation(src_index))
-  # translation = make_translation_matrix(src_offset)
-  #translation = make_translation_matrix(src_offset)
-  # tform = rotation*translation
+  src_offset = get_offset(src_index)
+  rotation = make_rotation_matrix_from_index(src_index)
+  translation = make_translation_matrix(src_offset)
+  tform = rotation*translation
   # println("Writing relative tform for $src_index")
   # path = get_path("relative_transform", src_index)
   # writedlm(path, tform)
-  tform = load("relative_transform", src_index)
+  # tform = load("relative_transform", src_index)
   render_prealigned_review(src_index, dst_index, get_image(src_index), 
       get_image(dst_index), eye(3), tform)
 end
