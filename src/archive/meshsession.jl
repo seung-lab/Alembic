@@ -2,11 +2,11 @@ function montage(firstindex::Index, lastindex::Index)
   ind_range = get_index_range(premontaged(firstindex), premontaged(lastindex))
   ind_range = unique([montaged(i[1:2]...) for i in ind_range])
   for index in ind_range
-    # premontage(premontaged(index))
+    premontage(premontaged(index))
     ms = MeshSet(index)
     render_montaged(ms; render_full=true, render_review=true, flagged_only=true)
-    clean_cache()
     calculate_stats(ms)
+    reset_cache()
     # if is_flagged(ms)
     #   render_montaged(ms; render_full=false, render_review=true, flagged_only=true)
     # else
@@ -61,19 +61,15 @@ function render_montage_and_prealign(firstindex::Index, lastindex::Index)
   end
 end
 
-function prealign(firstindex::Index, lastindex::Index; fix_start=false)
+function prealign(firstindex::Index, lastindex::Index)
   for index in get_index_range(montaged(firstindex), montaged(lastindex))
-    ms = MeshSet()
-    if index==firstindex && fix_start
-      println("Prealigning first section to FIXED aligned section")
-      ms = prealign(index; to_fixed=fix_start)
-    else 
-      ms = prealign(index)
+    ms = prealign(index)
+    calculate_stats(ms)
+    try
+      render(ms, review=true)
+    catch
+      render_prematch_review(index)
     end
-    # if is_flagged(ms)
-    # render_prealigned(index; render_full=false, render_review=true)
-    render_prealigned_review(ms)
-    # end
   end
 end
 

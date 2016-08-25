@@ -1,4 +1,4 @@
-MESH_LENGTH_MONTAGE = 240
+MESH_LENGTH_MONTAGE = 200
 GLOBAL_OFFSETS_MONTAGE = true
 BLOCKMATCH_SCALE_MONTAGE = 1.0
 BLOCK_R_MONTAGE = 140
@@ -15,11 +15,11 @@ ETA_NEWTON_MONTAGE = 0.6
 FTOL_NEWTON_MONTAGE = 1e-16
 
 
-MESH_LENGTH_PREALIGNMENT = 10000
+MESH_LENGTH_PREALIGNMENT = 8000
 GLOBAL_OFFSETS_PREALIGNMENT = false
 BLOCKMATCH_SCALE_PREALIGNMENT = 0.125
 BLOCK_R_PREALIGNMENT = 600
-SEARCH_R_PREALIGNMENT = 8000
+SEARCH_R_PREALIGNMENT = 5000
 PREMATCH_PREALIGNMENT = false
 PREMATCH_TEMPLATE_RATIO_PREALIGNMENT = 0.02
 PREMATCH_SCALE_PREALIGNMENT = 0.10
@@ -120,19 +120,21 @@ global PARAMS_PREALIGNMENT = Dict(
 					# "eta_newton" => ETA_NEWTON_PREALIGNMENTE,
 					# "ftol_newton" => FTOL_NEWTON_PREALIGNMENT)
 			     "filter" => Dict(
-			     		"sigma_filter" => (:get_properties, >, 150, 0.5),
-			     		"norm_filter" => (:get_norms_std_sigmas, >, 5)
+			     		"sigma_filter_high" => (:get_properties, >, 5, 0.95),
+			     		"sigma_filter_mid" => (:get_properties, >, 40, 0.75),
+			     		"sigma_filter_low" => (:get_properties, >, 150, 0.50)
+			     		# "norm_filter" => (:get_norms_std_sigmas, >, 5)
 					      ),
 			     "render" => Dict(
-			     		"thumbnail_scale" => 0.02
+			     		"thumbnail_scale" => 0.05
 					      ),
 			     "review" => Dict(
 				     	# "r_below" => (:count_filtered_properties, >, 0, "r_max", <, 0.2),
 			     		"too_few_corresps" => (:count_correspondences, <, 3),
-						"rejected_ratio" => (:get_ratio_rejected, >, 0.33, 0),
+						"rejected_ratio" => (:get_ratio_rejected, >, 0.25, 0),
 						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.95),
 						# "norm_outliers" => (:count_outlier_norms, >, 0, 3),
-						"centered_norm" => (:get_maximum_centered_norm, >, SEARCH_R_PREALIGNMENT/2)
+						"centered_norm" => (:get_maximum_centered_norm, >, 1000)
 					      ),
 			     "registry" => Dict(
 					"global_offsets" => GLOBAL_OFFSETS_PREALIGNMENT

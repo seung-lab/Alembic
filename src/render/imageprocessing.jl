@@ -12,7 +12,7 @@ function merge_images(imgs, offsets)
     T = typeof(imgs[1][1])
     bbs = []
     for (img, offset) in zip(imgs, offsets)
-        push!(bbs, BoundingBox(offset..., size(img)...))
+        push!(bbs, ImageRegistration.BoundingBox(offset..., size(img)...))
     end
     global_ref = sum(bbs)
     merged_img = zeros(T, global_ref.h, global_ref.w)
@@ -142,7 +142,7 @@ Returns:
 """
 function rescopeimage{T}(img::Array{T}, offset, bb)
   z = zeros(T, bb.h+1, bb.w+1)
-  imgbb = BoundingBox(offset..., size(img,1)-1, size(img,2)-1)
+  imgbb = ImageRegistration.BoundingBox(offset..., size(img,1)-1, size(img,2)-1)
   xbb = imgbb - bb
   if !isnan(xbb.i) || !isnan(xbb.j) || !isnan(xbb.h) || !isnan(xbb.h)
     crop_img = xbb.i-offset[1]+1 : xbb.i-offset[1]+1+xbb.h, 
