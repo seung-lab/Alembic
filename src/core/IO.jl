@@ -1,5 +1,5 @@
 # size in bytes
-global const IMG_CACHE_SIZE = 120 * 2^30 # n * gibibytes
+global const IMG_CACHE_SIZE = 10 * 2^30 # n * gibibytes
 global const IMG_ELTYPE = UInt8
 
 if myid() == 1
@@ -98,7 +98,7 @@ function get_image_disk(path::AbstractString, dtype = IMG_ELTYPE; shared = false
 end
 
 function prefetch(index, scale=1.0, dtype = IMG_ELTYPE)
-        clean_cache()  
+        # clean_cache()  
 	if haskey(IMG_CACHE_DICT, (get_image_path(index), scale)) index = NO_INDEX end;
 	println("$(get_path(index)) is being prefetched at scale $scale...")
 	return remotecall(IO_PROC, get_image_disk_async, index, scale, dtype);
@@ -128,6 +128,13 @@ function load_image(path::AbstractString, scale, imgref::RemoteRef, dtype = IMG_
 	    load_image(path, scale, img, dtype);
 	    img = 0;
 	   fetch = remotecall(IO_PROC, gc); gc(); wait(fetch)
+end
+
+function reset_cache()
+  IMG_CACHE_DICT = Dict{Tuple{AbstractString, Float64}, SharedArray}()
+  IMG_CACHE_LIST = Array{Any, 1}()
+  @time @everywhere gc();
+  @time @everywhere gc();
 end
 
 function clean_cache()
@@ -313,6 +320,21 @@ function load_section_images(session, section_num)
   return imageArray
 end
 
+function expunge_tiles(indices)
+  for index in indices
+    assert(is_premontaged(index))
+    src_path = get_path(index)
+    dst_path = get_path("expunge", index)
+    println("Expunging $index")
+    println("src_path: $src_path")
+    println("dst_path: $src_path")
+    assert(isfile(src_path) && !isfile(dst_path))
+    mv(src_path, dst_path)
+  end
+  # metadata = get_metadata(index)
+  purge_from_registry!(indices)
+end
+
 function expunge_tile(index::Index)
   assert(is_premontaged(index))
   src_path = get_path(index)
@@ -373,6 +395,12 @@ function make_stack(firstindex::Index, lastindex::Index, slice=(1:255, 1:255); s
   stack_size = ImageRegistration.get_size(global_bb) + [1,1]
   imgs = []
 
+  thumbnail_scale = 0.05
+  if thumb
+    thumb_path = get_path("thumbnail", firstindex)
+    thumbnail_scale = h5read(thumb_path, "scale")
+  end
+
   stack_bb = sz_to_bb(stack_size)
   sbb = scale_bb(stack_bb, scale)
   scaled_size = sbb.h, sbb.w
@@ -383,7 +411,7 @@ function make_stack(firstindex::Index, lastindex::Index, slice=(1:255, 1:255); s
     img = zeros(dtype, scaled_size...)
     offset = thumb ? [0,0] : get_offset(index)
     sz = get_image_size(index)
-    bb = ImageRegistration.BoundingBox(offset..., sz...)
+    bb = snap_bb(ImageRegistration.BoundingBox(offset..., sz...))
     if intersects(bb, global_bb)
       shared_bb = global_bb - bb
       stack_roi = snap_bb(scale_bb(translate_bb(shared_bb, -stack_offset+[1,1]), scale))
