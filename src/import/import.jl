@@ -202,6 +202,48 @@ function import_overview(z_index)
 	end
 end
 
+function save_import_tile(fn, img)
+	println("dst: $fn")
+	f = h5open(fn, "w")
+	chunksize = 1000
+	@time f["img", "chunk", (chunksize,chunksize)] = img
+	close(f)	
+end
+
+function fix_contrast(src_index::Index, ref_index::Index)
+	z_index = src_index[2]
+	import_table = load_import_table(z_index)
+	indices = get_import_indices(import_table)
+	src_k = findfirst(i -> i == src_index, indices)
+	ref_k = findfirst(i -> i == ref_index, indices)
+	import_indices = get_included_indices(import_table)
+	assert(src_k in import_indices)
+	assert(ref_k in import_indices)
+	println("Fixing $src_index contrast using $ref_index")
+	bias = load_bias_image(z_index)
+	bias_mean = mean(bias)
+
+	ref_fn = get_src_fn(import_table, ref_k)
+	src_fn = get_src_fn(import_table, src_k)
+
+	dtype = Float64
+	ref_img = get_image_disk(ref_fn, dtype)
+	ref_img = bias_correction(ref_img, bias, bias_mean)
+	src_img = get_image_disk(src_fn, dtype)
+	src_img = bias_correction(src_img, bias, bias_mean)
+
+	bins = 20
+	hist = nquantile(ref_img[:], bins)
+	minintensity = hist[2]
+	maxintensity = hist[end-1]
+	src_img = min(1.0, max(0.0, (src_img-minintensity) / (maxintensity-minintensity)))
+	src_img = convert_float64_to_uint8(src_img)
+
+	dst_fn = get_dst_fn(import_table, src_k)
+	save_import_tile(dst_fn, src_img)
+	return src_img
+end
+
 function import_tiles(z_index; reset=false)
 	# try
 	import_table = load_import_table(z_index)
@@ -234,11 +276,7 @@ function import_tiles(z_index; reset=false)
 		img = auto_contrast_stretch(img)
 		img = convert_float64_to_uint8(img)
 		# resin = is_adjusted_resin(img, 20, z_index)
-		println("\tdst: $dst_fn")
-		f = h5open(dst_fn, "w")
-		chunksize = 1000
-		@time f["img", "chunk", (chunksize,chunksize)] = img
-		close(f)
+		save_import_tile(dst_fn, img)
 		return i, sz...
 	end
 
@@ -459,7 +497,7 @@ function make_import_outline(import_table, tform=eye(3))
 	return tform_bbs_pts(pts, tform)
 end
 
-function get_roi_mask(import_table, roi::ImageRegistration.BoundingBox=IMPORT_BB, tform=get_tform(overview(1,z_index), OVERVIEW_RESOLUTION))
+function get_roi_mask(import_table, roi, tform)
 	# possible speed up: run bounding box intersection first
 	# all_bbs = get_tform_bbs(z_index)
 	# roi_intersects = convert(BitArray, [intersects(bb, roi) for bb in all_bbs])
@@ -481,7 +519,7 @@ function update_import_include!(z_index, import_table, roi::ImageRegistration.Bo
 	roi_mask = get_roi_mask(import_table, roi, tform)
 	exisiting_mask = create_src_isfile_mask(import_table)
 	import_table[:,12] = include_mask & roi_mask & exisiting_mask
-	save_import_table(z_index, import_table)
+	# save_import_table(z_index, import_table)
 end
 
 function get_included_indices(import_table)
@@ -499,7 +537,7 @@ end
 function get_unwritten_included_indices(import_table)
 	indices =  collect(1:size(import_table,1))
 	included = create_included_mask(import_table)
-	unwritten = create_dst_isfile_mask(import_table)
+	unwritten = !create_dst_isfile_mask(import_table)
 	mask = included & unwritten
 	return indices[mask]
 end
@@ -548,6 +586,23 @@ function outside_import_roi(z_index::Int64)
 	roi_tiles = get_tile_indices(z_index)
 	all_tiles = get_import_indices(import_table)
 	return setdiff(all_tiles, roi_tiles)
+end
+
+function expunge_imported_tiles_outside_roi(z_index::Int64)
+	outside = outside_import_roi(z_index)
+	exists = convert(BitArray, [isfile(get_path(index)) for index in outside])
+	expunge_tiles(outside[exists])
+end
+
+function expunge_tiles_not_included(z_index::Int64)
+	import_table = load_import_table(z_index)
+	indices = get_import_indices(import_table)
+	not_included = !create_included_mask(import_table)
+	for index in indices[not_included]
+		if isfile(get_path(index))
+			expunge_tile(index)
+		end
+	end
 end
 
 """
@@ -645,6 +700,7 @@ end
 
 function initialize_montage_registry_from_overview_tform(index::Index)
 	tform = get_montage_tform_from_overview(index)
+	println("$index: $tform")
 	update_registry(index, tform)
 end
 
