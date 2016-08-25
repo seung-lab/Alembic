@@ -14,6 +14,7 @@ function upload_AIBS_google_z_index()
 end
 
 # Started 160803 16:22 on seungworkstation11
+# Stopped 160806 incomplete - see EverNote for error
 function upload_AIBS_google_ALL()
 	dirs = ["05CD6FE95EABBD48",
 			"2AFA162542D90D86",
@@ -39,6 +40,7 @@ function upload_AIBS_google_ALL()
 end
 
 # Started 160803 16:30 on seungworkstation11
+# Stopped 160806 incomplete - see EverNote for error
 function upload_AIBS_AWS_ALL()
 	dirs = ["05CD6FE95EABBD48",
 			"2AFA162542D90D86",
@@ -59,6 +61,62 @@ function upload_AIBS_AWS_ALL()
 				dst_path = joinpath(dst_dir, dir, subdir)
 				run(`aws s3 sync $src_path $dst_path`)
 			end
+		end
+	end
+end
+
+# Started 160819 17:20 on seungworkstation11
+function restart_upload_AIBS_google_ALL()
+	dirs = ["05CD6FE95EABBD48",
+			"2AFA162542D90D86",
+			"3E68987D7020E00D",
+			"416062E31672DE2C",
+			"4BED39E032CF5004",
+			"5C2D807B721C2F35",
+			"61B81A1F318B9618",
+			"667FB0797A5072D7"]
+	subdirs_to_ignore = ["3D_align", "2D_alignment", "datasets", ".Trash-1753"]
+	src_dir = "/media/tmacrina/"
+	# dst_dir = "pinky" # allen-brain-institute
+	dst_dir = "gs://pinky_raw" # neuromancer-seung-import
+	for dir in dirs
+		src_path = joinpath(src_dir, dir)
+		dst_path = joinpath(dst_dir, dir)
+		run(`gsutil -m rsync -r $src_path $dst_path`)
+	end
+end
+
+# Started 160819 17:20 on seungworkstation11
+function restart_upload_AIBS_AWS_ALL()
+	dirs = ["05CD6FE95EABBD48",
+			"2AFA162542D90D86",
+			"3E68987D7020E00D",
+			"416062E31672DE2C",
+			"4BED39E032CF5004",
+			"5C2D807B721C2F35",
+			"61B81A1F318B9618",
+			"667FB0797A5072D7"]
+	subdirs_to_ignore = ["3D_align", "2D_alignment", "datasets", ".Trash-1753"]
+	src_dir = "/media/tmacrina/"
+	# dst_dir = "pinky" # allen-brain-institute
+	dst_dir = "s3://seunglab/datasets/pinky" # neuromancer-seung-import
+	for dir in dirs
+		src_path = joinpath(src_dir, dir)
+		dst_path = joinpath(dst_dir, dir)
+		run(`aws s3 sync $src_path $dst_path`)
+	end
+end
+
+function upload_ground_truth_to_google()
+	dirs = ["vol01"]
+	subdirs = ["cell_segmentation", "raw"]
+	src_root = joinpath(homedir(), "seungmount/Omni/TracerTasks/AIBS_practice_234251S6R_01_01_aligned_01/ground_truth/")
+	dst_root = "gs://s6r_ground_truth"
+	for dir in dirs
+		for subdir in subdirs
+			src_path = joinpath(src_root, dir, subdir)
+			dst_path = joinpath(dst_root, dir)
+			run(`gsutil -m cp -r $src_path $dst_path`)
 		end
 	end
 end
