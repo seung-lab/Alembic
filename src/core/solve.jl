@@ -115,7 +115,6 @@ function apply_transform!(ms::MeshSet, tform, k::Int64)
   for ind in 1:count_nodes(ms.meshes[k])
     ms.meshes[k].dst_nodes[ind] = ([ms.meshes[k].src_nodes[ind]; 1]' * tform)[1:2]
   end
-  stats(ms);
 end
 
 function translation_solve(ms::MeshSet; globalized=false)
@@ -219,10 +218,10 @@ function elastic_collate(meshset; from_current = true, write = false)
 
     edge_lengths[edgeranges[get_index(mesh)]] = get_edge_lengths(mesh);
     edge_spring_coeffs[edgeranges[get_index(mesh)]] = mesh_spring_coeff
-    removed_edges = get_removed_edge_indices(mesh)
-    edge_spring_coeffs[edgeranges[get_index(mesh)][removed_edges]] = 0
-    fixed_edges = get_fixed_edge_indices(mesh)
-    edge_spring_coeffs[edgeranges[get_index(mesh)][fixed_edges]] = 10000
+    # removed_edges = get_removed_edge_indices(mesh)
+    # edge_spring_coeffs[edgeranges[get_index(mesh)][removed_edges]] = 0
+    # fixed_edges = get_fixed_edge_indices(mesh)
+    # edge_spring_coeffs[edgeranges[get_index(mesh)][fixed_edges]] = 10000
   end
 
   end # @fm @ib 
@@ -661,7 +660,6 @@ end
 @inbounds function stats(meshset::MeshSet, first_ind = 1, last_ind = count_matches(meshset); flagged_only::Bool = false, summary::Bool = false)
 
   println("Computing statistics... sigma is computed at beta = 0.95")
-  println("Writing stats to $path")
 
   params = get_params(meshset)
 
