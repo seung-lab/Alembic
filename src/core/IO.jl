@@ -412,6 +412,7 @@ function save_stack(firstindex::Index, lastindex::Index, slice=(1:200, 1:200); s
 end
 
 function save_stack(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, slice=(1:200, 1:200); scale=scale)
+  if sum(stack) == 0 return end
   # perm = [3,2,1]
   # stack = permutedims(stack, perm)
   orientation = "zyx"
@@ -473,7 +474,7 @@ Save out a grid of cubes starting from the orgin
 All dimensions in i,j,k format
 """
 function save_cubes(cube_origin::Tuple{Int64, Int64, Int64}, cube_dims::Tuple{Int64, Int64, Int64}, overlap::Tuple{Int64, Int64, Int64}, grid_dims::Tuple{Int64, Int64, Int64})
-  indices = get_indices(aligned(1,2))
+  indices = get_indices(aligned(0,0))
   start_i = build_range(cube_origin, cube_dims, overlap, grid_dims, 1)
   start_j = build_range(cube_origin, cube_dims, overlap, grid_dims, 2)
   start_k = build_range(cube_origin, cube_dims, overlap, grid_dims, 3)
@@ -485,7 +486,8 @@ function save_cubes(cube_origin::Tuple{Int64, Int64, Int64}, cube_dims::Tuple{In
         firstindex = indices[k]
         lastindex = indices[k+z-1]
         slice = (i:i+x-1, j:j+y-1)
-        println(join([n, firstindex, lastindex, slice], ", "))
+	println();
+        println("processing cube $n of $(length(start_i) * length(start_j) * length(start_k))", join([firstindex, lastindex, slice], ", "))
         n += 1
         save_stack(firstindex, lastindex, slice)
       end

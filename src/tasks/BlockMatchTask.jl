@@ -98,7 +98,7 @@ function DaemonTask.execute(task::BlockMatchTaskDetails,
 
     if length(task.payload_info.indices) == 2
     ms = Main.MeshSet([tuple(index_array...) for index_array in task.payload_info.indices]...; solve=false);
-    split_meshset(ms);
+    Main.split_meshset(ms);
     else
     ms = Main.MeshSet([tuple(index_array...) for index_array in task.payload_info.indices]...);
     Main.calculate_stats(ms);
