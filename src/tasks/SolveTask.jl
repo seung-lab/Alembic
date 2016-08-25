@@ -1,5 +1,5 @@
 #using Alembic
-module BlockMatchTask
+module SolveTask
 
 using ...SimpleTasks.Types
 
@@ -8,18 +8,18 @@ import SimpleTasks.Tasks.DaemonTask
 import SimpleTasks.Tasks.BasicTask
 import SimpleTasks.Services.Datasource
 
-export BlockMatchTaskDetails, NAME, execute, full_input_path, full_output_path
+export SolveTaskDetails, NAME, execute, full_input_path, full_output_path
 
-type BlockMatchTaskDetails <: DaemonTaskDetails
+type SolveTaskDetails <: DaemonTaskDetails
     basic_info::BasicTask.Info
     payload_info::AlembicPayloadInfo
 end
 
-BlockMatchTaskDetails{String <: AbstractString}(basic_info::BasicTask.Info, dict::Dict{String, Any}) = BlockMatchTaskDetails(basic_info, AlembicPayloadInfo(dict));
+SolveTaskDetails{String <: AbstractString}(basic_info::BasicTask.Info, dict::Dict{String, Any}) = SolveTaskDetails(basic_info, AlembicPayloadInfo(dict));
 
-
+#=
 # creates a task to make a MeshSet for index
-function BlockMatchTaskDetails(index::Main.Index)
+function SolveTaskDetails(index::Main.Index)
   #=
 	if Main.is_montaged(index)	indices = Main.get_index_range(Main.prevstage(index),Main.prevstage(index))
 	elseif Main.is_prealigned(index) indices = [Main.prevstage(index), Main.get_preceding(Main.prevstage(index))]
@@ -42,12 +42,13 @@ function BlockMatchTaskDetails(index::Main.Index)
 #	output_tform = 
 
 	basic_info = BasicTask.Info(0, NAME, Main.TASKS_BASE_DIRECTORY, inputs) 
-	task = BlockMatchTaskDetails(basic_info, AlembicPayloadInfo([index], outputs));
+	task = SolveTaskDetails(basic_info, AlembicPayloadInfo([index], outputs));
 #	return vcat(inputs..., output)
 	return task
 end
+=#
 
-function BlockMatchTaskDetails(first_index::Main.Index, last_index::Main.Index)
+function SolveTaskDetails(first_index::Main.Index, last_index::Main.Index)
 	indices = Main.get_index_range(first_index, last_index);
 	possible_pairs = collect([(indexA, indexB) for indexA in indices, indexB in indices])
 	possible_pairs = possible_pairs[map(pair -> Main.is_preceding(pair[1], pair[2]), possible_pairs)]
@@ -65,30 +66,30 @@ function BlockMatchTaskDetails(first_index::Main.Index, last_index::Main.Index)
 	outputs = unique([output_meshes..., output_matches..., output_reviews...])
 
 	basic_info = BasicTask.Info(0, NAME, Main.TASKS_BASE_DIRECTORY, inputs) 
-	task = BlockMatchTaskDetails(basic_info, AlembicPayloadInfo([first_index, last_index], outputs));
+	task = SolveTaskDetails(basic_info, AlembicPayloadInfo([first_index, last_index], outputs));
 	return task
 end
 
 const NAME = "BLOCKMATCH_TASK"
 
-function full_input_path(task::BlockMatchTaskDetails,
+function full_input_path(task::SolveTaskDetails,
         input::AbstractString)
     return "$(task.basic_info.base_directory)/$(input)"
 end
 
-function full_output_path(task::BlockMatchTaskDetails,
+function full_output_path(task::SolveTaskDetails,
         output::AbstractString)
     return "$(task.basic_info.base_directory)/$(output)";
 end
 
-function DaemonTask.prepare(task::BlockMatchTaskDetails,
+function DaemonTask.prepare(task::SolveTaskDetails,
         datasource::DatasourceService)
     Datasource.get(datasource,
         map((input) -> full_input_path(task, input), task.basic_info.inputs); override_cache = true)
 	Main.reload_registries();
 end
 
-function DaemonTask.execute(task::BlockMatchTaskDetails,
+function DaemonTask.execute(task::SolveTaskDetails,
         datasource::DatasourceService)
     inputs = task.basic_info.inputs
 
@@ -109,7 +110,7 @@ function DaemonTask.execute(task::BlockMatchTaskDetails,
     return DaemonTask.Result(true, task.payload_info.outputs)
 end
 
-function DaemonTask.finalize(task::BlockMatchTaskDetails,
+function DaemonTask.finalize(task::SolveTaskDetails,
         datasource::DatasourceService, result::DaemonTask.Result)
     if !result.success
         error("Task $(task.basic_info.id), $(task.basic_info.name) was " *
@@ -128,4 +129,4 @@ function DaemonTask.finalize(task::BlockMatchTaskDetails,
     end
 end
 
-end # module BlockMatchTask
+end # module SolveTask
