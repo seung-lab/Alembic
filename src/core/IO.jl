@@ -487,7 +487,7 @@ function save_cubes(cube_origin::Tuple{Int64, Int64, Int64}, cube_dims::Tuple{In
         lastindex = indices[k+z-1]
         slice = (i:i+x-1, j:j+y-1)
 	println();
-        println("processing cube $n of $(length(start_i) * length(start_j) * length(start_k))", join([firstindex, lastindex, slice], ", "))
+        println("processing cube $n of $(length(start_i) * length(start_j) * length(start_k)) at ", join([firstindex, lastindex, slice], ", "))
         n += 1
         save_stack(firstindex, lastindex, slice)
       end
