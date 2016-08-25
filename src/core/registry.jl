@@ -159,6 +159,23 @@ end
 """
 Remove index from registry file & reload that registry
 """
+function purge_from_registry!(indices)
+  # assert(is_premontaged(index))
+  if length(indices) > 0
+    registry_path = get_registry_path(indices[1])
+    registry = get_registry(indices[1])
+    purge_mask = !convert(BitArray, [index in indices for index in registry[:,2]])
+    registry = readdlm(registry_path)
+    println("Purging $indices from $registry_path")
+    registry = registry[purge_mask, :]
+    writedlm(registry_path, registry)
+    reload_registry(indices[1])
+  end
+end
+
+"""
+Remove index from registry file & reload that registry
+"""
 function purge_from_registry!(index::Index)
   # assert(is_premontaged(index))
   registry_path = get_registry_path(index)
@@ -168,6 +185,21 @@ function purge_from_registry!(index::Index)
   registry = registry[1:size(registry,1).!=i, :]
   writedlm(registry_path, registry)
   reload_registry(index)
+end
+
+function clean_registry!(index::Index)
+  return clean_registry!(get_registry(index))
+end
+
+function clean_registry!(registry)
+  indices = []
+  for index in registry[:,2]
+    if !isfile(get_path(index))
+      push!(indices, index)
+    end
+  end
+  # return indices
+  purge_from_registry!(indices)
 end
 
 function get_metadata(index)
@@ -352,12 +384,22 @@ end
 #  if myid() != IO_PROC return remotecall_fetch(IO_PROC, sync_registry, updates) end
 #end
 
-# function update_registry(index, tform)
-#   assert(abs(det(tform)-1) < 1e-4)
-#   angle = acos(tform[1,1]) * 180/pi
-#   translation = [tform[3,1:2]...]
-#   update_registry(montaged(index), rotation=angle, offset=translation)
-# end
+function update_registry(index, tform)
+  assert(abs(det(tform)-1) < 1e-3)
+  if abs(tform[1,1]) <= 1
+    angle = acosd(tform[1,1])
+    if tform[1,2] < 0
+      angle = -angle
+    end
+  else
+    angle = 0
+  end
+  translation = [tform[3,1:2]...]
+  rotation = make_rotation_matrix(angle)
+  rotation_bb = snap_bb(tform_bb(sz_to_bb(get_image_size(index)), rotation))
+  rotation_offset = ImageRegistration.get_offset(rotation_bb)
+  update_registry(montaged(index), rotation=angle, offset=translation+rotation_offset)
+end
 
 function update_registry(index; rotation::Union{Float64, Int64} = get_rotation(index), offset::Union{Point, Array{Int64, 1}} = get_offset(index), image_size::Union{Array{Int64, 1}, Tuple{Int64, Int64}} = get_image_size(index), rendered::Bool = is_rendered(index))
   if myid() != IO_PROC return remotecall_fetch(IO_PROC, () -> update_registry(index, rotation = rotation, offset = offset, image_size = image_size, rendered = rendered)) end
