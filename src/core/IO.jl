@@ -1,5 +1,5 @@
 # size in bytes
-global const IMG_CACHE_SIZE = 10 * 2^30 # n * gibibytes
+global const IMG_CACHE_SIZE = 6 * 2^30 # n * gibibytes
 global const IMG_ELTYPE = UInt8
 
 if myid() == 1
