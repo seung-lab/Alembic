@@ -120,8 +120,8 @@ include("core/MeshSet.jl")
 include("core/solve.jl")
 
 if ON_AWS
-  include("datasets/dataset_zebrafish.jl")
-#  include("datasets/dataset_pinky.jl")
+#  include("datasets/dataset_zebrafish.jl")
+  include("datasets/dataset_pinky.jl")
   #include("params_default.jl")
   include("params/params_pinky.jl")
 else
