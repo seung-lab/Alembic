@@ -62,7 +62,7 @@ function BlockMatchTaskDetails(first_index::Main.Index, last_index::Main.Index)
 #	output_transform = Main.truncate_path(Main.get_path("relative_transform", index))
 	output_reviews = map(Main.truncate_path, map((pair) -> Main.get_path("review", pair), possible_pairs))
 	output_matches = map(Main.truncate_path, map((pair) -> Main.get_path("Match", pair), possible_pairs))
-	outputs = unique([output_meshes..., output_matches..., output_reviews...])
+	outputs = unique([output_meshset, output_meshes..., output_matches..., output_reviews...])
 
 	basic_info = BasicTask.Info(0, NAME, Main.TASKS_BASE_DIRECTORY, inputs) 
 	task = BlockMatchTaskDetails(basic_info, AlembicPayloadInfo([first_index, last_index], outputs));
