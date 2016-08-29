@@ -307,7 +307,7 @@ function get_preceding_in_wafer(index)
 end
 
 function get_index_range(firstindex, lastindex; exclude_wholes_when_subs_exist = true)
-  if myid != IO_PROC remotecall_fetch(IO_PROC, ((fi, li) -> get_index_range(fi, li; exclude_wholes_when_subs_exist = exclude_wholes_when_subs_exist)), firstindex, lastindex) end
+#  if myid != IO_PROC return remotecall_fetch(IO_PROC, ((fi, li) -> get_index_range(fi, li; exclude_wholes_when_subs_exist = exclude_wholes_when_subs_exist)), firstindex, lastindex) end
   #firstindex, lastindex = match_index_stages(firstindex, lastindex)
   if is_premontaged(firstindex)
     return get_registry(firstindex)[get_range_in_registry(firstindex, lastindex), 2]
