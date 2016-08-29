@@ -1,5 +1,5 @@
 # size in bytes
-global const IMG_CACHE_SIZE = 6 * 2^30 # n * gibibytes
+global const IMG_CACHE_SIZE = 8 * 2^30 # n * gibibytes
 global const IMG_ELTYPE = UInt8
 
 if myid() == 1
@@ -87,7 +87,9 @@ function get_image_disk(path::AbstractString, dtype = IMG_ELTYPE; shared = false
     end
 	elseif ext == ".h5"
     if shared
-      img = convert(Array{dtype, 2}, h5read(path, "img"))
+      img = h5read(path, "img")
+      if typeof(img) != Array{dtype, 2} img = convert(Array{dtype, 2}, img) end
+      @everywhere gc();
       shared_img = SharedArray(dtype, size(img)...);
       @inbounds shared_img.s[:,:] = img[:,:]
       return shared_img;
@@ -139,7 +141,7 @@ end
 
 function clean_cache()
 	if sum(map(Int64, map(length, values(IMG_CACHE_DICT)))) > IMG_CACHE_SIZE && !(length(IMG_CACHE_DICT) < 2)
-	while sum(map(Int64, map(length, values(IMG_CACHE_DICT)))) > IMG_CACHE_SIZE * 0.75 && !(length(IMG_CACHE_DICT) < 2)
+	while sum(map(Int64, map(length, values(IMG_CACHE_DICT)))) > IMG_CACHE_SIZE * 0.50 && !(length(IMG_CACHE_DICT) < 2)
 		todelete = shift!(IMG_CACHE_LIST);
 		#IMG_CACHE_DICT[todelete] = zeros(IMG_ELTYPE,0,0)
 		delete!(IMG_CACHE_DICT, todelete)
