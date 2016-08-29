@@ -796,5 +796,14 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 				"author" => null_author()
 				) 
 			);
+
+global SRC_PATCH_FULL = Array{Float64, 2}(10,10);
+global SRC_PATCH = Array{Float64, 2}(10,10);
+global SRC_PATCH_G = Array{Float64, 2}(10,10);
+global DST_PATCH_FULL = Array{Float64, 2}(10,10);
+global DST_PATCH = Array{Float64, 2}(10,10);
+global DST_PATCH_G = Array{Float64, 2}(10,10);
+
+@everywhere gc();
 	return Match(src_index, dst_index, src_points, dst_points, correspondence_properties, filters, properties);
 end

@@ -102,8 +102,9 @@ function DaemonTask.execute(task::BlockMatchTaskDetails,
     else
     ms = Main.MeshSet([tuple(index_array...) for index_array in task.payload_info.indices]...);
     Main.calculate_stats(ms);
-    end
     Main.render(ms; review=true);
+    end
+    #Main.render(ms; review=true);
     #Main.calculate_stats(ms);
 
     return DaemonTask.Result(true, task.payload_info.outputs)
