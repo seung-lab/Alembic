@@ -162,14 +162,14 @@ global PARAMS_ALIGNMENT = Dict(
 			     	"eta_newton" => ETA_NEWTON_ALIGNMENT,
 			     	"ftol_newton" => FTOL_NEWTON_ALIGNMENT),
 			     "filter" => Dict(
-			     		"sigma_filter_high" => (:get_properties, >, 8, 0.95),
-			     		"sigma_filter_mid" => (:get_properties, >, 90, 0.75),
+			     		"sigma_filter_high" => (:get_properties, >, 7.5, 0.95),
+			     		"sigma_filter_mid" => (:get_properties, >, 80, 0.75),
 			     		"sigma_filter_low" => (:get_properties, >, 200, 0.50),
 			     		"r_filter" => (:get_properties, <, 0.03, "r_max"),
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 5),
 			     		"kurtosis_filter" => (:get_properties, >, 25, "src_kurtosis"),
 			     		"kurtosis_filter_edge" => (:get_properties, <, -1.90, "src_kurtosis"),
-					"centered_norm_filter" => (:get_centered_norms, >, 325)
+					"centered_norm_filter" => (:get_centered_norms, >, 300)
 					      ),
 			     "render" => Dict(
 					      ),
