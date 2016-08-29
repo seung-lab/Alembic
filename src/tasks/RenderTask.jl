@@ -23,9 +23,15 @@ function RenderTaskDetails(index::Main.Index)
 	indices = Main.ancestors(index);
 
 	inputs_images = map(Main.truncate_path, map(Main.get_path, indices));
+	inputs_meshes = map(Main.truncate_path, map(Main.get_path, repeated("Mesh"), indices));
 	inputs_registry = map(Main.truncate_path, map(Main.get_registry_path, indices));
-	input_transform = Main.truncate_path(Main.get_path("cumulative_transform", index))
-	inputs = unique(vcat(inputs_images, inputs_registry, [input_transform]))
+      if is_prealigned(index) 
+	input_transform = [Main.truncate_path(Main.get_path("cumulative_transform", index))]
+      else
+	input_transform = [];
+      end
+
+	inputs = unique(vcat(inputs_images, inputs_registry, input_transform, input_meshes))
 	
 #	output_meshset = Main.truncate_path(Main.get_path("MeshSet", index))
 #	output_stats = Main.truncate_path(Main.get_path("stats", index))
