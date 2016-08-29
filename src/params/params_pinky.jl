@@ -169,7 +169,7 @@ global PARAMS_ALIGNMENT = Dict(
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 5),
 			     		"kurtosis_filter" => (:get_properties, >, 25, "src_kurtosis"),
 			     		"kurtosis_filter_edge" => (:get_properties, <, -1.90, "src_kurtosis"),
-					"centered_norm_filter" => (:get_centered_norms, >, 250)
+					"centered_norm_filter" => (:get_centered_norms, >, 325)
 					      ),
 			     "render" => Dict(
 					      ),
@@ -178,7 +178,7 @@ global PARAMS_ALIGNMENT = Dict(
 						"rejected_ratio" => (:get_ratio_rejected, >, 0.15),
 						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.95),
 						# "norm_outliers" => (:count_outlier_norms, >, 0, 4),
-						"centered_norm" => (:get_maximum_centered_norm, >, BLOCK_R_ALIGNMENT/2)
+						"centered_norm" => (:get_maximum_centered_norm, >, BLOCK_R_ALIGNMENT * 0.75)
 					      ),
 			     "registry" => Dict(
 					"global_offsets" => GLOBAL_OFFSETS_ALIGNMENT
