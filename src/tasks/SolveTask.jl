@@ -102,7 +102,7 @@ function DaemonTask.execute(task::SolveTaskDetails,
     ms = Main.compile_meshset([tuple(index_array...) for index_array in task.payload_info.indices]...);
     Main.fix_ends!(ms)
     Main.solve!(ms);
-    Main.split_meshset!(ms);
+    Main.split_meshset(ms);
 
     return DaemonTask.Result(true, task.payload_info.outputs)
 end
