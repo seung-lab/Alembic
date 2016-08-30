@@ -57,7 +57,7 @@ function SolveTaskDetails(first_index::Main.Index, last_index::Main.Index)
 	inputs_registry = map(Main.truncate_path, map(Main.get_registry_path, indices));
 	inputs = unique(vcat(inputs_images, inputs_registry))
 	
-	#output_meshset = Main.truncate_path(Main.get_path("MeshSet", index))
+#	output_meshset = Main.truncate_path(Main.get_path("MeshSet", index))
 	output_meshes = map(Main.truncate_path, map(Main.get_path, repeated("Mesh"), indices))
 #	output_stats = Main.truncate_path(Main.get_path("stats", index))
 #	output_transform = Main.truncate_path(Main.get_path("relative_transform", index))
@@ -70,7 +70,7 @@ function SolveTaskDetails(first_index::Main.Index, last_index::Main.Index)
 	return task
 end
 
-const NAME = "BLOCKMATCH_TASK"
+const NAME = "SOLVE_TASK"
 
 function full_input_path(task::SolveTaskDetails,
         input::AbstractString)
@@ -98,14 +98,10 @@ function DaemonTask.execute(task::SolveTaskDetails,
     end
 
     if length(task.payload_info.indices) == 2
-    ms = Main.MeshSet([tuple(index_array...) for index_array in task.payload_info.indices]...; solve=false);
-    Main.split_meshset(ms);
-    else
-    ms = Main.MeshSet([tuple(index_array...) for index_array in task.payload_info.indices]...);
-    Main.calculate_stats(ms);
-    end
-    Main.render(ms; review=true);
-    #Main.calculate_stats(ms);
+    ms = Main.concat_meshset([tuple(index_array...) for index_array in task.payload_info.indices]...);
+    Main.fix_ends!(ms)
+    Main.solve!(ms);
+    Main.split_meshset!(ms);
 
     return DaemonTask.Result(true, task.payload_info.outputs)
 end

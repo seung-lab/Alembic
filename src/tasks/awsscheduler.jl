@@ -8,6 +8,7 @@ using SimpleTasks.Services.CLIBucket
 using SimpleTasks.Services.AWSCLIProvider
 using BlockMatchTask
 using RenderTask
+using SolveTask
 
 import AWS
 import JSON

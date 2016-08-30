@@ -13,6 +13,7 @@ using SimpleTasks.Services.BucketCacheDatasource
 using SimpleTasks.Services.Daemon
 using BlockMatchTask
 using RenderTask
+using SolveTask
 
 #using BlockMatchTasks
 
@@ -50,6 +51,7 @@ function run(task_queue_name, error_queue_name, bucket_name,
 
     register!(daemon, BlockMatchTask.NAME, BlockMatchTaskDetails)
     register!(daemon, RenderTask.NAME, RenderTaskDetails)
+    register!(daemon, SolveTask.NAME, SolveTaskDetails)
 
     Daemon.run(daemon)
 end
