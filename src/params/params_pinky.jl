@@ -165,10 +165,10 @@ global PARAMS_ALIGNMENT = Dict(
 			     		"sigma_filter_high" => (:get_properties, >, 7, 0.95),
 			     		"sigma_filter_mid" => (:get_properties, >, 75, 0.75),
 			     		"sigma_filter_low" => (:get_properties, >, 160, 0.50),
-			     		"r_filter" => (:get_properties, <, 0.03, "r_max"),
+			     		"r_filter" => (:get_properties, <, 0.05, "r_max"),
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 5),
 			     		"kurtosis_filter" => (:get_properties, >, 25, "src_kurtosis"),
-			     		"kurtosis_filter_edge" => (:get_properties, <, -1.90, "src_kurtosis"),
+			     		"kurtosis_filter_edge" => (:get_properties, <, -1.60, "src_kurtosis"),
 					"centered_norm_filter" => (:get_centered_norms, >, 300)
 					      ),
 			     "render" => Dict(
