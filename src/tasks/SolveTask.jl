@@ -109,7 +109,7 @@ function DaemonTask.execute(task::SolveTaskDetails,
     for mesh in ms.meshes
     mesh.properties["params"] = Main.PARAMS_ALIGNMENT
   end
-  filter!(ms);
+  Main.filter!(ms);
 
 
     Main.fix_ends!(ms)
