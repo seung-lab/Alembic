@@ -100,6 +100,7 @@ function DaemonTask.execute(task::SolveTaskDetails,
     end
 
     ms = Main.compile_meshset([tuple(index_array...) for index_array in task.payload_info.indices]...);
+    #=
     #temporary
     Main.clear_filters!(ms);
     ms.properties["params"] = Main.PARAMS_ALIGNMENT
@@ -110,10 +111,11 @@ function DaemonTask.execute(task::SolveTaskDetails,
     mesh.properties["params"] = Main.PARAMS_ALIGNMENT
   end
   Main.filter!(ms);
+  =#
 
-
+    Main.unfix!(ms);
     Main.fix_ends!(ms)
-    Main.solve!(ms);
+    Main.solve!(ms; from_current = true);
     Main.split_meshset(ms);
 
     return DaemonTask.Result(true, task.payload_info.outputs)
@@ -130,7 +132,8 @@ function DaemonTask.finalize(task::SolveTaskDetails,
 
         Datasource.put!(datasource,
             map((output) -> full_output_path(task, output), result.outputs))
-	Datasource.remove!(datasource, map((output) -> full_output_path(task, output), result.outputs); only_cache = true)
+	    #no need to delete outputs since they are the inputs
+#	Datasource.remove!(datasource, map((output) -> full_output_path(task, output), result.outputs); only_cache = true)
 	Datasource.remove!(datasource, map((input) -> full_input_path(task, input), task.basic_info.inputs); only_cache = true)
 	Main.push_registry_updates();
 
