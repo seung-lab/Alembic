@@ -10,8 +10,10 @@ end
 global const IO_PROC = nprocs();
 if nprocs() > 2
 global const WORKER_PROCS = setdiff(procs(), [1, IO_PROC]);
-else 
+elseif nprocs() == 2
 global const WORKER_PROCS = setdiff(procs(), [1]);
+else
+global const WORKER_PROCS = [1];
 end
 
 #=

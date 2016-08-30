@@ -1,3 +1,5 @@
+import Base.pmap
+
 function sync_images(src_image_ref, dst_image_ref)
 	src_image_local = fetch(src_image_ref);
 	dst_image_local = fetch(dst_image_ref);
@@ -61,3 +63,8 @@ if idx == myid() return 1:0; end
 	splits = [round(Int64, s) for s in linspace(0, length(arr), nchunks + 1)];
 	return splits[findfirst(worker_procs, idx)]+1:splits[findfirst(worker_procs, idx) + 1]
 	end
+
+function pmap(args...)
+  return Base.pmap(args...; pids = WORKER_PROCS);
+end
+

@@ -115,7 +115,7 @@ function DaemonTask.execute(task::SolveTaskDetails,
 
     Main.unfix!(ms);
     Main.fix_ends!(ms)
-    Main.solve!(ms; from_current = true);
+    Main.elastic_solve!(ms; from_current = true);
     Main.split_meshset(ms);
 
     return DaemonTask.Result(true, task.payload_info.outputs)
