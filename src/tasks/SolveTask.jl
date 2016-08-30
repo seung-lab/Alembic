@@ -53,9 +53,11 @@ function SolveTaskDetails(first_index::Main.Index, last_index::Main.Index)
 	possible_pairs = collect([(indexA, indexB) for indexA in indices, indexB in indices])
 	possible_pairs = possible_pairs[map(pair -> Main.is_preceding(pair[1], pair[2]), possible_pairs)]
 
-	inputs_images = map(Main.truncate_path, map(Main.get_path, indices));
+#	inputs_images = map(Main.truncate_path, map(Main.get_path, indices));
 	inputs_registry = map(Main.truncate_path, map(Main.get_registry_path, indices));
-	inputs = unique(vcat(inputs_images, inputs_registry))
+	input_meshes = map(Main.truncate_path, map(Main.get_path, repeated("Mesh"), indices))
+	input_matches = map(Main.truncate_path, map((pair) -> Main.get_path("Match", pair), possible_pairs))
+	inputs = unique(vcat(input_meshes, input_matches, inputs_registry))
 	
 #	output_meshset = Main.truncate_path(Main.get_path("MeshSet", index))
 	output_meshes = map(Main.truncate_path, map(Main.get_path, repeated("Mesh"), indices))
