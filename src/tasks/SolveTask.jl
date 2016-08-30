@@ -100,6 +100,18 @@ function DaemonTask.execute(task::SolveTaskDetails,
     end
 
     ms = Main.compile_meshset([tuple(index_array...) for index_array in task.payload_info.indices]...);
+    #temporary
+    Main.clear_filters!(ms);
+    ms.properties["params"] = Main.PARAMS_ALIGNMENT
+    for match in ms.matches
+    match.properties["params"] = Main.PARAMS_ALIGNMENT
+  end
+    for mesh in ms.meshes
+    mesh.properties["params"] = Main.PARAMS_ALIGNMENT
+  end
+  filter!(ms);
+
+
     Main.fix_ends!(ms)
     Main.solve!(ms);
     Main.split_meshset(ms);
