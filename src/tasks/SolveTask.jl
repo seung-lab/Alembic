@@ -97,7 +97,6 @@ function DaemonTask.execute(task::SolveTaskDetails,
         return DaemonTask.Result(true, [])
     end
 
-    if length(task.payload_info.indices) == 2
     ms = Main.concat_meshset([tuple(index_array...) for index_array in task.payload_info.indices]...);
     Main.fix_ends!(ms)
     Main.solve!(ms);
