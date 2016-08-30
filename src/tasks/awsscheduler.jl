@@ -34,7 +34,7 @@ function schedule_render(args...; queue_name = Main.TASKS_TASK_QUEUE_NAME, bucke
     bucket = CLIBucketService(AWSCLIProvider.Details(env), bucket_name)
 
     # create tasks from the inputs and add them to the queue
-    task = BlockMatchTask.BlockMatchTaskDetails(args...);
+    task = RenderTask.RenderTaskDetails(args...);
     Queue.push_message(queue; message_body = JSON.json(task));
 end
 
@@ -44,7 +44,7 @@ function schedule_solve(args...; queue_name = Main.TASKS_TASK_QUEUE_NAME, bucket
     bucket = CLIBucketService(AWSCLIProvider.Details(env), bucket_name)
 
     # create tasks from the inputs and add them to the queue
-    task = BlockMatchTask.BlockMatchTaskDetails(args...);
+    task = SolveTask.SolveTaskDetails(args...);
     Queue.push_message(queue; message_body = JSON.json(task));
 end
 
