@@ -421,7 +421,7 @@ function make_stack(firstindex::Index, lastindex::Index, slice=(1:255, 1:255); s
       shared_bb = global_bb - bb
       stack_roi = snap_bb(scale_bb(translate_bb(shared_bb, -stack_offset+[1,1]), scale))
       img_slice = bb_to_slice(stack_roi)
-      imgs[:, :, i] = get_slice(index, shared_bb, scale, is_global=true, thumb=thumb) 
+      imgs[img_slice..., i] = get_slice(index, shared_bb, scale, is_global=true, thumb=thumb) 
     end
 #    push!(imgs, img)
   end
