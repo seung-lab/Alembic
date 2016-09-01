@@ -397,7 +397,6 @@ function make_stack(firstindex::Index, lastindex::Index, slice=(1:255, 1:255); s
   global_bb = ImageRegistration.slice_to_bb(slice)
   stack_offset = ImageRegistration.get_offset(global_bb)
   stack_size = ImageRegistration.get_size(global_bb)
-  imgs = []
 
   thumbnail_scale = 0.05
   if thumb
@@ -410,9 +409,11 @@ function make_stack(firstindex::Index, lastindex::Index, slice=(1:255, 1:255); s
   scaled_size = sbb.h, sbb.w
   # scaled_size = round(Int64, stack_size[1]*scale+1), round(Int64, stack_size[2]*scale+1)
 
-  for index in get_index_range(firstindex, lastindex)
+  imgs = zeros(dtype, scaled_size..., length(get_index_range(firstindex, lastindex)))
+
+  for (i, index) in enumerate(get_index_range(firstindex, lastindex))
     print(string(join(index[1:2], ",") ,"|"))
-    img = zeros(dtype, scaled_size...)
+    #img = zeros(dtype, scaled_size...)
     offset = thumb ? [0,0] : get_offset(index)
     sz = get_image_size(index)
     bb = snap_bb(ImageRegistration.BoundingBox(offset..., sz...))
@@ -420,11 +421,12 @@ function make_stack(firstindex::Index, lastindex::Index, slice=(1:255, 1:255); s
       shared_bb = global_bb - bb
       stack_roi = snap_bb(scale_bb(translate_bb(shared_bb, -stack_offset+[1,1]), scale))
       img_slice = bb_to_slice(stack_roi)
-      img[img_slice...] = get_slice(index, shared_bb, scale, is_global=true, thumb=thumb) 
+      imgs[:, :, i] = get_slice(index, shared_bb, scale, is_global=true, thumb=thumb) 
     end
-    push!(imgs, img)
+#    push!(imgs, img)
   end
-  return cat(3, imgs...)
+#  return cat(3, imgs...)
+  return imgs
 end
 
 function make_slice(center, radius)
