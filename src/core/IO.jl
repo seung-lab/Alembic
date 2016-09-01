@@ -396,7 +396,7 @@ function make_stack(firstindex::Index, lastindex::Index, slice=(1:255, 1:255); s
   dtype = UInt8
   global_bb = ImageRegistration.slice_to_bb(slice)
   stack_offset = ImageRegistration.get_offset(global_bb)
-  stack_size = ImageRegistration.get_size(global_bb) + [1,1]
+  stack_size = ImageRegistration.get_size(global_bb)
   imgs = []
 
   thumbnail_scale = 0.05
