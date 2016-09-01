@@ -28,8 +28,8 @@ PREMATCH_ANGLES_PREALIGNMENT = 20
 MESH_LENGTH_ALIGNMENT = 400
 GLOBAL_OFFSETS_ALIGNMENT = true
 BLOCKMATCH_SCALE_ALIGNMENT = 0.50
-BLOCK_R_ALIGNMENT = 500
-SEARCH_R_ALIGNMENT = 600
+BLOCK_R_ALIGNMENT = 600
+SEARCH_R_ALIGNMENT = 900
 PREMATCH_ALIGNMENT = false
 MESH_SPRING_COEFF_ALIGNMENT = 1.0
 MATCH_SPRING_COEFF_ALIGNMENT = 20.0
@@ -165,11 +165,11 @@ global PARAMS_ALIGNMENT = Dict(
 			     		"sigma_filter_high" => (:get_properties, >, 7, 0.95),
 			     		"sigma_filter_mid" => (:get_properties, >, 75, 0.75),
 			     		"sigma_filter_low" => (:get_properties, >, 150, 0.50),
-			     		"r_filter" => (:get_properties, <, 0.065, "r_max"),
+			     		"r_filter" => (:get_properties, <, 0.05, "r_max"),
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 5),
 			     		"kurtosis_filter" => (:get_properties, >, 25, "src_kurtosis"),
 			     		"kurtosis_filter_edge" => (:get_properties, <, -1.60, "src_kurtosis"),
-					"centered_norm_filter" => (:get_centered_norms, >, 300)
+					"centered_norm_filter" => (:get_centered_norms, >, 450)
 					      ),
 			     "render" => Dict(
 					      ),
@@ -178,7 +178,7 @@ global PARAMS_ALIGNMENT = Dict(
 						"rejected_ratio" => (:get_ratio_rejected, >, 0.15),
 						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.95),
 						# "norm_outliers" => (:count_outlier_norms, >, 0, 4),
-						"centered_norm" => (:get_maximum_centered_norm, >, BLOCK_R_ALIGNMENT * 0.75)
+						"centered_norm" => (:get_maximum_centered_norm, >, BLOCK_R_ALIGNMENT * 0.80)
 					      ),
 			     "registry" => Dict(
 					"global_offsets" => GLOBAL_OFFSETS_ALIGNMENT
