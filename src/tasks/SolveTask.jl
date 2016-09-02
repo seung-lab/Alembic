@@ -98,8 +98,7 @@ function DaemonTask.execute(task::SolveTaskDetails,
     if length(inputs) == 0
         return DaemonTask.Result(true, [])
     end
-
-    ms = Main.compile_meshset([tuple(index_array...) for index_array in task.payload_info.indices]...);
+    ms = Main.compile_meshset(task.payload_info.indices...);
     #=
     #temporary
     Main.clear_filters!(ms);

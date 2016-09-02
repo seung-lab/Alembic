@@ -96,14 +96,17 @@ function DaemonTask.execute(task::BlockMatchTaskDetails,
         return DaemonTask.Result(true, [])
     end
 
+    # alignment case
     if length(task.payload_info.indices) == 2
-    ms = Main.MeshSet([tuple(index_array...) for index_array in task.payload_info.indices]...; solve=false);
+    ms = Main.MeshSet(task.payload_info.indices...; solve=false);
     Main.split_meshset(ms);
+    # all other case
     else
-    ms = Main.MeshSet([tuple(index_array...) for index_array in task.payload_info.indices]...);
+    ms = Main.MeshSet(task.payload_info.indices...);
     Main.calculate_stats(ms);
-    Main.render(ms; review=true);
+    #Main.render(ms; review=true);
     end
+    Main.render(ms; review=true);
     #Main.render(ms; review=true);
     #Main.calculate_stats(ms);
 
