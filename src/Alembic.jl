@@ -5,9 +5,9 @@ if !haskey(ENV, "USER")
 end
 
 if ENV["USER"] != "ubuntu"
-  global const ON_AWS = false;
+  global const ON_CLOUD = false;
 else
-  global const ON_AWS = true;
+  global const ON_CLOUD = true;
 end
 
 if contains(gethostname(), "seunglab") || contains(gethostname(), "seungom") || ENV["USER"] == "dih"
@@ -121,7 +121,7 @@ include("core/filter.jl")
 include("core/MeshSet.jl")
 include("core/solve.jl")
 
-if ON_AWS
+if ON_CLOUD
 #  include("datasets/dataset_zebrafish.jl")
   include("datasets/dataset_pinky.jl")
   #include("params_default.jl")

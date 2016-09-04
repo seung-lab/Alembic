@@ -1,3 +1,7 @@
+global TASKS_LOCALE = "gcs"
+#global TASKS_LOCALE = "aws"
+
+if TASKS_LOCALE == "aws"
 global TASKS_TASK_QUEUE_NAME = "task-queue-TEST";
 global TASKS_ERROR_QUEUE_NAME = "error-queue-TEST";
 global TASKS_REGISTRY_QUEUE_NAME = "registry-queue-TEST";
@@ -5,10 +9,26 @@ global TASKS_BUCKET_NAME = "seunglab";
 global TASKS_CACHE_DIRECTORY = BUCKET;
 global TASKS_BASE_DIRECTORY = DATASET;
 global TASKS_POLL_FREQUENCY = 10;
+end
+
+if TASKS_LOCALE == "gcs"
+global TASKS_TASK_QUEUE_NAME = "task-queue-GCS";
+global TASKS_ERROR_QUEUE_NAME = "error-queue-GCS";
+global TASKS_REGISTRY_QUEUE_NAME = "registry-queue-GCS";
+global TASKS_BUCKET_NAME = "seunglab_alembic";
+global TASKS_CACHE_DIRECTORY = BUCKET;
+global TASKS_BASE_DIRECTORY = DATASET;
+global TASKS_POLL_FREQUENCY = 10;
+end
 
 using SimpleTasks.Services.AWSQueue
 using SimpleTasks.Services.CLIBucket
+if TASKS_LOCALE == "aws"
 using SimpleTasks.Services.AWSCLIProvider
+end
+if TASKS_LOCALE == "gcs"
+using SimpleTasks.Services.GCSCLIProvider
+end
 using SimpleTasks.Services.FileSystemCache
 using SimpleTasks.Services.BucketCacheDatasource
 using SimpleTasks.Services.Datasource
@@ -61,7 +81,11 @@ end
 
 function upload_registries()
     env = AWS.AWSEnv()
+    if TASKS_LOCALE == "aws"
     bucket = CLIBucketService(AWSCLIProvider.Details(env), TASKS_BUCKET_NAME)
+  elseif TASKS_LOCALE == "gcs"
+    bucket = CLIBucketService(GCSCLIProvider.Details(), TASKS_BUCKET_NAME)
+  end
     cache = FileSystemCacheService(TASKS_CACHE_DIRECTORY)
     datasource = BucketCacheDatasourceService(bucket, cache)
 
