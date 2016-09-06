@@ -29,6 +29,17 @@ function make_local_raw_dir()
 	end
 end
 
+function remove_premontaged_files(z_index)
+	import_table = load_import_table(z_index)
+	localpaths = get_local_tile_imported_paths(import_table)
+	for path in localpaths
+		if isfile(path)
+			println(`rm $path`)
+			# Base.run(`rm $path`)
+		end
+	end
+end
+
 function remove_local_raw_dir()
 	if isdir(LOCAL_RAW_DIR)
 		Base.run(`rm -rf $LOCAL_RAW_DIR`)
@@ -89,7 +100,7 @@ end
 
 function sync_to_upload()
 	dir = PREMONTAGED_DIR
-	println("Syncing subdirs for $dirs")
+	println("Syncing subdirs for $dir")
 	localpath = joinpath(BUCKET, DATASET, dir)
 	remotepath = joinpath(GCLOUD_BUCKET, DATASET, dir)
 	Base.run(`gsutil -m rsync -r $localpath $remotepath`)
@@ -449,6 +460,7 @@ function gentrify_tiles(z_index)
 	premontage(premontaged(1,z_index))
 	sync_to_upload()
 	remove_local_raw_dir()
+	remove_premontaged_files(z_index)
 end
 
 function import_tiles(z_index; from_current=false, reset=false, overwrite_offsets=true)
