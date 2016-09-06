@@ -162,6 +162,8 @@ function initialize_import_table(trakem_table, z_index)
 	include = [true for i in path_no_ext]
 	roi = [true for i in path_no_ext]
 
+	dir = get_src_dir(z_index)
+	import_table[:,1] = [joinpath(dir, fn) for fn in import_table[:,1]]
 	import_table = hcat(import_table, [waf sec row col height width include roi])
 	save_import_table(z_index, import_table)
 end
