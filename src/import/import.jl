@@ -41,10 +41,10 @@ function get_loadfile()
 	loadfile_sub_path = joinpath(DATASET, "import_aibs.csv")
 	loadfile_localpath = joinpath(homedir(), loadfile_sub_path)
 	if !isfile(loadfile_localpath)
-		loadfile_gcloud_path = joinpath(GCLOUD_BUCKET, loadfile_sub_path)
-		Base.run(`gsutil -m cp $loadfile_gcloud_path $loadfile_localpath`)
+		loadfile_remotepath = joinpath(GCLOUD_BUCKET, loadfile_sub_path)
+		Base.run(`gsutil -m cp $loadfile_remotepath $loadfile_localpath`)
 	end
-	return loadfile = readdlm(loadfile_localpath, ',')
+	return readdlm(loadfile_localpath, ',')
 end
 
 function get_trakem_file(z_index)
@@ -73,6 +73,7 @@ function sync_subdirs(subdirs=[IMPORT_DIR, CONTRAST_BIAS_DIR, CONTRAST_STRETCH_D
 end
 
 function download_raw_tiles(z_index; roi_only=true, overwrite=false)
+	println("Downloading raw tiles for ")
 	import_table = load_import_table(z_index)
 	remotepaths = get_remote_tile_raw_paths(import_table)
 	localpaths = get_local_tile_raw_paths(import_table)
