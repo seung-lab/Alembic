@@ -419,9 +419,8 @@ function gentrify_tiles(z_index)
 	download_raw_tiles(z_index)
 	import_tiles(z_index)
 	premontage(premontaged(1,z_index))
-	upload_imported_tiles(z_index)
-	remove_local_raw_dir()
 	sync_subdirs(to_remote=true)
+	remove_local_raw_dir()
 end
 
 function import_tiles(z_index; from_current=false, reset=false, overwrite_offsets=true)
