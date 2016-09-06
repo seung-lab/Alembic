@@ -15,7 +15,7 @@ ETA_NEWTON_MONTAGE = 0.6
 FTOL_NEWTON_MONTAGE = 1e-16
 
 
-MESH_LENGTH_PREALIGNMENT = 8000
+MESH_LENGTH_PREALIGNMENT = 4000
 GLOBAL_OFFSETS_PREALIGNMENT = false
 BLOCKMATCH_SCALE_PREALIGNMENT = 0.125
 BLOCK_R_PREALIGNMENT = 600
@@ -25,7 +25,7 @@ PREMATCH_TEMPLATE_RATIO_PREALIGNMENT = 0.02
 PREMATCH_SCALE_PREALIGNMENT = 0.10
 PREMATCH_ANGLES_PREALIGNMENT = 20
 
-MESH_LENGTH_ALIGNMENT = 400
+MESH_LENGTH_ALIGNMENT = 350
 GLOBAL_OFFSETS_ALIGNMENT = true
 BLOCKMATCH_SCALE_ALIGNMENT = 0.50
 BLOCK_R_ALIGNMENT = 600
@@ -68,7 +68,7 @@ global PARAMS_MONTAGE = Dict(
 			     		"sigma_filter_low" => (:get_properties, >, 150, 0.50),
 			     		"r_filter_min" => (:get_properties, <, 0.03, "r_max"),
 			     		"r_filter_max" => (:get_properties, >, 1, "r_max")
-						# "centered_norm_filter" => (:get_centered_norms, >, 20),
+					"centered_norm_filter" => (:get_centered_norms, >, 75),
 						# "norm_filter" => (:get_norms_std_sigmas, >, 5)
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 2.5)
 					      ),
@@ -78,10 +78,10 @@ global PARAMS_MONTAGE = Dict(
 					      ),
 			     "review" => Dict(
 						# "too_few_corresps" => (:count_correspondences, <, 10),
-						"rejected_ratio" => (:get_ratio_rejected, >, 0.66, 16),
+						"rejected_ratio" => (:get_ratio_rejected, >, 0.66, 20),
 						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.95),
 						#"norm_outliers" => (:count_outlier_norms, >, 0, 3), # too useless because they're so close to each other to begin with
-						"centered_norm" => (:get_maximum_centered_norm, >, 75)
+						"centered_norm" => (:get_maximum_centered_norm, >, 70)
 					      ),
 			     "registry" => Dict(
 					"global_offsets" => GLOBAL_OFFSETS_MONTAGE
@@ -184,3 +184,25 @@ global PARAMS_ALIGNMENT = Dict(
 					"global_offsets" => GLOBAL_OFFSETS_ALIGNMENT
 					)
 )
+
+global PARAMS_ALIGNMENT_SKIPPED = deepdopy(PARAMS_ALIGNMENT);
+PARAMS_ALIGNMENT_SKIPPED["match"]["search_r"] = 1400;
+PARAMS_ALIGNMENT_SKIPPED["filter"] = Dict(
+			     		"sigma_filter_high" => (:get_properties, >, 7, 0.95),
+			     		"sigma_filter_mid" => (:get_properties, >, 100, 0.75),
+			     		"sigma_filter_low" => (:get_properties, >, 250, 0.50),
+			     		"r_filter" => (:get_properties, <, 0.02, "r_max"),
+			     		# "norm_filter" => (:get_norms_std_sigmas, >, 5),
+			     		"kurtosis_filter" => (:get_properties, >, 25, "src_kurtosis"),
+			     		"kurtosis_filter_edge" => (:get_properties, <, -1.60, "src_kurtosis"),
+					"centered_norm_filter" => (:get_centered_norms, >, 700)
+					      );
+
+PARAMS_ALIGNMENT_SKIPPED["review"] = Dict(
+			     		"too_few_corresps" => (:count_correspondences, <, 100),
+						"rejected_ratio" => (:get_ratio_rejected, >, 0.45),
+						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.95),
+						"centered_norm" => (:get_maximum_centered_norm, >, BLOCK_R_ALIGNMENT * 1.25)
+
+)
+
