@@ -66,18 +66,37 @@ function get_trakem_file(z_index)
 	return readdlm(dst, '\t')
 end
 
-function sync_subdirs(subdirs=[IMPORT_DIR, CONTRAST_BIAS_DIR, CONTRAST_STRETCH_DIR, OUTLINE_DIR, THUMBNAIL_DIR, CORRESPONDENCE_DIR, RELATIVE_TRANSFORM_DIR, CUMULATIVE_TRANSFORM_DIR]; to_remote=false)
-	dirs = [OVERVIEW_DIR, PREMONTAGED_DIR]
-	println("Syncing subdirs for $dirs")
-	for dir in dirs
-		localpath = joinpath(BUCKET, DATASET, dir)
-		remotepath = joinpath(GCLOUD_BUCKET, DATASET, dir)
-		if to_remote
-			Base.run(`gsutil -m rsync -r $localpath $remotepath`)
-		else
-			Base.run(`gsutil -m rsync -r -x "\*.h5\$" $remotepath $localpath`)
-		end 
+function download_subdir_files(z_index)
+	paths = []
+	push!(paths, joinpath(OVERVIEW_DIR, CUMULATIVE_TRANSFORM_DIR, get_name("cumulative_transform", overview(1,z_index))))
+	push!(paths, joinpath(OVERVIEW_DIR, CORRESPONDENCE_DIR, get_name("correspondence", overview(1,z_index))))	
+	for path in paths
+		localpath = joinpath(BUCKET, DATASET, path)
+		remotepath = joinpath(GCLOUD_BUCKET, DATASET, path)
+		Base.run(`gsutil -m rsync -r $remotepath $localpath`)
 	end
+end
+
+function upload_subdir_files(z_index)
+	paths = []
+	push!(paths, joinpath(OVERVIEW_DIR, THUMBNAIL_DIR, get_name("thumbnail", premontaged(1,z_index))))
+	push!(paths, joinpath(OVERVIEW_DIR, OUTLINE_DIR, get_name("outline", premontaged(1,z_index))))
+	push!(paths, joinpath(OVERVIEW_DIR, IMPORT_DIR, get_name("import", premontaged(1,z_index))))
+	push!(paths, joinpath(OVERVIEW_DIR, CONTRAST_BIAS_DIR, get_name("contrast_bias", premontaged(1,z_index))))
+	push!(paths, joinpath(OVERVIEW_DIR, CONTRAST_STRETCH_DIR, get_name("contrast_stretch", premontaged(1,z_index))))
+	for path in paths
+		localpath = joinpath(BUCKET, DATASET, path)
+		remotepath = joinpath(GCLOUD_BUCKET, DATASET, path)
+		Base.run(`gsutil -m rsync -r $localpath $remotepath`)
+	end
+end
+
+function sync_to_upload()
+	dir = PREMONTAGED_DIR
+	println("Syncing subdirs for $dirs")
+	localpath = joinpath(BUCKET, DATASET, dir)
+	remotepath = joinpath(GCLOUD_BUCKET, DATASET, dir)
+	Base.run(`gsutil -m rsync -r $localpath $remotepath`)
 end
 
 function download_raw_tiles(z_index; roi_only=true, overwrite=false)
@@ -427,12 +446,12 @@ function gentrify_tiles(firstz, lastz)
 end
 
 function gentrify_tiles(z_index)
-	sync_subdirs(to_remote=false)
+	download_subdir_files(z_index)
 	make_local_raw_dir()
 	download_raw_tiles(z_index)
 	import_tiles(z_index)
 	premontage(premontaged(1,z_index))
-	sync_subdirs(to_remote=true)
+	sync_to_upload()
 	remove_local_raw_dir()
 end
 
