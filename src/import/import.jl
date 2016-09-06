@@ -75,7 +75,7 @@ function sync_subdirs(subdirs=[IMPORT_DIR, CONTRAST_BIAS_DIR, CONTRAST_STRETCH_D
 		if to_remote
 			Base.run(`gsutil -m rsync -r $localpath $remotepath`)
 		else
-			Base.run(`gsutil -m rsync -r $remotepath $localpath`)
+			Base.run(`gsutil -m rsync -r -x "*.h5$" $remotepath $localpath`)
 		end 
 	end
 end
