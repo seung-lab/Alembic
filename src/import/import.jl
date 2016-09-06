@@ -68,16 +68,13 @@ end
 function sync_subdirs(subdirs=[IMPORT_DIR, CONTRAST_BIAS_DIR, CONTRAST_STRETCH_DIR, OUTLINE_DIR, THUMBNAIL_DIR, CORRESPONDENCE_DIR, RELATIVE_TRANSFORM_DIR, CUMULATIVE_TRANSFORM_DIR]; to_remote=false)
 	dirs = [OVERVIEW_DIR, PREMONTAGED_DIR]
 	for dir in dirs
-		for subdir in subdirs
-			path = joinpath(dir, subdir)
-			localpath = joinpath(BUCKET, DATASET, path)
-			remotepath = joinpath(GCLOUD_BUCKET, DATASET, path)
-			if to_remote
-				Base.run(`gsutil -m rsync $localpath $remotepath`)
-			else
-				Base.run(`gsutil -m rsync $remotepath $localpath`)
-			end 
-		end
+		localpath = joinpath(BUCKET, DATASET, dir)
+		remotepath = joinpath(GCLOUD_BUCKET, DATASET, dir)
+		if to_remote
+			Base.run(`gsutil -m rsync -r $localpath $remotepath`)
+		else
+			Base.run(`gsutil -m rsync -r $remotepath $localpath`)
+		end 
 	end
 end
 
@@ -719,9 +716,9 @@ end
 function update_import_include!(z_index, import_table, roi=get_roi(z_index, scale=1/OVERVIEW_RESOLUTION), tform=get_tform(overview(1,z_index), OVERVIEW_RESOLUTION))
 	include_mask = create_flagged_mask(import_table)
 	roi_mask = get_roi_mask(import_table, roi, tform)
-	exisiting_mask = create_src_isfile_mask(import_table)
-	import_table[:,12] = include_mask & roi_mask & exisiting_mask
-	# save_import_table(z_index, import_table)
+	# exisiting_mask = create_src_isfile_mask(import_table)
+	import_table[:,12] = include_mask & roi_mask # & exisiting_mask
+	save_import_table(z_index, import_table)
 end
 
 function get_included_indices(import_table)
