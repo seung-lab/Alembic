@@ -185,7 +185,7 @@ global PARAMS_ALIGNMENT = Dict(
 					)
 )
 
-global PARAMS_ALIGNMENT_SKIPPED = deepdopy(PARAMS_ALIGNMENT);
+global PARAMS_ALIGNMENT_SKIPPED = deepcopy(PARAMS_ALIGNMENT);
 PARAMS_ALIGNMENT_SKIPPED["match"]["search_r"] = 1400;
 PARAMS_ALIGNMENT_SKIPPED["filter"] = Dict(
 			     		"sigma_filter_high" => (:get_properties, >, 7, 0.95),
