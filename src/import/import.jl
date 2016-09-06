@@ -534,7 +534,8 @@ function get_local_tile_raw_path(import_table, i)
 end
 
 function get_remote_tile_imported_path(import_table, i)
-	return joinpath(GCLOUD_BUCKET, import_table[i,1])
+	index = get_import_index(import_table, i)
+	return joinpath(GCLOUD_BUCKET, get_path(index))
 end
 
 function get_local_tile_dst_path(import_table, i)
