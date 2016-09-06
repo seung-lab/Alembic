@@ -1,21 +1,99 @@
-global PREVIOUS_OVERVIEW_RESOLUTION = 86/3000
-global PREVIOUS_IMPORT_BB = ImageRegistration.BoundingBox(10110,19850,39000,28000)
 global OVERVIEW_RESOLUTION = 95.3/3840 # 3.58/225.0 
-global OVERVIEW_IMPORT_BB = ImageRegistration.BoundingBox(290,570,1110,800)
-global IMPORT_BB = snap_bb(scale_bb(OVERVIEW_IMPORT_BB, 1/OVERVIEW_RESOLUTION))
+global LOCAL_RAW_DIR = joinpath(homedir(), "raw")
+global GCLOUD_RAW_DIR = "gs://243774_8973/"
+global GCLOUD_IMPORTED_DIR = "gs://seunglab_alembic/"
+
+# function gsutil_download(remote_file::AbstractString, local_file::Union{AbstractString, IO, Void}=nothing)
+#    download_cmd = `gsutil -m cp
+#        "$(bucket.provider.prefix)/$(bucket.name)/$remote_file" -`
+#    s3_output = Pipe()
+#    # open the cmd in write mode. this automatically takes the 2nd arg
+#    # (stdio) and uses it as redirection of STDOUT.
+#    (s3_input, process) = open(download_cmd, "w", s3_output)
+#    close(s3_output.in)
+# end
 
 function get_src_dir(z_index)
-	LOADFILE = readdlm("/media/tmacrina/667FB0797A5072D7/3D_align/mosaiced_images_160729_google_cloud_upload_seung_import.csv",',')
-	i = findfirst(i -> i == z_index, LOADFILE[:,1])
+	# LOADFILE = readdlm("/media/tmacrina/667FB0797A5072D7/3D_align/mosaiced_images_160729_google_cloud_upload_seung_import.csv",',')
+	# LOADFILE = readdlm(joinpath(homedir(), "seungmount/research/Julimaps/datasets/pinky/import_aibs.csv"),',')
+	loadfile = get_loadfile()
+	i = findfirst(i -> i == z_index, loadfile[:,1])
 	if i > 0
-		return joinpath("/media/tmacrina/", LOADFILE[i, 2])
-	else
-		return nothing
+		return loadfile[i,2]
 	end
 end
 
+function get_local_raw_path(z_index)
+	src_dir = get_src_dir(z_index)
+	path = joinpath(LOCAL_RAW_DIR, src_dir)
+	if !isdir(path)
+		mkdir(path)
+	end
+	return path
+end
+
+function get_remote_raw_path(z_index)
+	src_dir = get_src_dir(z_index)
+	return joinpath(GCLOUD_RAW_DIR, src_dir)
+end
+
+function get_loadfile()
+	loadfile_sub_path = joinpath(DATASET, "import_aibs.csv")
+	loadfile_local_path = joinpath(homedir(), loadfile_sub_path)
+	if !isfile(loadfile_local_path)
+		loadfile_gcloud_path = joinpath(GCLOUD_IMPORTED_DIR, loadfile_sub_path)
+		Base.run(`gsutil -m cp $loadfile_gcloud_path $loadfile_local_path`)
+	end
+	return loadfile = readdlm(loadfile_local_path, ',')
+end
+
+function get_trakem_file(z_index)
+	remote_raw_path = get_remote_raw_path(z_index)
+	src = joinpath(remote_raw_path, "_trackem_\*")
+	local_raw_path = get_local_raw_path(z_index)
+	dst = joinpath(local_raw_path, "trakem_import.txt")
+	Base.run("gsutil -m cp $src $dst")
+	return readdlm(dst, '\t')
+end
+
+function download_raw_tiles(z_index; roi_only=true, overwrite=false)
+	import_table = load_import_table(z_index)
+	remote_paths = get_remote_tile_raw_paths(import_table)
+	local_paths = get_local_tile_raw_paths(import_table)
+	if roi_only
+		import_indices = get_included_indices(import_table)
+		remote_paths = remote_paths[import_indices]
+		local_paths = local_paths[import_indices]
+	end
+	if !overwrite
+		tiles_do_not_exist_locally = [!isfile(f) for f in local_paths]
+		remote_paths = remote_paths[tiles_do_not_exist_locally]
+		local_paths = local_paths[tiles_do_not_exist_locally]
+	end
+	download_cmds = [`gsutil cp $src $dst` for (src, dst) in zip(remote_paths, local_paths)]
+	pmap(Base.run, download_cmds)
+end
+
+function sync_premontage_registry()
+	local_path = get_registry_path(premontaged(1,1))
+	remote_path = joinpath(GCLOUD_IMPORTED_DIR, DATASET, PREMONTAGED_DIR)
+	Base.run(`gsutil rsync $local_path $remote_path`)
+
+end
+
+function upload_imported_tiles(z_index)
+	import_table = load_import_table(z_index)
+	local_paths = get_local_tile_imported_paths(import_table)
+	remote_paths = get_remote_tile_imported_paths(import_table)
+	tiles_exist_locally = [isfile(f) for f in local_paths]
+	local_paths = local_paths[tiles_exist_locally]
+	remote_paths = remote_paths[tiles_exist_locally]
+	download_cmds = [`gsutil rsync $src $dst` for (src, dst) in zip(local_paths, remote_paths)]
+	pmap(Base.run, download_cmds)
+end
+
 function load_metadata(z_index)
-	dir = get_src_dir(z_index)
+	dir, _ = get_src_dir(z_index)
 	files = readdir(dir)
 	meta_fn = files[findfirst(i -> contains(i, "meta"), files)]
 	return JSON.parsefile(joinpath(dir, meta_fn), dicttype=Dict, use_mmap=true)
@@ -38,19 +116,17 @@ end
 function load_import_table(z_index; reset=false)
 	import_fn = get_path("import", premontaged(1, z_index))
 	if !isfile(import_fn) || reset
-		dir = get_src_dir(z_index)
-		files = readdir(dir)
-		trakem_fn = files[findfirst(i -> contains(i, "trackem"), files)]
-		initialize_import_table(joinpath(dir, trakem_fn), z_index)
+		trakem_table = get_trakem_file(z_index)
+		initialize_import_table(trakem_table, z_index)
 	end
-	import_table = readdlm(import_fn)
+	import_table = readdlm(import_fn, '\t')
 	update_import_include!(z_index, import_table)
 	return import_table
 end
 
-function initialize_import_table(import_src_fn, z_index)
-	println("Initializing import table for section $z_index from $import_src_fn")
-	import_table = readdlm(import_src_fn)
+function initialize_import_table(trakem_table, z_index)
+	println("Initializing import table for section $z_index")
+	import_table = trakem_table
 
 	# pull out row & col from filename
 	path_no_ext = [split(i, ".")[1] for i in import_table[:,1]]
@@ -63,10 +139,6 @@ function initialize_import_table(import_src_fn, z_index)
 	include = [true for i in path_no_ext]
 	roi = [true for i in path_no_ext]
 
-	# include full path to the file
-	dir = get_src_dir(z_index)
-	import_table[:,1] = [joinpath(dir, fn) for fn in import_table[:,1]]
-	# dst_path = map(get_path, zip(waf, sec, row, col))
 	import_table = hcat(import_table, [waf sec row col height width include roi])
 	save_import_table(z_index, import_table)
 end
@@ -83,14 +155,16 @@ function bias_correction(img, bias, bias_mean)
 end
 
 function contrast_stretch(img, minintensity, maxintensity)
-	return min(1.0, max(0.0, (img-minintensity) / (maxintensity-minintensity)))
+	maxval = 1.0
+	minval = 1.0/255
+	return min(maxval, max(minval, (img-minintensity) / (maxintensity-minintensity)))
 end
 
 function auto_contrast_stretch(img, bins=20)
 	hist = nquantile(img[:], bins)
 	minintensity = hist[2]
 	maxintensity = hist[end-1]
-	return min(1.0, max(0.0, (img-minintensity) / (maxintensity-minintensity)))
+	return contrast_stretch(img, minintensity, maxintensity)
 end
 
 function convert_float64_to_uint8(img)
@@ -117,7 +191,7 @@ function adjust_tile(z_index, i)
 	# maxval = contrast_hist[length(contrast_hist)-1]
 	maxval = dtype(typemax(UInt16))
 
-	src_fn = get_src_fn(import_table,i)
+	src_fn = get_local_tile_raw_path(import_table,i)
 	if isfile(src_fn)
 		img = get_image_disk(src_fn, dtype)
 		img = bias_correction(img, bias, bias_mean)
@@ -136,6 +210,32 @@ function load_bias_image(z_index; reset=false)
 	return get_image_disk(bias_fn, Float64)
 end
 
+function clean_zeros(img, fill=0.5)
+	return img[img .== 0] = fill
+end
+
+function find_zeros_coords(img)
+	bl = []
+	for i=1:size(img,1)
+		for j=1:size(img,2)
+			if img[i,j] == 0
+				push!(bl, (i,j))
+			end
+		end
+	end
+	return bl
+end
+
+"""
+AIBS tiles in pinky have known black pixel at (254,1123)
+"""
+function clean_aibs_image(img)
+	sample = img[253:255, 1122:1124][:]
+	fill = sum(sample) / (length(sample) - 1)
+	img[254,1123] = fill
+	return img
+end
+
 function calculate_section_bias_field(z_index, N=100)
 	println("Calculating contrast bias field for $z_index using $N samples")
 	indices = []
@@ -149,10 +249,12 @@ function calculate_section_bias_field(z_index, N=100)
 
 	bias = @parallel (+) for i=samples
 		println(i)
-		Images.imfilter_gaussian_no_nans!(get_image_disk(get_src_fn(import_table, i), Float64), [10,10]) / N
+		img = get_image_disk(get_local_tile_raw_path(import_table, i), Float64)
+		img = clean_aibs_image(img)
+		Images.imfilter_gaussian_no_nans!(img, [10,10]) / N
 	end
 
-	bias[bias .== 0] = 1
+	# bias[bias .== 0] = 1 # not necessary with clean_aibs_image
 	bias_fn = get_path("contrast_bias", premontaged(1,z_index))
 	f = h5open(bias_fn, "w")
 	f["img"] = bias
@@ -173,8 +275,9 @@ function calculate_contrast_histogram(z_index, N=100, bins=20)
 	function sample_image(i)
 	# for i in samples
 		println("Loading sample $i / $(length(samples))")
-		img = get_image_disk(get_src_fn(import_table, i), dtype)
-		smp = bias_correction(img, bias, bias_mean)[3840*1900:3840*1920]
+		img = get_image_disk(get_local_tile_raw_path(import_table, i), dtype)
+		img = clean_aibs_image(img)
+		smp = bias_correction(img, bias, bias_mean)[rand(1:length(img), 14745)] #[3840*1900:3840*1920] # sample the middle of the tile to be faster
 		# push!(intensities, smp)
 		return smp
 	end
@@ -188,8 +291,36 @@ function calculate_contrast_histogram(z_index, N=100, bins=20)
 	return intensities
 end
 
+function import_overview_gcloud(z_index)
+	dir, exists_gcloud = get_src_dir(z_index)
+	if dir != nothing
+		index = (1,z_index,OVERVIEW_INDEX,OVERVIEW_INDEX)
+		dst_fn = string(get_path(index)[1:end-3], ".tif")
+		if exists_gcloud
+			src_fn = joinpath(dir, "_montage\*")
+			f = "sudo gsutil -m cp $src_fn $dst_fn"
+		else
+			src_fn = joinpath(dir, "_montage\*")
+			f = "cp $src_fn $dst_fn"
+		end
+		return f
+	end
+	return nothing
+end
+
+function import_overview_gcloud(firstz, lastz)
+	paths = []
+	for z = firstz:lastz
+		a = import_overview_gcloud(z)
+		if a != nothing
+			push!(paths, a)
+		end
+	end
+	return paths
+end
+
 function import_overview(z_index)
-	dir = get_src_dir(z_index)
+	dir, _ = get_src_dir(z_index)
 	if dir != nothing
 		files = readdir(dir)
 		k = findfirst(i -> contains(i, "montage"), files)
@@ -197,15 +328,26 @@ function import_overview(z_index)
 		if k > 0
 			src_fn = joinpath(dir, files[k])
 			dst_fn = string(get_path(index)[1:end-3], ".tif")
-			run(`cp $src_fn $dst_fn`)
+			f = `cp $src_fn $dst_fn`
+			println(f)
+			Base.run(f)
 		end
 	end
+end
+
+function resave_overview(z_index)
+	index = (1,z_index,OVERVIEW_INDEX,OVERVIEW_INDEX)
+	dtype = UInt8
+	src_fn = string(get_path(index)[1:end-3], ".tif")
+	img = get_image_disk(src_fn, dtype)
+	dst_fn = get_path(index)
+	save_import_tile(dst_fn, img)
 end
 
 function save_import_tile(fn, img)
 	println("dst: $fn")
 	f = h5open(fn, "w")
-	chunksize = 1000
+	chunksize = 500
 	@time f["img", "chunk", (chunksize,chunksize)] = img
 	close(f)	
 end
@@ -223,8 +365,8 @@ function fix_contrast(src_index::Index, ref_index::Index)
 	bias = load_bias_image(z_index)
 	bias_mean = mean(bias)
 
-	ref_fn = get_src_fn(import_table, ref_k)
-	src_fn = get_src_fn(import_table, src_k)
+	ref_fn = get_local_tile_raw_path(import_table, ref_k)
+	src_fn = get_local_tile_raw_path(import_table, src_k)
 
 	dtype = Float64
 	ref_img = get_image_disk(ref_fn, dtype)
@@ -239,64 +381,79 @@ function fix_contrast(src_index::Index, ref_index::Index)
 	src_img = min(1.0, max(0.0, (src_img-minintensity) / (maxintensity-minintensity)))
 	src_img = convert_float64_to_uint8(src_img)
 
-	dst_fn = get_dst_fn(import_table, src_k)
+	dst_fn = get_local_tile_dst_path(import_table, src_k)
 	save_import_tile(dst_fn, src_img)
 	return src_img
 end
 
-function import_tiles(z_index; reset=false)
-	# try
+function gentrify_tiles(z_index)
+	download_raw_tiles(z_index)
+	import_tiles(z_index)
+	premontage(premontaged(1,z_index))
+	upload_imported_tiles(z_index)
+end
+
+function import_tiles(z_index; from_current=false, reset=false, overwrite_offsets=false)
+	thumbnail_scale = OVERVIEW_RESOLUTION
 	import_table = load_import_table(z_index)
 	N = size(import_table, 1)
 
 	import_indices = get_included_indices(import_table)
-	if !reset
+	if from_current
 		import_indices = get_unwritten_included_indices(import_table)
 	end
 	n = length(import_indices)
 	# contrast_clusters = get_contrast_clusters(import_table)
 	bias = load_bias_image(z_index, reset=reset)
 	bias_mean = mean(bias)
-	# contrast_hist = load_contrast_histogram(z_index, reset=reset)
+	contrast_hist = load_contrast_histogram(z_index, reset=reset)
 	# minintensity = contrast_hist[2]
 	# maxintensity = contrast_hist[end-1]
 	dtype = Float64
 
 	function import_tile(i)
-		src_fn = get_src_fn(import_table, i)
-		dst_fn = get_dst_fn(import_table, i)
+		src_fn = get_local_tile_raw_path(import_table, i)
+		dst_fn = get_local_tile_dst_path(import_table, i)
 		index = get_import_index(import_table, i)
 		println("Importing $index, # $i / $n")
 		println("\tsrc: $src_fn")
 
 		img = get_image_disk(src_fn, dtype)
 		sz = size(img)
+		offset = get_import_offset(import_table, i)
 		img = bias_correction(img, bias, bias_mean)
 		# img = contrast_stretch(img, minintensity, maxintensity)
 		img = auto_contrast_stretch(img)
 		img = convert_float64_to_uint8(img)
 		# resin = is_adjusted_resin(img, 20, z_index)
-		save_import_tile(dst_fn, img)
-		return i, sz...
+		# save_import_tile(dst_fn, img)
+		return i, sz..., offset, img
 	end
 
 	results = pmap(import_tile, import_indices)
 
-	indices = [i[1] for i in results]
-	order = sortperm(indices)
-	height = [i[2] for i in results][order]
-	width = [i[3] for i in results][order]
-	# resin = [i[4] for i in results]
+	offset = [i[4] for i in results]
+	tiles = [i[5] for i in results]
+	println("Creating imported stage stitched thumbnail")
+	ss, ss_offset = merge_images(tiles, offset)
+	thumbnail, thumbnail_offset = imscale(ss, thumbnail_scale)
+    write_thumbnail(thumbnail, premontaged(1,z_index), thumbnail_scale)
 
-	println("Appending image size to import table")
-	import_table[import_indices,9] = height
-	import_table[import_indices,10] = width
+	if overwrite_offsets
+		indices = [i[1] for i in results]
+		order = sortperm(indices)
+		height = [i[2] for i in results][order]
+		width = [i[3] for i in results][order]
 
-	import_dst_fn = get_path("import", premontaged(1, z_index))
-	println("Writing import table for section $z_index to $import_dst_fn")
-	writedlm(import_dst_fn, import_table)
-	initialize_offsets(z_index)
-	# end
+		println("Appending image size to import table")
+		import_table[import_indices,9] = height
+		import_table[import_indices,10] = width
+
+		import_dst_fn = get_path("import", premontaged(1, z_index))
+		println("Writing import table for section $z_index to $import_dst_fn")
+		writedlm(import_dst_fn, import_table)
+		initialize_offsets(z_index)
+	end
 end
 
 function downsample_tiles(z_index, thumbnail_scale=0.25)
@@ -308,7 +465,7 @@ function downsample_tiles(z_index, thumbnail_scale=0.25)
 	dtype = Float64
 
 	function downsample_tile(i)
-		src_fn = get_src_fn(import_table, i)
+		src_fn = get_local_tile_raw_path(import_table, i)
 		index = get_import_index(import_table, i)
 		println("Downsampling $index, # $i / $n")
 		img = get_image_disk(src_fn, dtype)
@@ -337,21 +494,37 @@ function concat_thumbs(z_index, M=10)
 	return thumb_array
 end
 
-function get_src_fn(import_table, i)
-	return import_table[i,1]
+function get_remote_tile_raw_path(import_table, i)
+	return joinpath(GCLOUD_RAW_DIR, import_table[i,1])
 end
 
-function get_dst_fn(import_table, i)
+function get_local_tile_raw_path(import_table, i)
+	return joinpath(LOCAL_RAW_DIR, import_table[i,1])
+end
+
+function get_remote_tile_imported_path(import_table, i)
+	return joinpath(GCLOUD_imported_DIR, import_table[i,1])
+end
+
+function get_local_tile_dst_path(import_table, i)
 	index = get_import_index(import_table, i)
 	return get_path(index)
 end
 
-function get_src_filenames(import_table)
-	return [get_src_fn(import_table, i) for i in 1:size(import_table,1)]
+function get_local_tile_raw_paths(import_table)
+	return [get_local_tile_raw_path(import_table, i) for i in 1:size(import_table,1)]
+end
+
+function get_remote_tile_imported_paths(import_table)
+	return [get_remote_tile_imported_path(import_table, i) for i in 1:size(import_table,1)]
+end
+
+function get_remote_tile_raw_paths(import_table)
+	return [get_remote_tile_raw_path(import_table, i) for i in 1:size(import_table,1)]
 end
 
 function get_dst_filenames(import_table)
-	return [get_dst_fn(import_table, i) for i in 1:size(import_table,1)]
+	return [get_local_tile_dst_path(import_table, i) for i in 1:size(import_table,1)]
 end
 
 function get_row_numbers(import_table)
@@ -392,7 +565,7 @@ function create_dst_isfile_mask(import_table)
 end
 
 function create_src_isfile_mask(import_table)
-	return convert(BitArray, map(isfile, get_src_filenames(import_table)))
+	return convert(BitArray, map(isfile, get_local_tile_raw_paths(import_table)))
 end
 
 function get_import_sizes(import_table)
@@ -411,14 +584,14 @@ end
 # 	return convert(BitArray, import_table[:,12] .== i)
 # end
 
-function initialize_offsets(z_index)
+function initialize_offsets(z_index; )
 	import_table = load_import_table(z_index)
-	imported_tiles = create_dst_isfile_mask(import_table)
+	included_tiles = get_included_indices(import_table)
 	indices = get_import_indices(import_table)
 	offsets = get_import_offsets(import_table)
 	# sizes = get_import_sizes(import_table)
 	sizes = [(3840,3840) for i in 1:size(import_table,1)]
-	update_offsets(indices[imported_tiles], offsets[imported_tiles], sizes[imported_tiles])
+	update_offsets(indices[included_tiles], offsets[included_tiles], sizes[included_tiles])
 end
 
 function setup_registry_after_python_import(dir)
@@ -475,20 +648,19 @@ function view_import_bb(z_index::Int64, tform=eye(3))
 	view_polys(polys, indices)
 end
 
-function view_roi_previous(z_index::Int64)
-	roi = PREVIOUS_IMPORT_BB
-	tform = get_tform(overview(1,z_index), PREVIOUS_OVERVIEW_RESOLUTION)
-	return view_roi(z_index, roi=roi, tform=tform)
+function get_roi(z_index::Int64; scale=1.0)
+	return load("correspondence", overview(1,z_index)) * scale
 end
 
-function view_roi(z_index::Int64; roi::ImageRegistration.BoundingBox=IMPORT_BB, tform=get_tform(overview(1,z_index), OVERVIEW_RESOLUTION))
-	scale = 0.05
+function view_roi(z_index::Int64; tform=get_tform(overview(1,z_index), OVERVIEW_RESOLUTION))
+	s = 0.05
 	import_table = load_import_table(z_index)
 	polys = make_import_outline(import_table, tform)
 	# polys = [poly[1:4,:] for poly in polys]
-	polys = tform_bbs_pts(polys, make_scale_matrix(scale))
+	polys = tform_bbs_pts(polys, make_scale_matrix(s))
 	indices = get_import_indices(import_table)
-	view_polys(polys, indices, bb_to_pts(scale_bb(roi, scale)))
+	roi = get_roi(z_index, scale=s/OVERVIEW_RESOLUTION)
+	view_polys(polys, indices, roi)
 end
 
 function make_import_outline(import_table, tform=eye(3))
@@ -504,17 +676,17 @@ function get_roi_mask(import_table, roi, tform)
 	# bbs = all_bbs[roi_intersects]
 	# indices = all_indices[roi_intersects]
 	tiles = make_import_outline(import_table, tform)
-	return convert(BitArray, [poly_intersects(tile, bb_to_pts(roi)) for tile in tiles])
+	return convert(BitArray, [poly_intersects(tile, roi) for tile in tiles])
 end
 
-function get_tile_indices(z_index::Int64, roi::ImageRegistration.BoundingBox=IMPORT_BB, tform=get_tform(overview(1,z_index), OVERVIEW_RESOLUTION))
+function get_tile_indices(z_index::Int64, roi=get_roi(z_index, scale=1/OVERVIEW_RESOLUTION), tform=get_tform(overview(1,z_index), OVERVIEW_RESOLUTION))
 	import_table = load_import_table(z_index)
 	all_indices = get_import_indices(import_table)
 	roi_mask = get_roi_mask(import_table, roi, tform)
 	return all_indices[roi_mask]
 end
 
-function update_import_include!(z_index, import_table, roi::ImageRegistration.BoundingBox=IMPORT_BB, tform=get_tform(overview(1,z_index), OVERVIEW_RESOLUTION))
+function update_import_include!(z_index, import_table, roi=get_roi(z_index, scale=1/OVERVIEW_RESOLUTION), tform=get_tform(overview(1,z_index), OVERVIEW_RESOLUTION))
 	include_mask = create_flagged_mask(import_table)
 	roi_mask = get_roi_mask(import_table, roi, tform)
 	exisiting_mask = create_src_isfile_mask(import_table)
@@ -562,7 +734,7 @@ function rename_files(subdir)
 			src_fn = joinpath(dir_path, f)
 			index = parse_name(f)
 			dst_fn = get_path(overview(index))
-			run(`mv $src_fn $dst_fn`)
+			Base.run(`mv $src_fn $dst_fn`)
 		end
 	end
 end
@@ -713,5 +885,43 @@ end
 function reset_montage_registry_tform(firstindex::Index, lastindex::Index)
 	for index in get_index_range(firstindex, lastindex)
 		update_registry(index, rotation=0, offset=[0,0])
+	end
+end
+
+function copy_overviews_to_montages(firstz, lastz)
+	for z = firstz:lastz
+		src_index = overview(1,z)
+		dst_index = montaged(1,z)
+		src_fn = get_path(src_index)
+		dst_fn = get_path(dst_index)
+		if isfile(src_fn)
+			f = `cp $src_fn $dst_fn`
+			# println(f)
+			Base.run(f)
+			# println(dst_index, get_overview_size(dst_index))
+			update_registry(dst_index, offset=[0,0], image_size=get_overview_size(dst_index))
+		end
+	end
+end
+
+function copy_between_projects(firstz, lastz, stage, dir_name, src_dataset, dst_dataset)
+	gp = get_path(dir_name, eval(stage)(1,firstz))
+	datasets_path = join(split(gp, "/")[1:end-4], "/")
+	src_path = joinpath(datasets_path, src_dataset)
+	dst_path = joinpath(datasets_path, dst_dataset)
+	for z = firstz:lastz
+		src_subdir = get_path(dir_name, eval(stage)(1,z))
+		src_subdir = join(split(src_subdir, "/")[end-2:end], "/")
+		src = joinpath(src_path, src_subdir)
+		dst_subdir = get_path(dir_name, overview(1,z))
+		dst_subdir = join(split(dst_subdir, "/")[end-2:end], "/")
+		dst = joinpath(dst_path, dst_subdir)
+		if isfile(src)
+			f = `cp $src $dst`
+			println(f)
+			Base.run(f)
+		else
+			println("Does not exist: $src")
+		end
 	end
 end
