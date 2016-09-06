@@ -31,7 +31,7 @@ end
 
 function remove_local_raw_dir()
 	if isdir(LOCAL_RAW_DIR)
-		rm(LOCAL_RAW_DIR)
+		Base.run(`rm -rf $LOCAL_RAW_DIR`)
 	end
 end
 
@@ -411,6 +411,19 @@ function fix_contrast(src_index::Index, ref_index::Index)
 	dst_fn = get_local_tile_dst_path(import_table, src_k)
 	save_import_tile(dst_fn, src_img)
 	return src_img
+end
+
+function gentrify_tiles(firstz, lastz)
+	pr = []
+	for z = firstz:lastz
+		try 
+			gentrify_tiles(z)
+			push!(pr, [z,1])
+		catch
+			push!(pr, [z,0])
+		end
+		writedlm(joinpath(homedir(), "import_issues.txt"))
+	end
 end
 
 function gentrify_tiles(z_index)
