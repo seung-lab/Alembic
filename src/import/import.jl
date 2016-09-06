@@ -422,7 +422,7 @@ function gentrify_tiles(z_index)
 	sync_subdirs(to_remote=true)
 end
 
-function import_tiles(z_index; from_current=false, reset=false, overwrite_offsets=false)
+function import_tiles(z_index; from_current=false, reset=false, overwrite_offsets=true)
 	thumbnail_scale = OVERVIEW_RESOLUTION
 	import_table = load_import_table(z_index)
 	N = size(import_table, 1)

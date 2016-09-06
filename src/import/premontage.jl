@@ -59,7 +59,7 @@ function premontage(index::Index)
     overlap_indices = sortperm(overlap_area, rev=true, by=negative_nans)
     indices_limit = min(8, length(overlap_indices))
     for idx in overlap_indices[1:indices_limit]
-      if maximum(get_size(overlap_bbs[idx])) > 1000
+      if maximum(ImageRegistration.get_size(overlap_bbs[idx])) > 1000
         findex = tile_indices[idx]
         fixed_bb = fixed_bbs[idx]
         push!(overlaps, (mindex, findex, moving_bb, fixed_bb, scale))
