@@ -23,12 +23,17 @@ function get_src_dir(z_index)
 	end
 end
 
+function make_local_raw_dir()
+	mkdir(LOCAL_RAW_DIR)
+end
+
+function remove_local_raw_dir()
+	rm(LOCAL_RAW_DIR)
+end
+
 function get_local_raw_path(z_index)
 	src_dir = get_src_dir(z_index)
 	path = joinpath(LOCAL_RAW_DIR, src_dir)
-	if !isdir(path)
-		mkdir(path)
-	end
 	return path
 end
 
@@ -404,12 +409,14 @@ function fix_contrast(src_index::Index, ref_index::Index)
 end
 
 function gentrify_tiles(z_index)
+	make_local_raw_dir()
 	download_raw_tiles(z_index)
 	sync_subdirs(to_remote=false)
 	import_tiles(z_index)
 	premontage(premontaged(1,z_index))
 	upload_imported_tiles(z_index)
 	sync_subdirs(to_remote=true)
+	remove_local_raw_dir()
 end
 
 function import_tiles(z_index; from_current=false, reset=false, overwrite_offsets=false)
