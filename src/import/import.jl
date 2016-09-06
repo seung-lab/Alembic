@@ -71,9 +71,9 @@ function sync_subdirs(subdirs=[IMPORT_DIR, CONTRAST_BIAS_DIR, CONTRAST_STRETCH_D
 		localpath = joinpath(BUCKET, DATASET, dir)
 		remotepath = joinpath(GCLOUD_BUCKET, DATASET, dir)
 		if to_remote
-			Base.run(`gsutil -m rsync $localpath $remotepath`)
+			Base.run(`gsutil -m rsync -r $localpath $remotepath`)
 		else
-			Base.run(`gsutil -m rsync $remotepath $localpath`)
+			Base.run(`gsutil -m rsync -r $remotepath $localpath`)
 		end 
 	end
 end
