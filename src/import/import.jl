@@ -67,9 +67,10 @@ function get_trakem_file(z_index)
 end
 
 function download_subdir_files(z_index)
-	subdirs = ["cumulative_transform", "correspondence"]	
+	dir = OVERVIEW_DIR
+	subdirs = [CUMULATIVE_TRANSFORM_DIR, CORRESPONDENCE_DIR]	
 	for subdir in subdirs
-		path = truncate_path(get_path(subdir, overview(1,z_index)))
+		path = joinpath(dir, subdir)
 		localpath = joinpath(BUCKET, DATASET, path)
 		remotepath = joinpath(GCLOUD_BUCKET, DATASET, path)
 		Base.run(`gsutil -m rsync -r $remotepath $localpath`)
@@ -82,7 +83,7 @@ function upload_subdir_files(z_index)
 		path = truncate_path(get_path(subdir, premontaged(1,z_index)))
 		localpath = joinpath(BUCKET, DATASET, path)
 		remotepath = joinpath(GCLOUD_BUCKET, DATASET, path)
-		Base.run(`gsutil -m rsync -r $localpath $remotepath`)
+		Base.run(`gsutil -m cp -r $localpath $remotepath`)
 	end
 end
 
