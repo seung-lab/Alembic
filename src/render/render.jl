@@ -33,7 +33,17 @@ function render(ms::MeshSet; review=false)
   end
 end
 
+# todo make universal cleaner 
 function render(index::Index; render_full=true)
+  if is_montaged(index)
+    ms = load(MeshSet, index);
+    render_montaged(ms, render_full=true, render_review=false, flagged_only=true)
+  end
+  if is_prealigned(index)
+      render_prealigned_full(index)
+    end
+
+  if is_aligned(index)
   mesh = load(Mesh, prevstage(index));
   if mesh == nothing return nothing end;
     new_fn = get_name(index)
@@ -52,6 +62,7 @@ function render(index::Index; render_full=true)
         f["size"] = [size(img)...]
       close(f)
       update_registry(index; offset = offset, image_size = size(img))
+    end
 end
 
 """
@@ -147,7 +158,7 @@ function compile_cumulative_transforms(firstindex::Index, lastindex::Index)
   end
 end
 
-function render_prealigned_full(index::Index; thumbnail_scale=get_params(index)["render"]["thumbnail_scale"], overview=false)
+function render_prealigned_full(index::Index; thumbnail_scale=get_params(prevstage(index))["render"]["thumbnail_scale"], overview=false)
   img = load(index)
   scale = make_scale_matrix(1.0)
   if overview
