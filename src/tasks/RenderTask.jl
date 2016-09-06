@@ -18,20 +18,30 @@ end
 RenderTaskDetails{String <: AbstractString}(basic_info::BasicTask.Info, dict::Dict{String, Any}) = RenderTaskDetails(basic_info, AlembicPayloadInfo(dict));
 
 
+#TODO MAKE THIS PROPER AND NOT ALL OVER THE PLACE
 # creates a task to make a MeshSet for index
 function RenderTaskDetails(index::Main.Index)
 	indices = Main.ancestors(index);
 
 	inputs_images = map(Main.truncate_path, map(Main.get_path, indices));
-	inputs_meshes = map(Main.truncate_path, map(Main.get_path, repeated("Mesh"), indices));
 	inputs_registry = map(Main.truncate_path, map(Main.get_registry_path, indices));
+
       if Main.is_prealigned(index) 
 	input_transform = [Main.truncate_path(Main.get_path("cumulative_transform", index))]
-      else
+	inputs_meshes = [];
+	inputs_meshset = [];
+      elseif Main.is_montaged(index)
+#	inputs_meshes = map(Main.truncate_path, map(Main.get_path, repeated("Mesh"), indices));
+	inputs_meshes = [];
+	inputs_meshset = [Main.truncate_path(Main.get_path("MeshSet", index))];
 	input_transform = [];
+      elseif Main.is_aligned(index)
+	inputs_meshes = map(Main.truncate_path, map(Main.get_path, repeated("Mesh"), indices));
+	input_transform = [];
+	inputs_meshset = [];
       end
 
-	inputs = unique(vcat(inputs_images, inputs_registry, inputs_meshes, input_transform))
+	inputs = unique(vcat(inputs_images, inputs_registry, inputs_meshes, inputs_meshset, input_transform))
 	
 #	output_meshset = Main.truncate_path(Main.get_path("MeshSet", index))
 #	output_stats = Main.truncate_path(Main.get_path("stats", index))
