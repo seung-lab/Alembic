@@ -716,9 +716,9 @@ end
 function update_import_include!(z_index, import_table, roi=get_roi(z_index, scale=1/OVERVIEW_RESOLUTION), tform=get_tform(overview(1,z_index), OVERVIEW_RESOLUTION))
 	include_mask = create_flagged_mask(import_table)
 	roi_mask = get_roi_mask(import_table, roi, tform)
-	exisiting_mask = create_src_isfile_mask(import_table)
-	import_table[:,12] = include_mask & roi_mask & exisiting_mask
-	# save_import_table(z_index, import_table)
+	# exisiting_mask = create_src_isfile_mask(import_table)
+	import_table[:,12] = include_mask & roi_mask # & exisiting_mask
+	save_import_table(z_index, import_table)
 end
 
 function get_included_indices(import_table)
