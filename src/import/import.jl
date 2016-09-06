@@ -57,6 +57,7 @@ function get_loadfile()
 end
 
 function get_trakem_file(z_index)
+	println("Downloading trakem file for $z_index")
 	remote_raw_path = get_remote_raw_path(z_index)
 	src = joinpath(remote_raw_path, "_trackem_\*")
 	local_raw_path = get_local_raw_path(z_index)
@@ -67,6 +68,7 @@ end
 
 function sync_subdirs(subdirs=[IMPORT_DIR, CONTRAST_BIAS_DIR, CONTRAST_STRETCH_DIR, OUTLINE_DIR, THUMBNAIL_DIR, CORRESPONDENCE_DIR, RELATIVE_TRANSFORM_DIR, CUMULATIVE_TRANSFORM_DIR]; to_remote=false)
 	dirs = [OVERVIEW_DIR, PREMONTAGED_DIR]
+	println("Syncing subdirs for $dirs")
 	for dir in dirs
 		localpath = joinpath(BUCKET, DATASET, dir)
 		remotepath = joinpath(GCLOUD_BUCKET, DATASET, dir)
@@ -79,7 +81,7 @@ function sync_subdirs(subdirs=[IMPORT_DIR, CONTRAST_BIAS_DIR, CONTRAST_STRETCH_D
 end
 
 function download_raw_tiles(z_index; roi_only=true, overwrite=false)
-	println("Downloading raw tiles for ")
+	println("Downloading raw tiles for $z_index")
 	import_table = load_import_table(z_index)
 	remotepaths = get_remote_tile_raw_paths(import_table)
 	localpaths = get_local_tile_raw_paths(import_table)
@@ -105,6 +107,7 @@ function sync_premontage_registry()
 end
 
 function upload_imported_tiles(z_index)
+	println("Uploading imported tiles for $z_index")
 	import_table = load_import_table(z_index)
 	localpaths = get_local_tile_imported_paths(import_table)
 	remotepaths = get_remote_tile_imported_paths(import_table)
