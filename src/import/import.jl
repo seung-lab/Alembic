@@ -24,11 +24,15 @@ function get_src_dir(z_index)
 end
 
 function make_local_raw_dir()
-	mkdir(LOCAL_RAW_DIR)
+	if !isdir(LOCAL_RAW_DIR)
+		mkdir(LOCAL_RAW_DIR)
+	end
 end
 
 function remove_local_raw_dir()
-	rm(LOCAL_RAW_DIR)
+	if isdir(LOCAL_RAW_DIR)
+		rm(LOCAL_RAW_DIR)
+	end
 end
 
 function get_local_raw_path(z_index)
