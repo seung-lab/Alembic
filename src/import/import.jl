@@ -56,7 +56,7 @@ function get_trakem_file(z_index)
 	return readdlm(dst, '\t')
 end
 
-function sync_subdirs(subdirs=[IMPORT_DIR, CONTRAST_BIAS_DIR, CONTRAST_STRETCH_DIR, OUTLINE_DIR, THUMBNAIL_DIR, CORRESPONDENCE_DIR, RELATIVE_TRANSFORM_DIR, CUMULATIVE_TRANSFORM_DIR]; upload=false)
+function sync_subdirs(subdirs=[IMPORT_DIR, CONTRAST_BIAS_DIR, CONTRAST_STRETCH_DIR, OUTLINE_DIR, THUMBNAIL_DIR, CORRESPONDENCE_DIR, RELATIVE_TRANSFORM_DIR, CUMULATIVE_TRANSFORM_DIR]; to_remote=false)
 	dirs = [OVERVIEW_DIR, PREMONTAGED_DIR]
 	for dir in dirs
 		for subdir in subdirs
@@ -404,9 +404,11 @@ end
 
 function gentrify_tiles(z_index)
 	download_raw_tiles(z_index)
+	sync_subdirs(to_remote=false)
 	import_tiles(z_index)
 	premontage(premontaged(1,z_index))
 	upload_imported_tiles(z_index)
+	sync_subdirs(to_remote=true)
 end
 
 function import_tiles(z_index; from_current=false, reset=false, overwrite_offsets=false)
