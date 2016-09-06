@@ -138,11 +138,11 @@ include("archive/evaluate.jl")
 include("archive/check.jl")
 include("archive/meshsession.jl")
 include("archive/tiletooverview.jl")
+include("archive/data_export.jl")
 
 include("import/premontage.jl")
 include("import/import.jl")
 #include("import/old_import.jl")
-include("import/upload.jl")
 
 include("review/review.jl")
 include("review/visualize.jl")
