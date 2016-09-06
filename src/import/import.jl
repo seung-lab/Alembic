@@ -67,10 +67,9 @@ function get_trakem_file(z_index)
 end
 
 function download_subdir_files(z_index)
-	paths = []
-	push!(paths, joinpath(OVERVIEW_DIR, CUMULATIVE_TRANSFORM_DIR, get_name("cumulative_transform", overview(1,z_index))))
-	push!(paths, joinpath(OVERVIEW_DIR, CORRESPONDENCE_DIR, get_name("correspondence", overview(1,z_index))))	
-	for path in paths
+	subdirs = ["cumulative_transform", "correspondence"]	
+	for subdir in subdirs
+		path = truncate_path(get_path(subdir, overview(1,z_index)))
 		localpath = joinpath(BUCKET, DATASET, path)
 		remotepath = joinpath(GCLOUD_BUCKET, DATASET, path)
 		Base.run(`gsutil -m rsync -r $remotepath $localpath`)
@@ -78,13 +77,9 @@ function download_subdir_files(z_index)
 end
 
 function upload_subdir_files(z_index)
-	paths = []
-	push!(paths, joinpath(OVERVIEW_DIR, THUMBNAIL_DIR, get_name("thumbnail", premontaged(1,z_index))))
-	push!(paths, joinpath(OVERVIEW_DIR, OUTLINE_DIR, get_name("outline", premontaged(1,z_index))))
-	push!(paths, joinpath(OVERVIEW_DIR, IMPORT_DIR, get_name("import", premontaged(1,z_index))))
-	push!(paths, joinpath(OVERVIEW_DIR, CONTRAST_BIAS_DIR, get_name("contrast_bias", premontaged(1,z_index))))
-	push!(paths, joinpath(OVERVIEW_DIR, CONTRAST_STRETCH_DIR, get_name("contrast_stretch", premontaged(1,z_index))))
-	for path in paths
+	subdirs = ["thumbnail", "outline", "import", "contrast_bias", "contrast_stretch"]	
+	for subdir in subdirs
+		path = truncate_path(get_path(subdir, premontaged(1,z_index)))
 		localpath = joinpath(BUCKET, DATASET, path)
 		remotepath = joinpath(GCLOUD_BUCKET, DATASET, path)
 		Base.run(`gsutil -m rsync -r $localpath $remotepath`)
