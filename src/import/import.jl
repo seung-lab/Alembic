@@ -68,16 +68,13 @@ end
 function sync_subdirs(subdirs=[IMPORT_DIR, CONTRAST_BIAS_DIR, CONTRAST_STRETCH_DIR, OUTLINE_DIR, THUMBNAIL_DIR, CORRESPONDENCE_DIR, RELATIVE_TRANSFORM_DIR, CUMULATIVE_TRANSFORM_DIR]; to_remote=false)
 	dirs = [OVERVIEW_DIR, PREMONTAGED_DIR]
 	for dir in dirs
-		for subdir in subdirs
-			path = joinpath(dir, subdir)
-			localpath = joinpath(BUCKET, DATASET, path)
-			remotepath = joinpath(GCLOUD_BUCKET, DATASET, path)
-			if to_remote
-				Base.run(`gsutil -m rsync $localpath $remotepath`)
-			else
-				Base.run(`gsutil -m rsync $remotepath $localpath`)
-			end 
-		end
+		localpath = joinpath(BUCKET, DATASET, dir)
+		remotepath = joinpath(GCLOUD_BUCKET, DATASET, dir)
+		if to_remote
+			Base.run(`gsutil -m rsync $localpath $remotepath`)
+		else
+			Base.run(`gsutil -m rsync $remotepath $localpath`)
+		end 
 	end
 end
 
