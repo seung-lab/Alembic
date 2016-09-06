@@ -35,7 +35,7 @@ function remove_premontaged_files(z_index)
 	for path in localpaths
 		if isfile(path)
 			println(`rm $path`)
-			# Base.run(`rm $path`)
+			Base.run(`rm $path`)
 		end
 	end
 end
