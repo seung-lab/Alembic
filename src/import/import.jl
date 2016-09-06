@@ -552,7 +552,7 @@ function get_remote_tile_imported_paths(import_table)
 end
 
 function get_local_tile_imported_paths(import_table)
-	return [get_local_tile_imported_path(import_table, i) for i in 1:size(import_table,1)]
+	return [get_local_tile_dst_path(import_table, i) for i in 1:size(import_table,1)]
 end
 
 function get_remote_tile_raw_paths(import_table)
