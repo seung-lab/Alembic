@@ -57,7 +57,7 @@ function get_trakem_file(z_index)
 	src = joinpath(remote_raw_path, "_trackem_\*")
 	local_raw_path = get_local_raw_path(z_index)
 	dst = joinpath(local_raw_path, "trakem_import.txt")
-	Base.run("gsutil -m cp $src $dst")
+	Base.run(`gsutil -m cp $src $dst`)
 	return readdlm(dst, '\t')
 end
 
