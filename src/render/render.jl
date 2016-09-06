@@ -147,16 +147,15 @@ function compile_cumulative_transforms(firstindex::Index, lastindex::Index)
   end
 end
 
-function render_prealigned_full(index::Index)
-  thumbnail_scale = 0.05
-  render_params = get_params(index)["render"]
-  if haskey(render_params, "thumbnail_scale")
-    thumbnail_scale = render_params["thumbnail_scale"]
-  end
+function render_prealigned_full(index::Index; thumbnail_scale=get_params(index)["render"]["thumbnail_scale"], overview=false)
   img = load(index)
+  scale = make_scale_matrix(1.0)
+  if overview
+    scale = make_scale_matrix(0.25)
+  end
   tform = load("cumulative_transform", index)
   println("Warping image")
-  @time warped, offset = imwarp(img, tform, [0,0])
+  @time warped, offset = imwarp(img, tform*scale, [0,0])
   index = prealigned(index)
   update_registry(index, offset=offset, image_size=size(warped))
   path = get_path(index)

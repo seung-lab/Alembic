@@ -308,6 +308,21 @@ function compile_annotations(meshset::MeshSet,
   return annotations
 end
 
+function display_roi(imgc, img2, annotations; scale=0.25)
+  indices = annotations["indices"]
+  bb = slice_to_bb(annotations["slice"])
+  offset = ImageRegistration.get_offset(bb)
+  for (i, index) in enumerate(indices[1:length(indices)/2])
+    println("Display annotations for $index")
+    pts = load("correspondence", index)
+    start_pts = hcat([reverse(pts[i,:][:]*scale - offset) for i in 1:size(pts,1)]...)
+    end_pts = start_pts[:,[2:end,1]]
+    # show_points(imgc, img2, pts, shape='.', color=RGB(0,1,0), t=i)
+    lines = vcat(start_pts, end_pts)
+    show_lines(imgc, img2, lines, linewidth=2, color=RGB(0,1,0), t=i)
+  end
+end
+
 function display_annotations(imgc, img2, annotations; include_reverse=false)
   colors = [RGB(0,1,0), RGB(1,0,1), RGB(0,0.8,0), RGB(0.8,0,0.8)]
   bwr = create_bwr_colormap()
