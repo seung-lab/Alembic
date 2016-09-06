@@ -72,7 +72,7 @@ function sync_subdirs(subdirs=[IMPORT_DIR, CONTRAST_BIAS_DIR, CONTRAST_STRETCH_D
 			path = joinpath(dir, subdir)
 			localpath = joinpath(BUCKET, DATASET, path)
 			remotepath = joinpath(GCLOUD_BUCKET, DATASET, path)
-			if upload
+			if to_remote
 				Base.run(`gsutil -m rsync $localpath $remotepath`)
 			else
 				Base.run(`gsutil -m rsync $remotepath $localpath`)
@@ -413,14 +413,14 @@ function fix_contrast(src_index::Index, ref_index::Index)
 end
 
 function gentrify_tiles(z_index)
+	sync_subdirs(to_remote=false)
 	make_local_raw_dir()
 	download_raw_tiles(z_index)
-	sync_subdirs(to_remote=false)
 	import_tiles(z_index)
 	premontage(premontaged(1,z_index))
 	upload_imported_tiles(z_index)
-	sync_subdirs(to_remote=true)
 	remove_local_raw_dir()
+	sync_subdirs(to_remote=true)
 end
 
 function import_tiles(z_index; from_current=false, reset=false, overwrite_offsets=false)
