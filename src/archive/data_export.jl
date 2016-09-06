@@ -120,3 +120,35 @@ function upload_ground_truth_to_google()
 		end
 	end
 end
+
+# Started 160819 17:20 on seungworkstation11
+function upload_some_tiles_to_AWS()
+	dst_dir = "s3://seunglab/datasets/pinky/1_premontaged/" # neuromancer-seung-import
+	indices = get_index_range(premontaged(1,4001), premontaged(1,4021))
+	for index in indices
+		src_path = get_path(index)
+		# dst_path = joinpath(dst_dir, string(get_name(index), ".h5"))
+		Base.run(`aws s3 cp $src_path $dst_dir`)
+	end
+	src_path = get_registry_path(indices[1])
+	# dst_path = joinpath(dst_dir, "registry.txt")
+	Base.run(`aws s3 cp $src_path $dst_dir`)
+end
+
+function clean_up_aibs_google_cloud_dir_paths(fn)
+	a = readdlm(fn)
+	a = [join(a[i,:]...) for i in 1:size(a,1)]
+	b = [split(i, '/')[2] for i in a]
+	c = [length(i)>2 for i in b]
+	d = b[convert(BitArray, c)]
+	e = [i[end-2:end]=="tif" for i in d]
+	f = d[convert(BitArray, e)]
+	g = map(length, d)
+	h = d[g .> 3]
+	l = [join(split(i, "_")[2:end], "_")[1:end-4] for i in h]
+	m = [join(split(i, "_")[1:end-2], "_") for i in l]
+	n = [split(i, "_")[1] == "243774" for i in m]
+	o = m[convert(BitArray, n)]
+	p = unique(o)
+	writedlm(fn, p)
+end
