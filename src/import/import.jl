@@ -437,7 +437,7 @@ function gentrify_tiles(firstz, lastz)
 		catch
 			push!(pr, [z,0])
 		end
-		writedlm(joinpath(homedir(), "import_issues.txt"))
+		writedlm(joinpath(homedir(), "import_issues.txt"), pr)
 	end
 end
 
