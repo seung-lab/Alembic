@@ -459,7 +459,7 @@ function import_tiles(z_index; from_current=false, reset=false, overwrite_offset
 		return i, sz..., offset, img
 	end
 
-	results = map(import_tile, import_indices)
+	results = pmap(import_tile, import_indices)
 
 	offset = [i[4] for i in results]
 	tiles = [i[5] for i in results]
