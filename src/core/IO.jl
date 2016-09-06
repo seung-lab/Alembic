@@ -1,5 +1,5 @@
 # size in bytes
-global const IMG_CACHE_SIZE = 10 * 2^30 # n * gibibytes
+global const IMG_CACHE_SIZE = 8 * 2^30 # n * gibibytes
 global const IMG_ELTYPE = UInt8
 
 if myid() == 1
@@ -10,8 +10,10 @@ end
 global const IO_PROC = nprocs();
 if nprocs() > 2
 global const WORKER_PROCS = setdiff(procs(), [1, IO_PROC]);
-else 
+elseif nprocs() == 2
 global const WORKER_PROCS = setdiff(procs(), [1]);
+else
+global const WORKER_PROCS = [1];
 end
 
 #=
@@ -87,7 +89,9 @@ function get_image_disk(path::AbstractString, dtype = IMG_ELTYPE; shared = false
     end
 	elseif ext == ".h5"
     if shared
-      img = convert(Array{dtype, 2}, h5read(path, "img"))
+      img = h5read(path, "img")
+      if typeof(img) != Array{dtype, 2} img = convert(Array{dtype, 2}, img) end
+      @everywhere gc();
       shared_img = SharedArray(dtype, size(img)...);
       @inbounds shared_img.s[:,:] = img[:,:]
       return shared_img;
@@ -139,7 +143,7 @@ end
 
 function clean_cache()
 	if sum(map(Int64, map(length, values(IMG_CACHE_DICT)))) > IMG_CACHE_SIZE && !(length(IMG_CACHE_DICT) < 2)
-	while sum(map(Int64, map(length, values(IMG_CACHE_DICT)))) > IMG_CACHE_SIZE * 0.75 && !(length(IMG_CACHE_DICT) < 2)
+	while sum(map(Int64, map(length, values(IMG_CACHE_DICT)))) > IMG_CACHE_SIZE * 0.50 && !(length(IMG_CACHE_DICT) < 2)
 		todelete = shift!(IMG_CACHE_LIST);
 		#IMG_CACHE_DICT[todelete] = zeros(IMG_ELTYPE,0,0)
 		delete!(IMG_CACHE_DICT, todelete)
@@ -392,8 +396,7 @@ function make_stack(firstindex::Index, lastindex::Index, slice=(1:255, 1:255); s
   dtype = UInt8
   global_bb = ImageRegistration.slice_to_bb(slice)
   stack_offset = ImageRegistration.get_offset(global_bb)
-  stack_size = ImageRegistration.get_size(global_bb) + [1,1]
-  imgs = []
+  stack_size = ImageRegistration.get_size(global_bb)
 
   thumbnail_scale = 0.05
   if thumb
@@ -406,9 +409,11 @@ function make_stack(firstindex::Index, lastindex::Index, slice=(1:255, 1:255); s
   scaled_size = sbb.h, sbb.w
   # scaled_size = round(Int64, stack_size[1]*scale+1), round(Int64, stack_size[2]*scale+1)
 
-  for index in get_index_range(firstindex, lastindex)
+  imgs = zeros(dtype, scaled_size..., length(get_index_range(firstindex, lastindex)))
+
+  for (i, index) in enumerate(get_index_range(firstindex, lastindex))
     print(string(join(index[1:2], ",") ,"|"))
-    img = zeros(dtype, scaled_size...)
+    #img = zeros(dtype, scaled_size...)
     offset = thumb ? [0,0] : get_offset(index)
     sz = get_image_size(index)
     bb = snap_bb(ImageRegistration.BoundingBox(offset..., sz...))
@@ -416,11 +421,12 @@ function make_stack(firstindex::Index, lastindex::Index, slice=(1:255, 1:255); s
       shared_bb = global_bb - bb
       stack_roi = snap_bb(scale_bb(translate_bb(shared_bb, -stack_offset+[1,1]), scale))
       img_slice = bb_to_slice(stack_roi)
-      img[img_slice...] = get_slice(index, shared_bb, scale, is_global=true, thumb=thumb) 
+      imgs[img_slice..., i] = get_slice(index, shared_bb, scale, is_global=true, thumb=thumb) 
     end
-    push!(imgs, img)
+#    push!(imgs, img)
   end
-  return cat(3, imgs...)
+#  return cat(3, imgs...)
+  return imgs
 end
 
 function make_slice(center, radius)

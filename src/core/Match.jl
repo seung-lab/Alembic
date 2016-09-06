@@ -771,10 +771,18 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 
 
 	print("computing matches:")
+	print("    ")
         @time dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(src_img), repeated(dst_img), repeated(params["match"]["blockmatch_scale"]), repeated(params["match"]["highpass_sigma"])) 
         #@time dst_allpoints = map(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(src_img), repeated(dst_img), repeated(params["match"]["blockmatch_scale"]), repeated(params["match"]["highpass_sigma"])) 
 
 	matched_inds = find(i -> i != nothing, dst_allpoints);
+
+	#=for ap in dst_allpoints
+	  if typeof(ap) == RemoteException
+	    println(ap)
+	  end
+	end=#
+
 	src_points = copy(src_mesh.src_nodes[ranged_inds][matched_inds]);
 	dst_points = [convert(Point, dst_allpoints[ind][1:2]) for ind in matched_inds]
 	correspondence_properties = [dst_allpoints[ind][3] for ind in matched_inds]
@@ -788,5 +796,8 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 				"author" => null_author()
 				) 
 			);
+
+@everywhere gc();
+
 	return Match(src_index, dst_index, src_points, dst_points, correspondence_properties, filters, properties);
 end

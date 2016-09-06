@@ -23,9 +23,15 @@ function RenderTaskDetails(index::Main.Index)
 	indices = Main.ancestors(index);
 
 	inputs_images = map(Main.truncate_path, map(Main.get_path, indices));
+	inputs_meshes = map(Main.truncate_path, map(Main.get_path, repeated("Mesh"), indices));
 	inputs_registry = map(Main.truncate_path, map(Main.get_registry_path, indices));
-	input_transform = Main.truncate_path(Main.get_path("cumulative_transform", index))
-	inputs = unique(vcat(inputs_images, inputs_registry, [input_transform]))
+      if Main.is_prealigned(index) 
+	input_transform = [Main.truncate_path(Main.get_path("cumulative_transform", index))]
+      else
+	input_transform = [];
+      end
+
+	inputs = unique(vcat(inputs_images, inputs_registry, inputs_meshes, input_transform))
 	
 #	output_meshset = Main.truncate_path(Main.get_path("MeshSet", index))
 #	output_stats = Main.truncate_path(Main.get_path("stats", index))
@@ -75,7 +81,8 @@ function DaemonTask.execute(task::RenderTaskDetails,
     ms = Main.MeshSet([tuple(index_array...) for index_array in task.payload_info.indices]...);
     Main.calculate_stats(ms);
     end=#
-    Main.render(tuple(task.payload_info.indices[1]); review=false);
+    #actually only a tuple
+    Main.render(task.payload_info.indices...);
     #Main.calculate_stats(ms);
 
     return DaemonTask.Result(true, task.payload_info.outputs)

@@ -53,24 +53,26 @@ function SolveTaskDetails(first_index::Main.Index, last_index::Main.Index)
 	possible_pairs = collect([(indexA, indexB) for indexA in indices, indexB in indices])
 	possible_pairs = possible_pairs[map(pair -> Main.is_preceding(pair[1], pair[2]), possible_pairs)]
 
-	inputs_images = map(Main.truncate_path, map(Main.get_path, indices));
+#	inputs_images = map(Main.truncate_path, map(Main.get_path, indices));
 	inputs_registry = map(Main.truncate_path, map(Main.get_registry_path, indices));
-	inputs = unique(vcat(inputs_images, inputs_registry))
+	input_meshes = map(Main.truncate_path, map(Main.get_path, repeated("Mesh"), indices))
+	input_matches = map(Main.truncate_path, map((pair) -> Main.get_path("Match", pair), possible_pairs))
+	inputs = unique(vcat(input_meshes, input_matches, inputs_registry))
 	
-	#output_meshset = Main.truncate_path(Main.get_path("MeshSet", index))
+#	output_meshset = Main.truncate_path(Main.get_path("MeshSet", index))
 	output_meshes = map(Main.truncate_path, map(Main.get_path, repeated("Mesh"), indices))
 #	output_stats = Main.truncate_path(Main.get_path("stats", index))
 #	output_transform = Main.truncate_path(Main.get_path("relative_transform", index))
-	output_reviews = map(Main.truncate_path, map((pair) -> Main.get_path("review", pair), possible_pairs))
+#	output_reviews = map(Main.truncate_path, map((pair) -> Main.get_path("review", pair), possible_pairs))
 	output_matches = map(Main.truncate_path, map((pair) -> Main.get_path("Match", pair), possible_pairs))
-	outputs = unique([output_meshes..., output_matches..., output_reviews...])
+	outputs = unique([output_meshes..., output_matches...])
 
 	basic_info = BasicTask.Info(0, NAME, Main.TASKS_BASE_DIRECTORY, inputs) 
 	task = SolveTaskDetails(basic_info, AlembicPayloadInfo([first_index, last_index], outputs));
 	return task
 end
 
-const NAME = "BLOCKMATCH_TASK"
+const NAME = "SOLVE_TASK"
 
 function full_input_path(task::SolveTaskDetails,
         input::AbstractString)
@@ -96,16 +98,24 @@ function DaemonTask.execute(task::SolveTaskDetails,
     if length(inputs) == 0
         return DaemonTask.Result(true, [])
     end
+    ms = Main.compile_meshset(task.payload_info.indices...);
+    #=
+    #temporary
+    Main.clear_filters!(ms);
+    ms.properties["params"] = Main.PARAMS_ALIGNMENT
+    for match in ms.matches
+    match.properties["params"] = Main.PARAMS_ALIGNMENT
+  end
+    for mesh in ms.meshes
+    mesh.properties["params"] = Main.PARAMS_ALIGNMENT
+  end
+  Main.filter!(ms);
+  =#
 
-    if length(task.payload_info.indices) == 2
-    ms = Main.MeshSet([tuple(index_array...) for index_array in task.payload_info.indices]...; solve=false);
+    Main.unfix!(ms);
+    Main.fix_ends!(ms)
+    Main.elastic_solve!(ms; from_current = true);
     Main.split_meshset(ms);
-    else
-    ms = Main.MeshSet([tuple(index_array...) for index_array in task.payload_info.indices]...);
-    Main.calculate_stats(ms);
-    end
-    Main.render(ms; review=true);
-    #Main.calculate_stats(ms);
 
     return DaemonTask.Result(true, task.payload_info.outputs)
 end
@@ -121,7 +131,8 @@ function DaemonTask.finalize(task::SolveTaskDetails,
 
         Datasource.put!(datasource,
             map((output) -> full_output_path(task, output), result.outputs))
-	Datasource.remove!(datasource, map((output) -> full_output_path(task, output), result.outputs); only_cache = true)
+	    #no need to delete outputs since they are the inputs
+#	Datasource.remove!(datasource, map((output) -> full_output_path(task, output), result.outputs); only_cache = true)
 	Datasource.remove!(datasource, map((input) -> full_input_path(task, input), task.basic_info.inputs); only_cache = true)
 	Main.push_registry_updates();
 

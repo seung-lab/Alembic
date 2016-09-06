@@ -2,12 +2,12 @@
 
 using Alembic
 
-module RunAWSDaemon
+module RunHybridDaemon
 
 using SimpleTasks.Types
 using SimpleTasks.Services.AWSQueue
 using SimpleTasks.Services.CLIBucket
-using SimpleTasks.Services.AWSCLIProvider
+using SimpleTasks.Services.GCSCLIProvider
 using SimpleTasks.Services.FileSystemCache
 using SimpleTasks.Services.BucketCacheDatasource
 using SimpleTasks.Services.Daemon
@@ -40,7 +40,7 @@ function run(task_queue_name, error_queue_name, bucket_name,
 
     error_queue = AWSQueueService(env, error_queue_name)
 
-    bucket = CLIBucketService(AWSCLIProvider.Details(env), bucket_name)
+    bucket = CLIBucketService(GCSCLIProvider.Details(), bucket_name)
 
     cache = FileSystemCacheService(cache_directory)
 

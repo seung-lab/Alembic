@@ -5,9 +5,9 @@ if !haskey(ENV, "USER")
 end
 
 if ENV["USER"] != "ubuntu"
-  global const ON_AWS = false;
+  global const ON_CLOUD = false;
 else
-  global const ON_AWS = true;
+  global const ON_CLOUD = true;
 end
 
 if contains(gethostname(), "seunglab") || contains(gethostname(), "seungom") || ENV["USER"] == "dih"
@@ -99,6 +99,8 @@ global const eps = 1e-12;
 global const eps_large = 1e-4;
 global const eps_rec = 1 / eps;
 
+blas_set_num_threads(4);
+
 
 
 include("math/meshconjgrad.jl")
@@ -119,9 +121,9 @@ include("core/filter.jl")
 include("core/MeshSet.jl")
 include("core/solve.jl")
 
-if ON_AWS
-  include("datasets/dataset_zebrafish.jl")
-#  include("datasets/dataset_pinky.jl")
+if ON_CLOUD
+#  include("datasets/dataset_zebrafish.jl")
+  include("datasets/dataset_pinky.jl")
   #include("params_default.jl")
   include("params/params_pinky.jl")
 else
@@ -155,6 +157,7 @@ if !(contains(gethostname(), "seunglab") || contains(gethostname(), "seungom"))
   include("tasks/tasks_env.jl")
   include("tasks/BlockMatchTask.jl")
   include("tasks/RenderTask.jl")
+  include("tasks/SolveTask.jl")
   include("tasks/awsscheduler.jl")
 end
 
