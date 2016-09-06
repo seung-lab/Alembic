@@ -153,7 +153,8 @@ datasets_dir_path = "research/Julimaps/datasets" =#
 # cur_dataset = "elastic_test_crack"
 # cur_dataset = "elastic_real_crack_with_cropping"
 # DATASET = "AIBS_actual_trial10_full"
-DATASET = "pinky"
+# DATASET = "pinky"
+DATASET = "pinky_overviews"
 # DATASET = "stage_stitch"
 affine_dir_path = "~"
 

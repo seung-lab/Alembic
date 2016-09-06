@@ -18,6 +18,16 @@ function select_points(index::Index; thumb=false)
     return select_points(moving_index, fixed_index, thumb=thumb)
 end
 
+function select_polygon(index::Index; scale=0.25, thumb=false)
+    img = load(index)
+    img = convert_uint8(img)
+    imgc, img2 = ImageView.view(img; pixelspacing=[1,1])
+    pts = bind_select_and_remove(imgc, img2, RGB(0,1,0))
+    bind_save_polygon(imgc, img2, index, pts, scale, thumb)
+    bind_go_select_polygon(imgc, img2, index, thumb)
+    bind_exit(imgc, img2)
+end
+
 """
 Select corresponding points between two images
 
@@ -40,10 +50,10 @@ function select_points(moving_index::Index, fixed_index::Index; thumb=false)
     # ms = MeshSet()
     mpts = bind_select_and_remove(moving_imgc, moving_img2, RGB(0,1,0))
     fpts = bind_select_and_remove(fixed_imgc, fixed_img2, RGB(1,0,0))
-    bind_save(moving_imgc, moving_img2, moving_index, mpts, fpts, scale, thumb)
-    bind_save(fixed_imgc, fixed_img2, moving_index, mpts, fpts, scale, thumb)
-    bind_go(moving_imgc, moving_img2, moving_index, thumb)
-    bind_go(fixed_imgc, fixed_img2, moving_index, thumb)
+    bind_save_cp(moving_imgc, moving_img2, moving_index, mpts, fpts, scale, thumb)
+    bind_save_cp(fixed_imgc, fixed_img2, moving_index, mpts, fpts, scale, thumb)
+    bind_go_select_points(moving_imgc, moving_img2, moving_index, thumb)
+    bind_go_select_points(fixed_imgc, fixed_img2, moving_index, thumb)
     bind_exit(moving_imgc, moving_img2)
     bind_exit(fixed_imgc, fixed_img2)
 end
@@ -65,19 +75,34 @@ function bind_select_and_remove(imgc, img2, color=RGB(1,0,0), pts=[], ann=[])
   return pts
 end
 
-function bind_save(imgc, img2, index, mpts, fpts, scale, thumb)
+function bind_save_polygon(imgc, img2, index, pts, scale, thumb)
+    c = canvas(imgc)
+    win = Tk.toplevel(c)
+    bind(win, "s", path->save_polygon(win, index, pts, scale, thumb))
+end
+
+function bind_save_cp(imgc, img2, index, mpts, fpts, scale, thumb)
     c = canvas(imgc)
     win = Tk.toplevel(c)
     bind(win, "s", path->save_correspondences(win, index, mpts, fpts, scale, thumb))
 end
 
-function bind_go(imgc, img2, index, thumb)
+function bind_go_select_points(imgc, img2, index, thumb)
     c = canvas(imgc)
     win = Tk.toplevel(c)
     next = get_succeeding(index)
     previous = get_preceding(index)
-    bind(win, "<Control-Right>", path->go_to(win, next, thumb))
-    bind(win, "<Control-Left>", path->go_to(win, previous, thumb))
+    bind(win, "<Control-Right>", path->go_to_select_points(win, next, thumb))
+    bind(win, "<Control-Left>", path->go_to_select_points(win, previous, thumb))
+end
+
+function bind_go_select_polygon(imgc, img2, index, thumb)
+    c = canvas(imgc)
+    win = Tk.toplevel(c)
+    next = get_succeeding(index)
+    previous = get_preceding(index)
+    bind(win, "<Control-Right>", path->go_to_select_polygon(win, next, thumb))
+    bind(win, "<Control-Left>", path->go_to_select_polygon(win, previous, thumb))
 end
 
 function bind_exit(imgc, img2)
@@ -104,18 +129,28 @@ function remove_last_point(imgc, img2, pts, ann)
     end
 end
 
-# function recompute_tform(firstindex::Index, lastindex::Index)
-#     for index in get_index_range(firstindex, lastindex)
-#         pts = load("import", index)
-#         n = size(pts, 1)
-#         src_pts = pts[:,1:2]
-#         dst_pts = pts[:,3:4]
-#         println("Resaving transform for $index")
-#         tform_path = get_path("stats", index)
-#         tform = compute_tform(src_pts, dst_pts)
-#         writedlm(tform_path, tform)
-#     end
-# end
+function recompute_tform(firstindex::Index, lastindex::Index; lambda=0)
+    for index in get_index_range(firstindex, lastindex)
+        pts = load("correspondence", index)
+        src_pts = pts[:,1:2]
+        dst_pts = pts[:,3:4]
+        println("Recomputing relative transform for $index")
+        tform_path = get_path("relative_transform", index)
+        tform = compute_tform(src_pts, dst_pts, lambda)
+        writedlm(tform_path, tform)
+    end
+end
+
+function save_polygon(win, index, pts, scale, thumb)
+    println("Saving polygon points")
+    correspondences_path = get_path("correspondence", index)
+    offset = get_offset(index)
+    push!(pts, pts[1]) # save last point again to polygon to close it
+    pts = hcat([(p + offset) / scale for p in pts]...)'
+    writedlm(correspondences_path, pts)
+    next = get_succeeding(index)
+    go_to_select_polygon(win, next, thumb)
+end
 
 function save_correspondences(win, index, mpts, fpts, scale, thumb)
     println("Saving correspondences")
@@ -129,11 +164,14 @@ function save_correspondences(win, index, mpts, fpts, scale, thumb)
     writedlm(correspondences_path, pts)
     tform = compute_tform(src_pts, dst_pts)
     println("Saving transform")
-    # tform_path = get_path("relative_transform", index)
-    # writedlm(tform_path, tform)
-    update_registry(index, tform)
+    if thumb
+        update_registry(index, tform)
+    else
+        tform_path = get_path("relative_transform", index)
+        writedlm(tform_path, tform)
+    end
     next = get_succeeding(index)
-    go_to(win, next, thumb)
+    go_to_select_points(win, next, thumb)
 end
 
 function compute_tform(src_pts, dst_pts, lambda=0)
@@ -143,7 +181,13 @@ function compute_tform(src_pts, dst_pts, lambda=0)
     return lambda*calculate_affine(src_pts, dst_pts) + (1-lambda)*calculate_rigid(src_pts, dst_pts)
 end
 
-function go_to(win, index, thumb)
+function go_to_select_polygon(win, index, thumb)
+    println("Go to $index")
+    exit_cpselect(win)
+    select_polygon(index, thumb=thumb)
+end
+
+function go_to_select_points(win, index, thumb)
     println("Go to $index")
     exit_cpselect(win)
     select_points(index, thumb=thumb)
