@@ -1,7 +1,7 @@
 global OVERVIEW_RESOLUTION = 95.3/3840 # 3.58/225.0 
 global LOCAL_RAW_DIR = joinpath(homedir(), "raw")
 global GCLOUD_RAW_DIR = "gs://243774_8973/"
-global GCLOUD_IMPORTED_DIR = "gs://seunglab_alembic/"
+global GCLOUD_BUCKET = "gs://seunglab_alembic/"
 
 # function gsutil_download(remote_file::AbstractString, local_file::Union{AbstractString, IO, Void}=nothing)
 #    download_cmd = `gsutil -m cp
@@ -39,12 +39,12 @@ end
 
 function get_loadfile()
 	loadfile_sub_path = joinpath(DATASET, "import_aibs.csv")
-	loadfile_local_path = joinpath(homedir(), loadfile_sub_path)
-	if !isfile(loadfile_local_path)
-		loadfile_gcloud_path = joinpath(GCLOUD_IMPORTED_DIR, loadfile_sub_path)
-		Base.run(`gsutil -m cp $loadfile_gcloud_path $loadfile_local_path`)
+	loadfile_localpath = joinpath(homedir(), loadfile_sub_path)
+	if !isfile(loadfile_localpath)
+		loadfile_gcloud_path = joinpath(GCLOUD_BUCKET, loadfile_sub_path)
+		Base.run(`gsutil -m cp $loadfile_gcloud_path $loadfile_localpath`)
 	end
-	return loadfile = readdlm(loadfile_local_path, ',')
+	return loadfile = readdlm(loadfile_localpath, ',')
 end
 
 function get_trakem_file(z_index)
@@ -56,39 +56,55 @@ function get_trakem_file(z_index)
 	return readdlm(dst, '\t')
 end
 
+function sync_subdirs(subdirs=[IMPORT_DIR, CONTRAST_BIAS_DIR, CONTRAST_STRETCH_DIR, OUTLINE_DIR, THUMBNAIL_DIR, CORRESPONDENCE_DIR, RELATIVE_TRANSFORM_DIR, CUMULATIVE_TRANSFORM_DIR]; upload=false)
+	dirs = [OVERVIEW_DIR, PREMONTAGED_DIR]
+	for dir in dirs
+		for subdir in subdirs
+			path = joinpath(dir, subdir)
+			localpath = joinpath(BUCKET, DATASET, path)
+			remotepath = joinpath(GCLOUD_BUCKET, DATASET, path)
+			if upload
+				Base.run(`gsutil -m rsync $localpath $remotepath`)
+			else
+				Base.run(`gsutil -m rsync $remotepath $localpath`)
+			end 
+		end
+	end
+end
+
 function download_raw_tiles(z_index; roi_only=true, overwrite=false)
 	import_table = load_import_table(z_index)
-	remote_paths = get_remote_tile_raw_paths(import_table)
-	local_paths = get_local_tile_raw_paths(import_table)
+	remotepaths = get_remote_tile_raw_paths(import_table)
+	localpaths = get_local_tile_raw_paths(import_table)
 	if roi_only
 		import_indices = get_included_indices(import_table)
-		remote_paths = remote_paths[import_indices]
-		local_paths = local_paths[import_indices]
+		remotepaths = remotepaths[import_indices]
+		localpaths = localpaths[import_indices]
 	end
 	if !overwrite
-		tiles_do_not_exist_locally = [!isfile(f) for f in local_paths]
-		remote_paths = remote_paths[tiles_do_not_exist_locally]
-		local_paths = local_paths[tiles_do_not_exist_locally]
+		tiles_do_not_exist_locally = [!isfile(f) for f in localpaths]
+		remotepaths = remotepaths[tiles_do_not_exist_locally]
+		localpaths = localpaths[tiles_do_not_exist_locally]
 	end
-	download_cmds = [`gsutil cp $src $dst` for (src, dst) in zip(remote_paths, local_paths)]
+	download_cmds = [`gsutil cp $src $dst` for (src, dst) in zip(remotepaths, localpaths)]
 	pmap(Base.run, download_cmds)
 end
 
 function sync_premontage_registry()
-	local_path = get_registry_path(premontaged(1,1))
-	remote_path = joinpath(GCLOUD_IMPORTED_DIR, DATASET, PREMONTAGED_DIR)
-	Base.run(`gsutil rsync $local_path $remote_path`)
+	localpath = get_registry_path(premontaged(1,1))
+	remotepath = joinpath(GCLOUD_BUCKET, DATASET, PREMONTAGED_DIR)
+	Base.run(`gsutil rsync $localpath $remotepath`)
 
 end
 
 function upload_imported_tiles(z_index)
 	import_table = load_import_table(z_index)
-	local_paths = get_local_tile_imported_paths(import_table)
-	remote_paths = get_remote_tile_imported_paths(import_table)
-	tiles_exist_locally = [isfile(f) for f in local_paths]
-	local_paths = local_paths[tiles_exist_locally]
-	remote_paths = remote_paths[tiles_exist_locally]
-	download_cmds = [`gsutil rsync $src $dst` for (src, dst) in zip(local_paths, remote_paths)]
+	localpaths = get_local_tile_imported_paths(import_table)
+	remotepaths = get_remote_tile_imported_paths(import_table)
+	tiles_exist_locally = [isfile(f) for f in localpaths]
+	localpaths = localpaths[tiles_exist_locally]
+	remotepaths = remotepaths[tiles_exist_locally]
+	download_cmds = [`gsutil rsync $src $dst` for (src, dst) in zip(localpaths, remotepaths)]
 	pmap(Base.run, download_cmds)
 end
 

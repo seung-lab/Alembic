@@ -231,6 +231,12 @@ function get_registry_path(index)
     end
 end
 
+function get_dirs()
+  dirs = [ OVERVIEW_DIR, PREMONTAGED_DIR, MONTAGED_DIR, PREALIGNED_DIR, ALIGNED_DIR, FINISHED_DIR ]
+  subdirs = [ MESH_DIR, MATCH_DIR, MESHSET_DIR, EXPUNGED_DIR, REVIEW_DIR, MASK_DIR, IMPORT_DIR, STATS_DIR, CONTRAST_BIAS_DIR, CONTRAST_STRETCH_DIR, OUTLINE_DIR, THUMBNAIL_DIR, CORRESPONDENCE_DIR, RELATIVE_TRANSFORM_DIR, CUMULATIVE_TRANSFORM_DIR ]
+  return dirs, subdirs  
+end
+
 function check_dirs(dataset_name::AbstractString = DATASET)
     function setup_dir(dir)
         if !isdir(dir)
@@ -240,8 +246,7 @@ function check_dirs(dataset_name::AbstractString = DATASET)
     end
 
     dataset_dir = joinpath(BUCKET, dataset_name)
-    dirs = [ OVERVIEW_DIR, PREMONTAGED_DIR, MONTAGED_DIR, PREALIGNED_DIR, ALIGNED_DIR, FINISHED_DIR ]
-    subdirs = [ MESH_DIR, MATCH_DIR, MESHSET_DIR, EXPUNGED_DIR, REVIEW_DIR, MASK_DIR, IMPORT_DIR, STATS_DIR, CONTRAST_BIAS_DIR, CONTRAST_STRETCH_DIR, OUTLINE_DIR, THUMBNAIL_DIR, CORRESPONDENCE_DIR, RELATIVE_TRANSFORM_DIR, CUMULATIVE_TRANSFORM_DIR ]
+    dirs, subdirs = get_dirs()
 
     setup_dir(dataset_dir)
     for d in dirs
