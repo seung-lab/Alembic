@@ -102,8 +102,7 @@ end
 function sync_premontage_registry()
 	localpath = get_registry_path(premontaged(1,1))
 	remotepath = joinpath(GCLOUD_BUCKET, DATASET, PREMONTAGED_DIR)
-	Base.run(`gsutil rsync $localpath $remotepath`)
-
+	Base.run(`gsutil cp $localpath $remotepath`)
 end
 
 function upload_imported_tiles(z_index)
@@ -114,7 +113,7 @@ function upload_imported_tiles(z_index)
 	tiles_exist_locally = [isfile(f) for f in localpaths]
 	localpaths = localpaths[tiles_exist_locally]
 	remotepaths = remotepaths[tiles_exist_locally]
-	download_cmds = [`gsutil rsync $src $dst` for (src, dst) in zip(localpaths, remotepaths)]
+	download_cmds = [`gsutil cp $src $dst` for (src, dst) in zip(localpaths, remotepaths)]
 	pmap(Base.run, download_cmds)
 end
 
