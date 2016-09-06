@@ -455,7 +455,7 @@ function import_tiles(z_index; from_current=false, reset=false, overwrite_offset
 		img = auto_contrast_stretch(img)
 		img = convert_float64_to_uint8(img)
 		# resin = is_adjusted_resin(img, 20, z_index)
-		# save_import_tile(dst_fn, img)
+		save_import_tile(dst_fn, img)
 		return i, sz..., offset, img
 	end
 
