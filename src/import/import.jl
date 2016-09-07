@@ -29,9 +29,20 @@ function make_local_raw_dir()
 	end
 end
 
+function remove_premontaged_files(z_index)
+	import_table = load_import_table(z_index)
+	localpaths = get_local_tile_imported_paths(import_table)
+	for path in localpaths
+		if isfile(path)
+			println(`rm $path`)
+			Base.run(`rm $path`)
+		end
+	end
+end
+
 function remove_local_raw_dir()
 	if isdir(LOCAL_RAW_DIR)
-		rm(LOCAL_RAW_DIR)
+		Base.run(`rm -rf $LOCAL_RAW_DIR`)
 	end
 end
 
@@ -57,6 +68,7 @@ function get_loadfile()
 end
 
 function get_trakem_file(z_index)
+	println("Downloading trakem file for $z_index")
 	remote_raw_path = get_remote_raw_path(z_index)
 	src = joinpath(remote_raw_path, "_trackem_\*")
 	local_raw_path = get_local_raw_path(z_index)
@@ -65,21 +77,37 @@ function get_trakem_file(z_index)
 	return readdlm(dst, '\t')
 end
 
-function sync_subdirs(subdirs=[IMPORT_DIR, CONTRAST_BIAS_DIR, CONTRAST_STRETCH_DIR, OUTLINE_DIR, THUMBNAIL_DIR, CORRESPONDENCE_DIR, RELATIVE_TRANSFORM_DIR, CUMULATIVE_TRANSFORM_DIR]; to_remote=false)
-	dirs = [OVERVIEW_DIR, PREMONTAGED_DIR]
-	for dir in dirs
-		localpath = joinpath(BUCKET, DATASET, dir)
-		remotepath = joinpath(GCLOUD_BUCKET, DATASET, dir)
-		if to_remote
-			Base.run(`gsutil -m rsync -r $localpath $remotepath`)
-		else
-			Base.run(`gsutil -m rsync -r $remotepath $localpath`)
-		end 
+function download_subdir_files(z_index)
+	dir = OVERVIEW_DIR
+	subdirs = [CUMULATIVE_TRANSFORM_DIR, CORRESPONDENCE_DIR]	
+	for subdir in subdirs
+		path = joinpath(dir, subdir)
+		localpath = joinpath(BUCKET, DATASET, path)
+		remotepath = joinpath(GCLOUD_BUCKET, DATASET, path)
+		Base.run(`gsutil -m rsync -r $remotepath $localpath`)
 	end
 end
 
+function upload_subdir_files(z_index)
+	subdirs = ["thumbnail", "outline", "import", "contrast_bias", "contrast_stretch"]	
+	for subdir in subdirs
+		path = truncate_path(get_path(subdir, premontaged(1,z_index)))
+		localpath = joinpath(BUCKET, DATASET, path)
+		remotepath = joinpath(GCLOUD_BUCKET, DATASET, path)
+		Base.run(`gsutil -m cp -r $localpath $remotepath`)
+	end
+end
+
+function sync_to_upload()
+	dir = PREMONTAGED_DIR
+	println("Syncing subdirs for $dir")
+	localpath = joinpath(BUCKET, DATASET, dir)
+	remotepath = joinpath(GCLOUD_BUCKET, DATASET, dir)
+	Base.run(`gsutil -m rsync -r $localpath $remotepath`)
+end
+
 function download_raw_tiles(z_index; roi_only=true, overwrite=false)
-	println("Downloading raw tiles for ")
+	println("Downloading raw tiles for $z_index")
 	import_table = load_import_table(z_index)
 	remotepaths = get_remote_tile_raw_paths(import_table)
 	localpaths = get_local_tile_raw_paths(import_table)
@@ -100,18 +128,18 @@ end
 function sync_premontage_registry()
 	localpath = get_registry_path(premontaged(1,1))
 	remotepath = joinpath(GCLOUD_BUCKET, DATASET, PREMONTAGED_DIR)
-	Base.run(`gsutil rsync $localpath $remotepath`)
-
+	Base.run(`gsutil cp $localpath $remotepath`)
 end
 
 function upload_imported_tiles(z_index)
+	println("Uploading imported tiles for $z_index")
 	import_table = load_import_table(z_index)
 	localpaths = get_local_tile_imported_paths(import_table)
 	remotepaths = get_remote_tile_imported_paths(import_table)
 	tiles_exist_locally = [isfile(f) for f in localpaths]
 	localpaths = localpaths[tiles_exist_locally]
 	remotepaths = remotepaths[tiles_exist_locally]
-	download_cmds = [`gsutil rsync $src $dst` for (src, dst) in zip(localpaths, remotepaths)]
+	download_cmds = [`gsutil cp $src $dst` for (src, dst) in zip(localpaths, remotepaths)]
 	pmap(Base.run, download_cmds)
 end
 
@@ -162,6 +190,8 @@ function initialize_import_table(trakem_table, z_index)
 	include = [true for i in path_no_ext]
 	roi = [true for i in path_no_ext]
 
+	dir = get_src_dir(z_index)
+	import_table[:,1] = [joinpath(dir, fn) for fn in import_table[:,1]]
 	import_table = hcat(import_table, [waf sec row col height width include roi])
 	save_import_table(z_index, import_table)
 end
@@ -409,18 +439,31 @@ function fix_contrast(src_index::Index, ref_index::Index)
 	return src_img
 end
 
+function gentrify_tiles(firstz, lastz)
+	pr = []
+	for z = firstz:lastz
+		try 
+			gentrify_tiles(z)
+			push!(pr, [z,1])
+		catch
+			push!(pr, [z,0])
+		end
+		writedlm(joinpath(homedir(), "import_issues.txt"), pr)
+	end
+end
+
 function gentrify_tiles(z_index)
-	sync_subdirs(to_remote=false)
+	download_subdir_files(z_index)
 	make_local_raw_dir()
 	download_raw_tiles(z_index)
 	import_tiles(z_index)
 	premontage(premontaged(1,z_index))
-	upload_imported_tiles(z_index)
+	sync_to_upload()
 	remove_local_raw_dir()
-	sync_subdirs(to_remote=true)
+	remove_premontaged_files(z_index)
 end
 
-function import_tiles(z_index; from_current=false, reset=false, overwrite_offsets=false)
+function import_tiles(z_index; from_current=false, reset=false, overwrite_offsets=true)
 	thumbnail_scale = OVERVIEW_RESOLUTION
 	import_table = load_import_table(z_index)
 	N = size(import_table, 1)
@@ -453,7 +496,7 @@ function import_tiles(z_index; from_current=false, reset=false, overwrite_offset
 		img = auto_contrast_stretch(img)
 		img = convert_float64_to_uint8(img)
 		# resin = is_adjusted_resin(img, 20, z_index)
-		# save_import_tile(dst_fn, img)
+		save_import_tile(dst_fn, img)
 		return i, sz..., offset, img
 	end
 
@@ -530,7 +573,8 @@ function get_local_tile_raw_path(import_table, i)
 end
 
 function get_remote_tile_imported_path(import_table, i)
-	return joinpath(GCLOUD_imported_DIR, import_table[i,1])
+	index = get_import_index(import_table, i)
+	return joinpath(GCLOUD_BUCKET, get_path(index))
 end
 
 function get_local_tile_dst_path(import_table, i)
@@ -544,6 +588,10 @@ end
 
 function get_remote_tile_imported_paths(import_table)
 	return [get_remote_tile_imported_path(import_table, i) for i in 1:size(import_table,1)]
+end
+
+function get_local_tile_imported_paths(import_table)
+	return [get_local_tile_dst_path(import_table, i) for i in 1:size(import_table,1)]
 end
 
 function get_remote_tile_raw_paths(import_table)
