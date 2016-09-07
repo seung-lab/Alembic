@@ -73,7 +73,7 @@ global PARAMS_MONTAGE = Dict(
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 2.5)
 					      ),
 			     "render" => Dict(
-			     		"crop" => [340, 340],
+			     		"crop" => [300, 300],
 			     		"thumbnail_scale" => 0.02
 					      ),
 			     "review" => Dict(
@@ -81,7 +81,7 @@ global PARAMS_MONTAGE = Dict(
 						"rejected_ratio" => (:get_ratio_rejected, >, 0.66, 20),
 						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.95),
 						#"norm_outliers" => (:count_outlier_norms, >, 0, 3), # too useless because they're so close to each other to begin with
-						"centered_norm" => (:get_maximum_centered_norm, >, 70)
+						"centered_norm" => (:get_maximum_centered_norm, >, 90)
 					      ),
 			     "registry" => Dict(
 					"global_offsets" => GLOBAL_OFFSETS_MONTAGE
