@@ -49,6 +49,7 @@ function run(task_queue_name, error_queue_name, bucket_name,
     daemon = DaemonService(task_queue, error_queue, bucket, datasource,
         poll_frequency_seconds)
 
+    register!(daemon, ImportTask.NAME, ImportTaskDetails)
     register!(daemon, BlockMatchTask.NAME, BlockMatchTaskDetails)
     register!(daemon, RenderTask.NAME, RenderTaskDetails)
     register!(daemon, SolveTask.NAME, SolveTaskDetails)
