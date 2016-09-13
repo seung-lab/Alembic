@@ -11,6 +11,7 @@ using SimpleTasks.Services.GCSCLIProvider
 using SimpleTasks.Services.FileSystemCache
 using SimpleTasks.Services.BucketCacheDatasource
 using SimpleTasks.Services.Daemon
+using ImportTask
 using BlockMatchTask
 using RenderTask
 using SolveTask

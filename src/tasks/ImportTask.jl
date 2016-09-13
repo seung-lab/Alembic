@@ -23,7 +23,7 @@ ImportTaskDetails{String <: AbstractString}(basic_info::BasicTask.Info, dict::Di
 function ImportTaskDetails(z_index)
 #	inputs = unique(vcat(inputs_images, inputs_registry, inputs_meshes, inputs_meshset, input_transform))
 
-	basic_info = BasicTask.Info(0, NAME, Main.TASKS_BASE_DIRECTORY, [z_index]) 
+	basic_info = BasicTask.Info(0, NAME, Main.TASKS_BASE_DIRECTORY, [string(z_index)]) 
 	task = ImportTaskDetails(basic_info, AlembicPayloadInfo([], []));
 #	return vcat(inputs..., output)
 	return task
@@ -47,7 +47,7 @@ end
 
 function DaemonTask.execute(task::ImportTaskDetails,
         datasource::DatasourceService)
-    z_index = task.basic_info.inputs[1]
+    z_index = parseint(task.basic_info.inputs[1])
 
     Main.gentrify_tiles(z_index);
     return DaemonTask.Result(true, task.payload_info.outputs)
