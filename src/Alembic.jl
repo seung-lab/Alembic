@@ -9,12 +9,15 @@ if ENV["USER"] != "ubuntu"
 else
   global const ON_CLOUD = true;
 end
-
+#=
 if contains(gethostname(), "seunglab") || contains(gethostname(), "seungom") || ENV["USER"] == "dih"
   global const USE_PYPLOT = false;
 else
   global const USE_PYPLOT = true;
 end
+=#
+
+global const USE_PYPLOT = false;
 
 
 PKGS_USED = ["HDF5", "JLD", "Images", "ImageView", "Colors", "FixedPointNumbers", "Cairo", "IterativeSolvers", "Optim", "Distributions", "RegERMs", "PyPlot"]
