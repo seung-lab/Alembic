@@ -455,7 +455,7 @@ function update_offsets(indices, offsets, sizes, rendered=trues(length(indices))
   writedlm(registry_fp, registry)
   reload_registry(index)
   remotecall_fetch(IO_PROC, reload_registry, index)
-  for (i, index) in (indices)
+  for (i, index) in enumerate(indices)
      push!(REGISTRY_UPDATES, Dict{Any, Any}("index" => index, "rotation" => 0, "offset" => offsets[i], "image_size" => sizes[i], "rendered" => rendered[i]));
   end
 end
