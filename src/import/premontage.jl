@@ -43,60 +43,134 @@ function spiral_sort(indices)
   return filter(i->i in indices, spiral_indices)
 end
 
+"""
+Premontage based on order of r-values
+"""
 function premontage(index::Index)
   scale = 0.5
   println("Premontaging tiles in $(premontaged(index))")
-  tile_indices = spiral_sort(get_index_range(premontaged(index), premontaged(index)))
-  bbs = map(get_bb, tile_indices)
+  tile_indices = get_index_range(premontaged(index), premontaged(index))
+  # bbs = map(get_bb, tile_indices)
   overlaps = []
-  for k in 2:length(tile_indices)
-    mindex = tile_indices[k]
-    println("Finding overlap for $mindex")
-    moving_bb = bbs[k]
-    fixed_bbs = bbs[1:k-1]
-    overlap_bbs = [fixed_bb - moving_bb for fixed_bb in fixed_bbs]
-    overlap_area = map(get_area, overlap_bbs)
-    overlap_indices = sortperm(overlap_area, rev=true, by=negative_nans)
-    indices_limit = min(8, length(overlap_indices))
-    for idx in overlap_indices[1:indices_limit]
-      if maximum(ImageRegistration.get_size(overlap_bbs[idx])) > 1000
-        findex = tile_indices[idx]
-        fixed_bb = fixed_bbs[idx]
-        push!(overlaps, (mindex, findex, moving_bb, fixed_bb, scale))
-      else
+  overlap_pairs = []
+  for tile_index in tile_indices
+    tile_bb = get_bb(tile_index)
+    neighbor_indices = get_cardinal_neighbors(tile_index)
+    neighbor_bbs = map(get_bb, neighbor_indices)
+    overlap_bbs = [tile_bb - neighbor_bb for neighbor_bb in neighbor_bbs]
+    for neighbor_index in neighbor_indices
+      neighbor_bb = get_bb(neighbor_index)
+      overlap_bb = tile_bb - neighbor_bb
+      if maximum(ImageRegistration.get_size(overlap_bb)) > 1000
+        seam_indices = (tile_index, neighbor_index)
+        if !(seam_indices in overlap_pairs) && !(reverse(seam_indices) in overlap_pairs)
+          push!(overlap_pairs, seam_indices)
+          push!(overlaps, (seam_indices..., tile_bb, neighbor_bb, scale))
+        end
+      end
+    end
+  end
+
+  offsets = map(get_offset, tile_indices)
+  sizes = map(get_image_size, tile_indices)
+  # Calculate the full convolution of all the seams, along with r_value & dv
+  # Create table of the results
+  # Sort the table by r value
+  # Fix tile with highest r_value
+  # Then fix next tile with highest r_value that is connected to all fixed tiles
+  tr = pmap(find_translation, overlaps)
+  tr = hcat([collect(t) for t in tr]...)'
+  tr = tr[sortperm(tr[:,5]), :]
+  fixed_tiles = [tr[1,2]]
+  while length(tile_indices) > length(fixed_tiles)
+    k = 1
+    while !((tr[k,1] in fixed_tiles) $ (tr[k,2] in fixed_tiles))
+      k += 1
+      if k > size(tr,1)
+        k = 1
         continue
       end
     end
-  end
-  
-  translations = pmap(find_translation, overlaps)
-  offsets = map(get_offset, tile_indices)
-  sizes = map(get_image_size, tile_indices)
-  moving_indices = [i[1] for i in translations]
-  for (i, index) in enumerate(tile_indices)
-    ks = find(i->i==index, moving_indices)
-    if length(ks) > 0
-      best_k = ks[1]
-      best_r = 0
-      for k in ks
-        mindex, findex, moving_bb, fixed_bb, r, dv = translations[k]
-        if r > best_r
-          best_k = k
-          best_r = r
-        end
-      end
-      mindex, findex, moving_bb, fixed_bb, r, dv = translations[best_k]
-      j = findfirst(i->i==findex, tile_indices)
-      fixed_offset = offsets[j]
-      moving_offset = offsets[i]
-      offsets[i] = fixed_offset - ImageRegistration.get_offset(fixed_bb) + moving_offset + dv
-      # update_offset(mindex, offset, get_image_size(mindex));
-      # offset = get_offset(findex) - ImageRegistration.get_offset(fixed_bb) + get_offset(mindex) + dv
+    mindex, findex, moving_bb, fixed_bb, dv = tr[k, [1,2,3,4,6]]
+    dv = dv[:]
+    if tr[k,1] in fixed_tiles
+      findex, mindex = mindex, findex 
+      moving_bb, fixed_bb = fixed_bb, moving_bb
+      dv = -dv
     end
+    m = findfirst(i->i==mindex, tile_indices)
+    n = findfirst(i->i==findex, tile_indices)
+    moving_offset = offsets[m]
+    fixed_offset = offsets[n]
+    offsets[m] = fixed_offset - ImageRegistration.get_offset(fixed_bb) + moving_offset + dv
+    push!(fixed_tiles, mindex)
+    tr = vcat(tr[1:k-1, :], tr[k+1:end,:])
   end
+
   update_offsets(tile_indices, offsets, sizes)
-  save_premontage_review(tile_indices[1])
+  save_premontage_review(index)
 end
+
+# """
+# Premontage based on spiral sort from central location
+
+# Works in most cases
+# Fails when tiles only have neighboring fixed tiles as diagonals
+# """
+# function premontage(index::Index)
+#   scale = 0.5
+#   println("Premontaging tiles in $(premontaged(index))")
+#   tile_indices = spiral_sort(get_index_range(premontaged(index), premontaged(index)))
+#   bbs = map(get_bb, tile_indices)
+#   overlaps = []
+#   for k in 2:length(tile_indices)
+#     mindex = tile_indices[k]
+#     println("Finding overlap for $mindex")
+#     moving_bb = bbs[k]
+#     fixed_bbs = bbs[1:k-1]
+#     overlap_bbs = [fixed_bb - moving_bb for fixed_bb in fixed_bbs]
+#     overlap_area = map(get_area, overlap_bbs)
+#     overlap_indices = sortperm(overlap_area, rev=true, by=negative_nans)
+#     indices_limit = min(8, length(overlap_indices))
+#     for idx in overlap_indices[1:indices_limit]
+#       if maximum(ImageRegistration.get_size(overlap_bbs[idx])) > 1000
+#         findex = tile_indices[idx]
+#         fixed_bb = fixed_bbs[idx]
+#         push!(overlaps, (mindex, findex, moving_bb, fixed_bb, scale))
+#       else
+#         continue
+#       end
+#     end
+#   end
+  
+#   translations = pmap(find_translation, overlaps)
+#   offsets = map(get_offset, tile_indices)
+#   sizes = map(get_image_size, tile_indices)
+#   moving_indices = [i[1] for i in translations]
+#   for (i, index) in enumerate(tile_indices)
+#     ks = find(i->i==index, moving_indices)
+#     if length(ks) > 0
+#       best_k = ks[1]
+#       best_r = 0
+#       for k in ks
+#         mindex, findex, moving_bb, fixed_bb, r, dv = translations[k]
+#         if r > best_r
+#           best_k = k
+#           best_r = r
+#         end
+#       end
+#       mindex, findex, moving_bb, fixed_bb, r, dv = translations[best_k]
+#       j = findfirst(i->i==findex, tile_indices)
+#       fixed_offset = offsets[j]
+#       moving_offset = offsets[i]
+#       offsets[i] = fixed_offset - ImageRegistration.get_offset(fixed_bb) + moving_offset + dv
+#       # update_offset(mindex, offset, get_image_size(mindex));
+#       # offset = get_offset(findex) - ImageRegistration.get_offset(fixed_bb) + get_offset(mindex) + dv
+#     end
+#   end
+#   update_offsets(tile_indices, offsets, sizes)
+#   save_premontage_review(index)
+# end
 
 function premontage(firstindex::Index, lastindex::Index)
   indices = get_index_range(firstindex, lastindex)
