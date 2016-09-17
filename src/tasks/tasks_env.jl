@@ -69,14 +69,26 @@ end
 function pull_registry_updates(queue_name = TASKS_REGISTRY_QUEUE_NAME)
     env = AWS.AWSEnv()
     queue = SimpleTasks.Services.AWSQueue.AWSQueueService(env, queue_name)
+    # TODO: get update_offsets take in rotations
 
+  indices = Array{Index, 1}();
+  rotations = Array{Float64, 1}();
+  offsets = Array{Array{Int64, 1}, 1}();
+  image_sizes = Array{Array{Int64, 1}, 1}();
+  rendereds = Array{Bool, 1}();
     while true
       update_message = SimpleTasks.Services.AWSQueue.Queue.pop_message(queue)
       if length(update_message) == 0 break end
     # create tasks from the inputs and add them to the queue
       dict = JSON.parse(update_message);
-      update_registry(tuple(dict["index"]...); rotation = Float64(dict["rotation"]), offset = Array{Int64, 1}(dict["offset"]), image_size = Array{Int64, 1}(dict["image_size"]), rendered = Bool(dict["rendered"])); 
+      push!(indices, tuple(dict["index"]...)); 
+      push!(rotations, Float64(dict["rotation"]));
+      push!(offsets, Array{Int64, 1}(dict["offset"]));
+      push!(image_sizes, Array{Int64, 1}(dict["image_size"]));
+      push!(rendereds, Bool(dict["rendered"])); 
+#      update_registry(tuple(dict["index"]...); rotation = Float64(dict["rotation"]), offset = Array{Int64, 1}(dict["offset"]), image_size = Array{Int64, 1}(dict["image_size"]), rendered = Bool(dict["rendered"])); 
     end
+    update_offsets(indices, offsets, image_sizes, rendereds)
 end
 
 function upload_registries()

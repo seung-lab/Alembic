@@ -64,8 +64,8 @@ global PARAMS_MONTAGE = Dict(
 			     	"ftol_newton" => FTOL_NEWTON_MONTAGE),
 			     "filter" => Dict(
 			     		"sigma_filter_high" => (:get_properties, >, 2, 0.95),
-			     		"sigma_filter_mid" => (:get_properties, >, 5, 0.75),
-			     		"sigma_filter_low" => (:get_properties, >, 150, 0.50),
+			     		"sigma_filter_mid" => (:get_properties, >, 120, 0.75),
+			     		"sigma_filter_low" => (:get_properties, >, 350, 0.50),
 			     		"r_filter_min" => (:get_properties, <, 0.03, "r_max"),
 			     		"r_filter_max" => (:get_properties, >, 1, "r_max"),
 					"centered_norm_filter" => (:get_centered_norms, >, 75)
@@ -73,7 +73,7 @@ global PARAMS_MONTAGE = Dict(
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 2.5)
 					      ),
 			     "render" => Dict(
-			     		"crop" => [340, 340],
+			     		"crop" => [300, 300],
 			     		"thumbnail_scale" => 0.02
 					      ),
 			     "review" => Dict(
@@ -81,7 +81,7 @@ global PARAMS_MONTAGE = Dict(
 						"rejected_ratio" => (:get_ratio_rejected, >, 0.66, 20),
 						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.95),
 						#"norm_outliers" => (:count_outlier_norms, >, 0, 3), # too useless because they're so close to each other to begin with
-						"centered_norm" => (:get_maximum_centered_norm, >, 70)
+						"centered_norm" => (:get_maximum_centered_norm, >, 80)
 					      ),
 			     "registry" => Dict(
 					"global_offsets" => GLOBAL_OFFSETS_MONTAGE
