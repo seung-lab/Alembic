@@ -170,13 +170,13 @@ global PARAMS_ALIGNMENT = Dict(
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 5),
 			     		"kurtosis_filter" => (:get_properties, >, 25, "src_kurtosis"),
 			     		"kurtosis_filter_edge" => (:get_properties, <, -1.60, "src_kurtosis"),
-					"centered_norm_filter" => (:get_centered_norms, >, 1500)
+					"centered_norm_filter" => (:get_centered_norms, >, 600)
 					      ),
 			     "render" => Dict(
 					      ),
 			     "review" => Dict(
 			     		"too_few_corresps" => (:count_correspondences, <, 100),
-						"rejected_ratio" => (:get_ratio_rejected, >, 0.15),
+						"rejected_ratio" => (:get_ratio_rejected, >, 0.10),
 						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.95),
 						# "norm_outliers" => (:count_outlier_norms, >, 0, 4),
 						"centered_norm" => (:get_maximum_centered_norm, >, 500)
