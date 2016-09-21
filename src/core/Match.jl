@@ -666,7 +666,7 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, highpass_sigma
 	return vcat(pt + rel_offset + [di, dj], correspondence_properties);
 end
 
-function match_filter!(match::Match, function_name, compare, threshold, vars...)
+function filter!(match::Match, function_name, compare, threshold, vars...)
 	# attributes = get_properties(match, property_name)
 	attributes = eval(function_name)(match, vars...)
 	if attributes == nothing return 0; end
@@ -686,8 +686,8 @@ function match_filter!(match::Match, function_name, compare, threshold, vars...)
 	return length(inds_to_filter);
 end
 
-function match_filter!(match::Match, filter)
-	return match_filter!(match, filter...)
+function filter!(match::Match, filter)
+	return filter!(match, filter...)
 end
 
 function get_residual_norms_post(match, ms)
