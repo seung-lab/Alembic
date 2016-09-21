@@ -190,7 +190,7 @@ function view_match(meshset::MeshSet, match_ind)
   params["offset"] = offset - pad
   params["scale"] = scale
   params["match_index"] = match_ind
-  params["vector_scale"] = 40
+  params["vector_scale"] = 4
   params["dist"] = 90
   params["sigma"] = 20
   params["post_matches"] = false # is_prealigned(indexA)
@@ -710,13 +710,13 @@ function toggle_flag(imgc, img2, match)
 end
 
 function increase_vectors(imgc, img2, meshset, matches, params)
-  params["vector_scale"] = min(params["vector_scale"] + 1, 100)
+  params["vector_scale"] = min(params["vector_scale"] + 0.5, 100)
   change_vector_lengths!(params)
   update_annotations(imgc, img2, matches, params)
 end
 
 function decrease_vectors(imgc, img2, meshset, matches, params)
-  params["vector_scale"] = max(params["vector_scale"] - 1, 0)
+  params["vector_scale"] = max(params["vector_scale"] - 0.5, 0)
   change_vector_lengths!(params)
   update_annotations(imgc, img2, matches, params)
 end

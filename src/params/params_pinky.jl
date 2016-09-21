@@ -162,14 +162,14 @@ global PARAMS_ALIGNMENT = Dict(
 			     	"eta_newton" => ETA_NEWTON_ALIGNMENT,
 			     	"ftol_newton" => FTOL_NEWTON_ALIGNMENT),
 			     "filter" => Dict(
-			     		"sigma_filter_high" => (:get_properties, >, 8, 0.95),
-			     		"sigma_filter_mid" => (:get_properties, >, 100, 0.75),
-			     		"sigma_filter_low" => (:get_properties, >, 500, 0.50),
+			     		"sigma_filter_high" => (:get_properties, >, 6.5, 0.95),
+			     		"sigma_filter_mid" => (:get_properties, >, 65, 0.75),
+#			     		"sigma_filter_low" => (:get_properties, >, 250, 0.50),
 			     		"r_filter" => (:get_properties, <, 0.0275, "r_max"),
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 5),
 			     		"kurtosis_filter" => (:get_properties, >, 25, "src_kurtosis"),
 			     		"kurtosis_filter_edge" => (:get_properties, <, -1.60, "src_kurtosis"),
-					"centered_norm_filter" => (:get_centered_norms, >, 550)
+					"centered_norm_filter" => (:get_centered_norms, >, 800)
 					      ),
 			     "render" => Dict(
 					      ),
@@ -178,7 +178,7 @@ global PARAMS_ALIGNMENT = Dict(
 						"rejected_ratio" => (:get_ratio_rejected, >, 0.15),
 						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.95),
 						# "norm_outliers" => (:count_outlier_norms, >, 0, 4),
-						"centered_norm" => (:get_maximum_centered_norm, >, BLOCK_R_ALIGNMENT * 0.80)
+						"centered_norm" => (:get_maximum_centered_norm, >, 500)
 					      ),
 			     "registry" => Dict(
 					"global_offsets" => GLOBAL_OFFSETS_ALIGNMENT
