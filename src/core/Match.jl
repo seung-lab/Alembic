@@ -169,8 +169,12 @@ function get_correspondence_patches(match::Match, ind)
 		#dst_patch = h5read(dst_path, "img", props["ranges"]["dst_range"])
 		dst_pt_loc = props["ranges"]["dst_pt_loc"];
 
-		src_pt = src_pt_loc
+		src_pt = ceil(Int64, src_pt_loc * scale)
 		dst_pt = dst_pt_loc
+
+		dst_range_full = props["ranges"]["dst_range_full"]
+		dst_pt_locs_full = [findfirst(dst_range_full[1] .== dst_pt[1]), findfirst(dst_range_full[2] .== dst_pt[2])]
+		dst_pt_max = ceil(Int64, max(dst_pt, dst_pt_locs_full) * scale)
 
 	prepare_patches(src_path, dst_path, props["ranges"]["src_range"], props["ranges"]["dst_range"], props["ranges"]["dst_range_full"], scale, highpass_sigma; from_disk = true)
 
@@ -193,7 +197,7 @@ function get_correspondence_patches(match::Match, ind)
 	#return SRC_PATCH, DST_PATCH
 	xc = normxcorr2_preallocated(SRC_PATCH, DST_PATCH);
 	dv = ceil(Int64, props["vects"]["dv"] * scale)
-	return src_patch, src_pt, dst_patch, dst_pt, xc, dst_pt-src_pt+dv
+	return src_patch, src_pt, dst_patch, dst_pt, xc, dst_pt_max-src_pt+dv
 end
 
 ### helper methods
@@ -662,7 +666,7 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, highpass_sigma
 	return vcat(pt + rel_offset + [di, dj], correspondence_properties);
 end
 
-function filter!(match::Match, function_name, compare, threshold, vars...)
+function match_filter!(match::Match, function_name, compare, threshold, vars...)
 	# attributes = get_properties(match, property_name)
 	attributes = eval(function_name)(match, vars...)
 	if attributes == nothing return 0; end
@@ -682,8 +686,8 @@ function filter!(match::Match, function_name, compare, threshold, vars...)
 	return length(inds_to_filter);
 end
 
-function filter!(match::Match, filter)
-	return filter!(match, filter...)
+function match_filter!(match::Match, filter)
+	return match_filter!(match, filter...)
 end
 
 function get_residual_norms_post(match, ms)
