@@ -190,7 +190,7 @@ function view_match(meshset::MeshSet, match_ind)
   params["offset"] = offset - pad
   params["scale"] = scale
   params["match_index"] = match_ind
-  params["vector_scale"] = 40
+  params["vector_scale"] = 4
   params["dist"] = 90
   params["sigma"] = 20
   params["post_matches"] = false # is_prealigned(indexA)
@@ -328,13 +328,11 @@ end
 """
 Display the images involved in the blockmatching at one point in a Match object
 """
-function view_blockmatch(match, match_ind, params)
+function view_blockmatch(match, match_ind)
   for (k, v) in match.correspondence_properties[match_ind]
     println(k, ":\t", v)
   end
   src_patch, src_pt, dst_patch, dst_pt, xc, offset = get_correspondence_patches(match, match_ind)
-  block_r = params["block_r"]
-  search_r = params["search_r"]
   beta = 0.5
   N=size(xc, 1)
   M=size(xc, 2)
@@ -347,11 +345,12 @@ function view_blockmatch(match, match_ind, params)
   xc_image = xcorr2Image(xc)
   xc_beta_mask = xc .> beta*maximum(xc)
   xc_beta = xcorr2Image(xc .* xc_beta_mask)
-  # xc_image = padimage(xc_image, block_r, block_r, block_r, block_r, 1)
   hot = create_hot_colormap()
   xc_color = apply_colormap(xc_image, hot)
   xc_beta_color = apply_colormap(xc_beta, hot)
+  # fused_img, _ = imfuse(dst_patch, [0,0], src_patch, offset)
   fused_img, _ = imfuse(dst_patch, [0,0], src_patch, offset)
+  # 445, 384
 
   src = convert(Array{UInt32,2}, src_patch).<< 8
   dst = convert(Array{UInt32,2}, dst_patch).<< 16
@@ -564,7 +563,7 @@ function inspect_match(imgc, img2, x, y, matches, params, prox=0.0125)
     ptA = vectors[1:2,idx] # - params["src_offset"]
     ptB = vectors[3:4,idx] # - params["dst_offset"]
     println(idx, ": ", ptA, ", ", ptB)
-    bm_win = view_blockmatch(matches, idx, params)
+    bm_win = view_blockmatch(matches, idx)
     detect_blockmatch_removal(imgc, img2, bm_win, matches, idx, params)
   end
 end
@@ -710,13 +709,13 @@ function toggle_flag(imgc, img2, match)
 end
 
 function increase_vectors(imgc, img2, meshset, matches, params)
-  params["vector_scale"] = min(params["vector_scale"] + 1, 100)
+  params["vector_scale"] = min(params["vector_scale"] + 0.5, 100)
   change_vector_lengths!(params)
   update_annotations(imgc, img2, matches, params)
 end
 
 function decrease_vectors(imgc, img2, meshset, matches, params)
-  params["vector_scale"] = max(params["vector_scale"] - 1, 0)
+  params["vector_scale"] = max(params["vector_scale"] - 0.5, 0)
   change_vector_lengths!(params)
   update_annotations(imgc, img2, matches, params)
 end
