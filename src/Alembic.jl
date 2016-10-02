@@ -17,7 +17,7 @@ else
 end
 =#
 
-global const USE_PYPLOT = false;
+global const USE_PYPLOT = true;
 
 
 PKGS_USED = ["HDF5", "JLD", "Images", "ImageView", "Colors", "FixedPointNumbers", "Cairo", "IterativeSolvers", "Optim", "Distributions", "RegERMs", "PyPlot"]
@@ -124,6 +124,9 @@ include("core/filter.jl")
 include("core/MeshSet.jl")
 include("core/solve.jl")
 
+include("datasets/dataset_myelin.jl")
+include("params/params_myelin.jl")
+#=
 if ON_CLOUD
 #  include("datasets/dataset_zebrafish.jl")
   include("datasets/dataset_pinky.jl")
@@ -134,6 +137,7 @@ else
   # include("dataset_zebrafish.jl")
   include("params/params_pinky.jl")
 end
+=#
 include("datasets/dataset_common.jl")
 
 include("render/render.jl")

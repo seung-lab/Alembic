@@ -476,10 +476,10 @@ function MeshSet(index::Index; kwargs...)
 	if is_prealigned(index) return prealign(montaged(index)) end
 end
 
-function MeshSet(first_index, last_index; params=get_params(first_index), solve=true, solve_method="elastic")
+function MeshSet(first_index, last_index; kwargs...) #params=get_params(first_index), solve=true, solve_method="elastic")
 	indices = get_index_range(first_index, last_index);
 	if length(indices) == 0 return nothing; end
-	MeshSet(indices; params=get_params(indices[1]), solve=solve, solve_method=solve_method)
+	MeshSet(indices; kwargs...) # params=get_params(indices[1]), solve=solve, solve_method=solve_method)
 end
 
 function MeshSet(indices::Array; params=get_params(indices[1]), solve=true, solve_method="elastic")

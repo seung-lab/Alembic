@@ -290,7 +290,7 @@ function premontage_to_overview(wafer, start, tile_size = [8000,8000], scale = 0
 
     sigma = [1,1]
 
-    overview_image = get_image(get_path(overview(wafer, sec), ".tif"))
+    overview_image = get_image(get_path_legacy(overview(wafer, sec), ".tif"))
     function find_patch_locs(cur_image, overview_image)
 	cur_image = imscale(cur_image, scale)[1]
 	xc = normxcorr2(cur_image, overview_image)

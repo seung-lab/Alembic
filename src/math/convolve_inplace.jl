@@ -1,3 +1,5 @@
+function init_Convolve()
+
 global CONV_RESULT = Array{Float64, 2}(10,10);
 global COMPLEX_CONV_INTERMEDIATE_A = Array{Complex{Float64}, 2}(6,10);
 global COMPLEX_CONV_INTERMEDIATE_B = Array{Complex{Float64}, 2}(6,10);
@@ -21,6 +23,10 @@ global CONV_SUM = Array{Float64, 2}();
 global CONV_SUM2 = Array{Float64, 2}();
 global LOCAL_SUM = Array{Float64, 2}();
 global LOCAL_SUM2 = Array{Float64, 2}();
+
+end
+
+init_Convolve();
 
 function convolve{T, n}(A::SubArray{T, n},B::Array{T, n},dims)
     common_size=tuple(map(max,size(A),size(B))...)
@@ -104,6 +110,12 @@ end
 function elwise_mul!(A, B)
       @simd for i in 1:length(A)
 	@fastmath @inbounds A[i] = A[i] * B[i]
+      end
+      return A
+end
+function elwise_add!(A, B)
+      @simd for i in 1:length(A)
+	@fastmath @inbounds A[i] = A[i] + B[i]
       end
       return A
 end

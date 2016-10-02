@@ -1,4 +1,4 @@
-MESH_LENGTH_MONTAGE = 200
+MESH_LENGTH_MONTAGE = 500
 GLOBAL_OFFSETS_MONTAGE = true
 BLOCKMATCH_SCALE_MONTAGE = 1.0
 BLOCK_R_MONTAGE = 140
@@ -73,7 +73,7 @@ global PARAMS_MONTAGE = Dict(
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 2.5)
 					      ),
 			     "render" => Dict(
-			     		"crop" => [300, 300],
+			     		"crop" => [0, 0],
 			     		"thumbnail_scale" => 0.02
 					      ),
 			     "review" => Dict(
