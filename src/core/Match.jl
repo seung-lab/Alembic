@@ -1,13 +1,15 @@
 function init_Match()
 
 global SRC_PATCH_FULL = Array{Float64, 2}(1,1);
+global SRC_PATCH_FULL_H = Array{Float64, 2}(1,1);
 global SRC_PATCH = Array{Float64, 2}(1,1);
-global SRC_PATCH_G_H = Array{Float64, 2}(1,1);
-global SRC_PATCH_G_L = Array{Float64, 2}(1,1);
+#global SRC_PATCH_G_H = Array{Float64, 2}(1,1);
+#global SRC_PATCH_G_L = Array{Float64, 2}(1,1);
 global DST_PATCH_FULL = Array{Float64, 2}(1,1);
+global DST_PATCH_FULL_H = Array{Float64, 2}(1,1);
 global DST_PATCH = Array{Float64, 2}(1,1);
-global DST_PATCH_G_H = Array{Float64, 2}(1,1);
-global DST_PATCH_G_L = Array{Float64, 2}(1,1);
+#global DST_PATCH_G_H = Array{Float64, 2}(1,1);
+#global DST_PATCH_G_L = Array{Float64, 2}(1,1);
 
 end
 
@@ -393,17 +395,20 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
   	# the following two if statements should only ever be called together
 	if size(SRC_PATCH_FULL) != map(length,src_range)
 		global SRC_PATCH_FULL = Array{Float64, 2}(map(length, src_range)...);
-		global SRC_PATCH_G_L = zeros(Float64, map(length, src_range)...)
-		global SRC_PATCH_G_H = zeros(Float64, map(length, src_range)...)
+		global SRC_PATCH_FULL_H = Array{Float64, 2}(map(length, src_range)...);
+#		global SRC_PATCH_G_L = zeros(Float64, map(length, src_range)...)
+#		global SRC_PATCH_G_H = zeros(Float64, map(length, src_range)...)
 	end
 	if size(DST_PATCH_FULL) != map(length,dst_range_full)
 		global DST_PATCH_FULL = Array{Float64, 2}(map(length, dst_range_full)...);
-		global DST_PATCH_G_L = zeros(Float64, map(length, dst_range_full)...)
-		global DST_PATCH_G_H = zeros(Float64, map(length, dst_range_full)...)
+		global DST_PATCH_FULL_H = Array{Float64, 2}(map(length, dst_range_full)...);
+#		global DST_PATCH_G_L = zeros(Float64, map(length, dst_range_full)...)
+#		global DST_PATCH_G_H = zeros(Float64, map(length, dst_range_full)...)
 	      else
 		DST_PATCH_FULL[:] = 0;
-		DST_PATCH_G_L[:] = 0;
-		DST_PATCH_G_H[:] = 0;
+#		DST_PATCH_FULL_H[:] = 0; # this gets overwritten anyway
+#		DST_PATCH_G_L[:] = 0;
+#		DST_PATCH_G_H[:] = 0;
 	end
 
 	indices_within_range = findin(dst_range_full[1], dst_range[1]), findin(dst_range_full[2], dst_range[2])
@@ -419,25 +424,21 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
       end
       zeropad_to_meanpad!(SRC_PATCH_FULL)
       zeropad_to_meanpad!(DST_PATCH_FULL)
-		@inbounds SRC_PATCH_G_L[:] = SRC_PATCH_FULL
-		@inbounds SRC_PATCH_G_H[:] = SRC_PATCH_FULL
-		@inbounds DST_PATCH_G_L[:] = DST_PATCH_FULL
-		@inbounds DST_PATCH_G_H[:] = DST_PATCH_FULL
+		@inbounds SRC_PATCH_FULL_H[:] = SRC_PATCH_FULL
+		@inbounds DST_PATCH_FULL_H[:] = DST_PATCH_FULL
 
 	lowpass_sigma, highpass_sigma = bandpass_sigmas;
 
 	if lowpass_sigma != 0
-		@fastmath Images.imfilter_gaussian_no_nans!(SRC_PATCH_G_L, [lowpass_sigma, lowpass_sigma]; emit_warning=false)
-		elwise_add!(SRC_PATCH_FULL, SRC_PATCH_G_L);
-		@fastmath Images.imfilter_gaussian_no_nans!(DST_PATCH_G_L, [lowpass_sigma, lowpass_sigma]; emit_warning=false)
-		elwise_add!(DST_PATCH_FULL, DST_PATCH_G_L);
+		@fastmath Images.imfilter_gaussian_no_nans!(SRC_PATCH_FULL, [lowpass_sigma, lowpass_sigma]; emit_warning=false)
+		@fastmath Images.imfilter_gaussian_no_nans!(DST_PATCH_FULL, [lowpass_sigma, lowpass_sigma]; emit_warning=false)
       end
 
 	if highpass_sigma != 0
-		@fastmath Images.imfilter_gaussian_no_nans!(SRC_PATCH_G_H, [highpass_sigma, highpass_sigma]; emit_warning=false)
-		elwise_sub!(SRC_PATCH_FULL, SRC_PATCH_G_H);
-		@fastmath Images.imfilter_gaussian_no_nans!(DST_PATCH_G_H, [highpass_sigma, highpass_sigma]; emit_warning=false)
-		elwise_sub!(DST_PATCH_FULL, DST_PATCH_G_H);
+		@fastmath Images.imfilter_gaussian_no_nans!(SRC_PATCH_FULL_H, [highpass_sigma, highpass_sigma]; emit_warning=false)
+		@fastmath Images.imfilter_gaussian_no_nans!(DST_PATCH_FULL_H, [highpass_sigma, highpass_sigma]; emit_warning=false)
+		elwise_sub!(SRC_PATCH_FULL, SRC_PATCH_FULL_H);
+		elwise_sub!(DST_PATCH_FULL, DST_PATCH_FULL_H);
       end 
 
 	function imscale_src_patch(img, scale_factor)
@@ -482,88 +483,6 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
 
 	imscale_src_patch(SRC_PATCH_FULL, scale);	
 	imscale_dst_patch(DST_PATCH_FULL, scale);	
-
-#	if isnan(mean(DST_PATCH_FULL)) || isnan(mean(SRC_PATCH_FULL)) return nothing; end
-
-#=	SRC_PATCH_FULL[SRC_PATCH_FULL .== 0] = mean(SRC_PATCH_FULL[SRC_PATCH_FULL .!= 0])
-	DST_PATCH_FULL[DST_PATCH_FULL .== 0] = mean(DST_PATCH_FULL[DST_PATCH_FULL .!= 0])=#
-
-	#=
-
-	function imscale_src_patch(img, scale_factor)
-		if scale == 1.0
-			if size(SRC_PATCH) != size(img)
-				bb = ImageRegistration.BoundingBox{Int64}(0,0, size(img, 1), size(img, 2))
-				global SRC_PATCH = zeros(Float64, bb.h, bb.w)
-				global SRC_PATCH_G_L = zeros(Float64, bb.h, bb.w)
-				global SRC_PATCH_G_H = zeros(Float64, bb.h, bb.w)
-			end
-			@inbounds SRC_PATCH[:] = img
-		else
-			tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
-			bb = ImageRegistration.BoundingBox{Float64}(0,0, size(img, 1), size(img, 2))
-			wbb = tform_bb(bb, tform)
-			tbb = snap_bb(wbb)
-			if size(SRC_PATCH) != (tbb.h, tbb.w)
-				global SRC_PATCH = zeros(Float64, tbb.h, tbb.w)
-				global SRC_PATCH_G_L = zeros(Float64, tbb.h, tbb.w)
-				global SRC_PATCH_G_H = zeros(Float64, tbb.h, tbb.w)
-			end
-			ImageRegistration.imwarp!(SRC_PATCH, img, tform);
-		end
-		zeropad_to_meanpad!(SRC_PATCH);
-		@inbounds SRC_PATCH_G_L[:] = SRC_PATCH
-		@inbounds SRC_PATCH_G_H[:] = SRC_PATCH
-	end
-
-
-
-	function imscale_dst_patch(img, scale_factor)
-		if scale == 1.0
-			if size(DST_PATCH) != size(img)
-				bb = ImageRegistration.BoundingBox{Int64}(0,0, size(img, 1), size(img, 2))
-				global DST_PATCH = zeros(Float64, bb.h, bb.w)
-				global DST_PATCH_G_L = zeros(Float64, bb.h, bb.w)
-				global DST_PATCH_G_H = zeros(Float64, bb.h, bb.w)
-			end
-			@inbounds DST_PATCH[:] = img
-		else
-			tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
-			bb = ImageRegistration.BoundingBox{Float64}(0,0, size(img, 1), size(img, 2))
-			wbb = tform_bb(bb, tform)
-			tbb = snap_bb(wbb)
-			if size(DST_PATCH) != (tbb.h, tbb.w)
-				global DST_PATCH = zeros(Float64, tbb.h, tbb.w)
-				global DST_PATCH_G_L = zeros(Float64, tbb.h, tbb.w)
-				global DST_PATCH_G_H = zeros(Float64, tbb.h, tbb.w)
-			end
-			ImageRegistration.imwarp!(DST_PATCH, img, tform);
-		end
-		zeropad_to_meanpad!(DST_PATCH);
-		@inbounds DST_PATCH_G_L[:] = DST_PATCH
-		@inbounds DST_PATCH_G_H[:] = DST_PATCH
-	end
-
-	imscale_src_patch(SRC_PATCH_FULL, scale);	
-	imscale_dst_patch(DST_PATCH_FULL, scale);	
-
-	lowpass_sigma, highpass_sigma = bandpass_sigmas;
-
-	if lowpass_sigma != 0
-		lowpass_sigma = lowpass_sigma * scale
-		@fastmath Images.imfilter_gaussian_no_nans!(SRC_PATCH_G_L, [lowpass_sigma, lowpass_sigma])
-		elwise_sub!(SRC_PATCH, SRC_PATCH_G_L);
-		@fastmath Images.imfilter_gaussian_no_nans!(DST_PATCH_G_L, [lowpass_sigma, lowpass_sigma])
-		elwise_sub!(DST_PATCH, DST_PATCH_G_L);
-      end
-
-	if highpass_sigma != 0
-		highpass_sigma = highpass_sigma * scale
-		@fastmath Images.imfilter_gaussian_no_nans!(SRC_PATCH_G_H, [highpass_sigma, highpass_sigma])
-		elwise_sub!(SRC_PATCH, SRC_PATCH_G_H);
-		@fastmath Images.imfilter_gaussian_no_nans!(DST_PATCH_G_H, [highpass_sigma, highpass_sigma])
-		elwise_sub!(DST_PATCH, DST_PATCH_G_H);
-      end =#
 
       return SRC_PATCH, DST_PATCH
 end
