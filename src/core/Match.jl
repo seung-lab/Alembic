@@ -455,7 +455,7 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
 			if size(SRC_PATCH) != (tbb.h, tbb.w)
 				global SRC_PATCH = zeros(Float64, tbb.h, tbb.w)
 			end
-			tform_correct = [tbb.h/size(img,1) 0 0; 0 tbb.w/size(img,2) 0; 0 0 1];
+			tform_correct = [tbb.h/size(img,1) - eps 0 0; 0 tbb.w/size(img,2) - eps 0; 0 0 1];
 			ImageRegistration.imwarp!(SRC_PATCH, img, tform_correct);
 		end
 	end
@@ -475,7 +475,7 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
 			if size(DST_PATCH) != (tbb.h, tbb.w)
 				global DST_PATCH = zeros(Float64, tbb.h, tbb.w)
 			end
-			tform_correct = [tbb.h/size(img,1) 0 0; 0 tbb.w/size(img,2) 0; 0 0 1];
+			tform_correct = [tbb.h/size(img,1) - eps 0 0; 0 tbb.w/size(img,2) - eps 0; 0 0 1];
 			ImageRegistration.imwarp!(DST_PATCH, img, tform_correct);
 		end
 	end

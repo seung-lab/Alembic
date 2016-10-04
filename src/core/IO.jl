@@ -1,5 +1,5 @@
 # size in bytes
-global const IMG_CACHE_SIZE = 8 * 2^30 # n * gibibytes
+global const IMG_CACHE_SIZE = 2.5 * 2^30 # n * gibibytes
 global const IMG_ELTYPE = UInt8
 
 if myid() == 1
@@ -374,7 +374,7 @@ end
 
 function resurrect_tile(index::Index)
   assert(is_premontaged(index))
-  fn = get_filename(index)
+  fn = get_name(index)
   path = joinpath(EXPUNGED_DIR, fn)
   new_path = get_path(index)
   println("Resurrecting $fn")

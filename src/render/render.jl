@@ -159,6 +159,7 @@ function compile_cumulative_transforms(firstindex::Index, lastindex::Index)
 end
 
 function render_prealigned_full(index::Index; thumbnail_scale=get_params(prevstage(index))["render"]["thumbnail_scale"], overview=false)
+  index = montaged(index);
   img = load(index)
   scale = make_scale_matrix(1.0)
   if overview

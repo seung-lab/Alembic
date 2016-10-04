@@ -1,8 +1,9 @@
 global BUCKET = "/home/ubuntu"
 global DATASET = "datasets/myelin"
-global ROI_FIRST = (1,1,0,0);
+#global ROI_FIRST = (1,1,0,0);
+global ROI_FIRST = (3,1,0,0);
 global ROI_LAST = (8,173,0,0);
-global DATASET_RESOLUTION = [7,7,40]
+global DATASET_RESOLUTION = [30,30,40]
 
 function get_name_legacy(index)
     if is_overview(index)
