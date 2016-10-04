@@ -124,8 +124,8 @@ function DaemonTask.finalize(task::BlockMatchTaskDetails,
 
         Datasource.put!(datasource,
             map((output) -> full_output_path(task, output), result.outputs))
-	Datasource.remove!(datasource, map((output) -> full_output_path(task, output), result.outputs); only_cache = true)
-	Datasource.remove!(datasource, map((input) -> full_input_path(task, input), task.basic_info.inputs); only_cache = true)
+	Datasource.delete!(datasource, map((output) -> full_output_path(task, output), result.outputs); only_cache = true)
+	Datasource.delete!(datasource, map((input) -> full_input_path(task, input), task.basic_info.inputs); only_cache = true)
 	Main.push_registry_updates();
 
     return DaemonTask.Result(true, task.payload_info.outputs)
