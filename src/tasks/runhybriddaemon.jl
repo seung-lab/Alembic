@@ -50,8 +50,7 @@ function run(task_queue_name, error_queue_name, done_queue_name, bucket_name,
 
     datasource = BucketCacheDatasourceService(bucket, cache)
 
-    daemon = DaemonService(task_queue, error_queue, bucket, datasource,
-        poll_frequency_seconds)
+    daemon = DaemonService(task_queue, error_queue, done_queue, bucket, datasource, poll_frequency_seconds)
 
     register!(daemon, ImportTask.NAME, ImportTaskDetails)
     register!(daemon, BlockMatchTask.NAME, BlockMatchTaskDetails)
