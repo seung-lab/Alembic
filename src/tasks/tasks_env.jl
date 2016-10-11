@@ -1,5 +1,5 @@
-#global TASKS_LOCALE = "gcs"
-global TASKS_LOCALE = "aws"
+global TASKS_LOCALE = "gcs"
+#global TASKS_LOCALE = "aws"
 
 if TASKS_LOCALE == "aws"
 global TASKS_TASK_QUEUE_NAME = "task-queue-TEST";

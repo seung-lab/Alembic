@@ -17,7 +17,8 @@ else
 end
 =#
 
-global const USE_PYPLOT = true;
+#global const USE_PYPLOT = true;
+global const USE_PYPLOT = false;
 
 
 PKGS_USED = ["HDF5", "JLD", "Images", "ImageView", "Colors", "FixedPointNumbers", "Cairo", "IterativeSolvers", "Optim", "Distributions", "RegERMs", "PyPlot"]
