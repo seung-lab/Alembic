@@ -48,11 +48,12 @@ function RenderTaskDetails(index::Main.Index)
 #	output_transform = Main.truncate_path(Main.get_path("relative_transform", index))
 #	output_reviews = map(Main.truncate_path, map((pair) -> Main.get_path("review", pair), possible_pairs))
 	output_image = Main.truncate_path(Main.get_path(index));
+	output_image_thumbnail = Main.truncate_path(Main.get_path("thumbnail", index));
 #	outputs = unique([output_meshset, output_stats, output_transform, output_reviews...])
 #	output_tform = 
 
 	basic_info = BasicTask.Info(0, NAME, Main.TASKS_BASE_DIRECTORY, inputs) 
-	task = RenderTaskDetails(basic_info, AlembicPayloadInfo([index], [output_image]));
+	task = RenderTaskDetails(basic_info, AlembicPayloadInfo([index], [output_image, output_image_thumbnail]));
 #	return vcat(inputs..., output)
 	return task
 end

@@ -436,8 +436,8 @@ function rectify_drift(meshset::MeshSet, start_ind = 1, final_ind = count_meshes
     for i in 1:count_nodes(meshset.meshes[ind])
 	@fastmath @inbounds meshset.meshes[ind].dst_nodes[i] += cum_drift;
     end
-    #=update_offset(get_index(meshset.meshes[ind]), round(Int64, get_offset(get_index(meshset.meshes[ind])) + cum_drift))
-    if rectify_aligned
+    #update_offset(get_index(meshset.meshes[ind]), round(Int64, get_offset(get_index(meshset.meshes[ind])) + cum_drift))
+    #=if rectify_aligned
     update_offset(aligned(get_index(meshset.meshes[ind])), round(Int64, get_offset(aligned(get_index(meshset.meshes[ind]))) + cum_drift))
   end=#
   end

@@ -398,7 +398,7 @@ function make_stack(firstindex::Index, lastindex::Index, slice=(1:255, 1:255); s
   stack_offset = ImageRegistration.get_offset(global_bb)
   stack_size = ImageRegistration.get_size(global_bb)
 
-  thumbnail_scale = 0.05
+  thumbnail_scale = 0.02
   if thumb
     thumb_path = get_path("thumbnail", firstindex)
     thumbnail_scale = h5read(thumb_path, "scale")
@@ -420,6 +420,7 @@ function make_stack(firstindex::Index, lastindex::Index, slice=(1:255, 1:255); s
     if intersects(bb, global_bb)
       shared_bb = global_bb - bb
       stack_roi = snap_bb(scale_bb(translate_bb(shared_bb, -stack_offset+[1,1]), scale))
+      #stack_roi = snap_bb(translate_bb(scale_bb(translate_bb(shared_bb, -stack_offset), scale), [1,1]))
       img_slice = bb_to_slice(stack_roi)
       imgs[img_slice..., i] = get_slice(index, shared_bb, scale, is_global=true, thumb=thumb) 
     end

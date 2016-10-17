@@ -29,7 +29,8 @@ MESH_LENGTH_ALIGNMENT = 200
 GLOBAL_OFFSETS_ALIGNMENT = true
 BLOCKMATCH_SCALE_ALIGNMENT = 0.50
 BLOCK_R_ALIGNMENT = 120
-SEARCH_R_ALIGNMENT = 250
+#SEARCH_R_ALIGNMENT = 250
+SEARCH_R_ALIGNMENT = 350
 #SEARCH_R_ALIGNMENT = 550
 PREMATCH_ALIGNMENT = false
 MESH_SPRING_COEFF_ALIGNMENT = 1.0
@@ -72,7 +73,7 @@ global PARAMS_MONTAGE = Dict(
 					"centered_norm_filter" => (:get_centered_norms, >, 75)
 						# "norm_filter" => (:get_norms_std_sigmas, >, 5)
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 2.5)
-					      ),
+					       could keep),
 			     "render" => Dict(
 			     		"crop" => [0, 0],
 			     		"thumbnail_scale" => 0.02
@@ -152,7 +153,7 @@ global PARAMS_ALIGNMENT = Dict(
 					"bandpass_sigmas" => (2.5, 15),
 #					"highpass_sigma" => 20,
 #					"lowpass_sigma" => 2.5,
-					"depth" => 1,
+					"depth" => 2,
 					"reflexive" => false),
 			     "solve" => Dict(
 					"mesh_spring_coeff" => MESH_SPRING_COEFF_ALIGNMENT,
