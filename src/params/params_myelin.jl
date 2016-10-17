@@ -73,7 +73,7 @@ global PARAMS_MONTAGE = Dict(
 					"centered_norm_filter" => (:get_centered_norms, >, 75)
 						# "norm_filter" => (:get_norms_std_sigmas, >, 5)
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 2.5)
-					       could keep),
+					),
 			     "render" => Dict(
 			     		"crop" => [0, 0],
 			     		"thumbnail_scale" => 0.02
