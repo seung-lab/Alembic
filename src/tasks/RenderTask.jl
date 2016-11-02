@@ -27,7 +27,7 @@ function RenderTaskDetails(index::Main.Index)
 	inputs_registry = map(Main.truncate_path, map(Main.get_registry_path, indices));
 
       if Main.is_prealigned(index) 
-	input_transform = [Main.truncate_path(Main.get_path("cumulative_transform", index))]
+	input_transform = [Main.truncate_path(Main.get_path("cumulative_transform", montaged(index)))]
 	inputs_meshes = [];
 	inputs_meshset = [];
       elseif Main.is_montaged(index)
