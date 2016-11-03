@@ -13,9 +13,19 @@ end
 function is_adjacent(Am::Mesh, Bm::Mesh)		return is_adjacent(Am.index, Bm.index);			end
 function is_diagonal(Am::Mesh, Bm::Mesh)		return is_diagonal(Am.index, Bm.index);			end
 function is_preceding(Am::Mesh, Bm::Mesh, within = 1)	return is_preceding(Am.index, Bm.index, within);	end
+
 function globalize!(pts::Points, mesh::Mesh)
   offset = get_offset(mesh)
-  @simd for i in 1:length(pts) @fastmath @inbounds pts[i] = pts[i] + offset; end
+  @inbounds o1 = offset[1];
+  @inbounds o2 = offset[2];
+
+  for i in 1:length(pts)
+    @inbounds p1 = pts[i][1];
+    @inbounds p2 = pts[i][2];
+    @fastmath @inbounds pts[i][1] = o1 + p1;
+    @fastmath @inbounds pts[i][2] = o2 + p2;
+  end
+#  @simd for i in 1:length(pts) @fastmath @inbounds pts[i] = pts[i] + offset; end
 end
 
 ### PARAMS.jl EXTENSIONS
