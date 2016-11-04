@@ -105,3 +105,40 @@ end
 	return norms;
 end
 
+function get_norm_diff_from_filtered_consensus(m::Match, r)
+
+filtered_inds = Array{Int64, 1}(get_filtered_indices(m));
+filtered_len = length(filtered_inds)
+src_points = Points(length(filtered_inds))
+dst_points = Points(length(filtered_inds))
+src_points[:] = m.src_points[filtered_inds]
+dst_points[:] = m.dst_points[filtered_inds]
+norms = similar(m.src_points, Float64);
+r_sq = r * r;
+
+for i in 1:count_correspondences(m)
+	accepted = 0
+	@inbounds p1 = m.src_points[i][1];
+	@inbounds p2 = m.src_points[i][2];
+	@inbounds m1 = 0.0;
+	@inbounds m2 = 0.0;
+
+	for k in 1:filtered_len
+		@fastmath @inbounds d1 = src_points[k][1] - p1
+		@fastmath @inbounds d2 = src_points[k][2] - p2
+		@fastmath @inbounds d_norm_sq = d1^2 + d2^2
+		@fastmath if d_norm_sq < r_sq
+			
+			@fastmath @inbounds m1 = m1 + dst_points[k][1] - src_points[k][1]
+			@fastmath @inbounds m2 = m2 + dst_points[k][2] - src_points[k][2]
+			accepted += 1;
+		end
+	end
+	@fastmath m1 = m1/accepted;
+	@fastmath m2 = m2/accepted;
+	@fastmath @inbounds diff_sq1 = (m.dst_points[i][1] - p1 - m1) ^ 2;
+	@fastmath @inbounds diff_sq2 = (m.dst_points[i][2] - p2 - m2) ^ 2;
+	@fastmath @inbounds norms[i] = sqrt(diff_sq1 + diff_sq2)
+end
+	return norms;
+end
