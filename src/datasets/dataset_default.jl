@@ -1,5 +1,5 @@
 global BUCKET = "/usr/people/dih"
-global DATASET = "datasets/piriform"
+global DATASET = "piriform"
 global ROI_FIRST = (1,2,0,0);
 global ROI_LAST = (8,173,0,0);
 global DATASET_RESOLUTION = [7,7,40]
@@ -121,15 +121,15 @@ function parse_name_legacy(name::AbstractString)
 end
 
 if contains(gethostname(), "seunglab") || contains(gethostname(), "seungom") || contains(gethostname(), "spock") 
- BUCKET = "/mnt/bucket/labs/seung/research/Julimaps/datasets"
+ BUCKET = "/mnt/bucket/labs/seung/research/Alembic/datasets"
 end
 
 if contains(gethostname(), "seungworkstation")
- BUCKET = joinpath(homedir(), "seungmount/research/Julimaps/datasets")
+ BUCKET = joinpath(homedir(), "seungmount/research/Alembic/datasets")
 end
 
 if contains(gethostname(), "seungworkstation08")
-    # BUCKET = "/media/tmacrina/667FB0797A5072D7/datasets"
+    # BUCKET = "/media/tmacrina/Data/"
 end
 #=
 tracerhostnames = ["seungworkstation04", "mycroft", "seungworkstation10", "hogwarts"]
@@ -144,17 +144,10 @@ if isdefined(:omni)
 end  
 
 datasets_dir_path = "research/Julimaps/datasets" =#
-# cur_dataset = "piriform"
-# cur_dataset = "AIBS_practice_234251S6R_01_01_aligned_01"
-# cur_dataset = "AIBS_actual_trial10_full"
-# cur_dataset = "align_net"
-# cur_dataset = "AIBS_pilot_v1"
-# cur_dataset = "align_net"
-# cur_dataset = "elastic_test_crack"
-# cur_dataset = "elastic_real_crack_with_cropping"
-# DATASET = "AIBS_actual_trial10_full"
+DATASET = "piriform"
+# DATASET = "AIBS_practice_234251S6R_01_01_aligned_01"
 # DATASET = "pinky"
-DATASET = "pinky_overviews"
+# DATASET = "pinky_overviews"
 # DATASET = "stage_stitch"
 affine_dir_path = "~"
 

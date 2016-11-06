@@ -192,7 +192,7 @@ end
 #     ptA = vectors[1:2,idx] # - params["src_offset"]
 #     ptB = vectors[3:4,idx] # - params["dst_offset"]
 #     println(idx, ": ", ptA, ", ", ptB)
-#     bm_win = view_blockmatch(matches, idx, params)
+#     bm_win = view_blockmatch(matches, idx)
 #     detect_blockmatch_removal(imgc, img2, bm_win, matches, idx, params)
 #   end
 

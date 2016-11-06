@@ -62,7 +62,7 @@ function get_loadfile()
 	loadfile_localpath = joinpath(homedir(), loadfile_sub_path)
 	if !isfile(loadfile_localpath)
 		loadfile_remotepath = joinpath(GCLOUD_BUCKET, loadfile_sub_path)
-		Base.run(`gsutil -m cp $loadfile_remotepath $loadfile_localpath`)
+		Base.run(`sudo gsutil -m cp $loadfile_remotepath $loadfile_localpath`)
 	end
 	return readdlm(loadfile_localpath, ',')
 end
@@ -345,17 +345,12 @@ function calculate_contrast_histogram(z_index, N=100, bins=20)
 end
 
 function import_overview_gcloud(z_index)
-	dir, exists_gcloud = get_src_dir(z_index)
+	dir = get_src_dir(z_index)
 	if dir != nothing
 		index = (1,z_index,OVERVIEW_INDEX,OVERVIEW_INDEX)
 		dst_fn = string(get_path(index)[1:end-3], ".tif")
-		if exists_gcloud
-			src_fn = joinpath(dir, "_montage\*")
-			f = "sudo gsutil -m cp $src_fn $dst_fn"
-		else
-			src_fn = joinpath(dir, "_montage\*")
-			f = "cp $src_fn $dst_fn"
-		end
+		src_fn = joinpath(dir, "_montage\*")
+		f = "sudo gsutil -m cp $src_fn $dst_fn"
 		return f
 	end
 	return nothing
@@ -997,6 +992,23 @@ function copy_between_projects(firstz, lastz, stage, dir_name, src_dataset, dst_
 			Base.run(f)
 		else
 			println("Does not exist: $src")
+		end
+	end
+end
+
+function copy_pinky_overviews_from_gcloud(class_range=1:1, fn=joinpath(homedir(), "seungmount/research/Julimaps/datasets/pinky/pinky_reimage_priority.csv"))
+	import_table = readdlm(fn, ',')
+	src_dir = GCLOUD_RAW_DIR
+	dst_dir = joinpath(homedir(), "seungmount/research/Julimaps/datasets/pinky_overviews/0_overviews/originals_gcloud_class")
+	for class = class_range
+		class_imports = import_table[import_table[:,3].==class,:]
+		for i = 1:size(class_imports,1)
+			z = class_imports[i,2]
+			src_fn = joinpath(src_dir, class_imports[i,1], "_montage\*")
+			dst_fn = joinpath(string(dst_dir, class), "1,$(z)_overview.tif")
+			f = `sudo gsutil -m cp $src_fn $dst_fn`
+			println(f)
+			Base.run(f)
 		end
 	end
 end
