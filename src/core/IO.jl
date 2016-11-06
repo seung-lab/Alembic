@@ -126,13 +126,13 @@ function load_image(path::AbstractString, scale, img::Array, dtype = IMG_ELTYPE)
 	    IMG_CACHE_DICT[(path, scale)] = img;
 end
 
-function load_image(path::AbstractString, scale, imgref::RemoteRef, dtype = IMG_ELTYPE)
-            img = take!(imgref);
-	    close(imgref);
-	    load_image(path, scale, img, dtype);
-	    img = 0;
-	   fetch = remotecall(IO_PROC, gc); gc(); wait(fetch)
-end
+# function load_image(path::AbstractString, scale, imgref::RemoteRef, dtype = IMG_ELTYPE)
+#             img = take!(imgref);
+# 	    close(imgref);
+# 	    load_image(path, scale, img, dtype);
+# 	    img = 0;
+# 	   fetch = remotecall(IO_PROC, gc); gc(); wait(fetch)
+# end
 
 function reset_cache()
   IMG_CACHE_DICT = Dict{Tuple{AbstractString, Float64}, SharedArray}()

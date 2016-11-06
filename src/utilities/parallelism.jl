@@ -41,12 +41,12 @@ function local_procs()
 	return procs()[local_procs_indices];
 end
 
-function Base.size(r::RemoteRef, args...)
-      if r.where == myid()
-	return size(fetch(r), args...)
-		    end
-	return remotecall_fetch(r.where, size, r, args...)
-end
+# function Base.size(r::RemoteRef, args...)
+#       if r.where == myid()
+# 	return size(fetch(r), args...)
+# 		    end
+# 	return remotecall_fetch(r.where, size, r, args...)
+# end
 
 function Base.eltype(r::RemoteRef, args...)
       if r.where == myid()

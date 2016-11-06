@@ -48,9 +48,11 @@ end
 if !(contains(gethostname(), "seunglab") || contains(gethostname(), "seungom"))
   using Tk
   using ImageView
-  using MKLSparse
-  using PyCall
   using SimpleTasks
+end
+if !contains(gethostname(), "seung")
+  using PyCall
+  using MKLSparse
 end
 
 # TypeAliases
@@ -113,7 +115,7 @@ include("math/convolve_inplace.jl")
 include("math/imagecovariance.jl")
 
 include("utilities/author.jl")
-include("utilities/parallelism.jl")
+# include("utilities/parallelism.jl")
 include("utilities/utilities.jl")
 
 include("core/registry.jl")
