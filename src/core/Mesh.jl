@@ -103,9 +103,9 @@ function get_edge_endpoints(mesh::Mesh; globalized::Bool = false, use_post::Bool
 
   	for ind in 1:num_edges
 	@inbounds node_inds = findnz(mesh.edges[:, ind])[1];
-	@inbounds endpoints_a[ind] = use_post ? mesh.src_nodes[node_inds[1]] : mesh.dst_nodes[node_inds[1]]
-	@inbounds endpoints_b[ind] = use_post ? mesh.src_nodes[node_inds[2]] : mesh.dst_nodes[node_inds[2]]
-      	end
+	@inbounds endpoints_a[ind] = use_post ? mesh.dst_nodes[node_inds[1]] : mesh.src_nodes[node_inds[1]]
+	@inbounds endpoints_b[ind] = use_post ? mesh.dst_nodes[node_inds[2]] : mesh.src_nodes[node_inds[2]]      	
+        end
 
 	globalized ? globalize!(endpoints_a, mesh) : nothing
 	globalized ? globalize!(endpoints_b, mesh) : nothing
@@ -125,7 +125,7 @@ end
 # returns the lengths of the edges for all edges - kwargs are parsed to get_edge_endpoints, though globalized should not matter at all
 function get_edge_lengths(mesh::Mesh; kwargs...)
   	endpoints_a, endpoints_b = get_edge_endpoints(mesh; kwargs...);
-        edgelengths = similar(endpoints_a, Float64)
+	edgelengths = zeros(Float64, length(endpoints_a))
 	@simd for i in 1:length(endpoints_a)
 		@fastmath @inbounds endpoints_a[i] = endpoints_a[i] - endpoints_b[i]
 	        @fastmath @inbounds edgelengths[i] = norm(endpoints_a[i])
