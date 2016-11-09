@@ -120,7 +120,7 @@ global PARAMS_PREALIGNMENT = Dict(
 					# "eta_newton" => ETA_NEWTON_PREALIGNMENTE,
 					# "ftol_newton" => FTOL_NEWTON_PREALIGNMENT)
 			     "filter" => Dict(
-			     		"sigma_filter" => (:get_properties, >, 250, 0.5),
+			     		"sigma_filter_low" => (:get_properties, >, 250, 0.5),
 			     		"sigma_filter" => (:get_properties, >, 25, 0.95),
 			     		"norm_filter" => (:get_norms_std_sigmas, >, 5)
 					      ),
