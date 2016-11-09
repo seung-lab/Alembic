@@ -528,3 +528,56 @@ function save_cubes(cube_origin::Tuple{Int64, Int64, Int64}, cube_dims::Tuple{In
     end
   end
 end
+
+"""
+Return bool indicating if image has mask
+"""
+function image_has_mask(path::AbstractString)
+  if ishdf5(path)
+    f = h5open(path, "r")
+    return HDF5.exists(attrs(f), "masks")
+  else
+    return false
+  end
+end
+
+"""
+Given image size, create Array{Bool, 2} for all of image
+
+Key
+  false:  padding
+  true:   tissue
+
+Note: HDF5.jl does not currently support H5T_BITFIELD, so the BitArray is 
+reinterpretted into an Array{UInt8,2}. In order to reinterpret it back
+into a proper BitArray, the size of the image needs to be given.
+
+Might consider implementing the mask as a set of polygons, using fillpoly!
+in ImageRegistration.jl to generate the image mask when needed.
+"""
+function create_mask(sz::Array{Int,2})
+  return ones(Bool, sz)
+end
+
+"""
+Given HDF5 path, return Array{Bool,2} representing image padding mask
+"""
+function get_mask(path::AbstractSring)
+  f = h5open(path, "r")
+  sz = size(f["img"]
+  if "mask" in names(f)
+    return convert(Array{Bool,2}, UInt8_to_BitArray(f["mask"], sz))
+  else
+    return create_mask(sz)
+  end
+end
+
+function BitArray_to_UInt8(B)
+  return reinterpret(UInt8, B.chunks)
+end
+
+function UInt8_to_BitArray(b, sz)
+  B = BitArray(sz)
+  B.chunks = reinterpret(UInt64, b)
+  return B
+end
