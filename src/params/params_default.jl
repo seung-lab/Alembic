@@ -120,9 +120,11 @@ global PARAMS_PREALIGNMENT = Dict(
 					# "eta_newton" => ETA_NEWTON_PREALIGNMENTE,
 					# "ftol_newton" => FTOL_NEWTON_PREALIGNMENT)
 			     "filter" => Dict(
-			     		"sigma_filter_low" => (:get_properties, >, 250, 0.5),
-			     		"sigma_filter" => (:get_properties, >, 25, 0.95),
-			     		"norm_filter" => (:get_norms_std_sigmas, >, 5)
+			     		"sigma_filter_low" => (1, :get_properties, >, 1500, 0.5),
+			     		"sigma_filter_mid" => (2, :get_properties, >, 500, 0.75),
+			     		"sigma_filter" => (3, :get_properties, >, 50, 0.95),
+					"consensus_filter" => (5, :get_normalized_norm_from_filtered_consensus, >, 1.0, 4000),
+			     		"norm_filter" => (4,:get_norms_std_sigmas, >, 5)
 					      ),
 			     "render" => Dict(
 			     		"thumbnail_scale" => 0.125
@@ -161,14 +163,14 @@ global PARAMS_ALIGNMENT = Dict(
 			     	"eta_newton" => ETA_NEWTON_ALIGNMENT,
 			     	"ftol_newton" => FTOL_NEWTON_ALIGNMENT),
 			     "filter" => Dict(
-			     		"sigma_filter_high" => (:get_properties, >, 8, 0.95),
-			     		"sigma_filter_mid" => (:get_properties, >, 90, 0.75),
-			     		"sigma_filter_low" => (:get_properties, >, 200, 0.50),
-			     		"r_filter" => (:get_properties, <, 0.03, "r_max"),
+			     		"sigma_filter_high" => (1,:get_properties, >, 8, 0.95),
+			     		"sigma_filter_mid" => (2,:get_properties, >, 90, 0.75),
+			     		"sigma_filter_low" => (3,:get_properties, >, 200, 0.50),
+			     		"r_filter" => (4,:get_properties, <, 0.03, "r_max"),
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 5),
-			     		"kurtosis_filter" => (:get_properties, >, 25, "src_kurtosis"),
-			     		"kurtosis_filter_edge" => (:get_properties, <, -1.90, "src_kurtosis"),
-					"centered_norm_filter" => (:get_centered_norms, >, 250)
+			     		"kurtosis_filter" => (5,:get_properties, >, 25, "src_kurtosis"),
+			     		"kurtosis_filter_edge" => (6,:get_properties, <, -1.90, "src_kurtosis"),
+					"centered_norm_filter" => (7,:get_centered_norms, >, 250)
 					      ),
 			     "render" => Dict(
 					      ),

@@ -205,7 +205,9 @@ function check!(meshset::MeshSet, crits=meshset.properties["params"]["review"])
 end
 
 function filter!(meshset::MeshSet, filters=meshset.properties["params"]["filter"])
-  for filter in Base.values(filters)
+	filters = collect(Base.values(filters))
+  filters = filters[sortperm(map(getindex, filters, repeated(1)))]
+  for filter in filters
     filter!(meshset, filter)
   end
   passed = !check!(meshset)

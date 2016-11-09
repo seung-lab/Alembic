@@ -686,7 +686,7 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 	return vcat(pt + rel_offset + [di, dj], correspondence_properties);
 end
 
-function filter!(match::Match, function_name, compare, threshold, vars...)
+function filter!(match::Match, priority, function_name, compare, threshold, vars...)
 	# attributes = get_properties(match, property_name)
 	attributes = eval(function_name)(match, vars...)
 	if attributes == nothing return 0; end

@@ -97,6 +97,7 @@ for i in 1:count_correspondences(m)
 		@fastmath @inbounds d2 = m.src_points[k][2] - p2
 		@fastmath @inbounds d_norm_sq = d1^2 + d2^2
 		@fastmath if d_norm_sq < r_sq
+			if d_norm_sq == 0 continue end;
 			@fastmath @inbounds dv1s[k] = m.dst_points[k][1] - m.src_points[k][1];
 			@fastmath @inbounds dv2s[k] = m.dst_points[k][2] - m.src_points[k][2];
 			accepted += 1;
@@ -165,6 +166,7 @@ for i in 1:count_correspondences(m)
 		@fastmath @inbounds d2 = src_points[k][2] - p2
 		@fastmath @inbounds d_norm_sq = d1^2 + d2^2
 		@fastmath if d_norm_sq < r_sq
+			if d_norm_sq == 0 continue end;
 			@fastmath @inbounds dv1s[k] = dst_points[k][1] - src_points[k][1];
 			@fastmath @inbounds dv2s[k] = dst_points[k][2] - src_points[k][2];
 			accepted += 1;
