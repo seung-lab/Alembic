@@ -5,7 +5,7 @@ BLOCK_R_MONTAGE = 140
 SEARCH_R_MONTAGE = 400
 PREMATCH_MONTAGE = false
 MESH_SPRING_COEFF_MONTAGE = 1.0
-MATCH_SPRING_COEFF_MONTAGE = 100.0 
+MATCH_SPRING_COEFF_MONTAGE = 10.0 
 FTOL_CG_MONTAGE = 1e-8
 MAX_ITERS_MONTAGE = 2000
 USE_CONJUGATE_GRADIENT_MONTAGE = true
@@ -14,7 +14,7 @@ FTOL_GD_MONTAGE = 1e-8
 ETA_NEWTON_MONTAGE = 0.6
 FTOL_NEWTON_MONTAGE = 1e-16
 
-MESH_LENGTH_PREALIGNMENT = 4000
+MESH_LENGTH_PREALIGNMENT = 2000
 GLOBAL_OFFSETS_PREALIGNMENT = false
 BLOCKMATCH_SCALE_PREALIGNMENT = 0.25
 BLOCK_R_PREALIGNMENT = 800
@@ -120,7 +120,8 @@ global PARAMS_PREALIGNMENT = Dict(
 					# "eta_newton" => ETA_NEWTON_PREALIGNMENTE,
 					# "ftol_newton" => FTOL_NEWTON_PREALIGNMENT)
 			     "filter" => Dict(
-			     		"sigma_filter" => (:get_properties, >, 100, 0.5),
+			     		"sigma_filter" => (:get_properties, >, 250, 0.5),
+			     		"sigma_filter" => (:get_properties, >, 25, 0.95),
 			     		"norm_filter" => (:get_norms_std_sigmas, >, 5)
 					      ),
 			     "render" => Dict(
