@@ -78,6 +78,7 @@ typealias Pairings Array{Pairing, 1};       # useful for abstraction
 
 typealias Point Array{Float64, 1};        # [i; j]
 typealias Points Array{Point, 1};       # array of points
+
 typealias BinaryProperty Array{Bool, 1};    	  # array of bools
 
 typealias Edges SparseMatrixCSC{Float64, Int64}     # sparse array for edges - columns represent edges and the rows represent the nodes
@@ -125,12 +126,12 @@ include("core/filter.jl")
 include("core/MeshSet.jl")
 include("core/solve.jl")
 
-#include("datasets/dataset_myelin.jl")
-#include("params/params_myelin.jl")
+include("datasets/dataset_myelin.jl")
+include("params/params_myelin.jl")
 #include("datasets/dataset_pinky.jl")
 #include("params/params_pinky.jl")
-  include("datasets/dataset_zebrafish.jl")
-  include("params/params_default.jl")
+#  include("datasets/dataset_zebrafish.jl")
+#  include("params/params_default.jl")
 #=
 if ON_CLOUD
   include("datasets/dataset_zebrafish.jl")
