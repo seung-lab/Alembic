@@ -270,6 +270,7 @@ function split_meshset(meshset::MeshSet)
 	for match in meshset.matches
 	  save(match)
 	end
+	return (vcat(map(get_path, meshset.meshes), map(get_path, meshset.matches)));
 end
 
 function compile_meshset(first_index::Index, last_index::Index)
