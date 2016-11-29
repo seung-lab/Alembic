@@ -1,3 +1,4 @@
+#=
 global TASKS_LOCALE = "gcs"
 #global TASKS_LOCALE = "aws"
 
@@ -22,6 +23,7 @@ global TASKS_CACHE_DIRECTORY = BUCKET;
 global TASKS_BASE_DIRECTORY = DATASET;
 global TASKS_POLL_FREQUENCY = 10;
 end
+=#
 
 using SimpleTasks.Services.AWSQueue
 using SimpleTasks.Services.CLIBucket
