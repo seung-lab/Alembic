@@ -126,12 +126,12 @@ include("core/filter.jl")
 include("core/MeshSet.jl")
 include("core/solve.jl")
 
-#include("datasets/dataset_myelin.jl")
-#include("params/params_myelin.jl")
+include("datasets/dataset_myelin.jl")
+include("params/params_myelin.jl")
 #include("datasets/dataset_pinky.jl")
 #include("params/params_pinky.jl")
-  include("datasets/dataset_zebrafish.jl")
-  include("params/params_default.jl")
+#  include("datasets/dataset_zebrafish.jl")
+#  include("params/params_default.jl")
 #=
 if ON_CLOUD
   include("datasets/dataset_zebrafish.jl")

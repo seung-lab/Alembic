@@ -230,8 +230,10 @@ function cumsum2{T,ndim}(A::Array{T,ndim})
     # compute rest of matrix from recursion
     (m,n)=size(A);
     if m>1 && n>1
-        for j in 2:n, i in 2:m
-            B[i,j]=A[i,j]+B[i-1,j]+B[i,j-1]-B[i-1,j-1]
+        for j in 2:n
+		for i in 2:m
+            	@fastmath @inbounds B[i,j]=A[i,j]+B[i-1,j]+B[i,j-1]-B[i-1,j-1]
+		end
         end
     end
     B
@@ -263,8 +265,10 @@ function cumsum12!{T,ndim}(A::Array{T,ndim})
 function calculate_cumsums!(SUM, A)
     (m,n)=size(A);
     if m>1 && n>1
-        for j in 2:n, i in 2:m
-        @fastmath @inbounds    SUM[i,j]=A[i,j]+SUM[i-1,j]+SUM[i,j-1]-SUM[i-1,j-1]
+        for j in 2:n
+		for i in 2:m
+        	@fastmath @inbounds    SUM[i,j]=A[i,j]+SUM[i-1,j]+SUM[i,j-1]-SUM[i-1,j-1]
+		end
         end
     end
 end
@@ -296,28 +300,32 @@ function calculate_local_sums(LOCAL_SUM, CONV_SUM, LOCAL_SUM2, CONV_SUM2, L1, L2
   j0 = first(L2) - 1
   i0 = first(L1) - 1
   i_size, j_size = size(CONV_SUM)
-  for j in L2,  i in L1
+  for j in L2
+	  @simd for i in L1
     j_ind = j - j0
     i_ind = i - i0
     @fastmath @inbounds LOCAL_SUM[i_ind,j_ind] = CONV_SUM[i, j] - CONV_SUM[(i-n1), j] - CONV_SUM[i, (j-n2)] + CONV_SUM[(i-n1), (j-n2)]
+    end
    end 
-  for j in L2,  i in L1
+  for j in L2
+	  @simd for i in L1
     j_ind = j - j0
     i_ind = i - i0
 	@fastmath @inbounds LOCAL_SUM2[i_ind,j_ind] = CONV_SUM2[i, j] - CONV_SUM2[(i-n1), j] - CONV_SUM2[i, (j-n2)] + CONV_SUM2[(i-n1), (j-n2)]
+	end
     end 
 end
 
 function calculate_local_variance!(SUM2, SUM, template)
 	den = prod(size(template))
-	for i in 1:length(SUM2)
-	  SUM2[i] = SUM2[i] - SUM[i] * SUM[i] / den;
+	@simd for i in 1:length(SUM2)
+	  @fastmath @inbounds SUM2[i] = SUM2[i] - SUM[i] * SUM[i] / den;
 	end
 	  return SUM2
 end
 function calculate_denominator!(localvariance, templatevariance)
 	for i in 1:length(localvariance)
-	 @fastmath localvariance[i] = sqrt(localvariance[i] * templatevariance)
+	 @fastmath @inbounds localvariance[i] = sqrt(localvariance[i] * templatevariance)
 	end
 	  return localvariance
 end
@@ -389,14 +397,14 @@ function normxcorr2_preallocated(template,img; shape = "valid", highpass_sigma =
     # leading to undefined Pearson correlation coefficient
     # should only be negative due to roundoff error
     eps_scaled = eps_large * prod(size(template))
-    for i in 1:length(localvariance) 
+    @simd for i in 1:length(localvariance) 
     	@inbounds if localvariance[i] <= eps_scaled
       	@fastmath @inbounds localvariance[i] = eps 
 	@inbounds numerator[i] = 0 
       end
     end
     @fastmath @inbounds denominator=calculate_denominator!(localvariance, templatevariance)
-    for i in 1:length(denominator) @inbounds if denominator[i] <= 0 
+    @simd for i in 1:length(denominator) @inbounds if denominator[i] <= 0 
     	@inbounds denominator[i] = eps; 
 	@inbounds numerator[i] = 0 
     	end end
