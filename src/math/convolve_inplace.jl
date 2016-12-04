@@ -261,22 +261,19 @@ function optimize_all_cores(img_d::Int64)
     return Void;
 end
 
-function cumsum12!{T,ndim}(A::Array{T,ndim})
-function calculate_cumsums!(SUM, A)
+function cumsum12!(A::Array{Float64,2})
+function calculate_cumsums!(sum, A)
     (m,n)=size(A);
     if m>1 && n>1
         for j in 2:n
 		for i in 2:m
-        	@fastmath @inbounds    SUM[i,j]=A[i,j]+SUM[i-1,j]+SUM[i,j-1]-SUM[i-1,j-1]
+        	@fastmath @inbounds    sum[i,j]=A[i,j]+sum[i-1,j]+sum[i,j-1]-sum[i-1,j-1]
 		end
         end
     end
 end
 
     # cumulative sum in two dimensions
-    if ndim!=2
-        throw(ArgumentError("input must be two-dimensional array"))
-    end
     if size(CONV_SUM) != size(A)
       global CONV_SUM = similar(A);
     end
@@ -296,34 +293,34 @@ end
 end
 
 
-function calculate_local_sums(LOCAL_SUM, CONV_SUM, LOCAL_SUM2, CONV_SUM2, L1, L2, n1, n2)
+function calculate_local_sums(local_sum::Array{Float64,2}, conv_sum::Array{Float64,2}, local_sum2::Array{Float64,2}, conv_sum2::Array{Float64,2}, L1, L2, n1, n2)
   j0 = first(L2) - 1
   i0 = first(L1) - 1
-  i_size, j_size = size(CONV_SUM)
+  i_size, j_size = size(conv_sum)
   for j in L2
 	  @simd for i in L1
     j_ind = j - j0
     i_ind = i - i0
-    @fastmath @inbounds LOCAL_SUM[i_ind,j_ind] = CONV_SUM[i, j] - CONV_SUM[(i-n1), j] - CONV_SUM[i, (j-n2)] + CONV_SUM[(i-n1), (j-n2)]
+    @fastmath @inbounds local_sum[i_ind,j_ind] = conv_sum[i, j] - conv_sum[(i-n1), j] - conv_sum[i, (j-n2)] + conv_sum[(i-n1), (j-n2)]
     end
    end 
   for j in L2
 	  @simd for i in L1
     j_ind = j - j0
     i_ind = i - i0
-	@fastmath @inbounds LOCAL_SUM2[i_ind,j_ind] = CONV_SUM2[i, j] - CONV_SUM2[(i-n1), j] - CONV_SUM2[i, (j-n2)] + CONV_SUM2[(i-n1), (j-n2)]
+	@fastmath @inbounds local_sum2[i_ind,j_ind] = conv_sum2[i, j] - conv_sum2[(i-n1), j] - conv_sum2[i, (j-n2)] + conv_sum2[(i-n1), (j-n2)]
 	end
     end 
 end
 
-function calculate_local_variance!(SUM2, SUM, template)
+function calculate_local_variance!(sum2::Array{Float64,2}, sum::Array{Float64,2}, template::Array{Float64,2})
 	den = prod(size(template))
-	@simd for i in 1:length(SUM2)
-	  @fastmath @inbounds SUM2[i] = SUM2[i] - SUM[i] * SUM[i] / den;
+	@simd for i in 1:length(sum2)
+	  @fastmath @inbounds sum2[i] = sum2[i] - sum[i] * sum[i] / den;
 	end
-	  return SUM2
+	  return sum2
 end
-function calculate_denominator!(localvariance, templatevariance)
+function calculate_denominator!(localvariance::Array{Float64,2}, templatevariance::Float64)
 	for i in 1:length(localvariance)
 	 @fastmath @inbounds localvariance[i] = sqrt(localvariance[i] * templatevariance)
 	end
