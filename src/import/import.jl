@@ -1,5 +1,6 @@
 global OVERVIEW_RESOLUTION = 95.3/3840 # 3.58/225.0 
-global LOCAL_RAW_DIR = joinpath(homedir(), "raw")
+# global LOCAL_RAW_DIR = joinpath(homedir(), "raw")
+global LOCAL_RAW_DIR = joinpath(BUCKET, DATASET, "raw")
 global GCLOUD_RAW_DIR = "gs://243774_8973/"
 global GCLOUD_BUCKET = "gs://seunglab_alembic/"
 
@@ -12,6 +13,16 @@ global GCLOUD_BUCKET = "gs://seunglab_alembic/"
 #    (s3_input, process) = open(download_cmd, "w", s3_output)
 #    close(s3_output.in)
 # end
+
+function get_loadfile()
+	loadfile_sub_path = joinpath(DATASET, "161201_aibs_import.csv")
+	loadfile_localpath = joinpath(BUCKET, loadfile_sub_path)
+	if !isfile(loadfile_localpath)
+		loadfile_remotepath = joinpath(GCLOUD_BUCKET, loadfile_sub_path)
+		Base.run(`sudo gsutil -m cp $loadfile_remotepath $loadfile_localpath`)
+	end
+	return readdlm(loadfile_localpath, ',')
+end
 
 function get_src_dir(z_index)
 	# LOADFILE = readdlm("/media/tmacrina/667FB0797A5072D7/3D_align/mosaiced_images_160729_google_cloud_upload_seung_import.csv",',')
@@ -57,15 +68,6 @@ function get_remote_raw_path(z_index)
 	return joinpath(GCLOUD_RAW_DIR, src_dir)
 end
 
-function get_loadfile()
-	loadfile_sub_path = joinpath(DATASET, "import_aibs.csv")
-	loadfile_localpath = joinpath(homedir(), loadfile_sub_path)
-	if !isfile(loadfile_localpath)
-		loadfile_remotepath = joinpath(GCLOUD_BUCKET, loadfile_sub_path)
-		Base.run(`sudo gsutil -m cp $loadfile_remotepath $loadfile_localpath`)
-	end
-	return readdlm(loadfile_localpath, ',')
-end
 
 function get_trakem_file(z_index)
 	println("Downloading trakem file for $z_index")
@@ -383,15 +385,6 @@ function import_overview(z_index)
 	end
 end
 
-function resave_overview(z_index)
-	index = (1,z_index,OVERVIEW_INDEX,OVERVIEW_INDEX)
-	dtype = UInt8
-	src_fn = string(get_path(index)[1:end-3], ".tif")
-	img = get_image_disk(src_fn, dtype)
-	dst_fn = get_path(index)
-	save_import_tile(dst_fn, img)
-end
-
 function save_import_tile(fn, img)
 	println("dst: $fn")
 	f = h5open(fn, "w")
@@ -448,14 +441,14 @@ function gentrify_tiles(firstz, lastz)
 end
 
 function gentrify_tiles(z_index)
-	download_subdir_files(z_index)
-	make_local_raw_dir()
+	# download_subdir_files(z_index)
+	# make_local_raw_dir()
 	download_raw_tiles(z_index)
 	import_tiles(z_index)
 	premontage(premontaged(1,z_index))
-	sync_to_upload()
-	remove_local_raw_dir()
-	remove_premontaged_files(z_index)
+	# sync_to_upload()
+	# remove_local_raw_dir()
+	# remove_premontaged_files(z_index)
 end
 
 function import_tiles(z_index; from_current=false, reset=false, overwrite_offsets=true)
@@ -468,12 +461,13 @@ function import_tiles(z_index; from_current=false, reset=false, overwrite_offset
 		import_indices = get_unwritten_included_indices(import_table)
 	end
 	n = length(import_indices)
+	bins = 20
 	# contrast_clusters = get_contrast_clusters(import_table)
 	bias = load_bias_image(z_index, reset=reset)
 	bias_mean = mean(bias)
 	contrast_hist = load_contrast_histogram(z_index, reset=reset)
-	# minintensity = contrast_hist[2]
-	# maxintensity = contrast_hist[end-1]
+	minintensity = contrast_hist[2]
+	maxintensity = contrast_hist[end-1]
 	dtype = Float64
 
 	function import_tile(i)
@@ -487,8 +481,12 @@ function import_tiles(z_index; from_current=false, reset=false, overwrite_offset
 		sz = size(img)
 		offset = get_import_offset(import_table, i)
 		img = bias_correction(img, bias, bias_mean)
-		# img = contrast_stretch(img, minintensity, maxintensity)
-		img = auto_contrast_stretch(img)
+		hist = nquantile(img[:], bins)
+		# if hist[2] < minintensity_threshold
+		# 	img = contrast_stretch(img, hist[2], hist[end-1])
+		# else
+		img = contrast_stretch(img, minintensity, maxintensity)
+		# end
 		img = convert_float64_to_uint8(img)
 		# resin = is_adjusted_resin(img, 20, z_index)
 		save_import_tile(dst_fn, img)
@@ -692,7 +690,7 @@ function get_tform_bbs(import_table, tform=eye(3), sz=[3840,3840])
 end
 
 function get_bbs_pts(bbs)
-	return [[bb_to_pts(bb)] for bb in bbs]
+	return [bb_to_pts(bb) for bb in bbs]
 end
 
 function tform_bbs_pts(bbs_pts, tform)
@@ -705,8 +703,13 @@ function snap_bbs_pts(bbs_pts)
 end
 
 function get_tform(index::Index, scale=1.0)
+	tform = eye(3)
+	tform_path = get_path("cumulative_transform", index)
+	if isfile(tform_path)
+		tform = load("cumulative_transform", index)
+	end
 	s = make_scale_matrix(scale)
-	return s*load("cumulative_transform", index)*s^-1
+	return s*tform*s^-1
 end
 
 function view_import_bb(z_index::Int64, tform=eye(3))
@@ -974,6 +977,15 @@ function copy_overviews_to_montages(firstz, lastz)
 	end
 end
 
+function copy_montage_import_folders_to_overview_correspondences(z_range)
+	for z in z_range
+		println("Copying montaged(1,$z) import polygon")
+		pts = load("import", montaged(1,z)) 
+		correspondences_path = get_path("correspondence", overview(1,z))
+		writedlm(correspondences_path, pts)
+	end
+end
+
 function copy_between_projects(firstz, lastz, stage, dir_name, src_dataset, dst_dataset)
 	gp = get_path(dir_name, eval(stage)(1,firstz))
 	datasets_path = join(split(gp, "/")[1:end-4], "/")
@@ -996,19 +1008,41 @@ function copy_between_projects(firstz, lastz, stage, dir_name, src_dataset, dst_
 	end
 end
 
-function copy_pinky_overviews_from_gcloud(class_range=1:1, fn=joinpath(homedir(), "seungmount/research/Julimaps/datasets/pinky/pinky_reimage_priority.csv"))
+function copy_pinky_overviews_from_gcloud(fn=joinpath(homedir(), "seungmount/research/Alembic/datasets/pinky/161115_import_originals.csv"))
 	import_table = readdlm(fn, ',')
 	src_dir = GCLOUD_RAW_DIR
-	dst_dir = joinpath(homedir(), "seungmount/research/Julimaps/datasets/pinky_overviews/0_overviews/originals_gcloud_class")
-	for class = class_range
-		class_imports = import_table[import_table[:,3].==class,:]
-		for i = 1:size(class_imports,1)
-			z = class_imports[i,2]
-			src_fn = joinpath(src_dir, class_imports[i,1], "_montage\*")
-			dst_fn = joinpath(string(dst_dir, class), "1,$(z)_overview.tif")
-			f = `sudo gsutil -m cp $src_fn $dst_fn`
-			println(f)
-			Base.run(f)
-		end
+	dst_dir = joinpath(homedir(), "seungmount/research/Alembic/datasets/pinky/0_overview/originals_selected_reimaged_sections")
+	for i = 1:size(import_table,1)
+		z = import_table[i,1]
+		src_fn = joinpath(src_dir, import_table[i,2], "_montage\*")
+		dst_fn = joinpath(dst_dir, "1,$(z)_overview.tif")
+		f = `sudo gsutil -m cp $src_fn $dst_fn`
+		println(f)
+		Base.run(f)
+	end
+end
+
+function resave_overview(z_index)
+	index = (1,z_index,OVERVIEW_INDEX,OVERVIEW_INDEX)
+	dtype = UInt8
+	src_fn = string(get_path(index)[1:end-3], ".tif")
+	img = get_image_disk(src_fn, dtype)
+	dst_fn = get_path(index)
+	save_import_tile(dst_fn, img)
+end
+
+function download_one_tile_aibs_alignment(r, c, z_range=3279:3528)
+	GCLOUD_RAW_DIR = "gs://aibs_alignment/20161111_output_TS5"
+	dst_dir = "/usr/people/tmacrina/seungmount/research/Alembic/datasets/AIBS_pinky_test/"
+	dst_dir = joinpath(dst_dir, "$(r)_$(c)")
+	if !isdir(dst_dir)
+		mkdir(dst_dir)
+	end
+	for z in z_range
+		src = joinpath(GCLOUD_RAW_DIR, "$z", "0", "$r", "$(c).png")
+		dst = joinpath(dst_dir, "$(r)_$(c)_$(z).png")
+		f = `sudo gsutil -m cp -r $src $dst`
+		println(f)
+		Base.run(f)
 	end
 end

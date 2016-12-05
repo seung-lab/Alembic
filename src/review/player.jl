@@ -134,7 +134,7 @@ function view_stack(firstindex::Index, lastindex::Index, slice=(1:200,1:200); in
   stack = make_stack(firstindex, lastindex, slice, scale=scale, thumb=thumb)
   offset = ImageRegistration.get_offset(slice_to_bb(slice))
   indices = get_index_range(firstindex, lastindex)
-  annotations = Dict("indices" => [indices, reverse(indices)], "slice"=>slice, "scale"=>scale)
+  annotations = Dict("indices" => [indices..., reverse(indices)...], "slice"=>slice, "scale"=>scale)
   imgc, img2 = view_stack(stack, offset=offset, scale=scale, annotations=annotations, include_reverse=include_reverse, perm=perm)
   return stack, annotations, imgc, img2
 end
@@ -308,17 +308,17 @@ function compile_annotations(meshset::MeshSet,
   return annotations
 end
 
-function display_roi(imgc, img2, annotations; scale=0.25)
+function display_roi(imgc, img2, annotations)
   indices = annotations["indices"]
   bb = slice_to_bb(annotations["slice"])
   offset = ImageRegistration.get_offset(bb)
-  for (i, index) in enumerate(indices[1:length(indices)/2])
+  for (i, index) in enumerate(indices[1:Int(length(indices)/2)])
     println("Display annotations for $index")
-    pts = load("correspondence", index)
-    start_pts = hcat([reverse(pts[i,:][:]*scale - offset) for i in 1:size(pts,1)]...)
-    end_pts = start_pts[:,[2:end,1]]
+    pts = load("import", index)
+    start_pts = hcat([reverse(pts[i,:][:] - offset) for i in 1:size(pts,1)]...)
+    end_pts = start_pts[:,2:end]
     # show_points(imgc, img2, pts, shape='.', color=RGB(0,1,0), t=i)
-    lines = vcat(start_pts, end_pts)
+    lines = vcat(start_pts[:,1:end-1], end_pts)
     show_lines(imgc, img2, lines, linewidth=2, color=RGB(0,1,0), t=i)
   end
 end

@@ -73,18 +73,18 @@ function get_image_disk(path::AbstractString, dtype = IMG_ELTYPE; shared = false
 	ext = splitext(path)[2];
   if ext == ".tif"
     img = data(FileIO.load(path))
-    img = img[:, :, 1]'
+    # img = img[:, :, 1]' # incredibly slow in Julia v0.5.0
     #img.properties["timedim"] = 0
     if shared
-      img = convert(Array{dtype, 2}, round(convert(Array, img)*255))
+      img = convert(Array{dtype, 2}, round(convert(Array, img)*255))'
       shared_img = SharedArray(dtype, size(img)...);
       @inbounds shared_img.s[:,:] = img[:,:]
       return shared_img;
     else
       if dtype == UInt8
-        return convert(Array{dtype, 2}, round(convert(Array, img)*255))
+        return convert(Array{dtype, 2}, round(convert(Array, img)*255))'
       else
-        return convert(Array{dtype, 2}, img)
+        return convert(Array{dtype, 2}, img)'
       end
     end
 	elseif ext == ".h5"
@@ -479,25 +479,6 @@ function save_stack(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, 
   close(f)
 end
 
-# function save_tif(filepath::AbstractAbstractString, img::Array{UInt8,2})
-#   println("Saving to $filepath")
-#   imwrite(img, filepath)
-# end
-
-# function save_stack_into_tifs(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, slice::Tuple{UnitRange{Int64},UnitRange{Int64}}; dst_dir=FINISHED_DIR_PATH)
-#   assert(isdir(dst_dir))
-#   origin = [0,0]
-#   x_slice = [slice[1][1], slice[1][end]] + origin
-#   y_slice = [slice[2][1], slice[2][end]] + origin
-#   z_slice = [find_in_registry(firstindex), find_in_registry(lastindex)]
-#   stack_name = string(cur_dataset, "_", join([join(x_slice, "-"), join(y_slice, "-"), join(z_slice,"-")], "_"))
-#   for i = 1:size(stack, 3)
-#     img = stack[:, :, i]
-#     filepath = joinpath(dst_dir, string(stack_name, "_$i.tif"))
-#     save_tif(filepath, img)
-#   end
-# end
-
 function build_range(origin, cube_dim, overlap, grid_dim, i)
   return origin[i] : cube_dim[i]-overlap[i] : origin[i] + (cube_dim[i]-overlap[i]) * grid_dim[i]-1
 end
@@ -562,9 +543,9 @@ end
 """
 Given HDF5 path, return Array{Bool,2} representing image padding mask
 """
-function get_mask(path::AbstractSring)
+function get_mask(path::AbstractString)
   f = h5open(path, "r")
-  sz = size(f["img"]
+  sz = size(f["img"])
   if "mask" in names(f)
     return convert(Array{Bool,2}, UInt8_to_BitArray(f["mask"], sz))
   else
