@@ -73,18 +73,18 @@ function get_image_disk(path::AbstractString, dtype = IMG_ELTYPE; shared = false
 	ext = splitext(path)[2];
   if ext == ".tif"
     img = data(FileIO.load(path))
-    img = img[:, :, 1]'
+    # img = img[:, :, 1]' # incredibly slow in Julia v0.5.0
     #img.properties["timedim"] = 0
     if shared
-      img = convert(Array{dtype, 2}, round(convert(Array, img)*255))
+      img = convert(Array{dtype, 2}, round(convert(Array, img)*255))'
       shared_img = SharedArray(dtype, size(img)...);
       @inbounds shared_img.s[:,:] = img[:,:]
       return shared_img;
     else
       if dtype == UInt8
-        return convert(Array{dtype, 2}, round(convert(Array, img)*255))
+        return convert(Array{dtype, 2}, round(convert(Array, img)*255))'
       else
-        return convert(Array{dtype, 2}, img)
+        return convert(Array{dtype, 2}, img)'
       end
     end
 	elseif ext == ".h5"
@@ -480,25 +480,6 @@ function save_stack(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, 
   close(f)
 end
 
-# function save_tif(filepath::AbstractAbstractString, img::Array{UInt8,2})
-#   println("Saving to $filepath")
-#   imwrite(img, filepath)
-# end
-
-# function save_stack_into_tifs(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, slice::Tuple{UnitRange{Int64},UnitRange{Int64}}; dst_dir=FINISHED_DIR_PATH)
-#   assert(isdir(dst_dir))
-#   origin = [0,0]
-#   x_slice = [slice[1][1], slice[1][end]] + origin
-#   y_slice = [slice[2][1], slice[2][end]] + origin
-#   z_slice = [find_in_registry(firstindex), find_in_registry(lastindex)]
-#   stack_name = string(cur_dataset, "_", join([join(x_slice, "-"), join(y_slice, "-"), join(z_slice,"-")], "_"))
-#   for i = 1:size(stack, 3)
-#     img = stack[:, :, i]
-#     filepath = joinpath(dst_dir, string(stack_name, "_$i.tif"))
-#     save_tif(filepath, img)
-#   end
-# end
-
 function build_range(origin, cube_dim, overlap, grid_dim, i)
   return origin[i] : cube_dim[i]-overlap[i] : origin[i] + (cube_dim[i]-overlap[i]) * grid_dim[i]-1
 end
@@ -528,4 +509,57 @@ function save_cubes(cube_origin::Tuple{Int64, Int64, Int64}, cube_dims::Tuple{In
       end
     end
   end
+end
+
+"""
+Return bool indicating if image has mask
+"""
+function image_has_mask(path::AbstractString)
+  if ishdf5(path)
+    f = h5open(path, "r")
+    return HDF5.exists(attrs(f), "masks")
+  else
+    return false
+  end
+end
+
+"""
+Given image size, create Array{Bool, 2} for all of image
+
+Key
+  false:  padding
+  true:   tissue
+
+Note: HDF5.jl does not currently support H5T_BITFIELD, so the BitArray is 
+reinterpretted into an Array{UInt8,2}. In order to reinterpret it back
+into a proper BitArray, the size of the image needs to be given.
+
+Might consider implementing the mask as a set of polygons, using fillpoly!
+in ImageRegistration.jl to generate the image mask when needed.
+"""
+function create_mask(sz::Array{Int,2})
+  return ones(Bool, sz)
+end
+
+"""
+Given HDF5 path, return Array{Bool,2} representing image padding mask
+"""
+function get_mask(path::AbstractString)
+  f = h5open(path, "r")
+  sz = size(f["img"])
+  if "mask" in names(f)
+    return convert(Array{Bool,2}, UInt8_to_BitArray(f["mask"], sz))
+  else
+    return create_mask(sz)
+  end
+end
+
+function BitArray_to_UInt8(B)
+  return reinterpret(UInt8, B.chunks)
+end
+
+function UInt8_to_BitArray(b, sz)
+  B = BitArray(sz)
+  B.chunks = reinterpret(UInt64, b)
+  return B
 end

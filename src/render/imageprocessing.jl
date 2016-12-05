@@ -24,7 +24,7 @@ function merge_images(imgs, offsets)
         w = bb.w-1
         h = bb.h-1
         merged_img[i:i+h, j:j+w] = max(merged_img[i:i+h, j:j+w], img)
-        imgs[idx] = 0
+        imgs[idx] = typeof(img)()
     end
     return merged_img, [global_ref.i, global_ref.j]
 end

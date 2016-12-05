@@ -43,6 +43,7 @@ using Images
 using Graphics
 using StatsBase
 using JSON
+using Primes
 if USE_PYPLOT
   using PyPlot
 end
@@ -55,6 +56,8 @@ if !contains(gethostname(), "seung")
   using PyCall
   using MKLSparse
 end
+
+import Base.filter!
 
 # TypeAliases
 export Index

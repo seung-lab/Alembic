@@ -169,9 +169,9 @@ if isdefined(:omni)
 end  
 
 datasets_dir_path = "research/Julimaps/datasets" =#
-DATASET = "piriform"
+# DATASET = "piriform"
 # DATASET = "AIBS_practice_234251S6R_01_01_aligned_01"
-# DATASET = "pinky"
+DATASET = "pinky_40percent"
 # DATASET = "pinky_overviews"
 # DATASET = "stage_stitch"
 affine_dir_path = "~"
