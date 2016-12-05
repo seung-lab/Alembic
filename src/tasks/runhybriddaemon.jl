@@ -23,6 +23,7 @@ import AWS
 type RunConfig
     task_queue_name::ASCIIString
     error_queue_name::ASCIIString
+    done_queue_name::ASCIIString
     bucket_name::ASCIIString
     cache_directory::ASCIIString
     poll_frequency_seconds::Int64
@@ -31,7 +32,7 @@ end
 #=
  = Create the queue and bucket service and start the daemon
  =#
-function run(task_queue_name, error_queue_name, bucket_name,
+function run(task_queue_name, error_queue_name, done_queue_name, bucket_name,
         cache_directory, poll_frequency_seconds)
     # Load AWS credentials via AWS library (either through environment
     # variables or ~/.awssecret or query permissions server)
@@ -41,14 +42,15 @@ function run(task_queue_name, error_queue_name, bucket_name,
 
     error_queue = AWSQueueService(env, error_queue_name)
 
+    done_queue = AWSQueueService(env, done_queue_name)
+
     bucket = CLIBucketService(GCSCLIProvider.Details(), bucket_name)
 
     cache = FileSystemCacheService(cache_directory)
 
     datasource = BucketCacheDatasourceService(bucket, cache)
 
-    daemon = DaemonService(task_queue, error_queue, bucket, datasource,
-        poll_frequency_seconds)
+    daemon = DaemonService(task_queue, error_queue, done_queue, bucket, datasource, poll_frequency_seconds)
 
     register!(daemon, ImportTask.NAME, ImportTaskDetails)
     register!(daemon, BlockMatchTask.NAME, BlockMatchTaskDetails)
@@ -94,11 +96,12 @@ function __init__()
 	10=#
 	Main.TASKS_TASK_QUEUE_NAME,
 	Main.TASKS_ERROR_QUEUE_NAME,
+	Main.TASKS_DONE_QUEUE_NAME,
 	Main.TASKS_BUCKET_NAME,
 	Main.TASKS_CACHE_DIRECTORY,
 	Main.TASKS_POLL_FREQUENCY
     )
-    run(run_config.task_queue_name, run_config.error_queue_name,
+    run(run_config.task_queue_name, run_config.error_queue_name, run_config.done_queue_name,
         run_config.bucket_name, run_config.cache_directory,
         run_config.poll_frequency_seconds)
 end

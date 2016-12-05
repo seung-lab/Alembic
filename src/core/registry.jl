@@ -212,37 +212,37 @@ end
 
 # rotated offset is just the offset of the image once rotated around [0,0]
 function get_offset(index::Index; rotated = false)
-#=function get_offset(index, get_from_master=false)
-	if get_from_master =#
-		if myid() != IO_PROC return remotecall_fetch(IO_PROC, get_offset, index) end
-	#end
+	if myid() != IO_PROC return Point(remotecall_fetch(IO_PROC, get_offset, index))
+	else
 	metadata = get_metadata(index);
 	if rotated
     	rotation = make_rotation_matrix(metadata[3])
-	if rotation == 0 return Point([0,0]) end
+	if rotation == 0 ret = ([0,0]) end
     	rotation_bb = snap_bb(tform_bb(sz_to_bb(Point(metadata[6:7])), rotation))
-    	return Point([rotation_bb.i, rotation_bb.j])
+    	ret = [rotation_bb.i, rotation_bb.j]
 	else
-	return Point(metadata[4:5]);
+	ret = metadata[4:5];
       end
+    end
+      return Point(ret);
 end
 
 function get_rotation(index)
-		if myid() != IO_PROC return remotecall_fetch(IO_PROC, get_rotation, index) end
+		if myid() != IO_PROC return Float64(remotecall_fetch(IO_PROC, get_rotation, index)) end
 	metadata = get_metadata(index);
 	return Float64(metadata[3])
 end
 
 function get_image_size(index; rotated = false)
-		if myid() != IO_PROC return remotecall_fetch(IO_PROC, get_image_size, index) end
+		if myid() != IO_PROC return Array{Int64, 1}(remotecall_fetch(IO_PROC, get_image_size, index)) end
 	metadata = get_metadata(index);
-	size_raw = Array{Int64, 1}(metadata[6:7]);
+	ret = metadata[6:7];
 	if rotated
 	  tform = make_rotation_matrix(get_rotation(index));
 	  size_rotated = bb_to_sz(tform_bb(sz_to_bb(size_raw), tform))
-	  return collect(size_rotated)
-	else return size_raw
+	  ret = collect(size_rotated)
 	end
+	return Array{Int64,1}(ret);
 end
 
 function is_rendered(index)

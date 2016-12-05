@@ -13,9 +13,19 @@ end
 function is_adjacent(Am::Mesh, Bm::Mesh)		return is_adjacent(Am.index, Bm.index);			end
 function is_diagonal(Am::Mesh, Bm::Mesh)		return is_diagonal(Am.index, Bm.index);			end
 function is_preceding(Am::Mesh, Bm::Mesh, within = 1)	return is_preceding(Am.index, Bm.index, within);	end
+
 function globalize!(pts::Points, mesh::Mesh)
   offset = get_offset(mesh)
-  @simd for i in 1:length(pts) @fastmath @inbounds pts[i] = pts[i] + offset; end
+  @inbounds o1 = offset[1];
+  @inbounds o2 = offset[2];
+
+  for i in 1:length(pts)
+#    @inbounds p1 = pts[i][1];
+#    @inbounds p2 = pts[i][2];
+    @fastmath @inbounds pts[i][1] += o1;
+    @fastmath @inbounds pts[i][2] += o2;
+  end 
+  #@simd for i in 1:length(pts) @fastmath @inbounds pts[i] = pts[i] + offset; end
 end
 
 ### PARAMS.jl EXTENSIONS
@@ -34,7 +44,7 @@ function get_image(mesh::Mesh; kwargs...)		return get_image(mesh.index; kwargs..
 ### retrieval
 function get_index(mesh::Mesh)				return mesh.index;					end
 function get_nodes(mesh::Mesh; globalized::Bool = false, use_post::Bool=false)
-	nodes = use_post ? copy(mesh.dst_nodes) : copy(mesh.src_nodes);
+	nodes = use_post ? deepcopy(mesh.dst_nodes) : deepcopy(mesh.src_nodes);
 	globalized ? globalize!(nodes, mesh) : nothing
 	return nodes
 end
@@ -93,9 +103,9 @@ function get_edge_endpoints(mesh::Mesh; globalized::Bool = false, use_post::Bool
 
   	for ind in 1:num_edges
 	@inbounds node_inds = findnz(mesh.edges[:, ind])[1];
-	@inbounds endpoints_a[ind] = use_post ? mesh.src_nodes[node_inds[1]] : mesh.dst_nodes[node_inds[1]]
-	@inbounds endpoints_b[ind] = use_post ? mesh.src_nodes[node_inds[2]] : mesh.dst_nodes[node_inds[2]]
-      	end
+	@inbounds endpoints_a[ind] = use_post ? mesh.dst_nodes[node_inds[1]] : mesh.src_nodes[node_inds[1]]
+	@inbounds endpoints_b[ind] = use_post ? mesh.dst_nodes[node_inds[2]] : mesh.src_nodes[node_inds[2]]      	
+        end
 
 	globalized ? globalize!(endpoints_a, mesh) : nothing
 	globalized ? globalize!(endpoints_b, mesh) : nothing
@@ -115,7 +125,7 @@ end
 # returns the lengths of the edges for all edges - kwargs are parsed to get_edge_endpoints, though globalized should not matter at all
 function get_edge_lengths(mesh::Mesh; kwargs...)
   	endpoints_a, endpoints_b = get_edge_endpoints(mesh; kwargs...);
-        edgelengths = similar(endpoints_a, Float64)
+	edgelengths = zeros(Float64, length(endpoints_a))
 	@simd for i in 1:length(endpoints_a)
 		@fastmath @inbounds endpoints_a[i] = endpoints_a[i] - endpoints_b[i]
 	        @fastmath @inbounds edgelengths[i] = norm(endpoints_a[i])
@@ -209,7 +219,7 @@ function Mesh(index, params = get_params(index), fixed=false; rotated = false)
 	end
 
 	@inbounds edges = edges[:, 1:m];
-	dst_nodes = copy(src_nodes);
+	dst_nodes = deepcopy(src_nodes);
 
 	properties = Dict{Any, Any}(
 				    "params" => params,
@@ -220,9 +230,9 @@ end
 
 function remesh!(mesh::Mesh)
 	newmesh = Mesh(mesh.index, mesh.properties["params"], mesh.properties["fixed"]; rotated = true);
-	mesh.src_nodes = copy(newmesh.src_nodes);
-	mesh.dst_nodes = copy(newmesh.dst_nodes);
-	mesh.edges = copy(newmesh.edges);
+	mesh.src_nodes = deepcopy(newmesh.src_nodes);
+	mesh.dst_nodes = deepcopy(newmesh.dst_nodes);
+	mesh.edges = deepcopy(newmesh.edges);
 	newmesh = 0;
 	return mesh
 end
@@ -423,7 +433,7 @@ function is_fixed(mesh::Mesh)
 end
 
 function reset!(mesh::Mesh)
-	mesh.dst_nodes = copy(mesh.src_nodes)
+	mesh.dst_nodes = deepcopy(mesh.src_nodes)
 end
 
 function get_edges(mesh::Mesh, node_index)

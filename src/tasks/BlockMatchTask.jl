@@ -50,7 +50,7 @@ end
 function BlockMatchTaskDetails(first_index::Main.Index, last_index::Main.Index)
 	indices = Main.get_index_range(first_index, last_index);
 	possible_pairs = collect([(indexA, indexB) for indexA in indices, indexB in indices])
-	possible_pairs = possible_pairs[map(pair -> Main.is_preceding(pair[1], pair[2]), possible_pairs)]
+	possible_pairs = possible_pairs[map(pair -> Main.is_preceding(pair[1], pair[2], Main.get_params(last_index)["match"]["depth"]), possible_pairs)]
 
 	inputs_images = map(Main.truncate_path, map(Main.get_path, indices));
 	inputs_registry = map(Main.truncate_path, map(Main.get_registry_path, indices));
@@ -124,8 +124,8 @@ function DaemonTask.finalize(task::BlockMatchTaskDetails,
 
         Datasource.put!(datasource,
             map((output) -> full_output_path(task, output), result.outputs))
-	Datasource.remove!(datasource, map((output) -> full_output_path(task, output), result.outputs); only_cache = true)
-	Datasource.remove!(datasource, map((input) -> full_input_path(task, input), task.basic_info.inputs); only_cache = true)
+	Datasource.delete!(datasource, map((output) -> full_output_path(task, output), result.outputs); only_cache = true)
+	Datasource.delete!(datasource, map((input) -> full_input_path(task, input), task.basic_info.inputs); only_cache = true)
 	Main.push_registry_updates();
 
     return DaemonTask.Result(true, task.payload_info.outputs)

@@ -1,11 +1,9 @@
 global BUCKET = "/home/ubuntu"
-global DATASET = "datasets/zebrafish"
-#global ROI_FIRST = (2,33,0,0);
-#global ROI_LAST = (9,164,0,0);
-global ROI_FIRST = (9,164,0,0);
-global ROI_LAST = (12,168,0,0);
-global DATASET_RESOLUTION = [5,5,45]
-
+global DATASET = "datasets/myelin"
+#global ROI_FIRST = (1,1,0,0);
+global ROI_FIRST = (3,1,0,0);
+global ROI_LAST = (8,173,0,0);
+global DATASET_RESOLUTION = [30,30,40]
 
 global TASKS_LOCALE = "gcs"
 #global TASKS_LOCALE = "aws"
@@ -35,9 +33,9 @@ end
 function get_name_legacy(index)
     if is_overview(index)
       if index[1] < 10
-        return string("MontageOverviewImage_W00", index[1], "_sec", index[2])
+        return string("MontageOverviewImage_S2-W00", index[1], "_sec", index[2])
       else
-        return string("MontageOverviewImage_W0", index[1], "_sec", index[2])
+        return string("MontageOverviewImage_S2-W0", index[1], "_sec", index[2])
       end
     elseif is_montaged(index)
         return string(index[1], ",", index[2], "_montaged")
@@ -52,9 +50,9 @@ function get_name_legacy(index)
         return string(index[1], ",", index[2], "_finished")
     else
       if index[1] < 10
-    return string("Tile_r", index[3], "-c", index[4], "_W00", index[1], "_sec", index[2])
+    return string("Tile_r", index[3], "-c", index[4], "_S2-W00", index[1], "_sec", index[2])
   	else
-    return string("Tile_r", index[3], "-c", index[4], "_W0", index[1], "_sec", index[2])
+    return string("Tile_r", index[3], "-c", index[4], "_S2-W0", index[1], "_sec", index[2])
   end
     end
 end
@@ -68,9 +66,9 @@ function get_path_legacy(index, ext = ".h5")
     name = get_name_legacy(index)
     if is_overview(index)
       if index[1] < 10
-        section_folder = string("W00", index[1], "_Sec", index[2], "_Montage")
+        section_folder = string("S2-W00", index[1], "_Sec", index[2], "_Montage")
       else
-        section_folder = string("W0", index[1], "_Sec", index[2], "_Montage")
+        section_folder = string("S2-W0", index[1], "_Sec", index[2], "_Montage")
       end
         #path = joinpath(BUCKET, WAFER_DIR_PATH_DICT[index[1]], section_folder, string(name, ext))
         path = joinpath(PREMONTAGED_DIR_PATH, string(name, ext))

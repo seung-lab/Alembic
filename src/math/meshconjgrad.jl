@@ -65,8 +65,8 @@ function Energy_given_lengths(Lengths, Stiffnesses, RestLengths)
 end
 
 function Energy_given_lengths!(Lengths, Stiffnesses, RestLengths, Energies)
-    @fastmath @inbounds @simd for ind in 1:length(Lengths)
-      Energies[ind] = Stiffnesses[ind] * (Lengths[ind] - RestLengths[ind])^2
+    @simd for ind in 1:length(Lengths)
+      @fastmath @inbounds Energies[ind] = Stiffnesses[ind] * (Lengths[ind] - RestLengths[ind])^2
     end
     @fastmath return sum(Energies) / 2
 end

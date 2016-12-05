@@ -55,6 +55,7 @@ function get_properties_ratios(match::Match, args...)
       	end
 	return props_den
 end
+
 function get_norm_std(match::Match)
 	if count_filtered_correspondences(match) == 0 
 		return 0.0
@@ -74,3 +75,128 @@ function get_norms_std_sigmas(match::Match)
 	return (norms - mu) / stdev
 end
 
+function get_normalized_norm_from_consensus(m::Match, r)
+
+#std1s = similar(m.src_points, Float64);
+#std2s = similar(m.src_points, Float64);
+
+dv1s = zeros(Float64, length(m.src_points));
+dv2s = zeros(Float64, length(m.src_points));
+
+
+normalized_norms = similar(m.src_points, Float64);
+r_sq = r * r;
+
+for i in 1:count_correspondences(m)
+	accepted = 0
+	@inbounds p1 = m.src_points[i][1];
+	@inbounds p2 = m.src_points[i][2];
+
+	for k in 1:count_correspondences(m)
+		@fastmath @inbounds d1 = m.src_points[k][1] - p1
+		@fastmath @inbounds d2 = m.src_points[k][2] - p2
+		@fastmath @inbounds d_norm_sq = d1^2 + d2^2
+		@fastmath if d_norm_sq < r_sq
+			if d_norm_sq == 0 continue end;
+			@fastmath @inbounds dv1s[k] = m.dst_points[k][1] - m.src_points[k][1];
+			@fastmath @inbounds dv2s[k] = m.dst_points[k][2] - m.src_points[k][2];
+			accepted += 1;
+		else
+			@inbounds dv1s[k] = 0;
+			@inbounds dv2s[k] = 0;
+		end
+	      
+	end
+
+	if accepted == 0 normalized_norms[i] = Inf; continue; end
+
+	@fastmath m1 = sum(dv1s)/accepted;
+	@fastmath m2 = sum(dv2s)/accepted;
+
+	for k in 1:count_correspondences(m)
+	  	if dv1s[k] == 0 continue; end
+		@fastmath @inbounds dv1s[k] = (dv1s[k] - m1)^2;
+	end
+	for k in 1:count_correspondences(m)
+	  	if dv2s[k] == 0 continue; end
+		@fastmath @inbounds dv2s[k] = (dv2s[k] - m2)^2;
+	end
+
+	sig1 = sqrt(sum(dv1s) / accepted)
+	sig2 = sqrt(sum(dv2s) / accepted)
+
+	@fastmath @inbounds std1 = (m.dst_points[i][1] - p1 - m1) / sig1;
+	@fastmath @inbounds std2 = (m.dst_points[i][2] - p2 - m2) / sig2;
+	@fastmath @inbounds normalized_norms[i] = sqrt(std1^2 + std2^2);
+#=
+	@fastmath @inbounds diff_sq1 = (m.dst_points[i][1] - p1 - m1) ^ 2;
+	@fastmath @inbounds diff_sq2 = (m.dst_points[i][2] - p2 - m2) ^ 2;
+	@fastmath @inbounds norms[i] = sqrt(diff_sq1 + diff_sq2)
+	=#
+end
+	return normalized_norms;
+end
+
+function get_normalized_norm_from_filtered_consensus(m::Match, r)
+
+#std1s = similar(m.src_points, Float64);
+#std2s = similar(m.src_points, Float64);
+
+dv1s = zeros(Float64, length(m.src_points));
+dv2s = zeros(Float64, length(m.src_points));
+
+normalized_norms = similar(m.src_points, Float64);
+r_sq = r * r;
+
+filtered_inds = Array{Int64, 1}(get_filtered_indices(m));
+filtered_len = length(filtered_inds)
+
+src_points = Points(length(filtered_inds))
+dst_points = Points(length(filtered_inds))
+src_points[:] = m.src_points[filtered_inds]
+dst_points[:] = m.dst_points[filtered_inds]
+
+for i in 1:count_correspondences(m)
+	accepted = 0
+	@inbounds p1 = m.src_points[i][1];
+	@inbounds p2 = m.src_points[i][2];
+
+	for k in 1:filtered_len
+		@fastmath @inbounds d1 = src_points[k][1] - p1
+		@fastmath @inbounds d2 = src_points[k][2] - p2
+		@fastmath @inbounds d_norm_sq = d1^2 + d2^2
+		@fastmath if d_norm_sq < r_sq
+			if d_norm_sq == 0 continue end;
+			@fastmath @inbounds dv1s[k] = dst_points[k][1] - src_points[k][1];
+			@fastmath @inbounds dv2s[k] = dst_points[k][2] - src_points[k][2];
+			accepted += 1;
+		else
+			@inbounds dv1s[k] = 0;
+			@inbounds dv2s[k] = 0;
+		end
+	      
+	end
+
+	if accepted == 0 normalized_norms[i] = Inf; continue; end
+
+	@fastmath m1 = sum(dv1s)/accepted;
+	@fastmath m2 = sum(dv2s)/accepted;
+
+	for k in 1:count_correspondences(m)
+	  	if dv1s[k] == 0 continue; end
+		@fastmath @inbounds dv1s[k] = (dv1s[k] - m1)^2;
+	end
+	for k in 1:count_correspondences(m)
+	  	if dv2s[k] == 0 continue; end
+		@fastmath @inbounds dv2s[k] = (dv2s[k] - m2)^2;
+	end
+
+	sig1 = sqrt(sum(dv1s) / accepted)
+	sig2 = sqrt(sum(dv2s) / accepted)
+
+	@fastmath @inbounds std1 = (m.dst_points[i][1] - p1 - m1) / sig1;
+	@fastmath @inbounds std2 = (m.dst_points[i][2] - p2 - m2) / sig2;
+	@fastmath @inbounds normalized_norms[i] = sqrt(std1^2 + std2^2);
+end
+	return normalized_norms;
+end

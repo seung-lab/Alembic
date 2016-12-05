@@ -1,5 +1,5 @@
 # size in bytes
-global const IMG_CACHE_SIZE = 8 * 2^30 # n * gibibytes
+global const IMG_CACHE_SIZE = 2.5 * 2^30 # n * gibibytes
 global const IMG_ELTYPE = UInt8
 
 if myid() == 1
@@ -27,7 +27,7 @@ function save(path::AbstractString, data; chunksize = 1000)
 	println("Saving $(typeof(data)) to ", path)
   	ext = splitext(path)[2];
 	if ext == ".h5"
-		f = h5open(path, "w"); @time f["img", "chunk", (chunksize, chunksize)] = data; close(f)
+		f = h5open(path, "w"); @time f["img", "chunk", (chunksize, chunksize)] = (typeof(data) <: SharedArray ? data.s : data); close(f)
 	elseif ext == ".jls"
 	open(path, "w") do file serialize(file, data) end
       	elseif ext == ".jld"
@@ -374,7 +374,7 @@ end
 
 function resurrect_tile(index::Index)
   assert(is_premontaged(index))
-  fn = get_filename(index)
+  fn = get_name(index)
   path = joinpath(EXPUNGED_DIR, fn)
   new_path = get_path(index)
   println("Resurrecting $fn")
@@ -398,7 +398,7 @@ function make_stack(firstindex::Index, lastindex::Index, slice=(1:255, 1:255); s
   stack_offset = ImageRegistration.get_offset(global_bb)
   stack_size = ImageRegistration.get_size(global_bb)
 
-  thumbnail_scale = 0.05
+  thumbnail_scale = 0.02
   if thumb
     thumb_path = get_path("thumbnail", firstindex)
     thumbnail_scale = h5read(thumb_path, "scale")
@@ -420,6 +420,7 @@ function make_stack(firstindex::Index, lastindex::Index, slice=(1:255, 1:255); s
     if intersects(bb, global_bb)
       shared_bb = global_bb - bb
       stack_roi = snap_bb(scale_bb(translate_bb(shared_bb, -stack_offset+[1,1]), scale))
+      #stack_roi = snap_bb(translate_bb(scale_bb(translate_bb(shared_bb, -stack_offset), scale), [1,1]))
       img_slice = bb_to_slice(stack_roi)
       imgs[img_slice..., i] = get_slice(index, shared_bb, scale, is_global=true, thumb=thumb) 
     end

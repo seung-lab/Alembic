@@ -1,3 +1,5 @@
+function init_Convolve()
+
 global CONV_RESULT = Array{Float64, 2}(10,10);
 global COMPLEX_CONV_INTERMEDIATE_A = Array{Complex{Float64}, 2}(6,10);
 global COMPLEX_CONV_INTERMEDIATE_B = Array{Complex{Float64}, 2}(6,10);
@@ -21,6 +23,10 @@ global CONV_SUM = Array{Float64, 2}();
 global CONV_SUM2 = Array{Float64, 2}();
 global LOCAL_SUM = Array{Float64, 2}();
 global LOCAL_SUM2 = Array{Float64, 2}();
+
+end
+
+init_Convolve();
 
 function convolve{T, n}(A::SubArray{T, n},B::Array{T, n},dims)
     common_size=tuple(map(max,size(A),size(B))...)
@@ -104,6 +110,12 @@ end
 function elwise_mul!(A, B)
       @simd for i in 1:length(A)
 	@fastmath @inbounds A[i] = A[i] * B[i]
+      end
+      return A
+end
+function elwise_add!(A, B)
+      @simd for i in 1:length(A)
+	@fastmath @inbounds A[i] = A[i] + B[i]
       end
       return A
 end
@@ -218,8 +230,10 @@ function cumsum2{T,ndim}(A::Array{T,ndim})
     # compute rest of matrix from recursion
     (m,n)=size(A);
     if m>1 && n>1
-        for j in 2:n, i in 2:m
-            B[i,j]=A[i,j]+B[i-1,j]+B[i,j-1]-B[i-1,j-1]
+        for j in 2:n
+		for i in 2:m
+            	@fastmath @inbounds B[i,j]=A[i,j]+B[i-1,j]+B[i,j-1]-B[i-1,j-1]
+		end
         end
     end
     B
@@ -247,20 +261,19 @@ function optimize_all_cores(img_d::Int64)
     return Void;
 end
 
-function cumsum12!{T,ndim}(A::Array{T,ndim})
-function calculate_cumsums!(SUM, A)
+function cumsum12!(A::Array{Float64,2})
+function calculate_cumsums!(sum, A)
     (m,n)=size(A);
     if m>1 && n>1
-        for j in 2:n, i in 2:m
-        @fastmath @inbounds    SUM[i,j]=A[i,j]+SUM[i-1,j]+SUM[i,j-1]-SUM[i-1,j-1]
+        for j in 2:n
+		for i in 2:m
+        	@fastmath @inbounds    sum[i,j]=A[i,j]+sum[i-1,j]+sum[i,j-1]-sum[i-1,j-1]
+		end
         end
     end
 end
 
     # cumulative sum in two dimensions
-    if ndim!=2
-        throw(ArgumentError("input must be two-dimensional array"))
-    end
     if size(CONV_SUM) != size(A)
       global CONV_SUM = similar(A);
     end
@@ -280,32 +293,36 @@ end
 end
 
 
-function calculate_local_sums(LOCAL_SUM, CONV_SUM, LOCAL_SUM2, CONV_SUM2, L1, L2, n1, n2)
+function calculate_local_sums(local_sum::Array{Float64,2}, conv_sum::Array{Float64,2}, local_sum2::Array{Float64,2}, conv_sum2::Array{Float64,2}, L1, L2, n1, n2)
   j0 = first(L2) - 1
   i0 = first(L1) - 1
-  i_size, j_size = size(CONV_SUM)
-  for j in L2,  i in L1
+  i_size, j_size = size(conv_sum)
+  for j in L2
+	  @simd for i in L1
     j_ind = j - j0
     i_ind = i - i0
-    @fastmath @inbounds LOCAL_SUM[i_ind,j_ind] = CONV_SUM[i, j] - CONV_SUM[(i-n1), j] - CONV_SUM[i, (j-n2)] + CONV_SUM[(i-n1), (j-n2)]
+    @fastmath @inbounds local_sum[i_ind,j_ind] = conv_sum[i, j] - conv_sum[(i-n1), j] - conv_sum[i, (j-n2)] + conv_sum[(i-n1), (j-n2)]
+    end
    end 
-  for j in L2,  i in L1
+  for j in L2
+	  @simd for i in L1
     j_ind = j - j0
     i_ind = i - i0
-	@fastmath @inbounds LOCAL_SUM2[i_ind,j_ind] = CONV_SUM2[i, j] - CONV_SUM2[(i-n1), j] - CONV_SUM2[i, (j-n2)] + CONV_SUM2[(i-n1), (j-n2)]
+	@fastmath @inbounds local_sum2[i_ind,j_ind] = conv_sum2[i, j] - conv_sum2[(i-n1), j] - conv_sum2[i, (j-n2)] + conv_sum2[(i-n1), (j-n2)]
+	end
     end 
 end
 
-function calculate_local_variance!(SUM2, SUM, template)
+function calculate_local_variance!(sum2::Array{Float64,2}, sum::Array{Float64,2}, template::Array{Float64,2})
 	den = prod(size(template))
-	for i in 1:length(SUM2)
-	  SUM2[i] = SUM2[i] - SUM[i] * SUM[i] / den;
+	@simd for i in 1:length(sum2)
+	  @fastmath @inbounds sum2[i] = sum2[i] - sum[i] * sum[i] / den;
 	end
-	  return SUM2
+	  return sum2
 end
-function calculate_denominator!(localvariance, templatevariance)
+function calculate_denominator!(localvariance::Array{Float64,2}, templatevariance::Float64)
 	for i in 1:length(localvariance)
-	 @fastmath localvariance[i] = sqrt(localvariance[i] * templatevariance)
+	 @fastmath @inbounds localvariance[i] = sqrt(localvariance[i] * templatevariance)
 	end
 	  return localvariance
 end
@@ -377,14 +394,14 @@ function normxcorr2_preallocated(template,img; shape = "valid", highpass_sigma =
     # leading to undefined Pearson correlation coefficient
     # should only be negative due to roundoff error
     eps_scaled = eps_large * prod(size(template))
-    for i in 1:length(localvariance) 
+    @simd for i in 1:length(localvariance) 
     	@inbounds if localvariance[i] <= eps_scaled
       	@fastmath @inbounds localvariance[i] = eps 
 	@inbounds numerator[i] = 0 
       end
     end
     @fastmath @inbounds denominator=calculate_denominator!(localvariance, templatevariance)
-    for i in 1:length(denominator) @inbounds if denominator[i] <= 0 
+    @simd for i in 1:length(denominator) @inbounds if denominator[i] <= 0 
     	@inbounds denominator[i] = eps; 
 	@inbounds numerator[i] = 0 
     	end end
