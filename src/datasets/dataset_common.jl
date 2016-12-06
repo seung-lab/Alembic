@@ -248,6 +248,11 @@ function check_dirs(dataset_name::AbstractString = DATASET)
     dataset_dir = joinpath(BUCKET, dataset_name)
     dirs, subdirs = get_dirs()
 
+    b_split = split(BUCKET,"/")
+    for k in 2:length(b_split)
+      setup_dir(joinpath(b_split[1:k]...))
+    end
+    
     setup_dir(dataset_dir)
     for d in dirs
         path = joinpath(dataset_dir, d)
