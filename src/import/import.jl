@@ -2,7 +2,7 @@ global OVERVIEW_RESOLUTION = 95.3/3840 # 3.58/225.0
 # global LOCAL_RAW_DIR = joinpath(homedir(), "raw")
 global LOCAL_RAW_DIR = joinpath(BUCKET, DATASET, "raw")
 global GCLOUD_RAW_DIR = "gs://243774_8973/"
-global GCLOUD_BUCKET = "gs://seunglab_alembic/"
+global GCLOUD_BUCKET = "gs://seunglab_alembic/datasets/"
 
 # function gsutil_download(remote_file::AbstractString, local_file::Union{AbstractString, IO, Void}=nothing)
 #    download_cmd = `gsutil -m cp
@@ -81,7 +81,7 @@ end
 
 function download_subdir_files(z_index)
 	dir = OVERVIEW_DIR
-	subdirs = [CUMULATIVE_TRANSFORM_DIR, CORRESPONDENCE_DIR]	
+	subdirs = [CORRESPONDENCE_DIR]	
 	for subdir in subdirs
 		path = joinpath(dir, subdir)
 		localpath = joinpath(BUCKET, DATASET, path)
@@ -441,14 +441,14 @@ function gentrify_tiles(firstz, lastz)
 end
 
 function gentrify_tiles(z_index)
-	# download_subdir_files(z_index)
-	# make_local_raw_dir()
+	download_subdir_files(z_index)
+	make_local_raw_dir()
 	download_raw_tiles(z_index)
 	import_tiles(z_index)
 	premontage(premontaged(1,z_index))
-	# sync_to_upload()
-	# remove_local_raw_dir()
-	# remove_premontaged_files(z_index)
+	sync_to_upload()
+	remove_local_raw_dir()
+	remove_premontaged_files(z_index)
 end
 
 function import_tiles(z_index; from_current=false, reset=false, overwrite_offsets=true)
