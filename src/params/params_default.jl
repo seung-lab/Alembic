@@ -175,7 +175,7 @@ global PARAMS_ALIGNMENT = Dict(
 			     	"ftol_newton" => FTOL_NEWTON_ALIGNMENT),
 			     "filter" => Dict(
 			 # son of alignment
-					"dist" = (0,:get_properties,>,25,"norm")
+					"dist" => (0,:get_properties,>,25,"norm")
 			 #=
 			     		"sigma_filter_high" => (1,:get_properties, >, 8, 0.95),
 			     		"sigma_filter_mid" => (2,:get_properties, >, 90, 0.75),
