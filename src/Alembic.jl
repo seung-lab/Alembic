@@ -50,10 +50,8 @@ end
 if USE_PYPLOT
   using PyPlot
 end
-if !ON_CLOUD #!(contains(gethostname(), "seunglab") || contains(gethostname(), "seungom"))
   using Tk
   using ImageView
-end
 if !contains(gethostname(), "seung")
   using PyCall
   using MKLSparse
@@ -170,18 +168,16 @@ include("import/import.jl")
 include("review/review.jl")
 include("review/visualize.jl")
 include("review/draw.jl")
-if !ON_CLOUD #!(contains(gethostname(), "seunglab") || contains(gethostname(), "seungom"))
-  include("review/inspect.jl")
-  include("review/player.jl")
-  include("review/brushtool.jl")
-  include("review/cpselect.jl")
-end
-  include("tasks/tasks_env.jl")
-  include("tasks/ImportTask.jl")
-  include("tasks/BlockMatchTask.jl")
-  include("tasks/RenderTask.jl")
-  include("tasks/SolveTask.jl")
-  include("tasks/awsscheduler.jl")
+include("review/inspect.jl")
+include("review/player.jl")
+include("review/brushtool.jl")
+include("review/cpselect.jl")
+include("tasks/tasks_env.jl")
+include("tasks/ImportTask.jl")
+include("tasks/BlockMatchTask.jl")
+include("tasks/RenderTask.jl")
+include("tasks/SolveTask.jl")
+include("tasks/awsscheduler.jl")
 
 include("utilities/migrate.jl")
 
