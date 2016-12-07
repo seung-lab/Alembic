@@ -175,9 +175,9 @@ if !ON_CLOUD #!(contains(gethostname(), "seunglab") || contains(gethostname(), "
   include("review/player.jl")
   include("review/brushtool.jl")
   include("review/cpselect.jl")
-  include("tasks/tasks_env.jl")
-#  include("tasks/ImportTask.jl")
 end
+  include("tasks/tasks_env.jl")
+  include("tasks/ImportTask.jl")
   include("tasks/BlockMatchTask.jl")
   include("tasks/RenderTask.jl")
   include("tasks/SolveTask.jl")
