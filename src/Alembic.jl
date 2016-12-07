@@ -176,12 +176,12 @@ if !ON_CLOUD #!(contains(gethostname(), "seunglab") || contains(gethostname(), "
   include("review/brushtool.jl")
   include("review/cpselect.jl")
   include("tasks/tasks_env.jl")
-  include("tasks/ImportTask.jl")
+#  include("tasks/ImportTask.jl")
+end
   include("tasks/BlockMatchTask.jl")
   include("tasks/RenderTask.jl")
   include("tasks/SolveTask.jl")
   include("tasks/awsscheduler.jl")
-end
 
 include("utilities/migrate.jl")
 
