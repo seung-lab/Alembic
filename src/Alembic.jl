@@ -43,7 +43,9 @@ using Images
 using Graphics
 using StatsBase
 using JSON
+if VERSION != v"0.4.6"
 using Primes
+end
 if USE_PYPLOT
   using PyPlot
 end
