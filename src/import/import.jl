@@ -2,7 +2,7 @@ global OVERVIEW_RESOLUTION = 95.3/3840 # 3.58/225.0
 # global LOCAL_RAW_DIR = joinpath(homedir(), "raw")
 global LOCAL_RAW_DIR = joinpath(BUCKET, DATASET, "raw")
 global GCLOUD_RAW_DIR = "gs://243774_8973/"
-global GCLOUD_BUCKET = "gs://seunglab_alembic/dataset/"
+global GCLOUD_BUCKET = "gs://seunglab_alembic/datasets/"
 
 # function gsutil_download(remote_file::AbstractString, local_file::Union{AbstractString, IO, Void}=nothing)
 #    download_cmd = `gsutil -m cp
@@ -68,7 +68,6 @@ function get_remote_raw_path(z_index)
 	return joinpath(GCLOUD_RAW_DIR, src_dir)
 end
 
-
 function get_trakem_file(z_index)
 	println("Downloading trakem file for $z_index")
 	remote_raw_path = get_remote_raw_path(z_index)
@@ -106,6 +105,14 @@ function sync_to_upload()
 	localpath = joinpath(BUCKET, DATASET, dir)
 	remotepath = joinpath(GCLOUD_BUCKET, DATASET, dir)
 	Base.run(`gsutil -m rsync -r $localpath $remotepath`)
+end
+
+function sync_to_download(z_index)
+	dir = PREMONTAGED_DIR
+	println("Syncing subdirs for $dir")
+	localpath = joinpath(BUCKET, DATASET, dir)
+	remotepath = joinpath(GCLOUD_BUCKET, DATASET, dir, "(1,$z_index,*")
+	Base.run(`gsutil -m cp -r $remotepath $localpath`)
 end
 
 function download_raw_tiles(z_index; roi_only=true, overwrite=false)
@@ -427,9 +434,29 @@ function fix_contrast(src_index::Index, ref_index::Index)
 	return src_img
 end
 
-function gentrify_tiles(firstz, lastz)
+function premontage_cluster(z_range::UnitRange{Int64})
 	pr = []
-	for z = firstz:lastz
+	for z in z_range
+		try 
+			premontage_cluster(z)
+			push!(pr, [z,1])
+		catch
+			push!(pr, [z,0])
+		end
+		writedlm(joinpath(homedir(), "import_issues.txt"), pr)
+	end
+	sync_to_upload()
+end
+
+function premontage_cluster(z_index::Int64)
+	sync_to_download(z_index)
+	premontage(premontaged(1,z_index))
+	remove_premontaged_files(z_index)
+end
+
+function gentrify_tiles(z_range::UnitRange{Int64})
+	pr = []
+	for z in z_range
 		try 
 			gentrify_tiles(z)
 			push!(pr, [z,1])
@@ -440,7 +467,7 @@ function gentrify_tiles(firstz, lastz)
 	end
 end
 
-function gentrify_tiles(z_index)
+function gentrify_tile(z_index::Int64)
 	download_subdir_files(z_index)
 	make_local_raw_dir()
 	download_raw_tiles(z_index)
@@ -961,8 +988,8 @@ function reset_montage_registry_tform(firstindex::Index, lastindex::Index)
 	end
 end
 
-function copy_overviews_to_montages(firstz, lastz)
-	for z = firstz:lastz
+function copy_overviews_to_montages(z_range)
+	for z = z_range
 		src_index = overview(1,z)
 		dst_index = montaged(1,z)
 		src_fn = get_path(src_index)
@@ -986,12 +1013,12 @@ function copy_montage_import_folders_to_overview_correspondences(z_range)
 	end
 end
 
-function copy_between_projects(firstz, lastz, stage, dir_name, src_dataset, dst_dataset)
-	gp = get_path(dir_name, eval(stage)(1,firstz))
+function copy_between_projects(z_range, stage, dir_name, src_dataset, dst_dataset)
+	gp = get_path(dir_name, eval(stage)(1,z_range[1]))
 	datasets_path = join(split(gp, "/")[1:end-4], "/")
 	src_path = joinpath(datasets_path, src_dataset)
 	dst_path = joinpath(datasets_path, dst_dataset)
-	for z = firstz:lastz
+	for z in z_range
 		src_subdir = get_path(dir_name, eval(stage)(1,z))
 		src_subdir = join(split(src_subdir, "/")[end-2:end], "/")
 		src = joinpath(src_path, src_subdir)
@@ -1008,10 +1035,10 @@ function copy_between_projects(firstz, lastz, stage, dir_name, src_dataset, dst_
 	end
 end
 
-function copy_pinky_overviews_from_gcloud(fn=joinpath(homedir(), "seungmount/research/Alembic/datasets/pinky/161115_import_originals.csv"))
+function copy_pinky_overviews_from_gcloud(fn=joinpath(homedir(), "seungmount/research/Alembic/datasets/pinky_overviews/161206_import_reimaged.csv"))
 	import_table = readdlm(fn, ',')
 	src_dir = GCLOUD_RAW_DIR
-	dst_dir = joinpath(homedir(), "seungmount/research/Alembic/datasets/pinky/0_overview/originals_selected_reimaged_sections")
+	dst_dir = joinpath(homedir(), "seungmount/research/Alembic/datasets/pinky_overviews/0_overview/second_reimaged_sections")
 	for i = 1:size(import_table,1)
 		z = import_table[i,1]
 		src_fn = joinpath(src_dir, import_table[i,2], "_montage\*")

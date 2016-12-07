@@ -80,7 +80,7 @@ function premontage(index::Index)
   # Then fix next tile with highest r_value that is connected to all fixed tiles
   tr = pmap(find_translation, overlaps)
   tr = hcat([collect(t) for t in tr]...)'
-  tr = tr[sortperm(tr[:,5]), :]
+  tr = tr[sortperm(tr[:,5], rev=true), :]
   fixed_tiles = [tr[1,2]]
   while length(tile_indices) > length(fixed_tiles)
     k = 1
@@ -98,6 +98,10 @@ function premontage(index::Index)
       moving_bb, fixed_bb = fixed_bb, moving_bb
       dv = -dv
     end
+    # limit the range of the dv
+    # if .*((abs(dv) .> dv_threshold)...)
+    #   dv = [0,0]
+    # end
     m = findfirst(i->i==mindex, tile_indices)
     n = findfirst(i->i==findex, tile_indices)
     moving_offset = offsets[m]
