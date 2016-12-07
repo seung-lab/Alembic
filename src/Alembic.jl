@@ -43,6 +43,7 @@ using Images
 using Graphics
 using StatsBase
 using JSON
+using SimpleTasks
 if VERSION != v"0.4.6"
 using Primes
 end
@@ -52,7 +53,6 @@ end
 if !ON_CLOUD #!(contains(gethostname(), "seunglab") || contains(gethostname(), "seungom"))
   using Tk
   using ImageView
-  using SimpleTasks
 end
 if !contains(gethostname(), "seung")
   using PyCall
