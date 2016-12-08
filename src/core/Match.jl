@@ -706,7 +706,7 @@ function filter!(match::Match, priority, function_name, compare, threshold, vars
 	return length(inds_to_filter);
 end
 
-function filter!(match::Match, filter)
+function filter!(match::Match, filter::Tuple)
 	return filter!(match, filter...)
 end
 

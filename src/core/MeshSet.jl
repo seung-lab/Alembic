@@ -204,8 +204,8 @@ function check!(meshset::MeshSet, crits=meshset.properties["params"]["review"])
   return |(map(check!, meshset.matches, repeated(Base.values(crits)))...)
 end
 
-function filter!(meshset::MeshSet, filters=meshset.properties["params"]["filter"])
-	filters = collect(Base.values(filters))
+function filter!(meshset::MeshSet, filters::Dict=meshset.properties["params"]["filter"])
+  filters = collect(Base.values(filters))
   filters = filters[sortperm(map(getindex, filters, repeated(1)))]
   for filter in filters
     filter!(meshset, filter)
