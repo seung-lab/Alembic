@@ -57,7 +57,7 @@ if !contains(gethostname(), "seung")
   using MKLSparse
 end
 
-import Base.filter!
+#import Base.filter!
 
 # TypeAliases
 export Index
