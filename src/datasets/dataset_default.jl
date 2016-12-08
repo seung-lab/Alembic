@@ -1,5 +1,5 @@
-global BUCKET = joinpath(homedir(), "seungmount/research/Alembic/datasets")
-# global BUCKET = joinpath(homedir(), "datasets")
+# global BUCKET = joinpath(homedir(), "seungmount/research/Alembic/datasets")
+global BUCKET = joinpath(homedir(), "datasets")
 global DATASET = "piriform"
 global ROI_FIRST = (1,2,0,0);
 global ROI_LAST = (8,173,0,0);

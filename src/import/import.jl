@@ -435,16 +435,10 @@ function fix_contrast(src_index::Index, ref_index::Index)
 end
 
 function premontage_cluster(z_range::UnitRange{Int64})
-	loadfile = get_loadfile()
-	gentrify_list = loadfile[:,1]
 	pr = []
 	for z in z_range
 		try
-			if z in gentrify_list
-				gentrify_tiles(z)
-			else 
-				premontage_cluster(z)
-			end
+			premontage_cluster(z)
 			push!(pr, [z,1])
 		catch
 			push!(pr, [z,0])
