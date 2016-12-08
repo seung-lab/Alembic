@@ -434,7 +434,7 @@ function fix_contrast(src_index::Index, ref_index::Index)
 	return src_img
 end
 
-function premontage_cluster(z_range::UnitRange{Int64})
+function premontage_cluster(z_range::Array{Int64,1})
 	pr = []
 	for z in z_range
 		try
