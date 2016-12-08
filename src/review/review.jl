@@ -187,3 +187,14 @@ function view_prematch_review(index::Index)
   img_orig = h5read(path, "img"); 
   ImageView.view(img_orig);
 end
+
+function split_premontage_review(index::Index)
+  f = get_path("outline", premontaged(index))
+  im = data(FileIO.load(fn))
+  h = round(Int64, size(im)[2]/2)
+  fn = split(f, ".png")[1]
+  fn1 = joinpath("split", string(fn, "1", ".png"))
+  fn2 = joinpath("split", string(fn, "2", ".png"))
+  FileIO.save(fn1, Images.Image(im[:,1:h+200])')
+  FileIO.save(fn2, Images.Image(im[:,h-200:end])')
+end
