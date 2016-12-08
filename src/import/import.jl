@@ -15,7 +15,7 @@ global GCLOUD_BUCKET = "gs://seunglab_alembic/datasets/"
 # end
 
 function get_loadfile()
-	loadfile_sub_path = joinpath(DATASET, "161206_import_reimaged.csv")
+	loadfile_sub_path = joinpath(DATASET, "161201_aibs_import.csv")
 	loadfile_localpath = joinpath(BUCKET, loadfile_sub_path)
 	if !isfile(loadfile_localpath)
 		loadfile_remotepath = joinpath(GCLOUD_BUCKET, loadfile_sub_path)
@@ -437,7 +437,6 @@ end
 function premontage_cluster(z_range::UnitRange{Int64})
 	loadfile = get_loadfile()
 	gentrify_list = loadfile[:,1]
-	push!(gentrify_list, 3543, 4149, 4401)
 	pr = []
 	for z in z_range
 		try
@@ -457,6 +456,7 @@ end
 
 function premontage_cluster(z_index::Int64)
 	sync_to_download(z_index)
+	initialize_offsets(z_index)
 	premontage(premontaged(1,z_index))
 	remove_premontaged_files(z_index)
 end
@@ -474,7 +474,7 @@ function gentrify_tiles(z_range::UnitRange{Int64})
 	end
 end
 
-function gentrify_tile(z_index::Int64)
+function gentrify_tiles(z_index::Int64)
 	download_subdir_files(z_index)
 	make_local_raw_dir()
 	download_raw_tiles(z_index)
