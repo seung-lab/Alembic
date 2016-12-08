@@ -437,7 +437,6 @@ end
 function premontage_cluster(z_range::UnitRange{Int64})
 	loadfile = get_loadfile()
 	gentrify_list = loadfile[:,1]
-	push!(gentrify_list, 3543, 4149, 4401)
 	pr = []
 	for z in z_range
 		try
