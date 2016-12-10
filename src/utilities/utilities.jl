@@ -84,3 +84,27 @@ function user_approves(m="Are you sure?")
   a = readline()
   return chomp(a) == "yes"
 end
+
+function latest_update_time_as_int(filename)
+  f = open(filename)
+  return parse(Libc.strftime("%y%m%d%H%M%S", mtime(f)))
+end
+
+function compile_import_timestamps(workerID)
+  registry = REGISTRY_PREMONTAGED
+  indices = map(premontaged, registry[:,2])
+  registry_log = hcat(indices, registry[:,2:end])
+  registry_log_fn = update_log_fn = joinpath(PREMONTAGED_DIR_PATH, "registry_log_$workerID.txt")
+  writedlm(registry_log_fn, registry_log)
+
+  unique_indices = unique(indices)
+  ts = zeros(length(unique_indices))
+  for (i, index) in enumerate(unique_indices)
+    fn = get_path("outline", index)
+    ts[i] = latest_update_time_as_int(fn)
+  end
+  update_log = hcat(unique_indices, ts)
+  update_log_fn = joinpath(PREMONTAGED_DIR_PATH, "update_log_$workerID.txt")
+  writedlm(update_log_fn, update_log)
+end
+
