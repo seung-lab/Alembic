@@ -108,3 +108,10 @@ function compile_import_timestamps(workerID)
   writedlm(update_log_fn, update_log)
 end
 
+function upload_registry_logs()
+  println("Uploading registry logs")
+  localpath = joinpath(PREMONTAGED_DIR_PATH, "*log*.txt")
+  remotepath = joinpath(GCLOUD_BUCKET, DATASET, PREMONTAGED_DIR)
+  Base.run(`gsutil -m cp -r $localpath $remotepath`)
+end
+
