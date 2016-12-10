@@ -107,6 +107,13 @@ function sync_to_upload()
 	Base.run(`gsutil -m rsync -r $localpath $remotepath`)
 end
 
+function upload_registry()
+	println("Syncing subdirs for $dir")
+	localpath = joinpath(PREMONTAGED_DIR_PATH, "registry*.txt")
+	remotepath = joinpath(GCLOUD_BUCKET, DATASET, PREMONTAGED_DIR)
+	Base.run(`gsutil -m cp -r $localpath $remotepath`)
+end
+
 function sync_to_download(z_index)
 	dir = PREMONTAGED_DIR
 	println("Syncing subdirs for $dir")
