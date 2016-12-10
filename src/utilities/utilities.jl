@@ -101,7 +101,11 @@ function compile_import_timestamps(workerID)
   ts = zeros(length(unique_indices))
   for (i, index) in enumerate(unique_indices)
     fn = get_path("outline", index)
-    ts[i] = latest_update_time_as_int(fn)
+    if isfile(fn)
+      ts[i] = latest_update_time_as_int(fn)
+    else
+      ts[i] = -1
+    end
   end
   update_log = hcat(unique_indices, ts)
   update_log_fn = joinpath(PREMONTAGED_DIR_PATH, "update_log_$workerID.txt")
