@@ -94,7 +94,7 @@ function compile_import_timestamps(workerID)
   registry = REGISTRY_PREMONTAGED
   indices = map(premontaged, registry[:,2])
   registry_log = hcat(indices, registry[:,2:end])
-  registry_log_fn = update_log_fn = joinpath(PREMONTAGED_DIR_PATH, "registry_log_$workerID.txt")
+  registry_log_fn = joinpath(PREMONTAGED_DIR_PATH, "registry_log_$workerID.txt")
   writedlm(registry_log_fn, registry_log)
 
   unique_indices = unique(indices)
@@ -118,4 +118,49 @@ function upload_registry_logs()
   remotepath = joinpath(GCLOUD_BUCKET, DATASET, PREMONTAGED_DIR)
   Base.run(`gsutil -m cp -r $localpath $remotepath`)
 end
+
+function compile_import_registry(n_range)
+  update_log_list = []
+  for n in n_range
+    update_log_fn = joinpath(PREMONTAGED_DIR_PATH, "update_log_$n.txt")
+    ulog = readdlm(update_log_fn)
+    push!(update_log_list, hcat(ulog, ones(Int64, size(ulog,1))*n))
+  end
+  log_list = vcat(update_log_list...)
+  indices = unique(log_list[:,1])
+  most_recent_log = []
+  for index in indices
+    r = log_list[log_list[:,1] .== index, :]
+    push!(most_recent_log, r[r[:,2] .== maximum(r[:,2]), 3][1])
+  end
+  most_recent_log_list = hcat(indices, most_recent_log)
+
+  registry_list = []
+  for n in n_range
+    registry_log_fn = joinpath(PREMONTAGED_DIR_PATH, "registry_log_$n.txt")
+    rlog = readdlm(registry_log_fn)
+    push!(registry_list, rlog)
+  end
+
+  registry_entries = []
+  for (index, log) in zip(indices, most_recent_log)
+    r = registry_list[log]
+    push!(registry_entries, r[r[:,1] .== index, 2:end])
+  end
+
+  registry = vcat(registry_entries...)
+  registry[:,1] = map(parse_name, registry[:,1])
+  registry[:,3] = round(Int64, registry[:,3])
+  registry[:,4] = round(Int64, registry[:,4])
+  registry_fn = joinpath(PREMONTAGED_DIR_PATH, "registry.txt")
+  registry = registry[sortperm(registry[:,1]), :]
+  writedlm(registry_fn, registry)
+end
+
+
+
+
+
+
+    
 
