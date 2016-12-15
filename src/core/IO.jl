@@ -71,7 +71,7 @@ end
 # filesystem.jl	get_image() 
 function get_image_disk(path::AbstractString, dtype = IMG_ELTYPE; shared = false)
 	ext = splitext(path)[2];
-  if ext == ".tif"
+  if ext == ".tif" || ext == ".png"
     img = data(FileIO.load(path))
     # img = img[:, :, 1]' # incredibly slow in Julia v0.5.0
     #img.properties["timedim"] = 0
