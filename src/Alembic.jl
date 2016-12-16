@@ -137,7 +137,8 @@ include("datasets/dataset_s1.jl")
 #include("params/params_pinky.jl")
 # include("datasets/dataset_zebrafish.jl")
 #  include("datasets/dataset_default.jl")
- include("params/params_zebrafish.jl")
+# include("params/params_zebrafish.jl")
+ include("params/params_default.jl")
 #=
 if ON_CLOUD
   include("datasets/dataset_zebrafish.jl")
