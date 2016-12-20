@@ -142,6 +142,7 @@ function solve!(meshset; method="elastic")
 end
 
 function elastic_solve_piecewise!(meshset::MeshSet; from_current = true)
+	sanitize!(meshset);
 	meshsets = make_submeshsets(meshset);
 	for (index, cur_meshset) in enumerate(meshsets)
 	  println("SOLVING SUBMESHSET $index OF $(length(meshsets))");
@@ -151,6 +152,7 @@ function elastic_solve_piecewise!(meshset::MeshSet; from_current = true)
 end
 
 function elastic_collate(meshset; from_current = true, write = false)
+	sanitize!(meshset);
   params = get_params(meshset)
   #fixed = get_fixed(meshset)
   match_spring_coeff = params["solve"]["match_spring_coeff"]
@@ -333,6 +335,7 @@ end
 Elastic solve
 """
 function elastic_solve!(meshset; from_current = true, use_saved = false, write = false)
+	sanitize!(meshset);
   if use_saved
 	collation, noderanges, edgeranges = load(string(splitext(get_filename(meshset))[1], "_collated.jls"))
       else
