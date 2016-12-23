@@ -1080,3 +1080,12 @@ function download_one_tile_aibs_alignment(r, c, z_range=3279:3528)
 		Base.run(f)
 	end
 end
+
+function download_indices(indices)
+	for index in indices
+		dst_dir = PREMONTAGED_DIR_PATH
+		src_dir = joinpath("gs://seunglab_alembic", DATASET, PREMONTAGED_DIR, "$index.h5")  
+		b = `gsutil -m cp $src_dir $dst_dir`
+		Base.run(b)
+	end
+end

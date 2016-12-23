@@ -271,3 +271,20 @@ function log_error(index::Index; fn="render_error_log", comment="")
   println("Logging error:\n", path)
   writedlm(path, log)
 end
+
+
+function d_montage(z, threshold=3)
+  index = montaged(1,z); 
+  ms = load(MeshSet, index);
+  # for i in 1:length(ms.matches)
+  #   calculate_post_statistics!(ms, i)
+  #   flag!(ms.matches[i], "norm_post", >, 3)
+  # end
+  # save(ms)
+  s = load("stats", index); 
+  c = filter_stats(s, ["max_post"]); 
+  println(c[c[:,2] .> 3, :])
+  i = sort(map(parse, c[c[:,2] .> 3, 1]))[1]
+  inspect(ms, i)
+  return ms, s, c
+end

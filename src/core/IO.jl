@@ -43,6 +43,7 @@ function load(path::AbstractString)
     data = get_image_disk(path)
 	elseif ext == ".jls"
   	data = open(deserialize, path)
+    # data = open(path)
 	elseif ext == ".jld"
   	data = load(path, "data")
   elseif ext == ".png"

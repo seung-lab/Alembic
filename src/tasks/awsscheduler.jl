@@ -82,4 +82,19 @@ function __init__()
 end
 =#
 
+function collect_errors(queue_name = Main.TASKS_ERROR_QUEUE_NAME, bucket_name = Main.TASKS_BUCKET_NAME)
+    env = AWS.AWSEnv()
+    queue = AWSQueueService(env, queue_name)
+    m = Queue.pop_message(queue)
+    while m != ""
+        d = JSON.parse(m)
+        indices = [(ind...) for ind in d["task"]["payload_info"]["indices"]]
+        index = indices[1]
+        fn = joinpath(PREMONTAGED_DIR_PATH, "error", string(index, ".txt"))
+        writedlm(fn, d)
+        m = Queue.pop_message(queue)
+    end
+end
+
 end # module AWSScheduler
+  

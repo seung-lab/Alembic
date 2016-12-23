@@ -944,7 +944,7 @@ function get_correspondence_properties(meshset::MeshSet, key)
 end
 
 function get_correspondence_stats(ms::MeshSet, key)
-  s = get_correspondence_property(ms, key)
+  s = get_correspondence_properties(ms, key)
   indices = map(get_src_index, ms.matches)
   l = map(length, s)
   mn = map(round, map(minimum, s), repeated(2))
