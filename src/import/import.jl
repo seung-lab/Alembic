@@ -2,7 +2,7 @@ global OVERVIEW_RESOLUTION = 95.3/3840 # 3.58/225.0
 # global LOCAL_RAW_DIR = joinpath(homedir(), "raw")
 global LOCAL_RAW_DIR = joinpath(BUCKET, DATASET, "raw")
 global GCLOUD_RAW_DIR = "gs://243774_8973/"
-global GCLOUD_BUCKET = "gs://seunglab_alembic/datasets/"
+global GCLOUD_BUCKET = "gs://seunglab_alembic/"
 
 # function gsutil_download(remote_file::AbstractString, local_file::Union{AbstractString, IO, Void}=nothing)
 #    download_cmd = `gsutil -m cp
