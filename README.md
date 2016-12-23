@@ -4,25 +4,6 @@
 ALignment of Electron Microscopy By Image Correlograms
 A set of tools for elastic image registration in Julia.
 
-# Process
-(per section: 16 60 MB tiles)
-
-| Step | Blockmatch (s) | Render (s) | Review Method |
-| --- | --- | --- | --- |
-| premontage | 80 | 0 | overlay tiles on overview |
-| montage | 210 | 480 | section overlay as checkerboard |
-| prealignment | 120 | 60 | overlay sections, match outline|
-| alignment | 280 | 60 | FIJI movie of sections, match outline, orthogonal views |
-
-| Step | Full | Review |  
-| --- | --- | --- |
-| initial | 1 GB | 0 | 
-| premontage | 0 | 5 MB | 
-| montage | 1 GB | 5 MB |
-| prealignment | 1 GB | 5 MB |
-| alignment | 1.2 GB | 0.6 GB |
-| total (section) | 4.8 GB |
-
 # Terminology
 * _Tile_: the base image unit from the microscope at the highest resolution
 * _Section_: the image formed by combining all the tiles together
@@ -39,13 +20,3 @@ Register tile images to one another by blockmatching in their overlapping portio
 Register montaged sections to the previous prealigned section by blockmatching. Render with a regularized affine transform (part affine, part rigid). Review by looking at overlays of the two sections. Intervene by removing bad correspondences by identifying bad blockmatch images, or by clicking on correspondences that have non-consistent displacements relative to their neighbors. 
 ## Alignment
 Register prealigned sections to each other, and N+k neighboring sections, by blockmatching. Cover each section image in a triangle mesh, and globally deform all the meshes elastically to accommodate the correspondences. Render with a piecewise affine transform. Review by inspecting the combined overlay plot of all tiles combined. Intervene by removing bad correspondences by identifying bad blockmatch images, or by clicking on correspondences that have non-consistent displacements relative to their neighbors.
-
-# To Do
-* Use masks
-* Compose transforms instead of using intermediate renders
-* Investigate L1 regularizer in the elastic solver
-* Make it more plug and play for a new dataset
-* Provide options to easily test blockmatch parameters
-* Write inspection edits directly to the meshsets
-* Update IO for work with AWS S3
-* Investigate AWS EMRFS

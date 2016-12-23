@@ -62,13 +62,17 @@ function get_next_match(meshset::MeshSet, match_ind=1)
     end
 
   elseif is_aligned(meshset)
-    parent_name = get_parent(meshset)
+#    parent_name = get_parent(meshset)
     match_ind += 1
-    if match_ind <= count_children(parent_name)
-      return load_split(parent_name, match_ind), match_ind
-    else
-      return nothing, nothing
+    if match_ind <= count_matches(meshset)
+	    return meshset, match_ind
+    else return nothing, nothing
     end
+#    if match_ind <= count_children(parent_name)
+#      return load_split(parent_name, match_ind), match_ind
+#    else
+#      return nothing, nothing
+#    end
   end
   return meshset, 1
 end
@@ -122,9 +126,9 @@ function get_next_flagged_match(meshset::MeshSet, match_ind=1)
     return nothing, nothing
   end
   k = match_ind
-  if is_aligned(meshset)
+#=  if is_aligned(meshset)
     k = 1
-  end
+  end=#
   if is_flagged(meshset.matches[k])
     return meshset, match_ind
   else
@@ -484,9 +488,10 @@ function go_to_next_inspection(imgc, img2, meshset, match_ind; forward=true, fla
     save_inspection(meshset, match_ind)
   end
 
-  if is_aligned(meshset)
+  # no idea what this does, but it was causing an error - leaving it commented out for now
+#=  if is_aligned(meshset)
     match_ind = get_name(meshset)
-  end
+  end=#
 
   next_ms, next_match_ind = nothing, nothing
   if forward && flag
