@@ -469,6 +469,7 @@ function gentrify_tiles(z_range::Array{Int64,1})
 		end
 		writedlm(joinpath(homedir(), "import_issues.txt"), pr)
 	end
+	sync_to_upload()
 end
 
 function gentrify_tiles(z_index::Int64)
@@ -477,7 +478,7 @@ function gentrify_tiles(z_index::Int64)
 	download_raw_tiles(z_index)
 	import_tiles(z_index)
 	premontage(premontaged(1,z_index))
-	sync_to_upload()
+	# sync_to_upload()
 	remove_local_raw_dir()
 	remove_premontaged_files(z_index)
 end
