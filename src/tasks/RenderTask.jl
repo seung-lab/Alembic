@@ -93,6 +93,13 @@ function DaemonTask.execute(task::RenderTaskDetails,
     Main.calculate_stats(ms);
     end=#
     #actually only a tuple
+
+
+    ms = Main.load(MeshSet, (task.payload_info.indices...))
+    Main.elastic_solve!(ms, from_current = true);
+    Main.save(ms);
+
+
     Main.render(task.payload_info.indices...);
     #Main.calculate_stats(ms);
 
