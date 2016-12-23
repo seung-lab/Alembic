@@ -95,7 +95,7 @@ function DaemonTask.execute(task::RenderTaskDetails,
     #actually only a tuple
 
 
-    ms = Main.load(MeshSet, (task.payload_info.indices...))
+    ms = Main.load(Main.MeshSet, (task.payload_info.indices...))
     Main.elastic_solve!(ms, from_current = true);
     Main.save(ms);
 
