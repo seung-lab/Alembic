@@ -104,6 +104,12 @@ function Gradient_given_lengths!(Springs, Lengths, Incidence_d, Stiffnesses_d, R
 end
 
 function SolveMeshConjugateGradient!(Vertices, Fixed, Incidence, Stiffnesses, RestLengths, max_iter, ftol)
+
+    N = size(Vertices, 2);
+    perm = sortperm(Fixed);
+    invperm = sortperm(perm);
+
+
     # double everything
     Vertices_t = Vertices';
     Vertices_t = vcat(Vertices_t[:, 1], Vertices_t[:, 2])
@@ -196,7 +202,7 @@ function SolveMeshConjugateGradient!(Vertices, Fixed, Incidence, Stiffnesses, Re
 
     @fastmath res = optimize(df,Vertices_t[Moving],method=ConjugateGradient(),show_trace=true,iterations=max_iter,ftol=ftol)
     # return res
-    Vertices_t[Moving] = res.minimum[:];
+    Vertices_t[Moving] = res.minimum;
     Vertices[:] = vcat(Vertices_t[1:div(length(Vertices_t),2)]', Vertices_t[1+div(length(Vertices_t),2):end]');
     #println("cost_iter: $cost_iter, cost_time: $cost_time")
     #println("grad_iter: $grad_iter, grad_time: $grad_time")

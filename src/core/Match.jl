@@ -284,7 +284,7 @@ function prematch(src_index, dst_index, src_image, dst_image, params=get_params(
 	update_registry(src_index; offset = offset);
 	println("Prematch complete... offset: $offset")
 
-	init_Match()
+	init_Match(); gc();
 
 	return offset;
 
