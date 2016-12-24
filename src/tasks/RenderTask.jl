@@ -53,7 +53,8 @@ function RenderTaskDetails(index::Main.Index)
 #	output_tform = 
 
 	basic_info = BasicTask.Info(0, NAME, Main.TASKS_BASE_DIRECTORY, inputs) 
-	task = RenderTaskDetails(basic_info, AlembicPayloadInfo([index], vcat([output_image, output_image_thumbnail],inputs_meshset)));
+	#task = RenderTaskDetails(basic_info, AlembicPayloadInfo([index], vcat([output_image, output_image_thumbnail],inputs_meshset)));
+	task = RenderTaskDetails(basic_info, AlembicPayloadInfo([index], [output_image_thumbnail]));
 #	return vcat(inputs..., output)
 	return task
 end
@@ -95,10 +96,11 @@ function DaemonTask.execute(task::RenderTaskDetails,
     #actually only a tuple
 
 
+    #=
     ms = Main.load(Main.MeshSet, task.payload_info.indices...)
     ms.properties["params"]["solve"]["max_iters"] = 5000
     Main.elastic_solve!(ms, from_current = true);
-    Main.save(ms);
+    Main.save(ms);=#
 
 
     Main.render(task.payload_info.indices...);
