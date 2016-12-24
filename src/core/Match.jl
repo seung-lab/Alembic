@@ -615,6 +615,7 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 
 	if scale != 1.0
 	#length of the dst_range_full is always odd, so only need to care about the oddity / evenness of the source to decide the size of the xc in full
+	@fastmath @inbounds begin
 	if full
 	  xc_i_len = length(dst_range_full[1]) + length(src_range[1]) - 1
 	  xc_j_len = length(dst_range_full[2]) + length(src_range[2]) - 1
@@ -650,6 +651,8 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 	di = Float64(i_max - 1 + src_pt_loc[1] - dst_pt_loc_full[1])
 	dj = Float64(j_max - 1 + src_pt_loc[2] - dst_pt_loc_full[2])
       end
+
+    end #fmib
 
 	#= # version that treats each value as a bin and sends it to the centre
 	xc_i_locs = linspace(1, xc_i_len, size(xc, 1) + 1)
