@@ -92,7 +92,7 @@ function pull_registry_updates(queue_name = TASKS_REGISTRY_QUEUE_NAME)
       push!(rendereds, Bool(dict["rendered"])); 
 #      update_registry(tuple(dict["index"]...); rotation = Float64(dict["rotation"]), offset = Array{Int64, 1}(dict["offset"]), image_size = Array{Int64, 1}(dict["image_size"]), rendered = Bool(dict["rendered"])); 
     end
-    update_offsets(indices, offsets, image_sizes, rendereds)
+    update_offsets(indices, rotations, offsets, image_sizes, rendereds)
 end
 
 function upload_registries()

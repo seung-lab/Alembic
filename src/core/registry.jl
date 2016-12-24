@@ -428,14 +428,14 @@ function update_registry(index; rotation::Union{Float64, Int64} = get_rotation(i
   push!(REGISTRY_UPDATES, Dict{Any, Any}("index" => index, "rotation" => rotation, "offset" => offset, "image_size" => image_size, "rendered" => rendered));
 end
 
-function update_offsets(indices, offsets, sizes, rendered=trues(length(indices)))
+function update_offsets(indices, rotations, offsets, sizes, rendered=trues(length(indices)))
   index = indices[1]
   registry_fp = get_registry_path(index)
   filenames = map(get_name, indices)
   if !isfile(registry_fp)
     f = open(registry_fp, "w")
     close(f)
-    registry = [[f, 0, o..., s..., n] for (f,o,s,n) in zip(filenames, offsets, sizes, rendered)]
+    registry = [[f, r, o..., s..., n] for (f,r,o,s,n) in zip(filenames, rotations, offsets, sizes, rendered)]
     registry = hcat(registry...)'
     println("Block line updating registry with ", registry, " in:\n", registry_fp)
   else
@@ -443,7 +443,7 @@ function update_offsets(indices, offsets, sizes, rendered=trues(length(indices))
     locations = map(findfirst, repeated(registry), filenames)
     for (k, i) in enumerate(locations)
       println("Updating registry for ", filenames[k], " in:\n", registry_fp, ": offset is now ", offsets[k])
-      registry_line = [filenames[k], 0, offsets[k]..., sizes[k]..., rendered[k]]
+      registry_line = [filenames[k], rotations[k], offsets[k]..., sizes[k]..., rendered[k]]
       if i > 0
         registry[i,:] = registry_line
       else
@@ -456,7 +456,7 @@ function update_offsets(indices, offsets, sizes, rendered=trues(length(indices))
   reload_registry(index)
   remotecall_fetch(IO_PROC, reload_registry, index)
   for (i, index) in enumerate(indices)
-     push!(REGISTRY_UPDATES, Dict{Any, Any}("index" => index, "rotation" => 0, "offset" => offsets[i], "image_size" => sizes[i], "rendered" => rendered[i]));
+     push!(REGISTRY_UPDATES, Dict{Any, Any}("index" => index, "rotation" => rotations[i], "offset" => offsets[i], "image_size" => sizes[i], "rendered" => rendered[i]));
   end
 end
 
