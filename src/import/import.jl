@@ -469,7 +469,7 @@ function gentrify_tiles(z_range::Array{Int64,1})
 		end
 		writedlm(joinpath(homedir(), "import_issues.txt"), pr)
 	end
-	sync_to_upload()
+	# sync_to_upload()
 end
 
 function gentrify_tiles(z_index::Int64)
@@ -477,8 +477,8 @@ function gentrify_tiles(z_index::Int64)
 	make_local_raw_dir()
 	download_raw_tiles(z_index)
 	import_tiles(z_index)
-	premontage(premontaged(1,z_index))
-	# sync_to_upload()
+	# premontage(premontaged(1,z_index))
+	sync_to_upload()
 	remove_local_raw_dir()
 	remove_premontaged_files(z_index)
 end
@@ -949,6 +949,11 @@ function get_last_offset(import_table)
 	return [maximum(import_table[:,3]), maximum(import_table[:,2])]
 end
 
+function get_minimum_included_offset(import_table)
+    offsets = import_table[import_table[:,12] .== true, 3:4]
+    return minimum(offsets[:,1]), minimum(offsets[:,2])
+end
+
 function get_montage_original_offset(index::Index)
 	z_index = index[2]
 	import_table = load_import_table(z_index)
@@ -957,7 +962,8 @@ function get_montage_original_offset(index::Index)
 	min_rc = minimum(rc[:,1]), minimum(rc[:,2])
 	indices = get_import_indices(import_table)
 	k = findfirst(i->i == (index[1:2]..., min_rc...), indices)
-	global_offset = get_import_offset(import_table, k)
+	# global_offset = get_import_offset(import_table, k)
+	global_offset = get_minimum_included_offset(import_table)
 	overview_origin = get_overview_origin(import_table)
 	return global_offset - overview_origin
 end
@@ -981,14 +987,14 @@ function initialize_montage_registry_from_overview_tform(index::Index)
 	update_registry(index, tform)
 end
 
-function initialize_montage_registry_from_overview_tform(firstindex::Index, lastindex::Index)
-	for index in get_index_range(firstindex, lastindex)
+function initialize_montage_registry_from_overview_tform(indices)
+	for index in indices
 		initialize_montage_registry_from_overview_tform(index)
 	end
 end
 
-function reset_montage_registry_tform(firstindex::Index, lastindex::Index)
-	for index in get_index_range(firstindex, lastindex)
+function reset_montage_registry_tform(indices)
+	for index in indices
 		update_registry(index, rotation=0, offset=[0,0])
 	end
 end
