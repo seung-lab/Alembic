@@ -212,7 +212,7 @@ end
 
 # rotated offset is just the offset of the image once rotated around [0,0]
 function get_offset(index::Index; rotated = false)
-	if myid() != IO_PROC return Point(remotecall_fetch(IO_PROC, get_offset, index))
+	if myid() != IO_PROC return Point(remotecall_fetch(IO_PROC, ()->get_offset(index; rotated = rotated)))
 	else
 	metadata = get_metadata(index);
 	if rotated
@@ -234,12 +234,12 @@ function get_rotation(index)
 end
 
 function get_image_size(index; rotated = false)
-		if myid() != IO_PROC return Array{Int64, 1}(remotecall_fetch(IO_PROC, get_image_size, index)) end
+		if myid() != IO_PROC return Array{Int64, 1}(remotecall_fetch(IO_PROC, ()->get_image_size(index; rotated = rotated))) end
 	metadata = get_metadata(index);
 	ret = metadata[6:7];
 	if rotated
 	  tform = make_rotation_matrix(get_rotation(index));
-	  size_rotated = bb_to_sz(tform_bb(sz_to_bb(size_raw), tform))
+	  size_rotated = bb_to_sz(tform_bb(sz_to_bb(ret), tform))
 	  ret = collect(size_rotated)
 	end
 	return Array{Int64,1}(ret);
