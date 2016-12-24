@@ -135,7 +135,7 @@ function SolveMeshConjugateGradient!(Vertices, Fixed, Incidence, Stiffnesses, Re
     function cost(x)
       @time begin
 #	tic()
-        @inbounds Vertices_t[Moving] = x[:];
+        @inbounds Vertices_t[Moving] = x;
         #Springs = Incidence_t * Vertices_t;
         @fastmath @inbounds A_mul_B!(1.0, Incidence_t, Vertices_t, 0.0, Springs)
      #   Springs = Incidence_d' * Vertices_t;
@@ -151,7 +151,7 @@ function SolveMeshConjugateGradient!(Vertices, Fixed, Incidence, Stiffnesses, Re
     function cost_gradient!(x,storage)
       @time begin
 #	tic()
-        @inbounds Vertices_t[Moving] = x[:];
+        @inbounds Vertices_t[Moving] = x;
         @fastmath @inbounds A_mul_B!(1.0, Incidence_t, Vertices_t, 0.0, Springs)
         #Springs = Incidence_t * Vertices_t;
       # Springs = Incidence_d' * Vertices_t;
@@ -166,7 +166,7 @@ function SolveMeshConjugateGradient!(Vertices, Fixed, Incidence, Stiffnesses, Re
     function cost_and_gradient!(x,storage)
       @time begin
 #	tic()
-        @inbounds Vertices_t[Moving] = x[:];
+        @inbounds Vertices_t[Moving] = x;
 	#print("Springs: ")
         @fastmath @inbounds A_mul_B!(1.0, Incidence_t, Vertices_t, 0.0, Springs)
         #fastmath Springs = Incidence_t * Vertices_t;
