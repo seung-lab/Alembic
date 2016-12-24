@@ -386,7 +386,7 @@ end
 #end
 
 function update_registry(index, tform)
-  assert(abs(det(tform)-1) < 1e-3)
+  # assert(abs(det(tform)-1) < 1e-3)
   if abs(tform[1,1]) <= 1
     angle = acosd(tform[1,1])
     if tform[1,2] < 0
