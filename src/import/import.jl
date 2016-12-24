@@ -951,7 +951,7 @@ end
 
 function get_minimum_included_offset(import_table)
     offsets = import_table[import_table[:,12] .== true, 3:4]
-    return minimum(offsets[:,1]), minimum(offsets[:,2])
+    return [minimum(offsets[:,1]), minimum(offsets[:,2])]
 end
 
 function get_montage_original_offset(index::Index)
@@ -961,7 +961,7 @@ function get_montage_original_offset(index::Index)
 	rc = hcat([[t[3:4]...] for t in tiles]...)'
 	min_rc = minimum(rc[:,1]), minimum(rc[:,2])
 	indices = get_import_indices(import_table)
-	k = findfirst(i->i == (index[1:2]..., min_rc...), indices)
+	# k = findfirst(i->i == (index[1:2]..., min_rc...), indices)
 	# global_offset = get_import_offset(import_table, k)
 	global_offset = get_minimum_included_offset(import_table)
 	overview_origin = get_overview_origin(import_table)
