@@ -17,15 +17,17 @@ ETA_NEWTON_MONTAGE = 0.6
 FTOL_NEWTON_MONTAGE = 1e-16
 
 
-MESH_LENGTH_PREALIGNMENT = 3000
+MESH_LENGTH_PREALIGNMENT = 5000
 GLOBAL_OFFSETS_PREALIGNMENT = false
 BLOCKMATCH_SCALE_PREALIGNMENT = 0.05
-BLOCK_R_PREALIGNMENT = 3000
-SEARCH_R_PREALIGNMENT = 6000
-PREMATCH_PREALIGNMENT = false
+BLOCK_R_PREALIGNMENT = 1000
+SEARCH_R_PREALIGNMENT = 2500
+PREMATCH_PREALIGNMENT = true
 PREMATCH_TEMPLATE_RATIO_PREALIGNMENT = 0.02
 PREMATCH_SCALE_PREALIGNMENT = 0.10
-PREMATCH_ANGLES_PREALIGNMENT = 20
+PREMATCH_TEMPLATE_RADIUS_PREALIGNMENT = 15000
+PREMATCH_SCALE_PREALIGNMENT = 0.025
+PREMATCH_ANGLES_PREALIGNMENT = 0
 
 #MESH_LENGTH_ALIGNMENT = 400
 #=MESH_LENGTH_ALIGNMENT = 1200
@@ -119,12 +121,13 @@ global PARAMS_PREALIGNMENT = Dict(
 			     "match" => Dict(
 					"prematch" => PREMATCH_PREALIGNMENT,
 					"prematch_template_ratio" => PREMATCH_TEMPLATE_RATIO_PREALIGNMENT,
+					"prematch_template_radius" => PREMATCH_TEMPLATE_RADIUS_PREALIGNMENT,
 					"prematch_scale" => PREMATCH_SCALE_PREALIGNMENT, 
 					"prematch_angles" => PREMATCH_ANGLES_PREALIGNMENT, 
 					"blockmatch_scale" => BLOCKMATCH_SCALE_PREALIGNMENT,
 					"block_r" => BLOCK_R_PREALIGNMENT, 
 					"search_r" => SEARCH_R_PREALIGNMENT,
-					"bandpass_sigmas" => (0, 0),
+					"bandpass_sigmas" => (50, 500),
 					"depth" => 1,
 					"reflexive" => false),
 			     "solve" => Dict(
@@ -140,9 +143,9 @@ global PARAMS_PREALIGNMENT = Dict(
 					# "eta_newton" => ETA_NEWTON_PREALIGNMENTE,
 					# "ftol_newton" => FTOL_NEWTON_PREALIGNMENT)
 			     "filter" => Dict(
-			     		"sigma_filter_high" => (1,:get_properties, >, 5, 0.95),
-			     		"sigma_filter_mid" => (2,:get_properties, >, 40, 0.75),
-			     		"sigma_filter_low" => (3,:get_properties, >, 150, 0.50)
+			     		"sigma_filter_high" => (1,:get_properties, >, 80, 0.95),
+			     		"sigma_filter_mid" => (2,:get_properties, >, 200, 0.75),
+			     		"sigma_filter_low" => (3,:get_properties, >, 500, 0.50)
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 5)
 					      ),
 			     "render" => Dict(
