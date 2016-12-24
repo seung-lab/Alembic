@@ -281,7 +281,7 @@ function prematch(src_index, dst_index, src_image, dst_image, params=get_params(
 	
 	dv = match[3]["vects"]["dv"]
 	offset = round(Int64, dv);
-	update_registry(src_index; offset = offset);
+	update_registry(src_index; rotation = get_rotation(src_index), offset = offset);
 	println("Prematch complete... offset: $offset")
 
 	init_Match(); gc();
