@@ -260,26 +260,33 @@ function prematch(src_index, dst_index, src_image, dst_image, params=get_params(
   println("prematch:")
 	if params["match"]["prematch"] == false return; end
 	scale = params["match"]["prematch_scale"];
-	ratio = params["match"]["prematch_template_ratio"];
-	angles = params["match"]["prematch_angles"];
+	radius = params["match"]["prematch_template_radius"];
 	bandpass_sigmas = params["match"]["bandpass_sigmas"];
-	if angles > 1
-	angles_to_try = linspace(0, 360, angles + 1)[1:end-1];
-	else angles_to_try = [0]	
-      	end
+	bandpass_sigmas = (0,0)
 
-	#=
-	cur_max_r = 0.0
-	cur_rot = 0.0
-	cur_offset = 0.0
-	=#
+	range_in_src = ceil(Int64, size(src_image, 1) / 2) + (-radius:radius), ceil(Int64, size(src_image, 2) / 2) + (-radius:radius)
+	src_pt_locs = [radius, radius]
+	dst_pt_locs = [ceil(Int64, size(src_image, 1) / 2), ceil(Int64, size(src_image, 2) / 2)]
 
-	scaled_rads = floor(Int64, ratio * size(src_image, 1) / 2), floor(Int64, ratio * size(src_image, 2) / 2)
+	#dst_range_full = ceil(Int64, size(src_image, 1) / 2) + (-3 * scaled_rads[1]:3 * scaled_rads[1]), ceil(Int64, size(src_image, 2) / 2) + (-3 * scaled_rads[2]: 3 * scaled_rads[2])
+	#range_in_dst = intersect(dst_range_full[1], 1:size(dst_image, 1)), intersect(dst_range_full[2], 1:size(dst_image, 2));
+	range_in_dst = 1:size(dst_image, 1), 1:size(dst_image, 2);
+	dst_range_full = 1:size(dst_image, 1), 1:size(dst_image, 2);
+	
+	ranges = src_index, range_in_src, src_pt_locs, dst_index, range_in_dst, dst_range_full, dst_pt_locs, dst_pt_locs, [0,0]
 
-	range_in_src = ceil(Int64, size(src_image, 1) / 2) + (-scaled_rads[1]:scaled_rads[1]), ceil(Int64, size(src_image, 2) / 2) + (-scaled_rads[2]:scaled_rads[2])
-	dst_range_full = ceil(Int64, size(src_image, 1) / 2) + (-3 * scaled_rads[1]:3 * scaled_rads[1]), ceil(Int64, size(src_image, 2) / 2) + (-3 * scaled_rads[2]: 3 * scaled_rads[2])
-	range_in_dst = intersect(dst_range_full[1], 1:size(dst_image, 1)), intersect(dst_range_full[2], 1:size(dst_image, 2));
+	@time match = get_match(src_pt_locs, ranges, src_image, dst_image, scale, bandpass_sigmas; full = true, meanpad = false)
+		
+	if match == nothing return [0, 0] end
+	
+	dv = match[3]["vects"]["dv"]
+	offset = round(Int64, dv);
+	update_registry(src_index; rotation = get_rotation(src_index), offset = offset);
+	println("Prematch complete... offset: $offset")
 
+	init_Match(); gc();
+
+	return offset;
 
 	# median of the patch from above
 	#src_pt_locs = [round(Int64, length(range_in_src[1]) / 2), round(Int64, length(range_in_src[2]) / 2)]
@@ -390,7 +397,7 @@ end
 
 # if from_disk src_image / dst_image are indices
 # function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma; from_disk = false)
-function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, bandpass_sigmas; from_disk = false)
+function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, bandpass_sigmas; from_disk = false, meanpad = true)
 
   	# the following two if statements should only ever be called together
 	if size(SRC_PATCH_FULL) != map(length,src_range)
@@ -411,10 +418,13 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
 #		DST_PATCH_G_H[:] = 0;
 	end
 
+
 	indices_within_range = findin(dst_range_full[1], dst_range[1]), findin(dst_range_full[2], dst_range[2])
 	if !from_disk
-	@inbounds SRC_PATCH_FULL[:] = src_image[src_range...]
-	@inbounds DST_PATCH_FULL[indices_within_range...] = dst_image[dst_range...]
+	@fastmath @inbounds SRC_PATCH_FULL[:] = slice(src_image, src_range...)
+#	@inbounds SRC_PATCH_FULL[:] = src_image[src_range...]
+	@fastmath @inbounds DST_PATCH_FULL[indices_within_range...] = slice(dst_image, dst_range...)
+	#@inbounds DST_PATCH_FULL[indices_within_range...] = dst_image[dst_range...]
       else
 	if get_rotation(src_image) != 0 @inbounds SRC_PATCH_FULL[:] = imrotate(h5read(get_path(src_image), "img"), get_rotation(src_image); parallel = true)[src_range...];
 	else
@@ -422,10 +432,15 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
         end
 	@inbounds DST_PATCH_FULL[indices_within_range...] = h5read(get_path(dst_image), "img", dst_range)
       end
+      if meanpad
       zeropad_to_meanpad!(SRC_PATCH_FULL)
       zeropad_to_meanpad!(DST_PATCH_FULL)
-		@inbounds SRC_PATCH_FULL_H[:] = SRC_PATCH_FULL
-		@inbounds DST_PATCH_FULL_H[:] = DST_PATCH_FULL
+      end
+	lowpass_sigma, highpass_sigma = bandpass_sigmas;
+	if highpass_sigma != 0
+		@inbounds copy!(SRC_PATCH_FULL_H, SRC_PATCH_FULL)
+		@inbounds copy!(DST_PATCH_FULL_H, DST_PATCH_FULL)
+	      end
 
 	lowpass_sigma, highpass_sigma = bandpass_sigmas;
 
@@ -447,7 +462,7 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
 				bb = ImageRegistration.BoundingBox{Int64}(0,0, size(img, 1), size(img, 2))
 				global SRC_PATCH = zeros(Float64, bb.h, bb.w)
 			end
-			@inbounds SRC_PATCH[:] = img
+			@inbounds copy!(SRC_PATCH, img)
 		else
 			tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
 			bb = ImageRegistration.BoundingBox{Float64}(0,0, size(img, 1), size(img, 2))
@@ -467,7 +482,7 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
 				bb = ImageRegistration.BoundingBox{Int64}(0,0, size(img, 1), size(img, 2))
 				global DST_PATCH = zeros(Float64, bb.h, bb.w)
 			end
-			@inbounds DST_PATCH[:] = img
+			@inbounds copy!(DST_PATCH, img)
 		else
 			tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
 			bb = ImageRegistration.BoundingBox{Float64}(0,0, size(img, 1), size(img, 2))
@@ -493,7 +508,7 @@ end
 """
 Template match two image patches to produce point pair correspondence
 """
-function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigmas = (0, 0); full = false)
+function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigmas = (0, 0); full = false, meanpad = true)
 	src_index, src_range, src_pt_loc, dst_index, dst_range, dst_range_full, dst_pt_loc, dst_pt_loc_full, rel_offset = ranges;
 #=	if sum(src_image[src_range[1], first(src_range[2])]) == 0 && sum(src_image[src_range[1], last(src_range[2])]) == 0 &&
 			sum(src_image[first(src_range[1]), src_range[2]]) == 0 && sum(src_image[last(src_range[1]), src_range[2]]) == 0 return nothing end
@@ -552,7 +567,7 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 	xc = normxcorr2_preallocated(src_image[src_range[1], src_range[2]], dst_image[dst_range[1], dst_range[2]]);
 	end
 	=#
- if (prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, bandpass_sigmas) == nothing) return nothing end;
+ if (prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, bandpass_sigmas; meanpad = meanpad) == nothing) return nothing end;
 #	prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma)
 	xc = normxcorr2_preallocated(SRC_PATCH, DST_PATCH; shape = full ? "full" : "valid");
 #=
@@ -615,6 +630,7 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 
 	if scale != 1.0
 	#length of the dst_range_full is always odd, so only need to care about the oddity / evenness of the source to decide the size of the xc in full
+	@fastmath @inbounds begin
 	if full
 	  xc_i_len = length(dst_range_full[1]) + length(src_range[1]) - 1
 	  xc_j_len = length(dst_range_full[2]) + length(src_range[2]) - 1
@@ -650,6 +666,8 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 	di = Float64(i_max - 1 + src_pt_loc[1] - dst_pt_loc_full[1])
 	dj = Float64(j_max - 1 + src_pt_loc[2] - dst_pt_loc_full[2])
       end
+
+    end #fmib
 
 	#= # version that treats each value as a bin and sends it to the centre
 	xc_i_locs = linspace(1, xc_i_len, size(xc, 1) + 1)
@@ -759,7 +777,7 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 	# 	println(get_index(dst_mesh))
 	# 	return nothing
 	# end
-
+#=
   	src_index = get_index(src_mesh); dst_index = get_index(dst_mesh);
 	src_img = get_image(src_index);  dst_img = get_image(dst_index);
 
@@ -780,6 +798,32 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 	  println("rotation in the dst image detected with global offsets - aborting...")
 	  return nothing
 	end
+	=#
+
+  	src_index = get_index(src_mesh); dst_index = get_index(dst_mesh);
+	src_img = get_image(src_index);  dst_img = get_image(dst_index);
+
+	src_offset = get_offset(src_index); dst_offset = get_offset(dst_index);
+	src_size = get_image_size(src_index); dst_size = get_image_size(dst_index);
+
+	if get_rotation(src_index) != 0
+	  src_img = imrotate(src_img, get_rotation(src_index); parallel = true);
+	  src_size = get_image_size(src_index; rotated = true);
+	  remesh!(src_mesh);
+	end
+
+	if params["match"]["prematch"]
+	prematch(src_index, dst_index, src_img, dst_img, params);
+        end
+
+	src_offset = get_offset(src_index); dst_offset = get_offset(dst_index);
+
+
+	if params["registry"]["global_offsets"] && get_rotation(dst_index) != 0
+	  println("rotation in the dst image detected with global offsets - aborting...")
+	  return nothing
+	end
+
 
 	print("computing ranges:")
 	@time ranges = map(get_ranges, src_mesh.src_nodes, repeated(src_index), repeated(src_offset), repeated(src_size), repeated(dst_index), repeated(dst_offset), repeated(dst_size), repeated(params["match"]["block_r"]), repeated(params["match"]["search_r"]), repeated(params["registry"]["global_offsets"]));

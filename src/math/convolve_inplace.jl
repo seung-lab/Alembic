@@ -97,7 +97,7 @@ function convolve_Float64_planned(A,B, ranges; factorable = nothing)
     @fastmath A_mul_B!(CONV_INTERMEDIATE_A, IRFFT_PLAN, COMPLEX_CONV_INTERMEDIATE_A)
     
    # (IRFFT_PLAN * elwise_mul!(RFFT_PLAN * CONV_INTERMEDIATE_A, RFFT_PLAN * CONV_INTERMEDIATE_B))[ranges...]
-    CONV_RESULT[:] = CONV_INTERMEDIATE_A[ranges...]
+    CONV_RESULT[:] = slice(CONV_INTERMEDIATE_A,ranges...)
    # irfft(rfft(pA).*rfft(pB),common_size[1])
 end
 
@@ -356,7 +356,7 @@ function normxcorr2_preallocated(template,img; shape = "valid", highpass_sigma =
     if size(CONV_DT) != size(template)
       global CONV_DT = Array(Float64, size(template)...);
     end
-    @inbounds CONV_DT[:] = template[:]
+    @inbounds CONV_DT[:] = template
     @fastmath @inbounds calculate_dt!(CONV_DT)
     @fastmath @inbounds numerator=valid_convolve_flipped(img,CONV_DT; factorable = factors)
     @fastmath @inbounds templatevariance=sum(elwise_mul!(CONV_DT, CONV_DT))
