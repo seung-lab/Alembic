@@ -399,7 +399,7 @@ function update_registry(index, tform)
   rotation = make_rotation_matrix(angle)
   rotation_bb = snap_bb(tform_bb(sz_to_bb(get_image_size(index)), rotation))
   rotation_offset = ImageRegistration.get_offset(rotation_bb)
-  update_registry(montaged(index), rotation=angle, offset=translation+rotation_offset)
+  update_registry(montaged(index), rotation=abs(angle) > 2.5 ? angle : 0, offset=round(Int64,translation+rotation_offset))
 end
 
 function update_registry(index; rotation::Union{Float64, Int64} = get_rotation(index), offset::Union{Point, Array{Int64, 1}} = get_offset(index), image_size::Union{Array{Int64, 1}, Tuple{Int64, Int64}} = get_image_size(index), rendered::Bool = is_rendered(index))
