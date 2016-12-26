@@ -54,7 +54,7 @@ function RenderTaskDetails(index::Main.Index)
 
 	basic_info = BasicTask.Info(0, NAME, Main.TASKS_BASE_DIRECTORY, inputs) 
 	#task = RenderTaskDetails(basic_info, AlembicPayloadInfo([index], vcat([output_image, output_image_thumbnail],inputs_meshset)));
-	task = RenderTaskDetails(basic_info, AlembicPayloadInfo([index], [output_image_thumbnail]));
+	task = RenderTaskDetails(basic_info, AlembicPayloadInfo([index], [output_image, output_image_thumbnail]));
 #	return vcat(inputs..., output)
 	return task
 end
