@@ -110,7 +110,7 @@ function SolveMeshConjugateGradient!(Vertices, Fixed, Incidence, Stiffnesses, Re
     invperm = sortperm(perm);
 
     # permute so that the first M things are moving
-    Vertices = Vertices[:,perm]
+    Vertices[:] = Vertices[:,perm]
     Fixed = Fixed[perm]
     Incidence = Incidence[perm,:]
     M = sum(!Fixed)	# number of moving things
@@ -214,7 +214,7 @@ function SolveMeshConjugateGradient!(Vertices, Fixed, Incidence, Stiffnesses, Re
     copy!(slice(Vertices_t,1:M), slice(res.minimum, 1:M));
     copy!(slice(Vertices_t,N+1:N+M), slice(res.minimum, M+1:2*M));
     Vertices[:] = vcat(Vertices_t[1:div(length(Vertices_t),2)]', Vertices_t[1+div(length(Vertices_t),2):end]');
-    Vertices = Vertices[:,invperm];
+    Vertices[:] = Vertices[:,invperm];
     #println("cost_iter: $cost_iter, cost_time: $cost_time")
     #println("grad_iter: $grad_iter, grad_time: $grad_time")
     #println("cost_grad_iter: $cost_grad_iter, cost_grad_time: $cost_grad_time")
