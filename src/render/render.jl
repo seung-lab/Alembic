@@ -178,10 +178,10 @@ function render_prealigned_full(index::Index; thumbnail_scale=get_params(prevsta
 	i_min, i_max = 1, size(img, 1)
 	j_min, j_max = 1, size(img, 2)
 
-	while (sum(slice(warped, i_min, 1:size(img,2))) == 0); i_min += 1; end
-	while (sum(slice(warped, i_max, 1:size(img,2))) == 0); i_max -= 1; end
-	while (sum(slice(warped, 1:size(img,1), j_min)) == 0); j_min += 1; end
-	while (sum(slice(warped, 1:size(img,1), j_max)) == 0); j_max -= 1; end
+	while (sum(slice(warped, i_min, 1:size(warped,2))) == 0); i_min += 1; end
+	while (sum(slice(warped, i_max, 1:size(warped,2))) == 0); i_max -= 1; end
+	while (sum(slice(warped, 1:size(warped,1), j_min)) == 0); j_min += 1; end
+	while (sum(slice(warped, 1:size(warped,1), j_max)) == 0); j_max -= 1; end
 
 	offset = offset - [1,1] + [i_min, j_min]
 	towrite = Array(slice(warped, i_min:i_max, j_min:j_max))
