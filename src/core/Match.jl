@@ -364,7 +364,7 @@ function prematch(src_index, dst_index, src_image, dst_image, params=get_params(
 end
 
 function zeropad_to_meanpad!(img)
-  running_sum = 0;
+  running_sum = 0.0;
   count = 0;
   zero_entries = Array{Int64, 1}();
  	@simd for i in 1:length(img)
@@ -398,7 +398,6 @@ end
 # if from_disk src_image / dst_image are indices
 # function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma; from_disk = false)
 function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, bandpass_sigmas; from_disk = false, meanpad = true)
-
   	# the following two if statements should only ever be called together
 	if size(SRC_PATCH_FULL) != map(length,src_range)
 		global SRC_PATCH_FULL = Array{Float64, 2}(map(length, src_range)...);
@@ -438,8 +437,8 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
       end
 	lowpass_sigma, highpass_sigma = bandpass_sigmas;
 	if highpass_sigma != 0
-		@inbounds copy!(SRC_PATCH_FULL_H, SRC_PATCH_FULL)
-		@inbounds copy!(DST_PATCH_FULL_H, DST_PATCH_FULL)
+		@inbounds SRC_PATCH_FULL_H[:] = SRC_PATCH_FULL
+		@inbounds DST_PATCH_FULL_H[:] = DST_PATCH_FULL
 	      end
 
 	lowpass_sigma, highpass_sigma = bandpass_sigmas;
@@ -462,7 +461,7 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
 				bb = ImageRegistration.BoundingBox{Int64}(0,0, size(img, 1), size(img, 2))
 				global SRC_PATCH = zeros(Float64, bb.h, bb.w)
 			end
-			@inbounds copy!(SRC_PATCH, img)
+			@inbounds SRC_PATCH[:] = img
 		else
 			tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
 			bb = ImageRegistration.BoundingBox{Float64}(0,0, size(img, 1), size(img, 2))
@@ -482,7 +481,7 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
 				bb = ImageRegistration.BoundingBox{Int64}(0,0, size(img, 1), size(img, 2))
 				global DST_PATCH = zeros(Float64, bb.h, bb.w)
 			end
-			@inbounds copy!(DST_PATCH, img)
+			@inbounds DST_PATCH[:] = img
 		else
 			tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
 			bb = ImageRegistration.BoundingBox{Float64}(0,0, size(img, 1), size(img, 2))
@@ -628,9 +627,9 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 		end
 	end
 
+	@fastmath @inbounds begin
 	if scale != 1.0
 	#length of the dst_range_full is always odd, so only need to care about the oddity / evenness of the source to decide the size of the xc in full
-	@fastmath @inbounds begin
 	if full
 	  xc_i_len = length(dst_range_full[1]) + length(src_range[1]) - 1
 	  xc_j_len = length(dst_range_full[2]) + length(src_range[2]) - 1
