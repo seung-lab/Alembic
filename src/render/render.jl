@@ -189,7 +189,7 @@ function render_prealigned_full(index::Index; thumbnail_scale=get_params(prevsta
 	towrite = warped;
   end
 
-  update_registry(index, offset=offset, image_size=size(warped))
+  update_registry(index, offset=offset, image_size=size(towrite))
   path = get_path(index)
   println("Writing full image:\n ", path)
   f = h5open(path, "w")
