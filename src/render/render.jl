@@ -105,8 +105,8 @@ function render_montaged(meshset::MeshSet; render_full=true, render_review=false
       x, y = crop
       for k in 1:length(imgs)
         # imgs[k] = imcrop(imgs[k], offsets[k] imgs[k][x:(end-x+1), y:(end-y+1)]
-        imgs[k] = imgs[k][x:(end-x+1), y:(end-y+1)]
-      #  imgs[k] = imgs[k][x:(end-x+1+150), y:(end-y+1+150)]
+        #imgs[k] = imgs[k][x:(end-x+1), y:(end-y+1)]
+        imgs[k] = imgs[k][x:(end-x+1+250), y:(end-y+1+250)]
         offsets[k] = offsets[k] + crop
       end
     end
@@ -117,7 +117,7 @@ function render_montaged(meshset::MeshSet; render_full=true, render_review=false
     end
     if render_full
       img, offset = merge_images(imgs, offsets)
-#      img = img[1:(end-150), 1:(end-150)]
+      img = img[1:(end-150), 1:(end-150)]
       println("Writing ", new_fn)
       f = h5open(get_path(index), "w")
       chunksize = min(1000, min(size(img)...))
@@ -126,7 +126,7 @@ function render_montaged(meshset::MeshSet; render_full=true, render_review=false
       println("Creating thumbnail for $index @ $(thumbnail_scale)x")
       thumbnail, _ = imscale(img, thumbnail_scale)
       write_thumbnail(thumbnail, index, thumbnail_scale)
-      update_registry(index; offset = [0,0], image_size = size(img))
+      #update_registry(index; offset = [0,0], image_size = size(img))
     end
   # catch e
   #   println(e)
