@@ -184,19 +184,26 @@ function render_prealigned_full(index::Index; thumbnail_scale=get_params(prevsta
 	while (sum(slice(warped, 1:size(img,1), j_max)) == 0); j_max -= 1; end
 
 	offset = offset - [1,1] + [i_min, j_min]
-	warped = Array(slice(warped, i_min:i_max, j_min:j_max))
+	towrite = Array(slice(warped, i_min:i_max, j_min:j_max))
+      else
+	towrite = warped;
   end
 
   update_registry(index, offset=offset, image_size=size(warped))
   path = get_path(index)
   println("Writing full image:\n ", path)
   f = h5open(path, "w")
-  chunksize = min(1000, min(size(warped)...))
-  #@time f["img", "chunk", (chunksize,chunksize)] = warped
-  @time f["img", "chunk", (chunksize, chunksize)] = (typeof(warped) <: SharedArray ? warped.s : warped); close(f)
+  chunksize = min(1000, min(size(towrite)...))
+  #@time f["img", "chunk", (chunksize,chunksize)] = towrite
+  @time f["img", "chunk", (chunksize, chunksize)] = (typeof(towrite) <: SharedArray ? towrite.s : towrite); close(f)
   println("Creating thumbnail for $index @ $(thumbnail_scale)x")
-  thumbnail, _ = imscale(warped, thumbnail_scale)
+  thumbnail, _ = imscale(towrite, thumbnail_scale)
   write_thumbnail(thumbnail, index, thumbnail_scale)
+  warped = 0;
+  warped = 0;
+  towrite = 0;
+  towrite = 0;
+  @everywhere gc();
 end
 
 function render_prealigned_review(src_index::Index, dst_index::Index, src_img, dst_img, 
