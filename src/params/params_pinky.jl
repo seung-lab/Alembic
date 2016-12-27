@@ -49,9 +49,11 @@ FTOL_NEWTON_ALIGNMENT = 1e-8=#
 #father of alignment
 MESH_LENGTH_ALIGNMENT = 2000
 GLOBAL_OFFSETS_ALIGNMENT = true
-BLOCKMATCH_SCALE_ALIGNMENT = 0.25
+#BLOCKMATCH_SCALE_ALIGNMENT = 0.25
+BLOCKMATCH_SCALE_ALIGNMENT = 0.125
 BLOCK_R_ALIGNMENT = 1200
-SEARCH_R_ALIGNMENT = 800
+SEARCH_R_ALIGNMENT = 2000
+#SEARCH_R_ALIGNMENT = 800
 PREMATCH_ALIGNMENT = false
 MESH_SPRING_COEFF_ALIGNMENT = 1.0
 MATCH_SPRING_COEFF_ALIGNMENT = 10.0
@@ -259,13 +261,14 @@ global PARAMS_ALIGNMENT = Dict(
 					"centered_norm_filter" => (:get_centered_norms, >, 600)
 					      ), =#
 			     "filter" => Dict(
+			     #=
 			     		"sigma_filter_high" => (1,:get_properties, >, 50, 0.95),
 			     		"sigma_filter_mid" => (2,:get_properties, >, 250, 0.75),
 			     		"sigma_filter_low" => (3,:get_properties, >, 400, 0.50),
 			     		"kurtosis_filter_edge" => (4,:get_properties, <, -1.2, "src_kurtosis"),
 			     		"kurtosis_filter" => (5,:get_properties, >, 25, "src_kurtosis"),
 			     		"dyn_range_filter" => (6,:get_properties, ==, 1.0, "src_normalized_dyn_range"),
-			     		"dyn_range_filter" => (7,:get_properties, <, 0.02, "r_max")
+			     		"dyn_range_filter" => (7,:get_properties, <, 0.02, "r_max")=#
 					      ),
 			     "render" => Dict(
 					      ),
