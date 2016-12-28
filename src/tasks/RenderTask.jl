@@ -68,7 +68,10 @@ end
 
 function full_output_path(task::RenderTaskDetails,
         output::AbstractString)
-    return "$(task.basic_info.base_directory)/$(output)";
+
+	output = replace(replace(output, "4_aligned/", "3_prealigned/"), "aligned.h5", "prealigned.h5")
+    return "datasets/pinky_40percent_soa/$(output)";
+    #return "$(task.basic_info.base_directory)/$(output)";
 end
 
 function DaemonTask.prepare(task::RenderTaskDetails,
