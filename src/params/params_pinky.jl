@@ -34,7 +34,7 @@ MESH_LENGTH_ALIGNMENT = 200
 GLOBAL_OFFSETS_ALIGNMENT = true
 BLOCKMATCH_SCALE_ALIGNMENT = 0.50
 BLOCK_R_ALIGNMENT = 200
-SEARCH_R_ALIGNMENT = 40
+SEARCH_R_ALIGNMENT = 80
 PREMATCH_ALIGNMENT = false
 MESH_SPRING_COEFF_ALIGNMENT = 1.0
 MATCH_SPRING_COEFF_ALIGNMENT = 20.0
@@ -216,7 +216,7 @@ global PARAMS_ALIGNMENT = Dict(
 					      ),
 			     "review" => Dict(
 			     		"too_few_corresps" => (:count_correspondences, <, 100),
-						"rejected_ratio" => (:get_ratio_rejected, >, 0.10),
+						"rejected_ratio" => (:get_ratio_rejected, >, 0.35),
 						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.80),
 						# "norm_outliers" => (:count_outlier_norms, >, 0, 4),
 #						"centered_norm" => (:get_maximum_centered_norm, >, 500)
