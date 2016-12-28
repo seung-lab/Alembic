@@ -320,6 +320,8 @@ function compile_meshset(first_index::Index, last_index::Index)
   ms.meshes = meshes;
   ms.matches = matches;
   ms.properties = Dict{Any, Any}("author" => author(), "meta" => Dict{Any, Any}("parent" => nothing, "split_index" => 0), "params" => deepcopy(meshes[1].properties["params"]))
+  
+  @everywhere gc();
 
   return ms;
 end
