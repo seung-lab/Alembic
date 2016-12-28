@@ -68,16 +68,7 @@ end
 
 function full_output_path(task::RenderTaskDetails,
         output::AbstractString)
-
     return "$(task.basic_info.base_directory)/$(output)";
-end
-
-function full_output_path_hack(task::RenderTaskDetails,
-        output::AbstractString)
-
-	output = replace(replace(output, "4_aligned/", "3_prealigned/"), "aligned.h5", "prealigned.h5")
-    return "datasets/pinky_40percent_soa/$(output)";
-    #return "$(task.basic_info.base_directory)/$(output)";
 end
 
 function DaemonTask.prepare(task::RenderTaskDetails,
@@ -128,7 +119,7 @@ function DaemonTask.finalize(task::RenderTaskDetails,
             "completed successfully, syncing outputs to remote datasource")
 
         Datasource.put!(datasource,
-            map((output) -> full_output_path_hack(task, output), result.outputs))
+            map((output) -> full_output_path(task, output), result.outputs))
 	Datasource.delete!(datasource, map((output) -> full_output_path(task, output), result.outputs); only_cache = true)
 	Datasource.delete!(datasource, map((input) -> full_input_path(task, input), task.basic_info.inputs); only_cache = true)
 	Main.push_registry_updates();
