@@ -212,7 +212,7 @@ end
 
 # rotated offset is just the offset of the image once rotated around [0,0]
 function get_offset(index::Index; rotated = false)
-	if myid() != IO_PROC return Point(remotecall_fetch(IO_PROC, get_offset, index))
+	if myid() != IO_PROC return Point(remotecall_fetch(IO_PROC, ()->get_offset(index; rotated = rotated)))
 	else
 	metadata = get_metadata(index);
 	if rotated
@@ -234,12 +234,12 @@ function get_rotation(index)
 end
 
 function get_image_size(index; rotated = false)
-		if myid() != IO_PROC return Array{Int64, 1}(remotecall_fetch(IO_PROC, get_image_size, index)) end
+		if myid() != IO_PROC return Array{Int64, 1}(remotecall_fetch(IO_PROC, ()->get_image_size(index; rotated = rotated))) end
 	metadata = get_metadata(index);
 	ret = metadata[6:7];
 	if rotated
 	  tform = make_rotation_matrix(get_rotation(index));
-	  size_rotated = bb_to_sz(tform_bb(sz_to_bb(size_raw), tform))
+	  size_rotated = bb_to_sz(tform_bb(sz_to_bb(ret), tform))
 	  ret = collect(size_rotated)
 	end
 	return Array{Int64,1}(ret);
@@ -399,7 +399,7 @@ function update_registry(index, tform)
   rotation = make_rotation_matrix(angle)
   rotation_bb = snap_bb(tform_bb(sz_to_bb(get_image_size(index)), rotation))
   rotation_offset = ImageRegistration.get_offset(rotation_bb)
-  update_registry(montaged(index), rotation=angle, offset=translation+rotation_offset)
+  update_registry(montaged(index), rotation=abs(angle) > 2.5 ? angle : 0, offset=round(Int64,translation+rotation_offset))
 end
 
 function update_registry(index; rotation::Union{Float64, Int64} = get_rotation(index), offset::Union{Point, Array{Int64, 1}} = get_offset(index), image_size::Union{Array{Int64, 1}, Tuple{Int64, Int64}} = get_image_size(index), rendered::Bool = is_rendered(index))
@@ -428,14 +428,14 @@ function update_registry(index; rotation::Union{Float64, Int64} = get_rotation(i
   push!(REGISTRY_UPDATES, Dict{Any, Any}("index" => index, "rotation" => rotation, "offset" => offset, "image_size" => image_size, "rendered" => rendered));
 end
 
-function update_offsets(indices, offsets, sizes, rendered=trues(length(indices)))
+function update_offsets(indices, rotations, offsets, sizes, rendered=trues(length(indices)))
   index = indices[1]
   registry_fp = get_registry_path(index)
   filenames = map(get_name, indices)
   if !isfile(registry_fp)
     f = open(registry_fp, "w")
     close(f)
-    registry = [[f, 0, o..., s..., n] for (f,o,s,n) in zip(filenames, offsets, sizes, rendered)]
+    registry = [[f, r, o..., s..., n] for (f,r,o,s,n) in zip(filenames, rotations, offsets, sizes, rendered)]
     registry = hcat(registry...)'
     println("Block line updating registry with ", registry, " in:\n", registry_fp)
   else
@@ -443,7 +443,7 @@ function update_offsets(indices, offsets, sizes, rendered=trues(length(indices))
     locations = map(findfirst, repeated(registry), filenames)
     for (k, i) in enumerate(locations)
       println("Updating registry for ", filenames[k], " in:\n", registry_fp, ": offset is now ", offsets[k])
-      registry_line = [filenames[k], 0, offsets[k]..., sizes[k]..., rendered[k]]
+      registry_line = [filenames[k], rotations[k], offsets[k]..., sizes[k]..., rendered[k]]
       if i > 0
         registry[i,:] = registry_line
       else
@@ -456,7 +456,7 @@ function update_offsets(indices, offsets, sizes, rendered=trues(length(indices))
   reload_registry(index)
   remotecall_fetch(IO_PROC, reload_registry, index)
   for (i, index) in enumerate(indices)
-     push!(REGISTRY_UPDATES, Dict{Any, Any}("index" => index, "rotation" => 0, "offset" => offsets[i], "image_size" => sizes[i], "rendered" => rendered[i]));
+     push!(REGISTRY_UPDATES, Dict{Any, Any}("index" => index, "rotation" => rotations[i], "offset" => offsets[i], "image_size" => sizes[i], "rendered" => rendered[i]));
   end
 end
 

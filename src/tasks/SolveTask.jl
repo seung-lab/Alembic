@@ -51,7 +51,12 @@ end
 function SolveTaskDetails(first_index::Main.Index, last_index::Main.Index)
 	indices = Main.get_index_range(first_index, last_index);
 	possible_pairs = collect([(indexA, indexB) for indexA in indices, indexB in indices])
-	possible_pairs = possible_pairs[map(pair -> Main.is_preceding(pair[1], pair[2]), possible_pairs)]
+	#possible_pairs = possible_pairs[map(pair -> Main.is_preceding(pair[1], pair[2]), possible_pairs)]
+
+	#haaaaaaaaaaaaaaaaaaaaaaack
+	possible_pairs = possible_pairs[map(pair -> Main.is_preceding(pair[1], pair[2], 2), possible_pairs)]
+	exist = Array{Bool,1}([isfile(Main.get_path("Match", (possible_pairs[i][1], possible_pairs[i][2]))) for i in 1:length(possible_pairs)])
+	possible_pairs = possible_pairs[exist]
 
 #	inputs_images = map(Main.truncate_path, map(Main.get_path, indices));
 	inputs_registry = map(Main.truncate_path, map(Main.get_registry_path, indices));
@@ -64,7 +69,9 @@ function SolveTaskDetails(first_index::Main.Index, last_index::Main.Index)
 #	output_stats = Main.truncate_path(Main.get_path("stats", index))
 #	output_transform = Main.truncate_path(Main.get_path("relative_transform", index))
 #	output_reviews = map(Main.truncate_path, map((pair) -> Main.get_path("review", pair), possible_pairs))
-	output_matches = map(Main.truncate_path, map((pair) -> Main.get_path("Match", pair), possible_pairs))
+	
+	#output_matches = map(Main.truncate_path, map((pair) -> Main.get_path("Match", pair), possible_pairs))
+	output_matches = []
 	outputs = unique([output_meshes..., output_matches...])
 
 	basic_info = BasicTask.Info(0, NAME, Main.TASKS_BASE_DIRECTORY, inputs) 
@@ -111,6 +118,8 @@ function DaemonTask.execute(task::SolveTaskDetails,
   end
   Main.filter!(ms);
   =#
+    for match in ms.matches match.correspondence_properties = Array{Dict{Any, Any}}(); end
+    @everywhere gc();
 
     Main.unfix!(ms);
     Main.fix_ends!(ms)

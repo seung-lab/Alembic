@@ -6,10 +6,12 @@ function meshwarp_mesh(mesh::Mesh)
   src_nodes = hcat(get_nodes(mesh; globalized = true, use_post = false)...)'
   dst_nodes = hcat(get_nodes(mesh; globalized = true, use_post = true)...)'
   offset = get_offset(mesh);
-  print("incidence_to_dict: ")
+  #=print("incidence_to_dict: ")
   @time node_dict = incidence_to_dict(mesh.edges') #'
   print("dict_to_triangles: ")
-  @time triangles = dict_to_triangles(node_dict)
+  @time triangles = dict_to_triangles(node_dict)=#
+  node_dict = incidence_to_dict(mesh.edges') #
+  triangles = dict_to_triangles(node_dict)
   return @time meshwarp(img, src_nodes, dst_nodes, triangles, offset), get_index(mesh)
 end
 
@@ -160,7 +162,7 @@ function compile_cumulative_transforms(firstindex::Index, lastindex::Index)
   end
 end
 
-function render_prealigned_full(index::Index; thumbnail_scale=get_params(prevstage(index))["render"]["thumbnail_scale"], overview=false)
+function render_prealigned_full(index::Index; thumbnail_scale=get_params(prevstage(index))["render"]["thumbnail_scale"], overview=false, make_dense = true)
   index = montaged(index);
   img = load(index)
   scale = make_scale_matrix(1.0)
@@ -169,18 +171,39 @@ function render_prealigned_full(index::Index; thumbnail_scale=get_params(prevsta
   end
   tform = load("cumulative_transform", index)
   println("Warping image")
-  @time warped, offset = imwarp(img, tform*scale, [0,0])
+  @time warped, offset = imwarp(img, tform*scale, [0,0]; parallel = true)
   index = prealigned(index)
-  update_registry(index, offset=offset, image_size=size(warped))
+
+  if make_dense
+	i_min, i_max = 1, size(warped, 1)
+	j_min, j_max = 1, size(warped, 2)
+
+	while (sum(slice(warped, i_min, 1:size(warped,2))) == 0); i_min += 1; end
+	while (sum(slice(warped, i_max, 1:size(warped,2))) == 0); i_max -= 1; end
+	while (sum(slice(warped, 1:size(warped,1), j_min)) == 0); j_min += 1; end
+	while (sum(slice(warped, 1:size(warped,1), j_max)) == 0); j_max -= 1; end
+
+	offset = offset - [1,1] + [i_min, j_min]
+	towrite = Array(slice(warped, i_min:i_max, j_min:j_max))
+      else
+	towrite = warped;
+  end
+
+  update_registry(index, offset=offset, image_size=size(towrite))
   path = get_path(index)
   println("Writing full image:\n ", path)
   f = h5open(path, "w")
-  chunksize = min(1000, min(size(warped)...))
-  @time f["img", "chunk", (chunksize,chunksize)] = warped
-  close(f)
+  chunksize = min(1000, min(size(towrite)...))
+  #@time f["img", "chunk", (chunksize,chunksize)] = towrite
+  @time f["img", "chunk", (chunksize, chunksize)] = (typeof(towrite) <: SharedArray ? towrite.s : towrite); close(f)
   println("Creating thumbnail for $index @ $(thumbnail_scale)x")
-  thumbnail, _ = imscale(warped, thumbnail_scale)
+  thumbnail, _ = imscale(towrite, thumbnail_scale)
   write_thumbnail(thumbnail, index, thumbnail_scale)
+  warped = 0;
+  warped = 0;
+  towrite = 0;
+  towrite = 0;
+  @everywhere gc();
 end
 
 function render_prealigned_review(src_index::Index, dst_index::Index, src_img, dst_img, 
