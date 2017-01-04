@@ -178,6 +178,7 @@ include("tasks/ImportTask.jl")
 include("tasks/BlockMatchTask.jl")
 include("tasks/RenderTask.jl")
 include("tasks/SolveTask.jl")
+include("tasks/ThumbnailTask.jl")
 include("tasks/awsscheduler.jl")
 
 include("utilities/migrate.jl")

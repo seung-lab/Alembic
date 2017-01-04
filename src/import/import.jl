@@ -980,14 +980,14 @@ function initialize_montage_registry_from_overview_tform(index::Index)
 	update_registry(index, tform)
 end
 
-function initialize_montage_registry_from_overview_tform(firstindex::Index, lastindex::Index)
-	for index in get_index_range(firstindex, lastindex)
+function initialize_montage_registry_from_overview_tform(indices)
+	for index in indices
 		initialize_montage_registry_from_overview_tform(index)
 	end
 end
 
-function reset_montage_registry_tform(firstindex::Index, lastindex::Index)
-	for index in get_index_range(firstindex, lastindex)
+function reset_montage_registry_tform(indices)
+	for index in indices
 		update_registry(index, rotation=0, offset=[0,0])
 	end
 end
@@ -1075,5 +1075,14 @@ function download_one_tile_aibs_alignment(r, c, z_range=3279:3528)
 		f = `sudo gsutil -m cp -r $src $dst`
 		println(f)
 		Base.run(f)
+	end
+end
+
+function download_indices(indices)
+	for index in indices
+		dst_dir = PREMONTAGED_DIR_PATH
+		src_dir = joinpath("gs://seunglab_alembic", DATASET, PREMONTAGED_DIR, "$index.h5")  
+		b = `gsutil -m cp $src_dir $dst_dir`
+		Base.run(b)
 	end
 end

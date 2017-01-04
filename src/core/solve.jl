@@ -458,9 +458,9 @@ function load_stats(ms::MeshSet)
   end
 end  
 
-function compile_stats(firstindex::Index, lastindex::Index)
+function compile_stats(index_range)
   stats = Dict()
-  for index in get_index_range(firstindex, lastindex)
+  for index in index_range
     path = get_path("stats", index)
     if !isfile(path)
       ms = load(MeshSet, index)
