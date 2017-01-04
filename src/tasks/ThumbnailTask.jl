@@ -69,7 +69,7 @@ function DaemonTask.execute(task::ThumbnailTaskDetails,
         return DaemonTask.Result(true, [])
     end
 
-    dir_path = joinpath(ALIGNED_DIR_PATH, THUMBNAIL_DIR)
+    dir_path = joinpath(Main.ALIGNED_DIR_PATH, Main.THUMBNAIL_DIR)
     if !isdir(dir_path)    
         mkdir(dir_path)
     end
