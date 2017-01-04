@@ -69,6 +69,11 @@ function DaemonTask.execute(task::ThumbnailTaskDetails,
         return DaemonTask.Result(true, [])
     end
 
+    dir_path = joinpath(ALIGNED_DIR_PATH, THUMBNAIL_DIR)
+    if !isdir(dir_path)    
+        mkdir(dir_path)
+    end
+    
     thumbnail_scale = 0.02
     index = task.payload_info.indices[1];
     img = Main.load(index)
