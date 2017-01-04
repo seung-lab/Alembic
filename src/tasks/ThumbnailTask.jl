@@ -71,9 +71,9 @@ function DaemonTask.execute(task::ThumbnailTaskDetails,
 
     thumbnail_scale = 0.02
     index = task.payload_info.indices[1];
-    img = load(index)
-    thumbnail, _ = imscale(img, thumbnail_scale)
-    write_thumbnail(thumbnail, index, thumbnail_scale)
+    img = Main.load(index)
+    thumbnail, _ = Main.imscale(img, thumbnail_scale)
+    Main.write_thumbnail(thumbnail, index, thumbnail_scale)
 
     return DaemonTask.Result(true, task.payload_info.outputs)
 end
