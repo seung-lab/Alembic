@@ -983,14 +983,14 @@ function initialize_montage_registry_from_overview_tform(index::Index)
 	update_registry(index, tform)
 end
 
-function initialize_montage_registry_from_overview_tform(firstindex::Index, lastindex::Index)
-	for index in get_index_range(firstindex, lastindex)
+function initialize_montage_registry_from_overview_tform(indices)
+	for index in indices
 		initialize_montage_registry_from_overview_tform(index)
 	end
 end
 
-function reset_montage_registry_tform(firstindex::Index, lastindex::Index)
-	for index in get_index_range(firstindex, lastindex)
+function reset_montage_registry_tform(indices)
+	for index in indices
 		update_registry(index, rotation=0, offset=[0,0])
 	end
 end

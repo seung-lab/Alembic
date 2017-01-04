@@ -39,9 +39,9 @@ using SimpleTasks.Services.Datasource
 using SimpleTasks.Services.Daemon
 
 type AlembicPayloadInfo
-  	indices::Array{Index, 1} # array of input indices
+  indices::Array{Index, 1} # array of input indices
 	outputs::Array{Any, 1} # array of outputs
-#	registry_updates::Array{Any, 1} # array of updates to the registry
+  #	registry_updates::Array{Any, 1} # array of updates to the registry
 end
 
 function AlembicPayloadInfo{String <: AbstractString}(dict::Dict{String, Any})
