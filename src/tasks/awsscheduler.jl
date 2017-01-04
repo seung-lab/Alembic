@@ -10,6 +10,7 @@ using ImportTask
 using BlockMatchTask
 using RenderTask
 using SolveTask
+using ThumbnailTask
 
 import AWS
 import JSON

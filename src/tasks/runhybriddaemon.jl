@@ -15,6 +15,7 @@ using ImportTask
 using BlockMatchTask
 using RenderTask
 using SolveTask
+using ThumbnailTask
 
 #using BlockMatchTasks
 
