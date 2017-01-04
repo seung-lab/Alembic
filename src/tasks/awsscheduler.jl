@@ -66,7 +66,7 @@ function schedule_thumbnail(args...; queue_name = Main.TASKS_TASK_QUEUE_NAME, bu
 #    bucket = CLIBucketService(AWSCLIProvider.Details(env), bucket_name)
 
     # create tasks from the inputs and add them to the queue
-    task = RenderTask.ThumbnailTaskDetails(args...);
+    task = ThumbnailTask.ThumbnailTaskDetails(args...);
     Queue.push_message(queue; message_body = JSON.json(task));
 end
 
