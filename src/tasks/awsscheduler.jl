@@ -59,7 +59,7 @@ function schedule_solve(args...; queue_name = Main.TASKS_TASK_QUEUE_NAME, bucket
     Queue.push_message(queue; message_body = JSON.json(task));
 end
 
-function schedule_render(args...; queue_name = Main.TASKS_TASK_QUEUE_NAME, bucket_name = Main.TASKS_BUCKET_NAME)
+function schedule_thumbnail(args...; queue_name = Main.TASKS_TASK_QUEUE_NAME, bucket_name = Main.TASKS_BUCKET_NAME)
     env = AWS.AWSEnv()
     queue = AWSQueueService(env, queue_name)
 #    bucket = CLIBucketService(AWSCLIProvider.Details(env), bucket_name)
