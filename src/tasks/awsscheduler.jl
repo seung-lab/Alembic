@@ -11,6 +11,7 @@ using BlockMatchTask
 using RenderTask
 using SolveTask
 using ThumbnailTask
+using RenderReviewTask
 
 import AWS
 import JSON
@@ -67,6 +68,16 @@ function schedule_thumbnail(args...; queue_name = Main.TASKS_TASK_QUEUE_NAME, bu
 
     # create tasks from the inputs and add them to the queue
     task = ThumbnailTask.ThumbnailTaskDetails(args...);
+    Queue.push_message(queue; message_body = JSON.json(task));
+end
+
+function schedule_render_review(args...; queue_name = Main.TASKS_TASK_QUEUE_NAME, bucket_name = Main.TASKS_BUCKET_NAME)
+    env = AWS.AWSEnv()
+    queue = AWSQueueService(env, queue_name)
+#    bucket = CLIBucketService(AWSCLIProvider.Details(env), bucket_name)
+
+    # create tasks from the inputs and add them to the queue
+    task = RenderReviewTask.RenderReviewTaskDetails(args...);
     Queue.push_message(queue; message_body = JSON.json(task));
 end
 
