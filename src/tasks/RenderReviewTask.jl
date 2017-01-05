@@ -71,7 +71,7 @@ function DaemonTask.execute(task::RenderReviewTaskDetails,
     end
 
     s = 0.10
-    tform = make_scale_matrix(s)
+    tform = Main.make_scale_matrix(s)
 
     src_index = task.payload_info.indices[1];
     dst_index = task.payload_info.indices[2];
