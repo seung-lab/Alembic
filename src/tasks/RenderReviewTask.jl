@@ -33,7 +33,7 @@ function RenderReviewTaskDetails(src_index::Main.Index, dst_index::Main.Index)
 #	output_transform = Main.truncate_path(Main.get_path("relative_transform", index))
 #	output_reviews = map(Main.truncate_path, map((pair) -> Main.get_path("review", pair), possible_pairs))
 	# output_image = Main.truncate_path(Main.get_path(index));
-	output_image_thumbnail = Main.truncate_path(Main.get_path("review", (indices...));
+	output_image_thumbnail = Main.truncate_path(Main.get_path("review", (indices...)));
 #	outputs = unique([output_meshset, output_stats, output_transform, output_reviews...])
 #	output_tform = 
 
