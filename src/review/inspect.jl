@@ -212,11 +212,12 @@ function view_match(meshset::MeshSet, match_ind)
       println("view_inspection_statistics failed:\n$e")
     end
   end
-
+  img = img .>> 16;
+  img = img + img .<< 8 + img .<< 16
   imgc, img2 = ImageView.view(img, pixelspacing=[1,1])
   # resize(imgc, 400, 600)
   make_vectors!(params)
-  show_vectors(imgc, img2, params["vectors"], RGB(0,0,1), RGB(1,0,1))
+  show_vectors(imgc, img2, params["vectors"], RGB(0.01,0.25,0.88), RGB(1,0,0.82))
   update_annotations(imgc, img2, match, params)
   override_xy_label(imgc, img2, params["offset"], params["scale"])
 
