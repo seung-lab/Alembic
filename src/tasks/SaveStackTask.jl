@@ -77,11 +77,10 @@ function DaemonTask.execute(task::SaveStackTaskDetails,
     img = Main.make_stack(index, index, slice)
     f = Main.h5open(Main.get_path(Main.finished(index)), "w")
     chunksize = min(1000, min(size(img)...))
-    f["img", "chunk", (chunksize, chunksize)] = img
+    f["img", "chunk", (chunksize, chunksize)] = img[:,:,1]
     f["origin"] = origin
     f["x_slice"] = x_slice
     f["y_slice"] = y_slice
-    f["z_slice"] = z_slice
     close(f)
 
     return DaemonTask.Result(true, task.payload_info.outputs)
