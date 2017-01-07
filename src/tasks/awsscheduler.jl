@@ -12,6 +12,7 @@ using RenderTask
 using SolveTask
 using ThumbnailTask
 using RenderReviewTask
+using SaveStackTask
 
 import AWS
 import JSON
@@ -78,6 +79,16 @@ function schedule_render_review(args...; queue_name = Main.TASKS_TASK_QUEUE_NAME
 
     # create tasks from the inputs and add them to the queue
     task = RenderReviewTask.RenderReviewTaskDetails(args...);
+    Queue.push_message(queue; message_body = JSON.json(task));
+end
+
+function schedule_save_stack(args...; queue_name = Main.TASKS_TASK_QUEUE_NAME, bucket_name = Main.TASKS_BUCKET_NAME)
+    env = AWS.AWSEnv()
+    queue = AWSQueueService(env, queue_name)
+#    bucket = CLIBucketService(AWSCLIProvider.Details(env), bucket_name)
+
+    # create tasks from the inputs and add them to the queue
+    task = RenderReviewTask.SaveStackTaskDetails(args...);
     Queue.push_message(queue; message_body = JSON.json(task));
 end
 

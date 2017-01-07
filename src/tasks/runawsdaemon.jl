@@ -16,6 +16,7 @@ using RenderTask
 using SolveTask
 using ImportTask
 using ThumbnailTask
+using SaveStackTask
 
 #using BlockMatchTasks
 
@@ -59,6 +60,7 @@ function run(task_queue_name, error_queue_name, done_queue_name, bucket_name,
     register!(daemon, RenderTask.NAME, RenderTaskDetails)
     register!(daemon, SolveTask.NAME, SolveTaskDetails)
     register!(daemon, ThumbnailTask.NAME, ThumbnailTaskDetails)
+    register!(daemon, SaveStackTask.NAME, SaveStackTaskDetails)
 
     Daemon.run(daemon)
 end
