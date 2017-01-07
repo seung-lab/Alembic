@@ -88,7 +88,7 @@ function schedule_save_stack(args...; queue_name = Main.TASKS_TASK_QUEUE_NAME, b
 #    bucket = CLIBucketService(AWSCLIProvider.Details(env), bucket_name)
 
     # create tasks from the inputs and add them to the queue
-    task = RenderReviewTask.SaveStackTaskDetails(args...);
+    task = SaveStackTask.SaveStackTaskDetails(args...);
     Queue.push_message(queue; message_body = JSON.json(task));
 end
 
