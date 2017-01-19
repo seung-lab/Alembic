@@ -447,7 +447,7 @@ function save_stack(firstindex::Index, lastindex::Index, slice=(1:200, 1:200); s
   return save_stack(stack, firstindex, lastindex, slice, scale=scale)
 end
 
-function save_stack(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, slice=(1:200, 1:200); scale=scale)
+function save_stack(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, slice=(1:200, 1:200); scale=1.0)
   if sum(stack) == 0 return end
   # perm = [3,2,1]
   # stack = permutedims(stack, perm)
@@ -503,7 +503,6 @@ function save_cubes(cube_origin::Tuple{Int64, Int64, Int64}, cube_dims::Tuple{In
         firstindex = indices[k]
         lastindex = indices[k+z-1]
         slice = (i:i+x-1, j:j+y-1)
-	println();
         println("processing cube $n of $(length(start_i) * length(start_j) * length(start_k)) at ", join([firstindex, lastindex, slice], ", "))
         n += 1
         save_stack(firstindex, lastindex, slice)
@@ -563,4 +562,27 @@ function UInt8_to_BitArray(b, sz)
   B = BitArray(sz)
   B.chunks = reinterpret(UInt64, b)
   return B
+end
+
+function compile_save_stacks(indices)
+  stack = []
+  for index in indices
+    path = get_path(finished(index))
+    if !isfile(path)
+      println(index)
+    end
+  end
+  for index in indices
+    println(index)
+    path = get_path(finished(index))
+    img = h5read(path, "img", (1:5000,1:20))
+    push!(stack, img)
+  end
+  s = cat(3, stack...)
+  path = get_path(finished(indices[1]))
+  f = h5open(path)
+  x_slice = colon(f["x_slice"][:]...)
+  y_slice = colon(f["y_slice"][:]...)
+  close(f)
+  save_stack(s, indices[1], indices[end], (x_slice, y_slice), scale=1)
 end
