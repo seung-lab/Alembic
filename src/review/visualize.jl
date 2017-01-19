@@ -77,9 +77,9 @@ function show_vectors(imgc, img2, vectors, pt_color=RGB(0,0,1),
                                                 vec_color=RGB(1,0,1))
   if length(vectors) > 0
     an_vectors = annotate!(imgc, img2, AnnotationLines(vectors, color=vec_color, 
-                                            coord_order="xxyy", linewidth=3))
+                                            coord_order="xxyy", linewidth=4))
     an_points = annotate!(imgc, img2, AnnotationPoints(vectors[1:2,:], 
-                                                    color=pt_color, shape='*'))
+                                                    size=4, color=pt_color, shape='.'))
   end
 end
 

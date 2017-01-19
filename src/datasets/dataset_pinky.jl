@@ -1,6 +1,7 @@
 global BUCKET = "/home/ubuntu"
 #global DATASET = "datasets/pinky_40percent"
 global DATASET = "datasets/pinky_cropped"
+# global DATASET = "datasets/pinky_demo"
 global ROI_FIRST = (1,3484,0,0);
 global ROI_LAST = (1,4491,0,0);
 global DATASET_RESOLUTION = [4,4,40]

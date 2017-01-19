@@ -1,5 +1,5 @@
 #using Alembic
-module ThumbnailTask
+module SaveStackTask
 
 using ...SimpleTasks.Types
 
@@ -8,19 +8,19 @@ import SimpleTasks.Tasks.DaemonTask
 import SimpleTasks.Tasks.BasicTask
 import SimpleTasks.Services.Datasource
 
-export ThumbnailTaskDetails, NAME, execute, full_input_path, full_output_path
+export SaveStackTaskDetails, NAME, execute, full_input_path, full_output_path
 
-type ThumbnailTaskDetails <: DaemonTaskDetails
+type SaveStackTaskDetails <: DaemonTaskDetails
     basic_info::BasicTask.Info
     payload_info::AlembicPayloadInfo
 end
 
-ThumbnailTaskDetails{String <: AbstractString}(basic_info::BasicTask.Info, dict::Dict{String, Any}) = ThumbnailTaskDetails(basic_info, AlembicPayloadInfo(dict));
+SaveStackTaskDetails{String <: AbstractString}(basic_info::BasicTask.Info, dict::Dict{String, Any}) = SaveStackTaskDetails(basic_info, AlembicPayloadInfo(dict));
 
 
 #TODO MAKE THIS PROPER AND NOT ALL OVER THE PLACE
 # creates a task to make a MeshSet for index
-function ThumbnailTaskDetails(index::Main.Index)
+function SaveStackTaskDetails(index::Main.Index)
 
 	inputs_images = [Main.truncate_path(Main.get_path(index))];
 	inputs_registry = [Main.truncate_path(Main.get_registry_path(index))];
@@ -32,36 +32,36 @@ function ThumbnailTaskDetails(index::Main.Index)
 #	output_transform = Main.truncate_path(Main.get_path("relative_transform", index))
 #	output_reviews = map(Main.truncate_path, map((pair) -> Main.get_path("review", pair), possible_pairs))
 	# output_image = Main.truncate_path(Main.get_path(index));
-	output_image_thumbnail = Main.truncate_path(Main.get_path("thumbnail", index));
+	output_image = Main.truncate_path(Main.get_path(Main.finished(index)));
 #	outputs = unique([output_meshset, output_stats, output_transform, output_reviews...])
 #	output_tform = 
 
 	basic_info = BasicTask.Info(0, NAME, Main.TASKS_BASE_DIRECTORY, inputs) 
-	task = ThumbnailTaskDetails(basic_info, AlembicPayloadInfo([index], [output_image_thumbnail]));
+	task = SaveStackTaskDetails(basic_info, AlembicPayloadInfo([index], [output_image]));
 #	return vcat(inputs..., output)
 	return task
 end
 
-const NAME = "THUMBNAIL_TASK"
+const NAME = "SAVE_STACK_TASK"
 
-function full_input_path(task::ThumbnailTaskDetails,
+function full_input_path(task::SaveStackTaskDetails,
         input::AbstractString)
     return "$(task.basic_info.base_directory)/$(input)"
 end
 
-function full_output_path(task::ThumbnailTaskDetails,
+function full_output_path(task::SaveStackTaskDetails,
         output::AbstractString)
     return "$(task.basic_info.base_directory)/$(output)";
 end
 
-function DaemonTask.prepare(task::ThumbnailTaskDetails,
+function DaemonTask.prepare(task::SaveStackTaskDetails,
         datasource::DatasourceService)
     Datasource.get(datasource,
         map((input) -> full_input_path(task, input), task.basic_info.inputs); override_cache = true)
 	Main.reload_registries();
 end
 
-function DaemonTask.execute(task::ThumbnailTaskDetails,
+function DaemonTask.execute(task::SaveStackTaskDetails,
         datasource::DatasourceService)
     inputs = task.basic_info.inputs
 
@@ -69,16 +69,24 @@ function DaemonTask.execute(task::ThumbnailTaskDetails,
         return DaemonTask.Result(true, [])
     end
     
-    thumbnail_scale = 0.02
+    slice = (45000:54999, 23000:23049)
+    origin = [0,0]
+    x_slice = [slice[1][1], slice[1][end]] + origin
+    y_slice = [slice[2][1], slice[2][end]] + origin
     index = task.payload_info.indices[1];
-    img = Main.load(index)
-    thumbnail, _ = Main.imscale(img, thumbnail_scale)
-    Main.write_thumbnail(thumbnail, index, thumbnail_scale)
+    img = Main.make_stack(index, index, slice)
+    f = Main.h5open(Main.get_path(Main.finished(index)), "w")
+    chunksize = min(1000, min(size(img)...))
+    f["img", "chunk", (chunksize, chunksize)] = img[:,:,1]
+    f["origin"] = origin
+    f["x_slice"] = x_slice
+    f["y_slice"] = y_slice
+    close(f)
 
     return DaemonTask.Result(true, task.payload_info.outputs)
 end
 
-function DaemonTask.finalize(task::ThumbnailTaskDetails,
+function DaemonTask.finalize(task::SaveStackTaskDetails,
         datasource::DatasourceService, result::DaemonTask.Result)
     if !result.success
         error("Task $(task.basic_info.id), $(task.basic_info.name) was " *
@@ -97,4 +105,4 @@ function DaemonTask.finalize(task::ThumbnailTaskDetails,
     end
 end
 
-end # module ThumbnailTask
+end # module SaveStackTask
