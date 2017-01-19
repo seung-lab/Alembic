@@ -458,7 +458,7 @@ function save_stack(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, 
   y_slice = [slice[2][1], slice[2][end]] + origin
   z_slice = [find_in_registry(firstindex), find_in_registry(lastindex)]
   phasename = is_prealigned(firstindex) ? "prealigned" : "aligned"
-  filename = string(DATASET, "_", phasename, "_", join([join(x_slice, "-"), join(y_slice, "-"), join(z_slice,"-")], "_"), ".h5")
+  filename = string(phasename, "_", join([join(x_slice, "-"), join(y_slice, "-"), join(z_slice,"-")], "_"), ".h5")
   filepath = joinpath(FINISHED_DIR_PATH, filename)
   println("\nSaving stack to ", filepath)
   f = h5open(filepath, "w")
