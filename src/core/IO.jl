@@ -448,7 +448,7 @@ function save_stack(firstindex::Index, lastindex::Index, slice=(1:200, 1:200); s
 end
 
 function save_stack(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, slice=(1:200, 1:200); scale=1.0)
-  if sum(stack) == 0 return end
+  # if sum(stack) == 0 return end
   # perm = [3,2,1]
   # stack = permutedims(stack, perm)
   orientation = "zyx"
