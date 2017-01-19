@@ -74,7 +74,7 @@ function DaemonTask.execute(task::CubeStackTaskDetails,
         grid_dims[k] = ceil(Int64, (e-o+1)/d)
     end
     grid_dims = (grid_dims...)
-    grid_dims = (2,2,1)
+    # grid_dims = (2,2,1)
 
     Main.save_cubes(cube_origin, cube_dims, overlap, grid_dims);
     src = joinpath(Main.FINISHED_DIR_PATH, "*.h5")
