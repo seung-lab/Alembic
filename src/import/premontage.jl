@@ -111,7 +111,7 @@ function premontage(index::Index)
     tr = vcat(tr[1:k-1, :], tr[k+1:end,:])
   end
 
-  update_offsets(tile_indices, offsets, sizes)
+  update_offsets(tile_indices, zeros(Int64, length(tile_indices)), offsets, sizes)
   save_premontage_review(index)
 end
 

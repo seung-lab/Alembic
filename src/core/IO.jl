@@ -56,6 +56,9 @@ function load(path::AbstractString)
     data = JSON.parsefile(path; dicttype=Dict, use_mmap=true)
 	end
   println("Loaded $(typeof(data)) from ", path)
+#=  if typeof(data) == Match
+  data.correspondence_properties = Array{Dict{Any, Any},1}(); end
+  gc(); =#
 	return data
 end
 
