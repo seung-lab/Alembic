@@ -23,7 +23,7 @@ function CubeStackTaskDetails(index::Main.Index)
     inputs_images = [Main.truncate_path(Main.get_path(index))];
     inputs_registry = [Main.truncate_path(Main.get_registry_path(index))];
 
-    inputs = unique(vcat(inputs_images, inputs_registry, cube_origin, cube_dims, overlap, grid_dims))
+    inputs = unique(vcat(inputs_images, inputs_registry))
     
     # NO OUTPUT IMAGE IN THE PAYLOAD - too many files
     # The execute function will run a Base.run cp or rsync for all
