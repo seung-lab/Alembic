@@ -71,7 +71,7 @@ function DaemonTask.execute(task::CubeStackTaskDetails,
     overlap = (0,0,0)
     grid_dims = [0,0,0]
     for (k, (o, e, d)) = enumerate(zip(cube_origin, cube_extent, cube_dims))
-        grid_dims[k] = ceil(Int64, (e-o+.indices1)/d)
+        grid_dims[k] = ceil(Int64, (e-o+1)/d)
     end
     grid_dims = (grid_dims...)
     grid_dims = (1,1,1)
