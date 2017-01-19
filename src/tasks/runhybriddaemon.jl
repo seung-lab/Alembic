@@ -18,6 +18,7 @@ using SolveTask
 using ThumbnailTask
 using RenderReviewTask
 using SaveStackTask
+using CubeStackTask
 
 #using BlockMatchTasks
 
@@ -62,6 +63,7 @@ function run(task_queue_name, error_queue_name, done_queue_name, bucket_name,
     register!(daemon, ThumbnailTask.NAME, ThumbnailTaskDetails)
     register!(daemon, RenderReviewTask.NAME, RenderReviewTaskDetails)
     register!(daemon, SaveStackTask.NAME, SaveStackTaskDetails)
+    register!(daemon, CubeStackTask.NAME, CubeStackTaskDetails)
 
     Daemon.run(daemon)
 end

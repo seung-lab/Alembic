@@ -13,6 +13,7 @@ using SolveTask
 using ThumbnailTask
 using RenderReviewTask
 using SaveStackTask
+using CubeStackTask
 
 import AWS
 import JSON
@@ -89,6 +90,16 @@ function schedule_save_stack(args...; queue_name = Main.TASKS_TASK_QUEUE_NAME, b
 
     # create tasks from the inputs and add them to the queue
     task = SaveStackTask.SaveStackTaskDetails(args...);
+    Queue.push_message(queue; message_body = JSON.json(task));
+end
+
+function schedule_cube_stack(args...; queue_name = Main.TASKS_TASK_QUEUE_NAME, bucket_name = Main.TASKS_BUCKET_NAME)
+    env = AWS.AWSEnv()
+    queue = AWSQueueService(env, queue_name)
+#    bucket = CLIBucketService(AWSCLIProvider.Details(env), bucket_name)
+
+    # create tasks from the inputs and add them to the queue
+    task = CubeStackTask.CubeStackTaskDetails(args...);
     Queue.push_message(queue; message_body = JSON.json(task));
 end
 
