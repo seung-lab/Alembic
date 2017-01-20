@@ -16,8 +16,7 @@ MeshConjGrad- given spring mesh, solve for equilibrium positions of vertices wit
 
     'Stiffnesses', 'RestLengths' - 1xE vectors specifying spring properties
 
-    'Moving' - integer vector containing indices of moving vertices
- could be changed to 1xE binary vector
+    'Moving' - 1xE binary vector containing indices of moving vertices
 """
 =#
 #currently defined in Julimaps
@@ -109,13 +108,13 @@ function SolveMeshConjugateGradient!(Vertices, Fixed, Incidence, Stiffnesses, Re
     perm = sortperm(Fixed);
     invperm = sortperm(perm);
 
-    # permute so that the first M things are moving
+    # permute so that the first M things are moving = this allows subarray access to be dense, hence vectorizable
     Vertices[:] = Vertices[:,perm]
     Fixed = Fixed[perm]
     Incidence = Incidence[perm,:]
     M = sum(!Fixed)	# number of moving things
 
-    # double everything
+    # double everything to make everything 1-dimensional
     Vertices_t = Vertices';
     Vertices_t = vcat(Vertices_t[:, 1], Vertices_t[:, 2])
 
