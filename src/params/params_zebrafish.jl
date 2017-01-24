@@ -4,6 +4,7 @@ GLOBAL_OFFSETS_MONTAGE = true
 BLOCKMATCH_SCALE_MONTAGE = 1.0
 BLOCK_R_MONTAGE = 80
 SEARCH_R_MONTAGE = 400
+#SEARCH_R_MONTAGE = 550
 PREMATCH_MONTAGE = false
 MESH_SPRING_COEFF_MONTAGE = 1.0
 MATCH_SPRING_COEFF_MONTAGE = 100.0 
@@ -80,7 +81,7 @@ global PARAMS_MONTAGE = Dict(
 			     		"sigma_filter_low" => (3,:get_properties, >, 150, 0.50),
 			     		"r_filter_min" => (4,:get_properties, <, 0.03, "r_max"),
 			     		"r_filter_max" => (5,:get_properties, >, 1, "r_max"),
-						 "centered_norm_filter" => (6,:get_centered_norms, >, 20)
+						 "centered_norm_filter" => (6,:get_centered_norms, >, 55)
 						# "norm_filter" => (:get_norms_std_sigmas, >, 5)
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 2.5)
 					      ),
@@ -90,10 +91,11 @@ global PARAMS_MONTAGE = Dict(
 					      ),
 			     "review" => Dict(
 						# "too_few_corresps" => (:count_correspondences, <, 10),
-						"rejected_ratio" => (:get_ratio_rejected, >, 0.66, 16),
+						"rejected_ratio" => (:get_ratio_rejected, >, 0.80, 16),
+						"rejected_ratio" => (:get_ratio_rejected, >, 0.66, 80),
 						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.99),
 						#"norm_outliers" => (:count_outlier_norms, >, 0, 3), # too useless because they're so close to each other to begin with
-						"centered_norm" => (:get_maximum_centered_norm, >, 75)
+						"centered_norm" => (:get_maximum_centered_norm, >, 45)
 					      ),
 			     "registry" => Dict(
 					"global_offsets" => GLOBAL_OFFSETS_MONTAGE

@@ -56,6 +56,9 @@ function load(path::AbstractString)
     data = JSON.parsefile(path; dicttype=Dict, use_mmap=true)
 	end
   println("Loaded $(typeof(data)) from ", path)
+#=  if typeof(data) == Match
+  data.correspondence_properties = Array{Dict{Any, Any},1}(); end
+  gc(); =#
 	return data
 end
 
@@ -448,7 +451,7 @@ function save_stack(firstindex::Index, lastindex::Index, slice=(1:200, 1:200); s
 end
 
 function save_stack(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, slice=(1:200, 1:200); scale=1.0)
-  if sum(stack) == 0 return end
+  # if sum(stack) == 0 return end
   # perm = [3,2,1]
   # stack = permutedims(stack, perm)
   orientation = "zyx"
@@ -458,7 +461,7 @@ function save_stack(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, 
   y_slice = [slice[2][1], slice[2][end]] + origin
   z_slice = [find_in_registry(firstindex), find_in_registry(lastindex)]
   phasename = is_prealigned(firstindex) ? "prealigned" : "aligned"
-  filename = string(DATASET, "_", phasename, "_", join([join(x_slice, "-"), join(y_slice, "-"), join(z_slice,"-")], "_"), ".h5")
+  filename = string(phasename, "_", join([join(x_slice, "-"), join(y_slice, "-"), join(z_slice,"-")], "_"), ".h5")
   filepath = joinpath(FINISHED_DIR_PATH, filename)
   println("\nSaving stack to ", filepath)
   f = h5open(filepath, "w")
