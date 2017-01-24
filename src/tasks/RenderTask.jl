@@ -96,11 +96,11 @@ function DaemonTask.execute(task::RenderTaskDetails,
     #actually only a tuple
 
 
-    #=
+    
     ms = Main.load(Main.MeshSet, task.payload_info.indices...)
-    ms.properties["params"]["solve"]["max_iters"] = 5000
-    Main.elastic_solve!(ms, from_current = true);
-    Main.save(ms);=#
+#    ms.properties["params"]["solve"]["max_iters"] = 5000
+    Main.elastic_solve!(ms, from_current = false);
+    Main.save(ms);
 
 
     Main.render(task.payload_info.indices...);
