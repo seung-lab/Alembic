@@ -203,14 +203,16 @@ global PARAMS_ALIGNMENT = Dict(
 					"centered_norm_filter" => (:get_centered_norms, >, 600)
 					      ), =#
 			     "filter" => Dict(
-			     		"sigma_filter_high" => (1,:get_properties, >, 3, 0.95),
-			     		"sigma_filter_mid" => (2,:get_properties, >, 5, 0.75),
+			     		"sigma_filter_high" => (1,:get_properties, >, 3.5, 0.95),
+			     		"sigma_filter_mid" => (2,:get_properties, >, 8, 0.75),
 			     		"sigma_filter_low" => (3,:get_properties, >, 15, 0.50),
 			     		"dyn_range_filter" => (4,:get_properties, <, 0.50, "src_normalized_dyn_range"),
 			     		"r_filter" => (5,:get_properties, <, 0.0275, "r_max"),
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 5),
 			     		"kurtosis_filter" => (6,:get_properties, >, 25, "src_kurtosis"),
-			     		"kurtosis_filter_edge" => (7,:get_properties, <, -1.60, "src_kurtosis"),
+					#for blotches in dst
+			     		"kurtosis_filter_dst" => (7,:get_properties, >, 50, "dst_kurtosis"),
+			     		"kurtosis_filter_edge" => (8,:get_properties, <, -1.60, "src_kurtosis"),
 #					"centered_norm_filter" => (8,:get_centered_norms, >, 600)
 					      ),
 			     "render" => Dict(
