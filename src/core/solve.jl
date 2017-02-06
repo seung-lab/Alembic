@@ -193,15 +193,15 @@ function elastic_collate(meshset; from_current = true, write = false)
 	meshes_order[get_index(mesh)] = index;
 	cum_nodes = cum_nodes + count_nodes(mesh);
 	cum_edges = cum_edges + count_edges(mesh);
-	mesh_ref = RemoteRef(); 
-	put!(mesh_ref, mesh); push!(meshes_ref, mesh_ref);
+#	mesh_ref = RemoteRef(); 
+#	put!(mesh_ref, mesh); push!(meshes_ref, mesh_ref);
   end
 
   @fastmath @inbounds for match in meshset.matches
 	edgeranges[get_src_and_dst_indices(match)] = cum_edges + (1:count_filtered_correspondences(match));
 	cum_edges = cum_edges + count_filtered_correspondences(match);
-	match_ref = RemoteRef(); 
-	put!(match_ref, match); push!(matches_ref, match_ref);
+#	match_ref = RemoteRef(); 
+#	put!(match_ref, match); push!(matches_ref, match_ref);
 	push!(src_indices, get_src_index(match))
 	push!(dst_indices, get_dst_index(match))
   end
@@ -234,19 +234,22 @@ function elastic_collate(meshset; from_current = true, write = false)
   @inbounds @fastmath function make_local_sparse(num_nodes, num_edges)
 	global LOCAL_SPM = spzeros(num_nodes, num_edges)
   end
-  @sync begin
-    @async for proc in setdiff(procs(), myid())
-      remotecall_wait(proc, make_local_sparse, count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset)); 
-    end 
     make_local_sparse(count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset))
-  end
+#  @sync begin
+#    @async for proc in setdiff(procs(), myid())
+#      remotecall_wait(proc, make_local_sparse, count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset)); 
+#    end 
+#    make_local_sparse(count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset))
+#  end
 
   function copy_sparse_matrix(mesh_ref, noderange, edgerange)
-    mesh = fetch(mesh_ref)
+    #mesh = fetch(mesh_ref)
+    mesh = mesh_ref
     @inbounds LOCAL_SPM[noderange, edgerange] = mesh.edges;
   end
 
-  pmap(copy_sparse_matrix, meshes_ref, noderange_list, edgerange_list);
+#  pmap(copy_sparse_matrix, meshes_ref, noderange_list, edgerange_list);
+  map(copy_sparse_matrix, ms.meshes, noderange_list, edgerange_list);
 
 #  edges_subarrays_meshes = Array{SparseMatrixCSC{Float64, Int64}, 1}(pmap(pad_sparse_matrix, meshes_ref, repeated(count_nodes(meshset)), noderange_list))
 
@@ -263,10 +266,14 @@ function elastic_collate(meshset; from_current = true, write = false)
   function compute_sparse_matrix(match_ref, src_mesh_ref, dst_mesh_ref, noderange_src, noderange_dst, edgerange)
     @time begin
 	@inbounds begin
-  	match = fetch(match_ref)
+  	#=match = fetch(match_ref)
   	print("match $(get_src_index(match))->$(get_dst_index(match)) being collated...  ")
   	src_mesh = fetch(src_mesh_ref)
-  	dst_mesh = fetch(dst_mesh_ref)
+  	dst_mesh = fetch(dst_mesh_ref)=#
+  	match = match_ref
+  	print("match $(get_src_index(match))->$(get_dst_index(match)) being collated...  ")
+  	src_mesh = src_mesh_ref
+  	dst_mesh = dst_mesh_ref
 
 	src_pts, dst_pts = get_correspondences(match; filtered = true);
 	src_pt_triangles = find_mesh_triangle(src_mesh, src_pts);
@@ -305,7 +312,8 @@ function elastic_collate(meshset; from_current = true, write = false)
   
   edgerange_list = Array{UnitRange, 1}(map(getindex, repeated(edgeranges), map(get_src_and_dst_indices,meshset.matches)))
 
-  map(compute_sparse_matrix, matches_ref, meshes_ref[map(getindex, repeated(meshes_order), src_indices)], meshes_ref[map(getindex, repeated(meshes_order), dst_indices)], noderange_src_list, noderange_dst_list, edgerange_list);
+  #pmap(compute_sparse_matrix, matches_ref, meshes_ref[map(getindex, repeated(meshes_order), src_indices)], meshes_ref[map(getindex, repeated(meshes_order), dst_indices)], noderange_src_list, noderange_dst_list, edgerange_list);
+  map(compute_sparse_matrix, ms.matches, ms.meshes[map(getindex, repeated(meshes_order), src_indices)], ms.meshes[map(getindex, repeated(meshes_order), dst_indices)], noderange_src_list, noderange_dst_list, edgerange_list);
 
   println("matches collated: $(count_matches(meshset)) matches. populating sparse matrix....")
 
