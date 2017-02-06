@@ -193,15 +193,15 @@ function elastic_collate(meshset; from_current = true, write = false)
 	meshes_order[get_index(mesh)] = index;
 	cum_nodes = cum_nodes + count_nodes(mesh);
 	cum_edges = cum_edges + count_edges(mesh);
-#	mesh_ref = RemoteRef(); 
-#	put!(mesh_ref, mesh); push!(meshes_ref, mesh_ref);
+	mesh_ref = RemoteRef(); 
+	put!(mesh_ref, mesh); push!(meshes_ref, mesh_ref);
   end
 
   @fastmath @inbounds for match in meshset.matches
 	edgeranges[get_src_and_dst_indices(match)] = cum_edges + (1:count_filtered_correspondences(match));
 	cum_edges = cum_edges + count_filtered_correspondences(match);
-#	match_ref = RemoteRef(); 
-#	put!(match_ref, match); push!(matches_ref, match_ref);
+	match_ref = RemoteRef(); 
+	put!(match_ref, match); push!(matches_ref, match_ref);
 	push!(src_indices, get_src_index(match))
 	push!(dst_indices, get_dst_index(match))
   end
@@ -234,22 +234,19 @@ function elastic_collate(meshset; from_current = true, write = false)
   @inbounds @fastmath function make_local_sparse(num_nodes, num_edges)
 	global LOCAL_SPM = spzeros(num_nodes, num_edges)
   end
+  @sync begin
+    @async for proc in setdiff(procs(), myid())
+      remotecall_wait(proc, make_local_sparse, count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset)); 
+    end 
     make_local_sparse(count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset))
-#  @sync begin
-#    @async for proc in setdiff(procs(), myid())
-#      remotecall_wait(proc, make_local_sparse, count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset)); 
-#    end 
-#    make_local_sparse(count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset))
-#  end
-
-  function copy_sparse_matrix(mesh_ref, noderange, edgerange)
-    #mesh = fetch(mesh_ref)
-    mesh = mesh_ref
-    @inbounds LOCAL_SPM[noderange, edgerange] = mesh.edges;
   end
 
-#  pmap(copy_sparse_matrix, meshes_ref, noderange_list, edgerange_list);
-  map(copy_sparse_matrix, ms.meshes, noderange_list, edgerange_list);
+  function copy_sparse_matrix(mesh_ref, noderange, edgerange)
+    mesh = fetch(mesh_ref)
+    @inbounds (LOCAL_SPM::SparseMatrixCSC{Float64, Int64})[noderange, edgerange] = mesh.edges;
+  end
+
+  pmap(copy_sparse_matrix, meshes_ref, noderange_list, edgerange_list);
 
 #  edges_subarrays_meshes = Array{SparseMatrixCSC{Float64, Int64}, 1}(pmap(pad_sparse_matrix, meshes_ref, repeated(count_nodes(meshset)), noderange_list))
 
@@ -264,44 +261,75 @@ function elastic_collate(meshset; from_current = true, write = false)
   end
 
   function compute_sparse_matrix(match_ref, src_mesh_ref, dst_mesh_ref, noderange_src, noderange_dst, edgerange)
-    @time begin
 	@inbounds begin
-  	#=match = fetch(match_ref)
-  	print("match $(get_src_index(match))->$(get_dst_index(match)) being collated...  ")
+	print("fetch: ");  @time begin
+  	match = fetch(match_ref)
+  	println("match $(get_src_index(match))->$(get_dst_index(match)) being collated...")
   	src_mesh = fetch(src_mesh_ref)
-  	dst_mesh = fetch(dst_mesh_ref)=#
-  	match = match_ref
-  	print("match $(get_src_index(match))->$(get_dst_index(match)) being collated...  ")
-  	src_mesh = src_mesh_ref
-  	dst_mesh = dst_mesh_ref
-
-	src_pts, dst_pts = get_correspondences(match; filtered = true);
-	src_pt_triangles = find_mesh_triangle(src_mesh, src_pts);
+  	dst_mesh = fetch(dst_mesh_ref)
+      		end;
+		print("prep: "); @time begin
+	@time src_pts, dst_pts = get_correspondences(match; filtered = true);
+	@time src_pt_triangles = find_mesh_triangle(src_mesh, src_pts);
 	dst_pt_triangles = find_mesh_triangle(dst_mesh, dst_pts);
-	src_pt_weights = get_triangle_weights(src_mesh, src_pts, src_pt_triangles);
+	@time src_pt_weights = get_triangle_weights(src_mesh, src_pts, src_pt_triangles);
 	dst_pt_weights = get_triangle_weights(dst_mesh, dst_pts, dst_pt_triangles);
+      end  
 
-	edgerange_base = edgerange[1] - 1
-	noderange_src_base = noderange_src[1] - 1
-	noderange_dst_base = noderange_dst[1] - 1
 
+	print("newprep 1: "); @time begin
+	i_inds_src = Int64[]
+	j_inds_src = Int64[]
+	vals_src = Float64[]
+	i_inds_dst = Int64[]
+	j_inds_dst = Int64[]
+	vals_dst = Float64[]
 	for ind in 1:count_filtered_correspondences(match)
-	  src_tri = src_pt_triangles[ind];
-	  dst_tri = dst_pt_triangles[ind];
-	  if src_tri == NO_TRIANGLE || dst_tri == NO_TRIANGLE continue; end
-	  src_pt_weight = src_pt_weights[ind]
-	  dst_pt_weight = dst_pt_weights[ind]
-	  edgerange_loc = edgerange_base + ind;
-	        for i in 1:3
-		  	if src_pt_weight[i] > eps
-			@fastmath @inbounds (LOCAL_SPM::SparseMatrixCSC{Float64,Int64})[noderange_src_base + src_tri[i], edgerange_loc] = -src_pt_weight[i]
-		        end
-		  	if dst_pt_weight[i] > eps
-			@fastmath @inbounds (LOCAL_SPM::SparseMatrixCSC{Float64,Int64})[noderange_dst_base + dst_tri[i], edgerange_loc] = dst_pt_weight[i]
-		      end
-		end
+	  src_t1, src_t2, src_t3 = src_pt_triangles[ind];
+	  dst_t1, dst_t2, dst_t3 = dst_pt_triangles[ind];
+	  if src_t1 == 0 || dst_t1 == 0 continue; end
+#	  if src_tri == NO_TRIANGLE || dst_tri == NO_TRIANGLE continue; end
+	  src_pt_w1, src_pt_w2, src_pt_w3 = src_pt_weights[ind]
+	  dst_pt_w1, dst_pt_w2, dst_pt_w3 = dst_pt_weights[ind]
+	  if src_pt_w1 > eps
+	    	push!(i_inds_src, src_t1);
+	    	push!(j_inds_src, ind);
+	    	push!(vals_src, -src_pt_w1);
+	  end
+	  if src_pt_w2 > eps
+	    	push!(i_inds_src, src_t2);
+	    	push!(j_inds_src, ind);
+	    	push!(vals_src, -src_pt_w2);
+	  end
+	  if src_pt_w3 > eps
+	    	push!(i_inds_src, src_t3);
+	    	push!(j_inds_src, ind);
+	    	push!(vals_src, -src_pt_w3);
+	  end
+	  if dst_pt_w1 > eps
+	    	push!(i_inds_dst, dst_t1);
+	    	push!(j_inds_dst, ind);
+	    	push!(vals_dst, dst_pt_w1);
+	  end
+	  if dst_pt_w2 > eps
+	    	push!(i_inds_dst, dst_t2);
+	    	push!(j_inds_dst, ind);
+	    	push!(vals_dst, dst_pt_w2);
+	  end
+	  if dst_pt_w3 > eps
+	    	push!(i_inds_dst, dst_t3);
+	    	push!(j_inds_dst, ind);
+	    	push!(vals_dst, dst_pt_w3);
+	  end
 	end
-      		end
+      end #time
+
+	print("newprep2: "); @time begin
+	  src_sparse = sparse(i_inds_src, j_inds_src, vals_src, length(noderange_src), length(edgerange))
+	  dst_sparse = sparse(i_inds_dst, j_inds_dst, vals_dst, length(noderange_dst), length(edgerange))
+    	@inbounds (LOCAL_SPM::SparseMatrixCSC{Float64, Int64})[noderange_src, edgerange] = src_sparse;
+    	@inbounds (LOCAL_SPM::SparseMatrixCSC{Float64, Int64})[noderange_dst, edgerange] = dst_sparse;
+	end 
       end #inbounds
 
   end
@@ -312,15 +340,14 @@ function elastic_collate(meshset; from_current = true, write = false)
   
   edgerange_list = Array{UnitRange, 1}(map(getindex, repeated(edgeranges), map(get_src_and_dst_indices,meshset.matches)))
 
-  #pmap(compute_sparse_matrix, matches_ref, meshes_ref[map(getindex, repeated(meshes_order), src_indices)], meshes_ref[map(getindex, repeated(meshes_order), dst_indices)], noderange_src_list, noderange_dst_list, edgerange_list);
-  map(compute_sparse_matrix, ms.matches, ms.meshes[map(getindex, repeated(meshes_order), src_indices)], ms.meshes[map(getindex, repeated(meshes_order), dst_indices)], noderange_src_list, noderange_dst_list, edgerange_list);
+  pmap(compute_sparse_matrix, matches_ref, meshes_ref[map(getindex, repeated(meshes_order), src_indices)], meshes_ref[map(getindex, repeated(meshes_order), dst_indices)], noderange_src_list, noderange_dst_list, edgerange_list);
 
   println("matches collated: $(count_matches(meshset)) matches. populating sparse matrix....")
 
   function get_local_sparse()
 	return LOCAL_SPM;
   end
- #= 
+  
   edges_subarrays = Array{SparseMatrixCSC{Float64, Int64}, 1}(length(procs()))
 
   @sync for proc in procs() @async @inbounds edges_subarrays[proc] = remotecall_fetch(proc, get_local_sparse); end 
@@ -340,8 +367,7 @@ function elastic_collate(meshset; from_current = true, write = false)
   end
 
   edges = edges_subarrays[1];
- =#
- edges = LOCAL_SPM;
+
   collation = nodes, nodes_fixed, edges, edge_spring_coeffs, edge_lengths, max_iters, ftol_cg
   collation_with_ranges = collation, noderanges, edgeranges
 
