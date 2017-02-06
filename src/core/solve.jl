@@ -305,14 +305,14 @@ function elastic_collate(meshset; from_current = true, write = false)
   
   edgerange_list = Array{UnitRange, 1}(map(getindex, repeated(edgeranges), map(get_src_and_dst_indices,meshset.matches)))
 
-  pmap(compute_sparse_matrix, matches_ref, meshes_ref[map(getindex, repeated(meshes_order), src_indices)], meshes_ref[map(getindex, repeated(meshes_order), dst_indices)], noderange_src_list, noderange_dst_list, edgerange_list; pids = [2,3,4,5]);
+  map(compute_sparse_matrix, matches_ref, meshes_ref[map(getindex, repeated(meshes_order), src_indices)], meshes_ref[map(getindex, repeated(meshes_order), dst_indices)], noderange_src_list, noderange_dst_list, edgerange_list);
 
   println("matches collated: $(count_matches(meshset)) matches. populating sparse matrix....")
 
   function get_local_sparse()
 	return LOCAL_SPM;
   end
-  
+ #= 
   edges_subarrays = Array{SparseMatrixCSC{Float64, Int64}, 1}(length(procs()))
 
   @sync for proc in procs() @async @inbounds edges_subarrays[proc] = remotecall_fetch(proc, get_local_sparse); end 
@@ -332,8 +332,8 @@ function elastic_collate(meshset; from_current = true, write = false)
   end
 
   edges = edges_subarrays[1];
- 
-# edges = LOCAL_SPM;
+ =#
+ edges = LOCAL_SPM;
   collation = nodes, nodes_fixed, edges, edge_spring_coeffs, edge_lengths, max_iters, ftol_cg
   collation_with_ranges = collation, noderanges, edgeranges
 
