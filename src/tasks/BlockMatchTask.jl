@@ -47,21 +47,21 @@ function BlockMatchTaskDetails(index::Main.Index)
 	return task
 end
 
-function BlockMatchTaskDetails(first_index::Main.Index, last_index::Main.Index)
+function BlockMatchTaskDetails(first_index::Main.Index, last_index::Main.Index; return_mesh = true, ends_only = false)
   	 indices = Main.get_index_range(first_index, last_index);
-	#possible_pairs = collect([(indexA, indexB) for indexA in indices, indexB in indices])
-	#possible_pairs = possible_pairs[map(pair -> Main.is_preceding(pair[1], pair[2], Main.get_params(last_index)["match"]["depth"]), possible_pairs)] 
-
-	possible_pairs = [(first_index, last_index)]
-	#indices = Main.get_index_range(first_index, last_index);
+	 if ends_only
+		possible_pairs = [(first_index, last_index)]
+	 else
+	possible_pairs = collect([(indexA, indexB) for indexA in indices, indexB in indices])
+	possible_pairs = possible_pairs[map(pair -> Main.is_preceding(pair[1], pair[2], Main.get_params(last_index)["match"]["depth"]), possible_pairs)] 
+	end
 
 	inputs_images = map(Main.truncate_path, map(Main.get_path, indices));
 	inputs_registry = map(Main.truncate_path, map(Main.get_registry_path, indices));
 	inputs = unique(vcat(inputs_images, inputs_registry))
 	
 	output_meshset = Main.truncate_path(Main.get_path("MeshSet", (first_index, last_index)))
-	output_meshes = []
-#	output_meshes = map(Main.truncate_path, map(Main.get_path, repeated("Mesh"), indices))
+	(return_mesh && !ends_only) ? output_meshes = map(Main.truncate_path, map(Main.get_path, repeated("Mesh"), indices)) : output_meshes = [];		
 #	output_stats = Main.truncate_path(Main.get_path("stats", index))
 #	output_transform = Main.truncate_path(Main.get_path("relative_transform", index))
 	output_reviews = map(Main.truncate_path, map((pair) -> Main.get_path("review", pair), possible_pairs))
