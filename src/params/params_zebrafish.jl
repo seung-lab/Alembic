@@ -30,8 +30,8 @@ PREMATCH_ANGLES_PREALIGNMENT = 0
 MESH_LENGTH_ALIGNMENT = 100
 GLOBAL_OFFSETS_ALIGNMENT = true
 BLOCKMATCH_SCALE_ALIGNMENT = 1.0
-BLOCK_R_ALIGNMENT = 180
-SEARCH_R_ALIGNMENT = 50
+BLOCK_R_ALIGNMENT = 300
+SEARCH_R_ALIGNMENT = 70
 
 #=
 MESH_LENGTH_ALIGNMENT = 375
@@ -182,9 +182,9 @@ global PARAMS_ALIGNMENT = Dict(
 			     "filter" => Dict(
 			 # son of alignment
 					"dist" => (0,:get_properties,>,40,"norm"),
-			     		"sigma_filter_high" => (1,:get_properties, >, 2.0, 0.95),
-			     		"sigma_filter_mid" => (2,:get_properties, >, 4, 0.75),
-			     		"sigma_filter_low" => (3,:get_properties, >, 8, 0.50)
+			     		"sigma_filter_high" => (1,:get_properties, >, 3.0, 0.95),
+			     		"sigma_filter_mid" => (2,:get_properties, >, 15, 0.75),
+			     		"sigma_filter_low" => (3,:get_properties, >, 30, 0.50)
 		#=	 
 			     		"sigma_filter_high" => (1,:get_properties, >, 8, 0.95),
 			     		"sigma_filter_mid" => (2,:get_properties, >, 90, 0.75),
