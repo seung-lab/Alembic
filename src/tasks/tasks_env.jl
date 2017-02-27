@@ -82,6 +82,7 @@ function pull_registry_updates(queue_name = TASKS_REGISTRY_QUEUE_NAME)
   rendereds = Array{Bool, 1}();
     while true
       update_message = SimpleTasks.Services.AWSQueue.Queue.pop_message(queue)
+      sleep(0.05)
       if length(update_message) == 0 break end
     # create tasks from the inputs and add them to the queue
       dict = JSON.parse(update_message);
