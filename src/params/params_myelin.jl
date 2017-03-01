@@ -25,14 +25,15 @@ PREMATCH_TEMPLATE_RATIO_PREALIGNMENT = 0.15
 PREMATCH_SCALE_PREALIGNMENT = 0.10
 PREMATCH_ANGLES_PREALIGNMENT = 0;
 
-MESH_LENGTH_ALIGNMENT = 1000
-#MESH_LENGTH_ALIGNMENT = 200
+#MESH_LENGTH_ALIGNMENT = 1000
+MESH_LENGTH_ALIGNMENT = 200
 GLOBAL_OFFSETS_ALIGNMENT = true
 BLOCKMATCH_SCALE_ALIGNMENT = 0.20
-BLOCK_R_ALIGNMENT = 1200
+BLOCK_R_ALIGNMENT = 800
+#BLOCK_R_ALIGNMENT = 1200
 #SEARCH_R_ALIGNMENT = 250
-#SEARCH_R_ALIGNMENT = 350
-SEARCH_R_ALIGNMENT = 1200
+SEARCH_R_ALIGNMENT = 350
+#SEARCH_R_ALIGNMENT = 1200
 #SEARCH_R_ALIGNMENT = 550
 PREMATCH_ALIGNMENT = false
 MESH_SPRING_COEFF_ALIGNMENT = 1.0
@@ -167,7 +168,7 @@ global PARAMS_ALIGNMENT = Dict(
 			     	"ftol_gd" => FTOL_GD_ALIGNMENT,
 			     	"eta_newton" => ETA_NEWTON_ALIGNMENT,
 			     	"ftol_newton" => FTOL_NEWTON_ALIGNMENT),
-#=			     "filter" => Dict(
+			     "filter" => Dict(
 			     		"sigma_filter_high" => (:get_properties, >, 6, 0.95),
 			     		"sigma_filter_mid" => (:get_properties, >, 60, 0.75),
 			     		"sigma_filter_low" => (:get_properties, >, 360, 0.50),
@@ -177,8 +178,8 @@ global PARAMS_ALIGNMENT = Dict(
 			     		"kurtosis_filter" => (:get_properties, >, 25, "src_kurtosis"),
 			     		"kurtosis_filter_edge" => (:get_properties, <, -1.60, "src_kurtosis"),
 					"centered_norm_filter" => (:get_centered_norms, >, 600)
-					      ), =#
-			     "filter" => Dict(
+					      ), 
+#=			     "filter" => Dict(
 			     		"sigma_filter_high" => (1,:get_properties, >, 5, 0.95),
 			     		"sigma_filter_mid" => (2,:get_properties, >, 75, 0.75),
 			     		"sigma_filter_low" => (3,:get_properties, >, 150, 0.50),
@@ -189,15 +190,15 @@ global PARAMS_ALIGNMENT = Dict(
 			     		"kurtosis_filter_edge" => (7,:get_properties, <, -1.60, "src_kurtosis"),
 					#"centered_norm_filter" => (:get_centered_norms, >, 200)
 					"centered_norm_filter" => (8,:get_centered_norms, >, 500)
-					      ),
+					      ),=#
 			     "render" => Dict(
 					      ),
 			     "review" => Dict(
 			     		"too_few_corresps" => (:count_correspondences, <, 100),
-						"rejected_ratio" => (:get_ratio_rejected, >, 0.10),
+						"rejected_ratio" => (:get_ratio_rejected, >, 0.20),
 						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.95),
 						# "norm_outliers" => (:count_outlier_norms, >, 0, 4),
-						"centered_norm" => (:get_maximum_centered_norm, >, 250)
+						"centered_norm" => (:get_maximum_centered_norm, >, 300)
 					      ),
 			     "registry" => Dict(
 					"global_offsets" => GLOBAL_OFFSETS_ALIGNMENT
