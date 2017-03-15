@@ -106,7 +106,7 @@ function render_montaged(meshset::MeshSet; render_full=true, render_review=false
       for k in 1:length(imgs)
         # imgs[k] = imcrop(imgs[k], offsets[k] imgs[k][x:(end-x+1), y:(end-y+1)]
         #imgs[k] = imgs[k][x:(end-x+1), y:(end-y+1)]
-        imgs[k] = imgs[k][x:(end-x+100+1), y:(end-y+100+1)]
+        imgs[k] = imgs[k][x:(end-x+150+1), y:(end-y+150+1)]
         offsets[k] = offsets[k] + crop
       end
     end
