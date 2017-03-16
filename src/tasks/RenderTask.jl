@@ -25,6 +25,7 @@ function RenderTaskDetails(index::Main.Index)
 
 	inputs_images = map(Main.truncate_path, map(Main.get_path, indices));
 	inputs_registry = map(Main.truncate_path, map(Main.get_registry_path, indices));
+	inputs_registry = map(Main.truncate_path, map(Main.get_registry_path, map(montaged, indices)));
 
       if Main.is_prealigned(index) 
 	input_transform = [Main.truncate_path(Main.get_path("cumulative_transform", Main.montaged(index)))]
