@@ -110,7 +110,7 @@ function render_montaged(meshset::MeshSet; render_full=true, render_review=false
         # imgs[k] = imcrop(imgs[k], offsets[k] imgs[k][x:(end-x+1), y:(end-y+1)]
         #imgs[k] = imgs[k][x:(end-x+1), y:(end-y+1)]
 	if indices[k][3] != indices_max_i && indices[k][4] != indices_max_j
-        imgs[k] = imgs[k][x:(end-x+150+1), y:(end-y+150+1)]
+        imgs[k] = imgs[k][x:(end-x+250+1), y:(end-y+250+1)]
 	else
         imgs[k] = imgs[k][x:(end-x+150+1), y:(end-y+150+1)]
 	end
