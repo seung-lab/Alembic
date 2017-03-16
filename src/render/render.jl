@@ -101,12 +101,19 @@ function render_montaged(meshset::MeshSet; render_full=true, render_review=false
     offsets = [x[1][2] for x in warps];
     indices = [x[2] for x in warps];
 
+    indices_max_i = maximum([ind[3] for ind in indices]);
+    indices_max_j = maximum([ind[4] for ind in indices]);
+
     if |((crop .> [0,0])...)
       x, y = crop
       for k in 1:length(imgs)
         # imgs[k] = imcrop(imgs[k], offsets[k] imgs[k][x:(end-x+1), y:(end-y+1)]
         #imgs[k] = imgs[k][x:(end-x+1), y:(end-y+1)]
+	if indices[k][3] != indices_max_i && indices[k][4] != indices_max_j
         imgs[k] = imgs[k][x:(end-x+150+1), y:(end-y+150+1)]
+	else
+        imgs[k] = imgs[k][x:(end-x+1), y:(end-y+1)]
+	end
         offsets[k] = offsets[k] + crop
       end
     end
@@ -118,8 +125,9 @@ function render_montaged(meshset::MeshSet; render_full=true, render_review=false
     if render_full
       img, offset = merge_images(imgs, offsets)
 	
-      img_size = get_image_size(index);
-      println("")
+      img_size = get_image_size(index);	
+      println("reg img_size: $img_size")
+      println("ren img_size: $(size(img))")
       img = img[1:img_size[1], 1:img_size[2]];
 
       println("Writing ", new_fn)
