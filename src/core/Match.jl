@@ -689,6 +689,7 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 	correspondence_properties["patches"] = Dict{Any, Any}();
 	correspondence_properties["patches"]["src_normalized_dyn_range"] = (maximum(src_image[src_range...]) - minimum(src_image[src_range...])) / typemax(eltype(src_image));
 	correspondence_properties["patches"]["src_kurtosis"] = kurtosis(src_image[src_range...]);
+	correspondence_properties["patches"]["dst_kurtosis"] = kurtosis(dst_image[dst_range...]);
 	correspondence_properties["xcorr"] = Dict{Any, Any}();
 	correspondence_properties["xcorr"]["r_max"] = r_max;
 	correspondence_properties["xcorr"]["sigmas"] = Dict{Float64, Any}();

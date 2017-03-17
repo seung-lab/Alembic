@@ -52,7 +52,7 @@ if USE_PYPLOT
 end
   using Tk
   using ImageView
-if !contains(gethostname(), "seung")
+if !contains(gethostname(), "seung") && !contains(gethostname(), "MacBook")
   using PyCall
   using MKLSparse
 end
@@ -138,8 +138,8 @@ include("core/solve.jl")
 # include("params/params_pinky.jl")
 # include("datasets/dataset_zebrafish.jl")
 #include("datasets/dataset_zebrafish.jl")
-  include("datasets/dataset_default.jl")
-   include("params/params_default.jl")
+include("datasets/dataset_default.jl")
+include("params/params_default.jl")
 #=
 if ON_CLOUD
   include("datasets/dataset_zebrafish.jl")

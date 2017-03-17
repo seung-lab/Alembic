@@ -100,12 +100,35 @@ function render_montaged(meshset::MeshSet; render_full=true, render_review=false
     imgs = [x[1][1] for x in warps];
     offsets = [x[1][2] for x in warps];
     indices = [x[2] for x in warps];
+#=
+    indices_i = unique([ind[3] for ind in indices])
+    indices_j = unique([ind[4] for ind in indices])
+    indices_maxs_i = Array{Int64, 1}(maximum(indices_i))
+    indices_mins_i = Array{Int64, 1}(maximum(indices_i))
+    indices_maxs_j = Array{Int64, 1}(maximum(indices_j))
+    indices_mins_j = Array{Int64, 1}(maximum(indices_j))
+    for ind in indices
+	    i = ind[3]; j = ind[4];
+	    if indices_maxs_i[i] < j indices_maxs_i[i] = j end
+	    if indices_mins_i[i] > j indices_mins_i[i] = j end
+	    if indices_maxs_j[j] < i indices_maxs_j[j] = i end
+	    if indices_mins_j[j] > i indices_mins_j[j] = i end
+    end=#
 
     if |((crop .> [0,0])...)
       x, y = crop
       for k in 1:length(imgs)
-        # imgs[k] = imcrop(imgs[k], offsets[k] imgs[k][x:(end-x+1), y:(end-y+1)]
+       #= # imgs[k] = imcrop(imgs[k], offsets[k] imgs[k][x:(end-x+1), y:(end-y+1)]
+        #imgs[k] = imgs[k][x:(end-x+1), y:(end-y+1)]
+	i = indices[k][3]; j = indices[k][4];
+	iend, jend = size(imgs[k])
+	if indices_maxs_i[i] == j || indices_mins_i[i] == j || indices_maxs_j[j] == i || indices_mins_j[j] == i
         imgs[k] = imgs[k][x:(end-x+1), y:(end-y+1)]
+        #imgs[k] = imgs[k][x:(end-x+1), y:(end-y+1)] + 150
+	else
+        imgs[k] = imgs[k][x:(end-x+250+1), y:(end-y+250+1)]
+	end=#
+        imgs[k] = imgs[k][x:(end-x+250+1), y:(end-y+250+1)]
         offsets[k] = offsets[k] + crop
       end
     end
@@ -116,6 +139,12 @@ function render_montaged(meshset::MeshSet; render_full=true, render_review=false
     end
     if render_full
       img, offset = merge_images(imgs, offsets)
+	
+      img_size = get_image_size(index);	
+      println("reg img_size: $img_size")
+      println("ren img_size: $(size(img))")
+      img = img[1:img_size[1], 1:img_size[2]];
+
       println("Writing ", new_fn)
       f = h5open(get_path(index), "w")
       chunksize = min(1000, min(size(img)...))
@@ -124,7 +153,7 @@ function render_montaged(meshset::MeshSet; render_full=true, render_review=false
       println("Creating thumbnail for $index @ $(thumbnail_scale)x")
       thumbnail, _ = imscale(img, thumbnail_scale)
       write_thumbnail(thumbnail, index, thumbnail_scale)
-      update_registry(index; offset = [0,0], image_size = size(img))
+      #update_registry(index; offset = [0,0], image_size = size(img))
     end
   # catch e
   #   println(e)
@@ -177,11 +206,17 @@ function render_prealigned_full(index::Index; thumbnail_scale=get_params(prevsta
   if make_dense
 	i_min, i_max = 1, size(warped, 1)
 	j_min, j_max = 1, size(warped, 2)
+  	mins = get_offset(index) + [1,1] - offset
+  	maxs = get_image_size(index) + mins - [1,1]
 
 	while (sum(slice(warped, i_min, 1:size(warped,2))) == 0); i_min += 1; end
 	while (sum(slice(warped, i_max, 1:size(warped,2))) == 0); i_max -= 1; end
 	while (sum(slice(warped, 1:size(warped,1), j_min)) == 0); j_min += 1; end
 	while (sum(slice(warped, 1:size(warped,1), j_max)) == 0); j_max -= 1; end
+	i_min = mins[1]
+	j_min = mins[2]
+	i_max = maxs[1]
+	j_max = maxs[2]
 
 	offset = offset - [1,1] + [i_min, j_min]
 	towrite = Array(slice(warped, i_min:i_max, j_min:j_max))
