@@ -157,8 +157,46 @@ function compile_import_registry(n_range)
   writedlm(registry_fn, registry)
 end
 
+"""
+Read in HDF5 image for contrast adjustment in blocks
 
+Hard-coded sample slice
+"""
+function adjust_contrast_inplace(fn)
+  f = h5open(fn, "r+")
+  dset = f["img"]
+  maxval = 1.0
+  minval = 1.0/255
 
+  # generate sample for hist sample
+  smp = dset[10000:10:20000,10000:10:20000]
+  hist = nquantile(smp[:] / 255, 20);
+  maxin = hist[end-1];
+  minin = hist[2];
+
+  stride = 256
+  for i in 1:stride:size(dset,1)
+    for j in 1:stride:size(dset,2)
+      if i + stride - 1 <= size(dset,1)
+        i_slice = range(i,stride)
+      else
+        i_slice = colon(i,size(dset,1))
+      end
+      if j + stride - 1 <= size(dset,2)
+        j_slice = range(j,stride)
+      else
+        j_slice = colon(j,size(dset,2))
+      end
+      print((i_slice, j_slice))
+      img = dset[i_slice, j_slice]
+      img = img / 255
+      img = min(maxval, max(minval, (img-minin) / (maxin-minin)))
+      img = Array{UInt8, 2}(round(UInt8, img*255))
+      dset[i_slice, j_slice] = img
+    end
+  end
+  close(f)
+end
 
 
 
