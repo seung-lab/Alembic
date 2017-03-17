@@ -26,6 +26,7 @@ function RenderTaskDetails(index::Main.Index)
 	inputs_images = map(Main.truncate_path, map(Main.get_path, indices));
 	inputs_registry = map(Main.truncate_path, map(Main.get_registry_path, indices));
 	inputs_registry2 = map(Main.truncate_path, map(Main.get_registry_path, map(Main.montaged, indices)));
+	inputs_registry3 = map(Main.truncate_path, map(Main.get_registry_path, map(Main.prealigned, indices)));
 
       if Main.is_prealigned(index) 
 	input_transform = [Main.truncate_path(Main.get_path("cumulative_transform", Main.montaged(index)))]
@@ -43,7 +44,7 @@ function RenderTaskDetails(index::Main.Index)
       end
 
 	#inputs = unique(vcat(inputs_images, inputs_registry, inputs_meshes, inputs_meshset, input_transform))
-	inputs = unique(vcat(inputs_images, inputs_registry, inputs_registry2, inputs_meshes, inputs_meshset, input_transform))
+	inputs = unique(vcat(inputs_images, inputs_registry, inputs_registry2, inputs_registry3, inputs_meshes, inputs_meshset, input_transform))
 	
 #	output_meshset = Main.truncate_path(Main.get_path("MeshSet", index))
 #	output_stats = Main.truncate_path(Main.get_path("stats", index))
