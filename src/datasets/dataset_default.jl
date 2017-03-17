@@ -174,6 +174,7 @@ datasets_dir_path = "research/Julimaps/datasets" =#
 # DATASET = "AIBS_practice_234251S6R_01_01_aligned_01"
 # DATASET = "pinky_40percent"
 DATASET = "pinky_cropped"
+# DATASET = "pinky_sem"
 # DATASET = "pinky_demo"
 # DATASET = "pinky_overviews"
 # DATASET = "stage_stitch"
