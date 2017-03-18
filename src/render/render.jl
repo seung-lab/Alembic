@@ -130,11 +130,11 @@ function render_montaged(meshset::MeshSet; render_full=true, render_review=false
         imgs[k] = imgs[k][x:(end-x+250+1), y:(end-y+250+1)]
 	end=#
 	if i != indices_mins_j[j] && j != indices_mins_i[i]
-        imgs[k] = imgs[k][x-100:(end-x+299+1), y-100:(end-y+299+1)]
-	offsets[k] = offsets[k] + crop - [100,100]
+        imgs[k] = imgs[k][x-299:(end-x+299+1), y-299:(end-y+299+1)]
+	offsets[k] = offsets[k] + crop - [299,299]
 	else
 		println("$i,$j")
-        imgs[k] = imgs[k][x:(end-x+299+1), y:(end-y+299+1)]
+        imgs[k] = imgs[k][x:(end-x+1), y:(end-y+1)]
         offsets[k] = offsets[k] + crop
 	end
         #offsets[k] = offsets[k] + crop
