@@ -134,7 +134,7 @@ function render_montaged(meshset::MeshSet; render_full=true, render_review=false
 	offsets[k] = offsets[k] + crop - [299,299]
 	else
 		println("$i,$j")
-        imgs[k] = imgs[k][x:(end-x+1+150), y:(end-y+1+150)]
+        imgs[k] = imgs[k][x:(end-x+1+100), y:(end-y+1+100)]
         offsets[k] = offsets[k] + crop
 	end
         #offsets[k] = offsets[k] + crop
