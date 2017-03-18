@@ -103,10 +103,10 @@ function render_montaged(meshset::MeshSet; render_full=true, render_review=false
 
     indices_i = unique([ind[3] for ind in indices])
     indices_j = unique([ind[4] for ind in indices])
-    indices_maxs_i = Array{Int64, 1}(maximum(indices_i))
-    indices_mins_i = Array{Int64, 1}(maximum(indices_i))
-    indices_maxs_j = Array{Int64, 1}(maximum(indices_j))
-    indices_mins_j = Array{Int64, 1}(maximum(indices_j))
+    indices_maxs_i = zeros(Int64, maximum(indices_i))
+    indices_mins_i = fill(100, maximum(indices_i))
+    indices_maxs_j = zeros(Int64, maximum(indices_j))
+    indices_mins_j = fill(100, maximum(indices_j))
     for ind in indices
 	    i = ind[3]; j = ind[4];
 	    if indices_maxs_i[i] < j indices_maxs_i[i] = j end
@@ -131,10 +131,13 @@ function render_montaged(meshset::MeshSet; render_full=true, render_review=false
 	end=#
 	if i != indices_mins_j[j] && j != indices_mins_i[i]
         imgs[k] = imgs[k][x-100:(end-x+299+1), y-100:(end-y+299+1)]
+	offsets[k] = offsets[k] + crop - [100,100]
 	else
+		println("$i,$j")
         imgs[k] = imgs[k][x:(end-x+299+1), y:(end-y+299+1)]
-	end
         offsets[k] = offsets[k] + crop
+	end
+        #offsets[k] = offsets[k] + crop
       end
     end
 
