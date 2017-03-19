@@ -4,6 +4,7 @@ GLOBAL_OFFSETS_MONTAGE = true
 BLOCKMATCH_SCALE_MONTAGE = 1.0
 BLOCK_R_MONTAGE = 80
 SEARCH_R_MONTAGE = 400
+#SEARCH_R_MONTAGE = 550
 PREMATCH_MONTAGE = false
 MESH_SPRING_COEFF_MONTAGE = 1.0
 MATCH_SPRING_COEFF_MONTAGE = 100.0 
@@ -29,8 +30,9 @@ PREMATCH_ANGLES_PREALIGNMENT = 0
 MESH_LENGTH_ALIGNMENT = 100
 GLOBAL_OFFSETS_ALIGNMENT = true
 BLOCKMATCH_SCALE_ALIGNMENT = 1.0
-BLOCK_R_ALIGNMENT = 120
-SEARCH_R_ALIGNMENT = 50
+BLOCK_R_ALIGNMENT = 300
+SEARCH_R_ALIGNMENT = 70 
+
 #=
 MESH_LENGTH_ALIGNMENT = 375
 GLOBAL_OFFSETS_ALIGNMENT = true
@@ -39,8 +41,9 @@ BLOCK_R_ALIGNMENT = 800
 #BLOCK_R_ALIGNMENT = 600
 #SEARCH_R_ALIGNMENT = 300
 SEARCH_R_ALIGNMENT = 500
-#SEARCH_R_ALIGNMENT = 750
-=#
+#SEARCH_R_ALIGNMENT = 750 =#
+
+
 PREMATCH_ALIGNMENT = false
 MESH_SPRING_COEFF_ALIGNMENT = 1.0
 #MATCH_SPRING_COEFF_ALIGNMENT = 40.0
@@ -80,7 +83,7 @@ global PARAMS_MONTAGE = Dict(
 			     		"sigma_filter_low" => (3,:get_properties, >, 150, 0.50),
 			     		"r_filter_min" => (4,:get_properties, <, 0.03, "r_max"),
 			     		"r_filter_max" => (5,:get_properties, >, 1, "r_max"),
-						 "centered_norm_filter" => (6,:get_centered_norms, >, 20)
+						 "centered_norm_filter" => (6,:get_centered_norms, >, 55)
 						# "norm_filter" => (:get_norms_std_sigmas, >, 5)
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 2.5)
 					      ),
@@ -90,10 +93,11 @@ global PARAMS_MONTAGE = Dict(
 					      ),
 			     "review" => Dict(
 						# "too_few_corresps" => (:count_correspondences, <, 10),
-						"rejected_ratio" => (:get_ratio_rejected, >, 0.66, 16),
+						"rejected_ratio" => (:get_ratio_rejected, >, 0.80, 16),
+						"rejected_ratio" => (:get_ratio_rejected, >, 0.66, 80),
 						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.99),
 						#"norm_outliers" => (:count_outlier_norms, >, 0, 3), # too useless because they're so close to each other to begin with
-						"centered_norm" => (:get_maximum_centered_norm, >, 75)
+						"centered_norm" => (:get_maximum_centered_norm, >, 45)
 					      ),
 			     "registry" => Dict(
 					"global_offsets" => GLOBAL_OFFSETS_MONTAGE
@@ -177,11 +181,13 @@ global PARAMS_ALIGNMENT = Dict(
 			     	"ftol_newton" => FTOL_NEWTON_ALIGNMENT),
 			     "filter" => Dict(
 			 # son of alignment
-					"dist" => (0,:get_properties,>,40,"norm"),
-			     		"sigma_filter_high" => (1,:get_properties, >, 2.0, 0.95),
-			     		"sigma_filter_mid" => (2,:get_properties, >, 4, 0.75),
-			     		"sigma_filter_low" => (3,:get_properties, >, 8, 0.50)
-			 #=
+					"dist" => (0,:get_properties,>,60,"norm"),
+			     		"sigma_filter_high" => (1,:get_properties, >, 3.0, 0.95),
+			     		"sigma_filter_mid" => (2,:get_properties, >, 15, 0.75),
+			     		"sigma_filter_low" => (3,:get_properties, >, 30, 0.50)
+
+					#=
+			 
 			     		"sigma_filter_high" => (1,:get_properties, >, 8, 0.95),
 			     		"sigma_filter_mid" => (2,:get_properties, >, 90, 0.75),
 			     		"sigma_filter_low" => (3,:get_properties, >, 200, 0.50),
@@ -193,6 +199,7 @@ global PARAMS_ALIGNMENT = Dict(
 					"centered_norm_filter" => (7,:get_centered_norms, >, 250),
 					"consensus" => (8,:get_normalized_norm_from_filtered_consensus, >, 4, 4000)
 					=#
+					
 					      ),
 			     "render" => Dict(
 					      ),

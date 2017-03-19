@@ -241,9 +241,11 @@ function elastic_collate(meshset; from_current = true, write = false)
     make_local_sparse(count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset))
   end
 
+  gc();
+
   function copy_sparse_matrix(mesh_ref, noderange, edgerange)
     mesh = fetch(mesh_ref)
-    @inbounds LOCAL_SPM[noderange, edgerange] = mesh.edges;
+    @inbounds (LOCAL_SPM::SparseMatrixCSC{Float64, Int64})[noderange, edgerange] = mesh.edges;
   end
 
   pmap(copy_sparse_matrix, meshes_ref, noderange_list, edgerange_list);
@@ -262,29 +264,75 @@ function elastic_collate(meshset; from_current = true, write = false)
 
   function compute_sparse_matrix(match_ref, src_mesh_ref, dst_mesh_ref, noderange_src, noderange_dst, edgerange)
 	@inbounds begin
+	@time begin
   	match = fetch(match_ref)
-  	println("match $(get_src_index(match))->$(get_dst_index(match)) being collated...")
+  	print("match $(get_src_index(match))->$(get_dst_index(match)) being collated... fetch: ")
   	src_mesh = fetch(src_mesh_ref)
   	dst_mesh = fetch(dst_mesh_ref)
-
+      	end;
+	
+	print("triangulation: "); @time begin
 	src_pts, dst_pts = get_correspondences(match; filtered = true);
 	src_pt_triangles = find_mesh_triangle(src_mesh, src_pts);
 	dst_pt_triangles = find_mesh_triangle(dst_mesh, dst_pts);
 	src_pt_weights = get_triangle_weights(src_mesh, src_pts, src_pt_triangles);
 	dst_pt_weights = get_triangle_weights(dst_mesh, dst_pts, dst_pt_triangles);
+      end  
 
+
+	print("allocation: "); @time begin
+	i_inds_src = Int64[]
+	j_inds_src = Int64[]
+	vals_src = Float64[]
+	i_inds_dst = Int64[]
+	j_inds_dst = Int64[]
+	vals_dst = Float64[]
 	for ind in 1:count_filtered_correspondences(match)
-		if src_pt_triangles[ind] == NO_TRIANGLE || dst_pt_triangles[ind] == NO_TRIANGLE continue; end
-	        for i in 1:3
-		  	if src_pt_weights[ind][i] > eps
-			@fastmath @inbounds LOCAL_SPM[noderange_src[src_pt_triangles[ind][i]], edgerange[ind]] = -src_pt_weights[ind][i]
-		        end
-		  	if dst_pt_weights[ind][i] > eps
-			@fastmath @inbounds LOCAL_SPM[noderange_dst[dst_pt_triangles[ind][i]], edgerange[ind]] = dst_pt_weights[ind][i]
-		      end
-		end
+	  src_t1, src_t2, src_t3 = src_pt_triangles[ind];
+	  dst_t1, dst_t2, dst_t3 = dst_pt_triangles[ind];
+	  if src_t1 == 0 || dst_t1 == 0 continue; end
+#	  if src_tri == NO_TRIANGLE || dst_tri == NO_TRIANGLE continue; end
+	  src_pt_w1, src_pt_w2, src_pt_w3 = src_pt_weights[ind]
+	  dst_pt_w1, dst_pt_w2, dst_pt_w3 = dst_pt_weights[ind]
+	  if src_pt_w1 > eps
+	    	push!(i_inds_src, src_t1);
+	    	push!(j_inds_src, ind);
+	    	push!(vals_src, -src_pt_w1);
+	  end
+	  if src_pt_w2 > eps
+	    	push!(i_inds_src, src_t2);
+	    	push!(j_inds_src, ind);
+	    	push!(vals_src, -src_pt_w2);
+	  end
+	  if src_pt_w3 > eps
+	    	push!(i_inds_src, src_t3);
+	    	push!(j_inds_src, ind);
+	    	push!(vals_src, -src_pt_w3);
+	  end
+	  if dst_pt_w1 > eps
+	    	push!(i_inds_dst, dst_t1);
+	    	push!(j_inds_dst, ind);
+	    	push!(vals_dst, dst_pt_w1);
+	  end
+	  if dst_pt_w2 > eps
+	    	push!(i_inds_dst, dst_t2);
+	    	push!(j_inds_dst, ind);
+	    	push!(vals_dst, dst_pt_w2);
+	  end
+	  if dst_pt_w3 > eps
+	    	push!(i_inds_dst, dst_t3);
+	    	push!(j_inds_dst, ind);
+	    	push!(vals_dst, dst_pt_w3);
+	  end
 	end
+
+	  src_sparse = sparse(i_inds_src, j_inds_src, vals_src, length(noderange_src), length(edgerange))
+	  dst_sparse = sparse(i_inds_dst, j_inds_dst, vals_dst, length(noderange_dst), length(edgerange))
+    	@inbounds (LOCAL_SPM::SparseMatrixCSC{Float64, Int64})[noderange_src, edgerange] = src_sparse;
+    	@inbounds (LOCAL_SPM::SparseMatrixCSC{Float64, Int64})[noderange_dst, edgerange] = dst_sparse;
+	end 
       end #inbounds
+
   end
 
 
@@ -292,7 +340,6 @@ function elastic_collate(meshset; from_current = true, write = false)
   noderange_dst_list = Array{UnitRange, 1}(map(getindex, repeated(noderanges), dst_indices))
   
   edgerange_list = Array{UnitRange, 1}(map(getindex, repeated(edgeranges), map(get_src_and_dst_indices,meshset.matches)))
-
 
   pmap(compute_sparse_matrix, matches_ref, meshes_ref[map(getindex, repeated(meshes_order), src_indices)], meshes_ref[map(getindex, repeated(meshes_order), dst_indices)], noderange_src_list, noderange_dst_list, edgerange_list);
 
