@@ -14,11 +14,10 @@ def read_points(fn):
     return np.genfromtxt(fn, delimiter=",", dtype=int).tolist()
 
 def write_points(fn, points):
-    print 'write_points: ' + str(points)
+    # print 'write_points: ' + str(points)
     np.savetxt(fn, points, delimiter=',', fmt='%d')
 
 def get_points(state):
-    print 'get_points'
     if 'points' in state['layers']['points']:
         points = state['layers']['points']['points']
         return [[int(round(pt)) for pt in point] for point in points]
@@ -44,13 +43,13 @@ class Connection(SockJSConnection):
         This will call initialize_state or on_state_change depening on if it is
         the first message recieved.
         """
-        current_state = json.JSONDecoder(object_pairs_hook=OrderedDict).decode(json_state)
+        state = json.JSONDecoder(object_pairs_hook=OrderedDict).decode(json_state)
         global n_messages
 
         if not n_messages: #first message ever
-            self.initialize_state(current_state)
+            self.initialize_state(state)
         else:
-            self.on_state_change(current_state)
+            self.on_state_change(state)
         n_messages += 1
 
 
