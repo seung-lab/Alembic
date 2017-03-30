@@ -15,6 +15,14 @@ function meshwarp_mesh(mesh::Mesh)
   return @time meshwarp(img, src_nodes, dst_nodes, triangles, offset), get_index(mesh)
 end
 
+function apply_mask(index::Index)
+	img = get_image(index)
+	mask = load("mask", index)
+	fillpoly!(img, mask[:, 1], mask[:, 2]; reverse = true);
+	save(get_path(index), img);
+	return img
+end
+
 function render(ms::MeshSet; review=false)
   if is_montaged(ms)
     if review
