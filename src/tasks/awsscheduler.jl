@@ -9,6 +9,7 @@ using SimpleTasks.Services.CLIBucket
 using ImportTask
 using BlockMatchTask
 using RenderTask
+using MaskTask
 using SolveTask
 using ThumbnailTask
 using RenderReviewTask
@@ -50,6 +51,16 @@ function schedule_render(args...; queue_name = Main.TASKS_TASK_QUEUE_NAME, bucke
 
     # create tasks from the inputs and add them to the queue
     task = RenderTask.RenderTaskDetails(args...);
+    Queue.push_message(queue; message_body = JSON.json(task));
+end
+
+function schedule_mask(args...; queue_name = Main.TASKS_TASK_QUEUE_NAME, bucket_name = Main.TASKS_BUCKET_NAME)
+    env = AWS.AWSEnv()
+    queue = AWSQueueService(env, queue_name)
+#    bucket = CLIBucketService(AWSCLIProvider.Details(env), bucket_name)
+
+    # create tasks from the inputs and add them to the queue
+    task = MaskTask.MaskTaskDetails(args...);
     Queue.push_message(queue; message_body = JSON.json(task));
 end
 
