@@ -18,7 +18,7 @@ end
 function apply_mask(index::Index)
 	img = get_image(index)
 	mask = load("mask", index)
-	fillpoly!(img, mask[:, 2], mask[:, 1]; reverse = true);
+	fillpoly!(img, Array{Int64,1}(mask[:, 2]), Array{Int64,1}(mask[:, 1]), zero(eltype(img)); reverse = true);
 	save(get_path(index), img);
 	return img
 end
