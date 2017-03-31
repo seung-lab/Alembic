@@ -94,7 +94,7 @@ function get_subdir(string::AbstractString)
   elseif string == "relative_transform"     return RELATIVE_TRANSFORM_DIR, ".txt"
   elseif string == "cumulative_transform"     return CUMULATIVE_TRANSFORM_DIR, ".txt"
   elseif string == "stats"     return STATS_DIR, ".json"
-  elseif string == "mask"     return MASK_DIR, ".png"
+  elseif string == "mask"     return MASK_DIR, ".txt"
   elseif string == "outline"     return OUTLINE_DIR, ".png"
   elseif string == "expunge"     return EXPUNGED_DIR, ".h5"
   elseif string == "thumbnail"     return THUMBNAIL_DIR, ".h5"
