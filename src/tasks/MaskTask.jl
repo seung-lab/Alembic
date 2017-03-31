@@ -34,7 +34,7 @@ function MaskTaskDetails(index::Main.Index)
 #	output_stats = Main.truncate_path(Main.get_path("stats", index))
 #	output_transform = Main.truncate_path(Main.get_path("relative_transform", index))
 #	output_reviews = map(Main.truncate_path, map((pair) -> Main.get_path("review", pair), possible_pairs))
-	output_image = Main.truncate_path(Main.get_path(index));
+	output_image = Main.truncate_path(Main.get_path(Main.finished(index)));
 	#output_image_thumbnail = Main.truncate_path(Main.get_path("thumbnail", index));
 #	outputs = unique([output_meshset, output_stats, output_transform, output_reviews...])
 #	output_tform = 
