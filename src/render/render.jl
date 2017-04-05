@@ -15,6 +15,32 @@ function meshwarp_mesh(mesh::Mesh)
   return @time meshwarp(img, src_nodes, dst_nodes, triangles, offset), get_index(mesh)
 end
 
+"""
+Reverts transform that went from index and returns the image at the index
+"""
+function meshwarp_revert(index::Index, interp = false)
+  mesh = load("Mesh", index)
+  img = get_image(nextstage(index))
+  src_nodes = hcat(get_nodes(mesh; globalized = true, use_post = false)...)'
+  dst_nodes = hcat(get_nodes(mesh; globalized = true, use_post = true)...)'
+  offset = get_offset(nextstage(index));
+  #=print("incidence_to_dict: ")
+  @time node_dict = incidence_to_dict(mesh.edges') #'
+  print("dict_to_triangles: ")
+  @time triangles = dict_to_triangles(node_dict)=#
+  node_dict = incidence_to_dict(mesh.edges') #
+  triangles = dict_to_triangles(node_dict)
+  @time reverted_img, reverted_offset = meshwarp(img, dst_nodes, src_nodes, triangles, offset, interp)
+  original_image_size = get_image_size(index)
+  original_offset = get_offset(index)
+  i_range = (1:original_image_size[1]) - reverted_offset[1] + original_offset[1] 
+  j_range = (1:original_image_size[2]) - reverted_offset[2] + original_offset[2] 
+  @inbounds return reverted_img[i_range, j_range]
+end
+
+"""
+Applies mask associated with the image and writes to finished
+"""
 function apply_mask(index::Index)
 	img = get_image(index).s
 	mask = load("mask", index)
