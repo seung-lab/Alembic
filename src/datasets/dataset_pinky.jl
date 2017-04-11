@@ -1,6 +1,6 @@
 global BUCKET = "/home/ubuntu"
 #global DATASET = "datasets/pinky_40percent"
-global DATASET = "datasets/pinky_cropped"
+global DATASET = "datasets/pinky_cropped_redo"
 # global DATASET = "datasets/pinky_sem"
 # global DATASET = "datasets/pinky_demo"
 #global DATASET = "datasets/pinky_cropped"
