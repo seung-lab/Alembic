@@ -26,11 +26,11 @@ PREMATCH_SCALE_PREALIGNMENT = 0.03
 PREMATCH_ANGLES_PREALIGNMENT = 0
 
 #son of alignment
-MESH_LENGTH_ALIGNMENT = 100
+MESH_LENGTH_ALIGNMENT = 50
 GLOBAL_OFFSETS_ALIGNMENT = true
 BLOCKMATCH_SCALE_ALIGNMENT = 1.0
 BLOCK_R_ALIGNMENT = 120
-SEARCH_R_ALIGNMENT = 250
+SEARCH_R_ALIGNMENT = 40
 #=
 MESH_LENGTH_ALIGNMENT = 375
 GLOBAL_OFFSETS_ALIGNMENT = true
@@ -177,7 +177,7 @@ global PARAMS_ALIGNMENT = Dict(
 			     	"ftol_newton" => FTOL_NEWTON_ALIGNMENT),
 			     "filter" => Dict(
 			 # son of alignment
-					"dist" => (0,:get_properties,>,40,"norm"),
+					"dist" => (0,:get_properties,>,25,"norm"),
 			     		"sigma_filter_high" => (1,:get_properties, >, 2.0, 0.95),
 			     		"sigma_filter_mid" => (2,:get_properties, >, 4, 0.75),
 			     		"sigma_filter_low" => (3,:get_properties, >, 8, 0.50)
