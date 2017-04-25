@@ -126,7 +126,7 @@ function SolveMeshConjugateGradient!(Vertices, Fixed, Incidence, Stiffnesses, Re
     Energies = Array{Float64}(div(size(Incidence_t, 1), 2));
     Springs = Array{Float64}(size(Incidence_t, 1));
     Forces = Array{Float64}(size(Incidence_t, 1));
-    Gradients = Array{Float64}(size(Vertices_t));
+    Gradients = Array{Float64}(size(Vertices_t, 1));
 
     Moving = vcat(~Fixed, ~Fixed)
     Stiffnesses_d = vcat(Stiffnesses, Stiffnesses)
