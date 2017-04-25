@@ -1,5 +1,6 @@
 # size in bytes
 global const IMG_CACHE_SIZE = 20 * 2^30 # n * gibibytes
+#global const IMG_ELTYPE = UInt8
 global const IMG_ELTYPE = UInt8
 
 if myid() == 1
@@ -35,12 +36,12 @@ function save(path::AbstractString, data; chunksize = 1000)
       	end
 end
 
-function load(path::AbstractString)
+function load(path::AbstractString; kwargs...)
 	println("Loading data from ", path)
 	if !isfile(path) return nothing end
 	ext = splitext(path)[2];
 	if ext == ".h5"
-    data = get_image_disk(path)
+    data = get_image_disk(path; kwargs...)
 	elseif ext == ".jls"
   	data = open(deserialize, path)
     # data = open(path)
@@ -66,8 +67,8 @@ function save(data; kwargs...)
 	save(get_path(data), data; kwargs...)
 end
 
-function load(args...)
-	return load(get_path(args...));
+function load(args...; kwargs...)
+	return load(get_path(args...); kwargs...);
 end
 
 # extensions:
