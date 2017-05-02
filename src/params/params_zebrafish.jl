@@ -39,10 +39,10 @@ SEARCH_R_ALIGNMENT = 70
 MESH_LENGTH_ALIGNMENT = 375
 GLOBAL_OFFSETS_ALIGNMENT = true
 BLOCKMATCH_SCALE_ALIGNMENT = 0.25
-BLOCK_R_ALIGNMENT = 800
+BLOCK_R_ALIGNMENT = 500
 #BLOCK_R_ALIGNMENT = 600
 #SEARCH_R_ALIGNMENT = 300
-SEARCH_R_ALIGNMENT = 500
+SEARCH_R_ALIGNMENT = 300
 #SEARCH_R_ALIGNMENT = 750 =#
 
 
@@ -122,7 +122,7 @@ global PARAMS_PREALIGNMENT = Dict(
 					"blockmatch_scale" => BLOCKMATCH_SCALE_PREALIGNMENT,
 					"block_r" => BLOCK_R_PREALIGNMENT, 
 					"search_r" => SEARCH_R_PREALIGNMENT,
-					"bandpass_sigmas" => (0,0),
+					"bandpass_sigmas" => (2.5,12.5),
 					"depth" => 1,
 					"reflexive" => false),
 			     "solve" => Dict(
@@ -192,9 +192,9 @@ global PARAMS_ALIGNMENT = Dict(
 
 					
 			 
-			     		"sigma_filter_high" => (1,:get_properties, >, 8, 0.95),
-			     		"sigma_filter_mid" => (2,:get_properties, >, 90, 0.75),
-			     		"sigma_filter_low" => (3,:get_properties, >, 200, 0.50),
+			     		"sigma_filter_high" => (1,:get_properties, >, 6.5, 0.95),
+			     		"sigma_filter_mid" => (2,:get_properties, >, 35, 0.75),
+			     		"sigma_filter_low" => (3,:get_properties, >, 100, 0.50),
 			     		"r_filter" => (4,:get_properties, <, 0.03, "r_max"),
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 5),
 			     		"dyn_range" => (5,:get_properties, <, 0.25, "src_normalized_dyn_range"),
