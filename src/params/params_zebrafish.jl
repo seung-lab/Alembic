@@ -26,23 +26,24 @@ PREMATCH_PREALIGNMENT = false
 PREMATCH_TEMPLATE_RATIO_PREALIGNMENT = 0.35
 PREMATCH_SCALE_PREALIGNMENT = 0.03
 PREMATCH_ANGLES_PREALIGNMENT = 0
-#=
+
 #son of alignment
 MESH_LENGTH_ALIGNMENT = 100
 GLOBAL_OFFSETS_ALIGNMENT = true
 BLOCKMATCH_SCALE_ALIGNMENT = 1.0
 BLOCK_R_ALIGNMENT = 300
 SEARCH_R_ALIGNMENT = 70 
-=#
 
 
+#=
 MESH_LENGTH_ALIGNMENT = 375
 GLOBAL_OFFSETS_ALIGNMENT = true
 BLOCKMATCH_SCALE_ALIGNMENT = 0.25
 BLOCK_R_ALIGNMENT = 500
+=#
 #BLOCK_R_ALIGNMENT = 600
 #SEARCH_R_ALIGNMENT = 300
-SEARCH_R_ALIGNMENT = 300
+#SEARCH_R_ALIGNMENT = 300
 #SEARCH_R_ALIGNMENT = 750 =#
 
 
@@ -182,16 +183,16 @@ global PARAMS_ALIGNMENT = Dict(
 			     	"eta_newton" => ETA_NEWTON_ALIGNMENT,
 			     	"ftol_newton" => FTOL_NEWTON_ALIGNMENT),
 			     "filter" => Dict(
-			     #=
+			     
 			 # son of alignment
 					"dist" => (0,:get_properties,>,60,"norm"),
 			     		"sigma_filter_high" => (1,:get_properties, >, 3.0, 0.95),
 			     		"sigma_filter_mid" => (2,:get_properties, >, 15, 0.75),
 			     		"sigma_filter_low" => (3,:get_properties, >, 30, 0.50)
-					=#
+					
 
 					
-			 
+			#= 
 			     		"sigma_filter_high" => (1,:get_properties, >, 6.5, 0.95),
 			     		"sigma_filter_mid" => (2,:get_properties, >, 35, 0.75),
 			     		"sigma_filter_low" => (3,:get_properties, >, 100, 0.50),
@@ -202,7 +203,7 @@ global PARAMS_ALIGNMENT = Dict(
 			     		"kurtosis_filter_edge" => (6,:get_properties, <, -1.90, "src_kurtosis"),
 					"centered_norm_filter" => (7,:get_centered_norms, >, 250),
 					"consensus" => (8,:get_normalized_norm_from_filtered_consensus, >, 4, 4000)
-					
+			=#		
 					
 					      ),
 			     "render" => Dict(
