@@ -207,10 +207,10 @@ function render_montaged(meshset::MeshSet; render_full=true, render_review=false
     if render_full
       img, offset = merge_images(imgs, offsets)
 	
-      img_size = get_image_size(index);	
-      println("reg img_size: $img_size")
-      println("ren img_size: $(size(img))")
-      img = img[1:img_size[1], 1:img_size[2]];
+      #img_size = get_image_size(index);	
+      #println("reg img_size: $img_size")
+      #println("ren img_size: $(size(img))")
+      #img = img[1:img_size[1], 1:img_size[2]];
 
       println("Writing ", new_fn)
       f = h5open(get_path(index), "w")
