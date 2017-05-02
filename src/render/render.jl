@@ -177,7 +177,7 @@ function render_montaged(meshset::MeshSet; render_full=true, render_review=false
     if |((crop .> [0,0])...)
       x, y = crop
       for k in 1:length(imgs)
-	i = indices[k][3]; j = indices[k][4];
+#	i = indices[k][3]; j = indices[k][4];
        #= # imgs[k] = imcrop(imgs[k], offsets[k] imgs[k][x:(end-x+1), y:(end-y+1)]
         #imgs[k] = imgs[k][x:(end-x+1), y:(end-y+1)]
 	i = indices[k][3]; j = indices[k][4];
@@ -188,6 +188,7 @@ function render_montaged(meshset::MeshSet; render_full=true, render_review=false
 	else
         imgs[k] = imgs[k][x:(end-x+250+1), y:(end-y+250+1)]
 	end=#
+#=	
 	if i != indices_mins_j[j] && j != indices_mins_i[i] && i != indices_maxs_j[j] && j != indices_maxs_i[i] 
         imgs[k] = imgs[k][x-299:(end-x+299+1), y-299:(end-y+299+1)]
 	offsets[k] = offsets[k] + crop - [299,299]
@@ -196,7 +197,9 @@ function render_montaged(meshset::MeshSet; render_full=true, render_review=false
         imgs[k] = imgs[k][x:(end-x+1+150), y:(end-y+1+150)]
         offsets[k] = offsets[k] + crop
 	end
-        #offsets[k] = offsets[k] + crop
+	=#
+        imgs[k] = imgs[k][x:(end-x+1), y:(end-y+1)]
+        offsets[k] = offsets[k] + crop
       end
     end
 
@@ -220,7 +223,7 @@ function render_montaged(meshset::MeshSet; render_full=true, render_review=false
       println("Creating thumbnail for $index @ $(thumbnail_scale)x")
       thumbnail, _ = imscale(img, thumbnail_scale)
       write_thumbnail(thumbnail, index, thumbnail_scale)
-      #update_registry(index; offset = [0,0], image_size = size(img))
+      update_registry(index; offset = [0,0], image_size = size(img))
     end
   # catch e
   #   println(e)
