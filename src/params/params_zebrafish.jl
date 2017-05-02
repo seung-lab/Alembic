@@ -83,7 +83,7 @@ global PARAMS_MONTAGE = Dict(
 			     		"sigma_filter_low" => (3,:get_properties, >, 50, 0.50),
 			     		"r_filter_min" => (4,:get_properties, <, 0.03, "r_max"),
 			     		"r_filter_max" => (5,:get_properties, >, 1, "r_max"),
-						 "centered_norm_filter" => (6,:get_centered_norms, >, 55)
+						 "centered_norm_filter" => (6,:get_centered_norms, >, 25)
 						# "norm_filter" => (:get_norms_std_sigmas, >, 5)
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 2.5)
 					      ),
