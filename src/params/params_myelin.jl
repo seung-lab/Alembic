@@ -156,7 +156,7 @@ global PARAMS_ALIGNMENT = Dict(
 					"bandpass_sigmas" => (2.5, 15),
 #					"highpass_sigma" => 20,
 #					"lowpass_sigma" => 2.5,
-					"depth" => 2,
+					"depth" => 1,
 					"reflexive" => false),
 			     "solve" => Dict(
 					"mesh_spring_coeff" => MESH_SPRING_COEFF_ALIGNMENT,
@@ -168,6 +168,7 @@ global PARAMS_ALIGNMENT = Dict(
 			     	"ftol_gd" => FTOL_GD_ALIGNMENT,
 			     	"eta_newton" => ETA_NEWTON_ALIGNMENT,
 			     	"ftol_newton" => FTOL_NEWTON_ALIGNMENT),
+				#=
 			     "filter" => Dict(
 			     		"sigma_filter_high" => (:get_properties, >, 6, 0.95),
 			     		"sigma_filter_mid" => (:get_properties, >, 60, 0.75),
@@ -179,7 +180,8 @@ global PARAMS_ALIGNMENT = Dict(
 			     		"kurtosis_filter_edge" => (:get_properties, <, -1.60, "src_kurtosis"),
 					"centered_norm_filter" => (:get_centered_norms, >, 600)
 					      ), 
-#=			     "filter" => Dict(
+					      =#
+			     "filter" => Dict(
 			     		"sigma_filter_high" => (1,:get_properties, >, 5, 0.95),
 			     		"sigma_filter_mid" => (2,:get_properties, >, 75, 0.75),
 			     		"sigma_filter_low" => (3,:get_properties, >, 150, 0.50),
@@ -189,8 +191,8 @@ global PARAMS_ALIGNMENT = Dict(
 			     		"kurtosis_filter" => (6,:get_properties, >, 25, "src_kurtosis"),
 			     		"kurtosis_filter_edge" => (7,:get_properties, <, -1.60, "src_kurtosis"),
 					#"centered_norm_filter" => (:get_centered_norms, >, 200)
-					"centered_norm_filter" => (8,:get_centered_norms, >, 500)
-					      ),=#
+					"centered_norm_filter" => (8,:get_centered_norms, >, 300)
+					      ),
 			     "render" => Dict(
 					      ),
 			     "review" => Dict(
