@@ -49,7 +49,7 @@ function show_mesh(imgc, img2, nodes, node_dict, color=RGB(1,1,1))
             lines = hcat(lines, vcat(a, b))
         end
     end
-    an_lines = annotate!(imgc, img2, AnnotationLines(lines, color=color, 
+    an_lines = ImageView.annotate!(imgc, img2, AnnotationLines(lines, color=color, 
                                                             coord_order="yyxx"))
     return an_lines
 end
@@ -76,9 +76,9 @@ Returns:
 function show_vectors(imgc, img2, vectors, pt_color=RGB(0,0,1), 
                                                 vec_color=RGB(1,0,1))
   if length(vectors) > 0
-    an_vectors = annotate!(imgc, img2, AnnotationLines(vectors, color=vec_color, 
+    an_vectors = ImageView.annotate!(imgc, img2, AnnotationLines(vectors, color=vec_color, 
                                             coord_order="xxyy", linewidth=4))
-    an_points = annotate!(imgc, img2, AnnotationPoints(vectors[1:2,:], 
+    an_points = ImageView.annotate!(imgc, img2, AnnotationPoints(vectors[1:2,:], 
                                                     size=4, color=pt_color, shape='.'))
   end
 end
@@ -100,7 +100,7 @@ Returns:
 function show_points(imgc, img2, points; color=RGB(0,0,1), linewidth=2.0, size=10.0, shape='o', t=NaN)
   an_points = nothing
   if length(points) > 0
-    an_points = annotate!(imgc, img2, AnnotationPoints(points, 
+    an_points = ImageView.annotate!(imgc, img2, AnnotationPoints(points, 
                                                         color=color, 
                                                         linewidth=linewidth,
                                                         size=size,
@@ -112,7 +112,7 @@ end
 function show_lines(imgc, img2, lines; color=RGB(0,0,1), linewidth=3.0, t=NaN)
   an_vectors = nothing
   if length(lines) > 0
-    an_vectors = annotate!(imgc, img2, AnnotationLines(lines, color=color, t=t,
+    an_vectors = ImageView.annotate!(imgc, img2, AnnotationLines(lines, color=color, t=t,
                                             coord_order="xxyy", linewidth=linewidth))
   end
   return an_vectors
@@ -121,21 +121,21 @@ end
 function show_colored_lines(imgc, img2, lines, colors; linewidth=3.0, t=NaN)
   an_vectors = nothing
   if length(lines) > 0
-    an_vectors = annotate!(imgc, img2, AnnotationColoredLines(lines, colors, t=t,
+    an_vectors = ImageView.annotate!(imgc, img2, AnnotationColoredLines(lines, colors, t=t,
                                             coord_order="xxyy", linewidth=linewidth))
   end
   return an_vectors
 end 
 
 function show_text(imgc, img2, str, x, y; color=RGB(0,0,1), fontsize=30, t=NaN)
-  return annotate!(imgc, img2, AnnotationText(x, y, str, t=t, color=color, fontsize=fontsize, halign="left"))
+  return ImageView.annotate!(imgc, img2, AnnotationText(x, y, str, t=t, color=color, fontsize=fontsize, halign="left"))
 end
 
 function imwrite_box(img, point, radius, path, color=RGB(0,1,0), linewidth=1.0)
   upper_left = point - [radius, radius]
   lower_right = point + [radius, radius]
   imgc, img2 = view(img, pixelspacing=[1,1])
-  annotate!(imgc, img2, AnnotationBox(tuple(upper_left...), 
+  ImageView.annotate!(imgc, img2, AnnotationBox(tuple(upper_left...), 
                                         tuple(lower_right...),
                                         color=color, 
                                         linewidth=linewidth,
@@ -162,7 +162,7 @@ function create_image(bb)
 end
 
 function show_box(imgc, img2, upper_left, lower_right, color=RGB(0,1,0), linewidth=1.0)
-    an_box = annotate!(imgc, img2, AnnotationBox(tuple(upper_left...), 
+    an_box = ImageView.annotate!(imgc, img2, AnnotationBox(tuple(upper_left...), 
                                                     tuple(lower_right...),
                                                     color=color, 
                                                     linewidth=linewidth,

@@ -519,6 +519,9 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 	if sum(src_image[src_range[1], last(src_range[2])]) == 0 return nothing end
 	if sum(src_image[first(src_range[1]), src_range[2]]) == 0 return nothing end
 	if sum(src_image[last(src_range[1]), src_range[2]]) == 0 return nothing end=#
+
+
+	#=
 	if sum(src_image[src_range[1], round(Int64,median(src_range[2]))]) == 0 return nothing end
 	if sum(src_image[round(Int64,median(src_range[1])), src_range[2]]) == 0 return nothing end
 	dst_quart_range_i = linspace(dst_range[1][1], dst_range[1][end], 5)
@@ -529,6 +532,9 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 	cent_sum += sum(dst_image[round(Int64, dst_quart_range_i[2]), round(Int64, dst_quart_range_j[2]):round(Int64, dst_quart_range_j[4])]);
 	cent_sum += sum(dst_image[round(Int64, dst_quart_range_i[4]), round(Int64, dst_quart_range_j[2]):round(Int64, dst_quart_range_j[4])]);
 	if cent_sum == 0 return nothing end
+	=#
+
+
 #	if sum(dst_image[dst_range[1], round(Int64,linspace(dst_range[2][1], dst_range[2][end], 5)[2])]) == 0 return nothing end
 #	if sum(dst_image[dst_range[1], round(Int64,linspace(dst_range[2][1], dst_range[2][end], 5)[4])]) == 0 return nothing end
 #	if sum(dst_image[round(Int64,linspace(dst_range[1][1], dst_range[1][end], 5)[2]), dst_range[2]]) == 0 return nothing end
@@ -599,6 +605,9 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
   	if i_max == 0 
     		i_max = size(xc, 1)
   	end
+
+	i_max_int = i_max
+	j_max_int = j_max
 
 	#=if i_max != 1 && j_max != 1 && i_max != size(xc, 1) && j_max != size(xc, 2)
 		xc_w = sum(xc[i_max-1:i_max+1, j_max-1:j_max+1])
@@ -693,6 +702,23 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 	correspondence_properties["xcorr"] = Dict{Any, Any}();
 	correspondence_properties["xcorr"]["r_max"] = r_max;
 	correspondence_properties["xcorr"]["sigmas"] = Dict{Float64, Any}();
+	correspondence_properties["xcorr"]["difference"] = Dict{Int64, Any}();
+
+	function compute_r_diff(xc, rad, i_max, j_max)
+	  xc = copy(xc)
+
+	  r_max_original = maximum(xc)
+	  range_i = intersect(1:size(rad, 1), (-rad:rad) + i_max)
+	  range_j = intersect(1:size(rad, 2), (-rad:rad) + j_max)
+	  @inbounds xc[range_i, range_j] = -Inf
+	  r_max_new = maximum(xc)
+
+	  return r_max_original - r_max_new
+	end
+
+	for rad in [5, 10, 15]
+	    correspondence_properties["xcorr"]["difference"][rad] = compute_r_diff(xc, rad, i_max, j_max)
+	end
 	for beta in [0.5, 0.75, 0.95]
 	correspondence_properties["xcorr"]["sigmas"][beta] = sigma(xc, beta) / scale;
         end
