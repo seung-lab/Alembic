@@ -708,8 +708,8 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 	  xc = copy(xc)
 
 	  r_max_original = maximum(xc)
-	  range_i = intersect(1:size(rad, 1), (-rad:rad) + i_max)
-	  range_j = intersect(1:size(rad, 2), (-rad:rad) + j_max)
+	  range_i = intersect(1:size(xc, 1), (-rad:rad) + i_max)
+	  range_j = intersect(1:size(xc, 2), (-rad:rad) + j_max)
 	  @inbounds xc[range_i, range_j] = -Inf
 	  r_max_new = maximum(xc)
 
@@ -717,7 +717,7 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 	end
 
 	for rad in [5, 10, 15]
-	    correspondence_properties["xcorr"]["difference"][rad] = compute_r_diff(xc, rad, i_max, j_max)
+	    correspondence_properties["xcorr"]["difference"][rad] = compute_r_diff(xc, rad, i_max_int, j_max_int)
 	end
 	for beta in [0.5, 0.75, 0.95]
 	correspondence_properties["xcorr"]["sigmas"][beta] = sigma(xc, beta) / scale;
