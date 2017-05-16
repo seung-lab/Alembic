@@ -1,13 +1,13 @@
 #MESH_LENGTH_MONTAGE = 240
 MESH_LENGTH_MONTAGE = 100
 GLOBAL_OFFSETS_MONTAGE = true
-BLOCKMATCH_SCALE_MONTAGE = 1.0
-BLOCK_R_MONTAGE = 80
-SEARCH_R_MONTAGE = 400
+BLOCKMATCH_SCALE_MONTAGE = 0.5
+BLOCK_R_MONTAGE = 120
+SEARCH_R_MONTAGE = 150
 #SEARCH_R_MONTAGE = 550
 PREMATCH_MONTAGE = false
 MESH_SPRING_COEFF_MONTAGE = 1.0
-MATCH_SPRING_COEFF_MONTAGE = 100.0 
+MATCH_SPRING_COEFF_MONTAGE = 25.0 
 FTOL_CG_MONTAGE = 1e-8
 MAX_ITERS_MONTAGE = 2000
 USE_CONJUGATE_GRADIENT_MONTAGE = true
@@ -20,27 +20,29 @@ MESH_LENGTH_PREALIGNMENT = 2000
 GLOBAL_OFFSETS_PREALIGNMENT = false
 BLOCKMATCH_SCALE_PREALIGNMENT = 0.25
 BLOCK_R_PREALIGNMENT = 800
-SEARCH_R_PREALIGNMENT = 3500
+#SEARCH_R_PREALIGNMENT = 3500
+SEARCH_R_PREALIGNMENT = 5500
 PREMATCH_PREALIGNMENT = false
 PREMATCH_TEMPLATE_RATIO_PREALIGNMENT = 0.35
 PREMATCH_SCALE_PREALIGNMENT = 0.03
 PREMATCH_ANGLES_PREALIGNMENT = 0
-
+#=
 #son of alignment
 MESH_LENGTH_ALIGNMENT = 100
 GLOBAL_OFFSETS_ALIGNMENT = true
 BLOCKMATCH_SCALE_ALIGNMENT = 1.0
 BLOCK_R_ALIGNMENT = 300
 SEARCH_R_ALIGNMENT = 70 
+=#
 
-#=
+
 MESH_LENGTH_ALIGNMENT = 375
 GLOBAL_OFFSETS_ALIGNMENT = true
 BLOCKMATCH_SCALE_ALIGNMENT = 0.25
-BLOCK_R_ALIGNMENT = 800
+BLOCK_R_ALIGNMENT = 500
 #BLOCK_R_ALIGNMENT = 600
 #SEARCH_R_ALIGNMENT = 300
-SEARCH_R_ALIGNMENT = 500
+SEARCH_R_ALIGNMENT = 300
 #SEARCH_R_ALIGNMENT = 750 =#
 
 
@@ -80,15 +82,15 @@ global PARAMS_MONTAGE = Dict(
 			     "filter" => Dict(
 			     		"sigma_filter_high" => (1,:get_properties, >, 2, 0.95),
 			     		"sigma_filter_mid" => (2,:get_properties, >, 5, 0.75),
-			     		"sigma_filter_low" => (3,:get_properties, >, 150, 0.50),
+			     		"sigma_filter_low" => (3,:get_properties, >, 50, 0.50),
 			     		"r_filter_min" => (4,:get_properties, <, 0.03, "r_max"),
 			     		"r_filter_max" => (5,:get_properties, >, 1, "r_max"),
-						 "centered_norm_filter" => (6,:get_centered_norms, >, 55)
+						 "centered_norm_filter" => (6,:get_centered_norms, >, 25)
 						# "norm_filter" => (:get_norms_std_sigmas, >, 5)
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 2.5)
 					      ),
 			     "render" => Dict(
-			     		"crop" => [150, 150],
+			     		"crop" => [0, 0],
 			     		"thumbnail_scale" => 0.02
 					      ),
 			     "review" => Dict(
@@ -120,7 +122,7 @@ global PARAMS_PREALIGNMENT = Dict(
 					"blockmatch_scale" => BLOCKMATCH_SCALE_PREALIGNMENT,
 					"block_r" => BLOCK_R_PREALIGNMENT, 
 					"search_r" => SEARCH_R_PREALIGNMENT,
-					"bandpass_sigmas" => (0,0),
+					"bandpass_sigmas" => (2.5,12.5),
 					"depth" => 1,
 					"reflexive" => false),
 			     "solve" => Dict(
@@ -180,17 +182,19 @@ global PARAMS_ALIGNMENT = Dict(
 			     	"eta_newton" => ETA_NEWTON_ALIGNMENT,
 			     	"ftol_newton" => FTOL_NEWTON_ALIGNMENT),
 			     "filter" => Dict(
+			     #=
 			 # son of alignment
 					"dist" => (0,:get_properties,>,60,"norm"),
 			     		"sigma_filter_high" => (1,:get_properties, >, 3.0, 0.95),
 			     		"sigma_filter_mid" => (2,:get_properties, >, 15, 0.75),
 			     		"sigma_filter_low" => (3,:get_properties, >, 30, 0.50)
+					=#
 
-					#=
+					
 			 
-			     		"sigma_filter_high" => (1,:get_properties, >, 8, 0.95),
-			     		"sigma_filter_mid" => (2,:get_properties, >, 90, 0.75),
-			     		"sigma_filter_low" => (3,:get_properties, >, 200, 0.50),
+			     		"sigma_filter_high" => (1,:get_properties, >, 6.5, 0.95),
+			     		"sigma_filter_mid" => (2,:get_properties, >, 35, 0.75),
+			     		"sigma_filter_low" => (3,:get_properties, >, 100, 0.50),
 			     		"r_filter" => (4,:get_properties, <, 0.03, "r_max"),
 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 5),
 			     		"dyn_range" => (5,:get_properties, <, 0.25, "src_normalized_dyn_range"),
@@ -198,7 +202,7 @@ global PARAMS_ALIGNMENT = Dict(
 			     		"kurtosis_filter_edge" => (6,:get_properties, <, -1.90, "src_kurtosis"),
 					"centered_norm_filter" => (7,:get_centered_norms, >, 250),
 					"consensus" => (8,:get_normalized_norm_from_filtered_consensus, >, 4, 4000)
-					=#
+					
 					
 					      ),
 			     "render" => Dict(

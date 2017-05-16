@@ -142,7 +142,7 @@ include("core/solve.jl")
 # include("datasets/dataset_zebrafish.jl")
 #include("datasets/dataset_zebrafish.jl")
 #include("datasets/dataset_default.jl")
-#include("params/params_default.jl")
+#include("params/params_zebrafish.jl")
 #=
 if ON_CLOUD
   include("datasets/dataset_zebrafish.jl")
