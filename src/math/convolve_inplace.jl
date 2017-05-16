@@ -1,14 +1,14 @@
 function init_Convolve()
 
-global CONV_RESULT = Array{Float64, 2}(10,10);
-global COMPLEX_CONV_INTERMEDIATE_A = Array{Complex{Float64}, 2}(6,10);
-global COMPLEX_CONV_INTERMEDIATE_B = Array{Complex{Float64}, 2}(6,10);
+global CONV_RESULT = zeros(Float64, 10,10);
+global COMPLEX_CONV_INTERMEDIATE_A = zeros(Complex{Float64}, 6,10);
+global COMPLEX_CONV_INTERMEDIATE_B = zeros(Complex{Float64}, 6,10);
 
-global CONV_INTERMEDIATE_A = Array{Float64, 2}(10,10);
-global CONV_INTERMEDIATE_B = Array{Float64, 2}(10,10);
+global CONV_INTERMEDIATE_A = zeros(Float64, 10,10);
+global CONV_INTERMEDIATE_B = zeros(Float64, 10,10);
 
-global IMG_CROPPED_FACTORABLE = Array{Float64, 2}(10,10);
-global TEMPLATE_CROPPED_FACTORABLE = Array{Float64, 2}(10,10);
+global IMG_CROPPED_FACTORABLE = zeros(Float64, 10,10);
+global TEMPLATE_CROPPED_FACTORABLE = zeros(Float64, 10,10);
 
 global FFT_INPLACE_PLAN_A = plan_fft!(COMPLEX_CONV_INTERMEDIATE_A)
 global FFT_INPLACE_PLAN_B = plan_fft!(COMPLEX_CONV_INTERMEDIATE_B)
@@ -17,12 +17,12 @@ global IFFT_INPLACE_PLAN_A = plan_ifft!(COMPLEX_CONV_INTERMEDIATE_A)
 global RFFT_PLAN = plan_rfft(CONV_INTERMEDIATE_A);
 global IRFFT_PLAN = plan_irfft(COMPLEX_CONV_INTERMEDIATE_A, 10);
 
-global CONV_DT = Array{Float64, 2}();
-global CONV_IMGPAD = Array{Float64, 2}();
-global CONV_SUM = Array{Float64, 2}();
-global CONV_SUM2 = Array{Float64, 2}();
-global LOCAL_SUM = Array{Float64, 2}();
-global LOCAL_SUM2 = Array{Float64, 2}();
+global CONV_DT = zeros(Float64, );
+global CONV_IMGPAD = zeros(Float64, );
+global CONV_SUM = zeros(Float64, );
+global CONV_SUM2 = zeros(Float64, );
+global LOCAL_SUM = zeros(Float64, );
+global LOCAL_SUM2 = zeros(Float64, );
 
 end
 
@@ -382,8 +382,8 @@ function normxcorr2_preallocated(template,img; shape = "valid", highpass_sigma =
     @fastmath @inbounds cumsum12!(CONV_IMGPAD)
 #    @fastmath @inbounds s=CONV_SUM
     if size(LOCAL_SUM) != (m1-n1+1, m2-n2+1)
-      global LOCAL_SUM = Array(Float64, m1-n1+1, m2-n2+1);
-      global LOCAL_SUM2 = Array(Float64, m1-n1+1, m2-n2+1);
+      global LOCAL_SUM = zeros(Float64, m1-n1+1, m2-n2+1);
+      global LOCAL_SUM2 = zeros(Float64, m1-n1+1, m2-n2+1);
     end
 
 	@fastmath @inbounds calculate_local_sums(LOCAL_SUM, CONV_SUM, LOCAL_SUM2, CONV_SUM2, LL[1], LL[2], n1, n2);

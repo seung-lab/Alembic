@@ -400,14 +400,14 @@ end
 function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, bandpass_sigmas; from_disk = false, meanpad = true)
   	# the following two if statements should only ever be called together
 	if size(SRC_PATCH_FULL) != map(length,src_range)
-		global SRC_PATCH_FULL = Array{Float64, 2}(map(length, src_range)...);
-		global SRC_PATCH_FULL_H = Array{Float64, 2}(map(length, src_range)...);
+		global SRC_PATCH_FULL = zeros(Float64, map(length, src_range)...);
+		global SRC_PATCH_FULL_H = zeros(Float64, map(length, src_range)...);
 #		global SRC_PATCH_G_L = zeros(Float64, map(length, src_range)...)
 #		global SRC_PATCH_G_H = zeros(Float64, map(length, src_range)...)
 	end
 	if size(DST_PATCH_FULL) != map(length,dst_range_full)
-		global DST_PATCH_FULL = Array{Float64, 2}(map(length, dst_range_full)...);
-		global DST_PATCH_FULL_H = Array{Float64, 2}(map(length, dst_range_full)...);
+		global DST_PATCH_FULL = zeros(Float64, map(length, dst_range_full)...);
+		global DST_PATCH_FULL_H = zeros(Float64, map(length, dst_range_full)...);
 #		global DST_PATCH_G_L = zeros(Float64, map(length, dst_range_full)...)
 #		global DST_PATCH_G_H = zeros(Float64, map(length, dst_range_full)...)
 	      else
@@ -572,7 +572,7 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 	xc = normxcorr2_preallocated(src_image[src_range[1], src_range[2]], dst_image[dst_range[1], dst_range[2]]);
 	end
 	=#
- if (prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, bandpass_sigmas; meanpad = meanpad) == nothing) return nothing end;
+ if (prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, bandpass_sigmas; meanpad = meanpad) == nothing) println("This should never be seen"); return nothing end;
 #	prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma)
 	xc = normxcorr2_preallocated(SRC_PATCH, DST_PATCH; shape = full ? "full" : "valid");
 #=
@@ -598,7 +598,7 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 	end=#
 
 	r_max = maximum(xc)
-	if isnan(r_max) return nothing end;
+	if isnan(r_max) println("This should never be seen either"); return nothing end;
 #	if r_max > 1.0 println("rounding error") end
   	ind = findfirst(r_max .== xc)
 	i_max, j_max = ind2sub(xc, ind)
