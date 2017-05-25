@@ -6,7 +6,6 @@ HDF5
 JLD
 Colors
 FixedPointNumbers
-Base.Test
 Cairo
 IterativeSolvers
 ImageRegistration
