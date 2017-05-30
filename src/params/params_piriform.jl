@@ -30,23 +30,23 @@ PREMATCH_SCALE_PREALIGNMENT = 0.05
 PREMATCH_ANGLES_PREALIGNMENT = 0
 
 # son of alignment
-# MESH_LENGTH_ALIGNMENT = 200
-# GLOBAL_OFFSETS_ALIGNMENT = true
-# BLOCKMATCH_SCALE_ALIGNMENT = 0.50
-# BLOCK_R_ALIGNMENT = 200
-# SEARCH_R_ALIGNMENT = 80
-# PREMATCH_ALIGNMENT = false
-# MESH_SPRING_COEFF_ALIGNMENT = 1.0
-# MATCH_SPRING_COEFF_ALIGNMENT = 20.0
-# FTOL_CG_ALIGNMENT = 1e-6
-# MAX_ITERS_ALIGNMENT = 2000
-# USE_CONJUGATE_GRADIENT_ALIGNMENT = true
-# ETA_GD_ALIGNMENT = 0.01
-# FTOL_GD_ALIGNMENT = 3e-3
-# ETA_NEWTON_ALIGNMENT = 0.5
-# FTOL_NEWTON_ALIGNMENT = 1e-8
+ MESH_LENGTH_ALIGNMENT = 200
+ GLOBAL_OFFSETS_ALIGNMENT = true
+ BLOCKMATCH_SCALE_ALIGNMENT = 0.25
+ BLOCK_R_ALIGNMENT = 400
+ SEARCH_R_ALIGNMENT = 150
+ PREMATCH_ALIGNMENT = false
+ MESH_SPRING_COEFF_ALIGNMENT = 1.0
+ MATCH_SPRING_COEFF_ALIGNMENT = 20.0
+ FTOL_CG_ALIGNMENT = 1e-6
+ MAX_ITERS_ALIGNMENT = 2000
+ USE_CONJUGATE_GRADIENT_ALIGNMENT = true
+ ETA_GD_ALIGNMENT = 0.01
+ FTOL_GD_ALIGNMENT = 3e-3
+ ETA_NEWTON_ALIGNMENT = 0.5
+ FTOL_NEWTON_ALIGNMENT = 1e-8
 
-
+#=`
 #father of alignment
 MESH_LENGTH_ALIGNMENT = 2000
 GLOBAL_OFFSETS_ALIGNMENT = true
@@ -64,6 +64,7 @@ ETA_GD_ALIGNMENT = 0.01
 FTOL_GD_ALIGNMENT = 3e-3
 ETA_NEWTON_ALIGNMENT = 0.5
 FTOL_NEWTON_ALIGNMENT = 1e-8
+=#
 
 
 global PARAMS_MONTAGE = Dict(
@@ -167,40 +168,40 @@ global PARAMS_PREALIGNMENT = Dict(
 					)
 			     )
 # # son of alignment
-# global PARAMS_ALIGNMENT = Dict(
-# 			     "mesh" => Dict(
-# 					"mesh_length" => MESH_LENGTH_ALIGNMENT), 
-# 			     "match" => Dict(
-# 					"prematch" => PREMATCH_ALIGNMENT,
-# 					"blockmatch_scale" => BLOCKMATCH_SCALE_ALIGNMENT,
-# 					"block_r" => BLOCK_R_ALIGNMENT, 
-# 					"search_r" => SEARCH_R_ALIGNMENT,
-# 					"bandpass_sigmas" => (3, 15),
+ global PARAMS_ALIGNMENT = Dict(
+ 			     "mesh" => Dict(
+ 					"mesh_length" => MESH_LENGTH_ALIGNMENT), 
+ 			     "match" => Dict(
+ 					"prematch" => PREMATCH_ALIGNMENT,
+ 					"blockmatch_scale" => BLOCKMATCH_SCALE_ALIGNMENT,
+ 					"block_r" => BLOCK_R_ALIGNMENT, 
+ 					"search_r" => SEARCH_R_ALIGNMENT,
+ 					"bandpass_sigmas" => (3, 15),
 # #					"highpass_sigma" => 20,
 # #					"lowpass_sigma" => 2.5,
-# 					"depth" => 1,
-# 					"reflexive" => false),
-# 			     "solve" => Dict(
-# 					"mesh_spring_coeff" => MESH_SPRING_COEFF_ALIGNMENT,
-# 					"match_spring_coeff" => MATCH_SPRING_COEFF_ALIGNMENT,
-# 					"ftol_cg" => FTOL_CG_ALIGNMENT,
-# 					"max_iters" => MAX_ITERS_ALIGNMENT,
-# 			     	"use_conjugate_gradient" => USE_CONJUGATE_GRADIENT_ALIGNMENT,
-# 			     	"eta_gd" => ETA_GD_ALIGNMENT,
-# 			     	"ftol_gd" => FTOL_GD_ALIGNMENT,
-# 			     	"eta_newton" => ETA_NEWTON_ALIGNMENT,
-# 			     	"ftol_newton" => FTOL_NEWTON_ALIGNMENT),
-# 			     "filter" => Dict(
-# 			     		"sigma_filter_high" => (:get_properties, >, 6, 0.95),
-# 			     		"sigma_filter_mid" => (:get_properties, >, 60, 0.75),
-# 			     		"sigma_filter_low" => (:get_properties, >, 360, 0.50),
-# 			     		"dyn_range_filter" => (:get_properties, <, 0.75, "src_normalized_dyn_range"),
-# 			     		"r_filter" => (:get_properties, <, 0.0275, "r_max"),
-# 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 5),
-# 			     		"kurtosis_filter" => (:get_properties, >, 25, "src_kurtosis"),
-# 			     		"kurtosis_filter_edge" => (:get_properties, <, -1.60, "src_kurtosis"),
-# 					"centered_norm_filter" => (:get_centered_norms, >, 600)
-# 					      ), 
+ 					"depth" => 1,
+ 					"reflexive" => false),
+ 			     "solve" => Dict(
+ 					"mesh_spring_coeff" => MESH_SPRING_COEFF_ALIGNMENT,
+ 					"match_spring_coeff" => MATCH_SPRING_COEFF_ALIGNMENT,
+ 					"ftol_cg" => FTOL_CG_ALIGNMENT,
+ 					"max_iters" => MAX_ITERS_ALIGNMENT,
+			     	"use_conjugate_gradient" => USE_CONJUGATE_GRADIENT_ALIGNMENT,
+ 			     	"eta_gd" => ETA_GD_ALIGNMENT,
+ 			     	"ftol_gd" => FTOL_GD_ALIGNMENT,
+ 			     	"eta_newton" => ETA_NEWTON_ALIGNMENT,
+ 			     	"ftol_newton" => FTOL_NEWTON_ALIGNMENT),
+ 			     "filter" => Dict(
+ 			     		"sigma_filter_high" => (1,:get_properties, >, 6, 0.95),
+ 			     		"sigma_filter_mid" => (2,:get_properties, >, 60, 0.75),
+ 			     		"sigma_filter_low" => (3,:get_properties, >, 200, 0.50),
+ 			     		"dyn_range_filter" => (4,:get_properties, <, 0.75, "src_normalized_dyn_range"),
+ 			     		"r_filter" => (5,:get_properties, <, 0.0275, "r_max"),
+ 			     		# "norm_filter" => (:get_norms_std_sigmas, >, 5),
+ 			     		"kurtosis_filter" => (6,:get_properties, >, 25, "src_kurtosis"),
+ 			     		"kurtosis_filter_edge" => (7,:get_properties, <, -1.60, "src_kurtosis"),
+ 					"centered_norm_filter" => (:get_centered_norms, >, 80)
+ 					      ), 
 # 			     "filter" => Dict(
 # 			     		"sigma_filter_high" => (1,:get_properties, >, 3, 0.95),
 # 			     		"sigma_filter_mid" => (2,:get_properties, >, 5, 0.75),
@@ -212,21 +213,21 @@ global PARAMS_PREALIGNMENT = Dict(
 # 			     		"kurtosis_filter_edge" => (7,:get_properties, <, -1.60, "src_kurtosis"),
 # #					"centered_norm_filter" => (8,:get_centered_norms, >, 600)
 # 					      ),
-# 			     "render" => Dict(
-# 					      ),
-# 			     "review" => Dict(
-# 			     		"too_few_corresps" => (:count_correspondences, <, 100),
-# 						"rejected_ratio" => (:get_ratio_rejected, >, 0.35),
-# 						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.80),
-# 						# "norm_outliers" => (:count_outlier_norms, >, 0, 4),
-# #						"centered_norm" => (:get_maximum_centered_norm, >, 500)
-# 					      ),
-# 			     "registry" => Dict(
-# 					"global_offsets" => GLOBAL_OFFSETS_ALIGNMENT
-# 					)
-# )
+ 			     "render" => Dict(
+ 					      ),
+ 			     "review" => Dict(
+ 			     		"too_few_corresps" => (:count_correspondences, <, 100),
+ 						"rejected_ratio" => (:get_ratio_rejected, >, 0.10),
+ 						"ratio_edge_proximity" => (:get_ratio_edge_proximity, >, 0.80),
+ 						# "norm_outliers" => (:count_outlier_norms, >, 0, 4),
+						"centered_norm" => (:get_maximum_centered_norm, >, 50)
+ 					      ),
+ 			     "registry" => Dict(
+ 					"global_offsets" => GLOBAL_OFFSETS_ALIGNMENT
+ 					)
+ )
 
-
+#=
 #father of alignment
 global PARAMS_ALIGNMENT = Dict(
 			     "mesh" => Dict(
@@ -287,6 +288,7 @@ global PARAMS_ALIGNMENT = Dict(
 					)
 )
 
+=#
 
 global PARAMS_ALIGNMENT_SKIPPED = deepcopy(PARAMS_ALIGNMENT);
 PARAMS_ALIGNMENT_SKIPPED["match"]["search_r"] = 1400;

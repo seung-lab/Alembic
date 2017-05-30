@@ -515,13 +515,13 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 			sum(dst_image[first(dst_range[1]), dst_range[2]]) == 0 && sum(dst_image[last(dst_range[1]), dst_range[2]]) == 0 return nothing end=#
 
 	#see if any of the edges in the template are fully padded
-#=	if sum(src_image[src_range[1], first(src_range[2])]) == 0 return nothing end
+	if sum(src_image[src_range[1], first(src_range[2])]) == 0 return nothing end
 	if sum(src_image[src_range[1], last(src_range[2])]) == 0 return nothing end
 	if sum(src_image[first(src_range[1]), src_range[2]]) == 0 return nothing end
-	if sum(src_image[last(src_range[1]), src_range[2]]) == 0 return nothing end=#
+	if sum(src_image[last(src_range[1]), src_range[2]]) == 0 return nothing end
 
 
-	#=
+	
 	if sum(src_image[src_range[1], round(Int64,median(src_range[2]))]) == 0 return nothing end
 	if sum(src_image[round(Int64,median(src_range[1])), src_range[2]]) == 0 return nothing end
 	dst_quart_range_i = linspace(dst_range[1][1], dst_range[1][end], 5)
@@ -532,7 +532,7 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 	cent_sum += sum(dst_image[round(Int64, dst_quart_range_i[2]), round(Int64, dst_quart_range_j[2]):round(Int64, dst_quart_range_j[4])]);
 	cent_sum += sum(dst_image[round(Int64, dst_quart_range_i[4]), round(Int64, dst_quart_range_j[2]):round(Int64, dst_quart_range_j[4])]);
 	if cent_sum == 0 return nothing end
-	=#
+	
 
 
 #	if sum(dst_image[dst_range[1], round(Int64,linspace(dst_range[2][1], dst_range[2][end], 5)[2])]) == 0 return nothing end
@@ -598,7 +598,7 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 	end=#
 
 	r_max = maximum(xc)
-	if isnan(r_max) println("This should never be seen either"); return nothing end;
+	if isnan(r_max) return nothing end;
 #	if r_max > 1.0 println("rounding error") end
   	ind = findfirst(r_max .== xc)
 	i_max, j_max = ind2sub(xc, ind)
