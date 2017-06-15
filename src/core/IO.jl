@@ -220,7 +220,7 @@ function ufixed8_to_uint8(img)
   reinterpret(UInt8, -img)
 end
 
-function get_slice(index::Index, bb::ImageRegistration.BoundingBox, scale=1.0; is_global=true, thumb=false)
+function get_slice(index::FourTupleIndex, bb::ImageRegistration.BoundingBox, scale=1.0; is_global=true, thumb=false)
   if is_global
     if thumb
       offset = [0,0]
@@ -232,7 +232,7 @@ function get_slice(index::Index, bb::ImageRegistration.BoundingBox, scale=1.0; i
   return get_slice(index, bb_to_slice(bb), scale, thumb=thumb)
 end
 
-function get_slice(index::Index, slice::Tuple{UnitRange{Int64},UnitRange{Int64}}, scale=1.0; thumb=false)
+function get_slice(index::FourTupleIndex, slice::Tuple{UnitRange{Int64},UnitRange{Int64}}, scale=1.0; thumb=false)
   path = thumb ? get_path("thumbnail", index) : get_path(index)
   return get_slice(path, slice, scale)
 end
@@ -267,7 +267,7 @@ function get_slice(path::AbstractString, slice, scale=1.0)
   return output
 end
 
-function load_mask(index::Index; clean=true)
+function load_mask(index::FourTupleIndex; clean=true)
     path = get_path("mask", index)
     return load_mask(path, clean=clean)
 end
@@ -344,7 +344,7 @@ function expunge_tiles(indices)
   purge_from_registry!(indices)
 end
 
-function expunge_tile(index::Index)
+function expunge_tile(index::FourTupleIndex)
   assert(is_premontaged(index))
   src_path = get_path(index)
   dst_path = get_path("expunge", index)
@@ -357,7 +357,7 @@ function expunge_tile(index::Index)
   purge_from_registry!(index)
 end
 
-function expunge_section(index::Index)
+function expunge_section(index::FourTupleIndex)
   tiles = get_index_range(premontaged(index), premontaged(index))
   for tile in tiles
     expunge_tile(tile)
@@ -377,7 +377,7 @@ function expunge_section(index::Index)
   end
 end
 
-function resurrect_tile(index::Index)
+function resurrect_tile(index::FourTupleIndex)
   assert(is_premontaged(index))
   fn = get_name(index)
   path = joinpath(EXPUNGED_DIR, fn)
@@ -388,7 +388,7 @@ function resurrect_tile(index::Index)
   mv(path, new_path)
 end
 
-function is_expunged(index::Index)
+function is_expunged(index::FourTupleIndex)
   assert(is_premontaged(index))
   fn = get_filename(index)
   expunged_path = joinpath(EXPUNGED_DIR, fn)
@@ -396,7 +396,7 @@ function is_expunged(index::Index)
   return assert(isfile(expunged_path) && !isfile(included_path))
 end
 
-function make_stack(firstindex::Index, lastindex::Index, slice=(1:255, 1:255); scale=1.0, thumb=false)
+function make_stack(firstindex::FourTupleIndex, lastindex::FourTupleIndex, slice=(1:255, 1:255); scale=1.0, thumb=false)
   # dtype = h5read(get_path(firstindex), "dtype")
   dtype = UInt8
   global_bb = ImageRegistration.slice_to_bb(slice)
@@ -440,18 +440,18 @@ function make_slice(center, radius)
   return (x-radius+1):(x+radius), (y-radius+1):(y+radius)
 end
 
-function save_stack(firstindex::Index, lastindex::Index, center, radius; scale=1.0)
+function save_stack(firstindex::FourTupleIndex, lastindex::FourTupleIndex, center, radius; scale=1.0)
   slice = make_slice(center, radius)
   stack = make_stack(firstindex, lastindex, slice, scale=scale)
   return save_stack(stack, firstindex, lastindex, slice, scale=scale)
 end
 
-function save_stack(firstindex::Index, lastindex::Index, slice=(1:200, 1:200); scale=1.0)
+function save_stack(firstindex::FourTupleIndex, lastindex::FourTupleIndex, slice=(1:200, 1:200); scale=1.0)
   stack = make_stack(firstindex, lastindex, slice, scale=scale)
   return save_stack(stack, firstindex, lastindex, slice, scale=scale)
 end
 
-function save_stack(stack::Array{UInt8,3}, firstindex::Index, lastindex::Index, slice=(1:200, 1:200); scale=1.0)
+function save_stack(stack::Array{UInt8,3}, firstindex::FourTupleIndex, lastindex::FourTupleIndex, slice=(1:200, 1:200); scale=1.0)
   # if sum(stack) == 0 return end
   # perm = [3,2,1]
   # stack = permutedims(stack, perm)

@@ -74,30 +74,30 @@ function is_preceding(A_index, B_index, within = 1)
   return false;
 end
 
-function get_neighbor(index::Index, direction=[0,1])
+function get_neighbor(index::FourTupleIndex, direction=[0,1])
   if !(is_premontaged(index)) return NO_INDEX end
   neighbor_index = (index[1:2]..., index[3]+direction[1], index[4]+direction[2])
   if !in_registry(neighbor_index) return NO_INDEX end
   return neighbor_index
 end
 
-function get_above(index::Index)
+function get_above(index::FourTupleIndex)
   return get_neighbor(index, [-1,0])
 end
 
-function get_below(index::Index)
+function get_below(index::FourTupleIndex)
   return get_neighbor(index, [1,0])
 end
 
-function get_right(index::Index)
+function get_right(index::FourTupleIndex)
   return get_neighbor(index, [0,1])
 end
 
-function get_left(index::Index)
+function get_left(index::FourTupleIndex)
   return get_neighbor(index, [0,-1])
 end
 
-function get_cardinal_neighbors(index::Index)
+function get_cardinal_neighbors(index::FourTupleIndex)
   neighbors = [get_above(index), get_left(index), get_below(index), get_right(index)] 
   return filter(i->i!=NO_INDEX, neighbors)
 end
@@ -151,7 +151,7 @@ function find_in_registry(index)
   return findfirst(registry[:,2], index);
 end
 
-function in_registry(index::Index)
+function in_registry(index::FourTupleIndex)
   if index[3] == 0 || index[4] == 0 return false end
   return find_in_registry(index) != 0
 end
@@ -176,7 +176,7 @@ end
 """
 Remove index from registry file & reload that registry
 """
-function purge_from_registry!(index::Index)
+function purge_from_registry!(index::FourTupleIndex)
   # assert(is_premontaged(index))
   registry_path = get_registry_path(index)
   registry = readdlm(registry_path)
@@ -187,7 +187,7 @@ function purge_from_registry!(index::Index)
   reload_registry(index)
 end
 
-function clean_registry!(index::Index)
+function clean_registry!(index::FourTupleIndex)
   return clean_registry!(get_registry(index))
 end
 
@@ -211,7 +211,7 @@ function get_metadata(index)
 end
 
 # rotated offset is just the offset of the image once rotated around [0,0]
-function get_offset(index::Index; rotated = false)
+function get_offset(index::FourTupleIndex; rotated = false)
     if myid() != IO_PROC return Point(remotecall_fetch(IO_PROC, ()->get_offset(index; rotated = rotated)))
     else
     metadata = get_metadata(index);
@@ -224,7 +224,7 @@ function get_offset(index::Index; rotated = false)
     ret = metadata[4:5];
       end
     end
-      return Point(ret);
+      return Point{Float64}(ret);
 end
 
 function get_rotation(index)

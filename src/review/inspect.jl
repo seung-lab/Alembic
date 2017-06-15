@@ -190,7 +190,7 @@ function view_match(meshset::MeshSet, match_ind)
   img = zeros(UInt32, size(img_orig,1)+pad*2, size(img_orig,2)+pad*2)
   img[pad:end-pad-1, pad:end-pad-1] = img_orig
 
-  params = deepcopy(meshset.properties["params"]["match"])
+  params = deepcopy(meshset.properties[:params][:match])
   params["offset"] = offset - pad
   params["scale"] = scale
   params["match_index"] = match_ind
@@ -889,7 +889,7 @@ end
 function view_inspection_statistics(meshset::MeshSet, match_ind::Int64)
   calculate_post_statistics!(meshset, match_ind)
   match = meshset.matches[match_ind]
-  sr = get_dfs(meshset.properties, "search_r")
+  sr = get_dfs(meshset.properties, :search_r)
   mesh = get_mesh(meshset, get_src_index(match))
 
   fig = figure("image pair statistics", figsize=(20,20))
@@ -930,7 +930,7 @@ function view_inspection_statistics(meshset::MeshSet, match_ind::Int64)
     ha="right",
     va="top",
     fontsize=16)
-  annotate(string("Flags:\n", join(Base.keys(match.properties["review"]["flags"]), "\n")),
+  annotate(string("Flags:\n", join(Base.keys(match.properties[:review]["flags"]), "\n")),
     xy=[0;1],
     xycoords="figure fraction",
     xytext=[10,-10],

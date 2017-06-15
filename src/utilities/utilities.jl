@@ -71,7 +71,7 @@ function imrotate(img, angle; kwargs...)
   return imwarp(img, tform; kwargs...)[1];
 end
 
-function make_rotation_matrix_from_index(index::Index)
+function make_rotation_matrix_from_index(index::FourTupleIndex)
 	rotation = get_rotation(index);
 	image_size = get_image_size(index);
 	return make_rotation_matrix(rotation, image_size);

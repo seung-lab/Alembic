@@ -12,7 +12,7 @@
 # global ROI_LAST = (9,163,0,0)			# where the dataset ends
 
 # gets the canonical name of the image associated with the index
-function get_name(index::Index)
+function get_name(index::FourTupleIndex)
     if is_overview(index)	    	return string(index[1], ",", index[2], "_overview")
     elseif is_premontaged(index)	return string(index)
     elseif is_montaged(index)		return string(index[1], ",", index[2], "_montaged")
@@ -27,7 +27,7 @@ end
 function get_name(object_type::Union{DataType, AbstractString}, index)	
 	if object_type == "MeshSet" || string(object_type) == "MeshSet"
 	  # hack for old names
-	  if typeof(index) == Tuple{Index, Index}
+	  if typeof(index) == Tuple{FourTupleIndex, FourTupleIndex}
 		firstindex = index[1]
 		lastindex = index[2]
 		if is_premontaged(firstindex) return "$(firstindex[1]),$(firstindex[2])_montaged";
@@ -41,7 +41,7 @@ function get_name(object_type::Union{DataType, AbstractString}, index)
 	      #end hack
   	# singleton case
 	if typeof(index) == Index 			return string(object_type, "(", index, ")")	
-        elseif typeof(index) == Tuple{Index, Index} 	return string(object_type, index)	end
+        elseif typeof(index) == Tuple{FourTupleIndex, FourTupleIndex} 	return string(object_type, index)	end
 end
 # used for saving - gets the canonical name of the object
 function get_name(object)		
@@ -57,12 +57,12 @@ function get_name(object)
 	      #end hack
 	index = get_index(object)
 	if typeof(index) == Index 			return string(typeof(object), "(", index, ")")	
-        elseif typeof(index) == Tuple{Index, Index} 	return string(typeof(object), index)	end
+        elseif typeof(index) == Tuple{FourTupleIndex, FourTupleIndex} 	return string(typeof(object), index)	end
       end
 end
 
 # gets the full directory of the index as if it were an image - e.g. .../1_premontaged
-function get_dir_path(index::Union{Index, Tuple{Index, Index}})
+function get_dir_path(index::Union{FourTupleIndex, Tuple{FourTupleIndex, FourTupleIndex}})
   if typeof(index) != Index index = index[1] end
     if is_overview(index)		return OVERVIEW_DIR_PATH
     elseif is_premontaged(index) 	return PREMONTAGED_DIR_PATH
@@ -105,7 +105,7 @@ end
 
 # function get_path()
 # methods: 
-function get_path(index::Index, ext = ".h5")
+function get_path(index::FourTupleIndex, ext = ".h5")
   return joinpath(get_dir_path(index), string(get_name(index), ext))
 end
 function get_path(object_type::Union{DataType, AbstractString}, index)
@@ -171,10 +171,10 @@ function parse_name(name::AbstractString)
 end
 
 function parse_registry(path::AbstractString)
-    registry = cell(0, 0)
+    registry = Array{Any}(0, 0)
     if isfile(path)
         file = readdlm(path)
-        registry = cell(size(file, 1), size(file, 2) + 1) # name, index, dx, dy
+        registry = Array{Any}(size(file, 1), size(file, 2) + 1) # name, index, dx, dy
         for i in 1:size(registry, 1)
             index = parse_name(file[i, 1])
             registry[i, 1] = get_name(index)

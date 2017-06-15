@@ -101,7 +101,7 @@ function DaemonTask.execute(task::RenderTaskDetails,
 
     
     ms = Main.load(Main.MeshSet, task.payload_info.indices...)
-#    ms.properties["params"]["solve"]["max_iters"] = 5000
+#    ms.properties[:params][:solve][:max_iters] = 5000
 #    Main.elastic_solve!(ms, from_current = false);
 #    Main.save(ms);
 

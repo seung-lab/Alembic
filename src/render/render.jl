@@ -18,7 +18,7 @@ end
 """
 Reverts transform that went from index and returns the image at the index
 """
-function meshwarp_revert(index::Index, img = get_image(nextstage(index)), interp = false)
+function meshwarp_revert(index::FourTupleIndex, img = get_image(nextstage(index)), interp = false)
   mesh = load("Mesh", index)
   src_nodes = hcat(get_nodes(mesh; globalized = true, use_post = false)...)'
   dst_nodes = hcat(get_nodes(mesh; globalized = true, use_post = true)...)'
@@ -66,7 +66,7 @@ end
 """
 Applies mask associated with the image and writes to finished
 """
-function apply_mask(index::Index)
+function apply_mask(index::FourTupleIndex)
 	img = get_image(index).s
 	mask = load("mask", index)
 	fillpoly!(img, Array{Int64,1}(mask[:, 2]), Array{Int64,1}(mask[:, 1]), zero(eltype(img)); reverse = true);
@@ -97,7 +97,7 @@ function render(ms::MeshSet; review=false)
 end
 
 # todo make universal cleaner 
-function render(index::Index; render_full=true)
+function render(index::FourTupleIndex; render_full=true)
   if is_montaged(index)
     ms = load(MeshSet, index);
     render_montaged(ms, render_full=true, render_review=false, flagged_only=true)
@@ -131,7 +131,7 @@ end
 """
 Multiple dispatch so Dodam doesn't have to type sooo much
 """
-function render_montaged(index::Index; render_full=true, render_review=true)
+function render_montaged(index::FourTupleIndex; render_full=true, render_review=true)
   meshset = load("MeshSet", index)
   render_montaged(meshset; render_full=render_full, render_review=render_review)
 end
@@ -140,12 +140,12 @@ function render_montaged(meshset::MeshSet; render_full=true, render_review=false
   assert(is_premontaged(meshset.meshes[1].index))
   crop = [0,0]
   thumbnail_scale = 0.02
-  render_params = meshset.properties["params"]["render"]
+  render_params = meshset.properties[:params][:render]
   if haskey(render_params, "crop")
     crop = render_params["crop"]
   end
-  if haskey(render_params, "thumbnail_scale")
-    thumbnail_scale = render_params["thumbnail_scale"]
+  if haskey(render_params, :thumbnail_scale)
+    thumbnail_scale = render_params[:thumbnail_scale]
   end
   index = montaged(meshset.meshes[1].index)
   if is_flagged(meshset) 
@@ -232,7 +232,7 @@ function render_montaged(meshset::MeshSet; render_full=true, render_review=false
 
 end
 
-function calculate_relative_transforms(firstindex::Index, lastindex::Index)
+function calculate_relative_transforms(firstindex::FourTupleIndex, lastindex::FourTupleIndex)
   assert(is_montaged(firstindex) && is_montaged(lastindex))
   for index in get_index_range(firstindex, lastindex)
     ms = load(MeshSet, prealigned(index))
@@ -246,7 +246,7 @@ function calculate_relative_transforms(firstindex::Index, lastindex::Index)
   end
 end
 
-function compile_cumulative_transforms(firstindex::Index, lastindex::Index)
+function compile_cumulative_transforms(firstindex::FourTupleIndex, lastindex::FourTupleIndex)
   assert(is_montaged(firstindex) && is_montaged(lastindex))
   cumulative_tform = eye(3)
   for index in get_index_range(firstindex, lastindex)
@@ -261,7 +261,7 @@ function compile_cumulative_transforms(firstindex::Index, lastindex::Index)
   end
 end
 
-function render_prealigned_full(index::Index; thumbnail_scale=get_params(prevstage(index))["render"]["thumbnail_scale"], overview=false, make_dense = true)
+function render_prealigned_full(index::FourTupleIndex; thumbnail_scale=get_params(prevstage(index))[:render][:thumbnail_scale], overview=false, make_dense = true)
   index = montaged(index);
   img = load(index)
   scale = make_scale_matrix(1.0)
@@ -311,10 +311,10 @@ function render_prealigned_full(index::Index; thumbnail_scale=get_params(prevsta
   @everywhere gc();
 end
 
-function render_prealigned_review(src_index::Index, dst_index::Index, src_img, dst_img, 
+function render_prealigned_review(src_index::FourTupleIndex, dst_index::FourTupleIndex, src_img, dst_img, 
                 cumulative_tform, tform)
   review_scale = 0.02
-  render_params = get_params(src_index)["render"]
+  render_params = get_params(src_index)[:render]
   if haskey(render_params, "review_scale")
     review_scale = render_params["review_scale"]
   end
@@ -355,7 +355,7 @@ function render_prealigned_review(ms::MeshSet)
       get_image(dst_index), eye(3), tform)
 end
 
-function render_prematch_review(index::Index)
+function render_prematch_review(index::FourTupleIndex)
   src_index = index
   dst_index = get_preceding(index)
   src_offset = get_offset(src_index)
@@ -399,7 +399,7 @@ end
 """
 Render aligned images
 """
-function render_aligned_review(firstindex::Index, lastindex::Index, start=1, finish=0; scale=0.05)
+function render_aligned_review(firstindex::FourTupleIndex, lastindex::FourTupleIndex, start=1, finish=0; scale=0.05)
   firstindex, lastindex = prealigned(firstindex), prealigned(lastindex)
   meshset = load("MeshSet",(firstindex, lastindex))
   render_aligned_review(meshset, start, finish, scale=scale)
@@ -421,9 +421,9 @@ end
 
 @fastmath @inbounds function render_aligned(meshset::MeshSet, start=1, finish=length(meshset.meshes))
   thumbnail_scale = 0.02
-  render_params = meshset.properties["params"]["render"]
-  if haskey(render_params, "thumbnail_scale")
-    thumbnail_scale = render_params["thumbnail_scale"]
+  render_params = meshset.properties[:params][:render]
+  if haskey(render_params, :thumbnail_scale)
+    thumbnail_scale = render_params[:thumbnail_scale]
   end
   sort!(meshset.meshes; by=get_index)
   subsection_imgs = []
@@ -473,13 +473,13 @@ end
   end
 end
 
-function write_thumbnail(index::Index; scale=0.02)
+function write_thumbnail(index::FourTupleIndex; scale=0.02)
   println("Creating thumbnail image for $index @ $(scale)x")
   img = sdata(get_image(index, scale))
   write_thumbnail(img, index, scale)
 end
 
-function write_thumbnail(img, index::Index, scale::Float64)
+function write_thumbnail(img, index::FourTupleIndex, scale::Float64)
   println("Writing thumbnail image for $index @ $(scale)x")
   path = get_path("thumbnail", index)
   f = h5open(path, "w")
@@ -489,19 +489,19 @@ function write_thumbnail(img, index::Index, scale::Float64)
   close(f)
 end
 
-function write_thumbnails(firstindex::Index, lastindex::Index; scale=0.02)
+function write_thumbnails(firstindex::FourTupleIndex, lastindex::FourTupleIndex; scale=0.02)
   for index in get_index_range(firstindex, lastindex)
     write_thumbnail(index, scale=scale)
   end
 end
 
-function crop(index::Index)
+function crop(index::FourTupleIndex)
   mask = load("mask", index)
   scale = h5read(get_path("thumbnail", index), "scale")
   img = load()
 end
 
-function split_prealigned(index::Index)
+function split_prealigned(index::FourTupleIndex)
   mask_path = get_mask_path(index)
   if isfile(mask_path)
     println("Splitting $index with mask")
@@ -527,7 +527,7 @@ function split_prealigned(index::Index)
   end
 end
 
-function split_prealigned(firstindex::Index, lastindex::Index)
+function split_prealigned(firstindex::FourTupleIndex, lastindex::FourTupleIndex)
   for index in get_index_range(firstindex, lastindex)
     mask_path = get_mask_path(index)
     if isfile(mask_path)
@@ -554,7 +554,7 @@ end
 #     If the image is fixed, it's assumed to be an aligned image, so we pull its
 #     offset, and calculate the additional translation.
 # """
-# function prepare_prealignment(index::Index, startindex=montaged(ROI_FIRST))
+# function prepare_prealignment(index::FourTupleIndex, startindex=montaged(ROI_FIRST))
 #   src_index = montaged(index)
 #   dst_index = get_preceding(src_index)
 
@@ -580,13 +580,13 @@ end
 #   return src_index, dst_index, cumulative_tform, tform
 # end
 
-# function render_prealigned(index::Index; render_full=false, render_review=true, startindex=montaged(ROI_FIRST))
+# function render_prealigned(index::FourTupleIndex; render_full=false, render_review=true, startindex=montaged(ROI_FIRST))
 #   src_index, dst_index, cumulative_tform, tform = prepare_prealignment(index, startindex)
 #   render_prealigned(src_index, dst_index, cumulative_tform, tform; 
 #                           render_full=render_full, render_review=render_review)
 # end
 
-# function render_prealigned(src_index::Index, dst_index::Index, cumulative_tform, 
+# function render_prealigned(src_index::FourTupleIndex, dst_index::FourTupleIndex, cumulative_tform, 
 #                                   tform; render_full=false, render_review=true)
 #   println("Loading images for rendering... 1/2")
 #   src_img = get_image(src_index)
@@ -596,7 +596,7 @@ end
 #                     tform; render_full=render_full, render_review=render_review)
 # end
 
-# function render_prealigned(firstindex::Index, lastindex::Index; 
+# function render_prealigned(firstindex::FourTupleIndex, lastindex::FourTupleIndex; 
 #                                         render_full=true, render_review=false, startindex=montaged(ROI_FIRST), align=false)
 #   startindex = montaged(startindex)
 #   dst_img = nothing

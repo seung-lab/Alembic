@@ -10,7 +10,7 @@ return count_rejected_correspondences(match) / max(count_correspondences(match),
 function get_ratio_edge_proximity(match::Match)
      if count_filtered_correspondences(match) == 0 return 0.0 end
      norms = map(norm, get_filtered_properties(match, "dv"))
-return maximum(norms) / match.properties["params"]["match"]["search_r"]; end
+return maximum(norms) / match.properties[:params][:match][:search_r]; end
 
 function count_outlier_norms(match::Match, sigma=3)
 	return sum(get_norms_std_sigmas(match) .> sigma)

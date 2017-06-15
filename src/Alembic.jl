@@ -1,4 +1,4 @@
-#module Alembic
+module Alembic
 
 if !haskey(ENV, "USER")
   ENV["USER"] = "ubuntu"
@@ -30,12 +30,14 @@ PKGS_USED_CLONABLE = ["https://github.com/JuliaSparse/MKLSparse.jl.git",
 
 using HDF5
 using JLD
+using DataFrames
 using Colors
 using FixedPointNumbers
 using Base.Test
 using Cairo
 using IterativeSolvers
 using ImageRegistration
+importall ImageRegistration
 using Optim
 using Distributions
 using Compat
@@ -43,10 +45,8 @@ using Images
 using Graphics
 using StatsBase
 using JSON
-using SimpleTasks
-if VERSION != v"0.4.6"
+#using SimpleTasks
 using Primes
-end
 if USE_PYPLOT
   using PyPlot
 end
@@ -57,7 +57,21 @@ if !contains(gethostname(), "seung") && !contains(gethostname(), "MacBook")
   using MKLSparse
 end
 
-#import Base.filter!
+abstract type AbstractMesh 		end
+abstract type AbstractMatch 		end
+#abstract type AbstractProperties 	end
+
+# Aliases for Points - a Point is a 1D array (with two elements), and a Points is a 2xN array where each column is a Point. 
+#const Point{T <: Number} = Array{T,1};
+#const Points{T <: Number} = Array{T,2};
+Point{T <: Number} = Array{T,1};
+Points{T <: Number} = Array{T,2};
+
+# sparse array for edges - columns represent edges and the rows represent the nodes
+#const Edges{T <: Number} = SparseMatrixCSC{T, Int64}
+Edges{T <: Number} = SparseMatrixCSC{T, Int64}
+
+#=
 
 # TypeAliases
 export Index
@@ -68,26 +82,44 @@ export Point, Points
 export Edges
 export BinaryProperty, FloatProperty
 export Match, Mesh
+=#
 
-typealias Index Tuple{Int64, Int64, Int64, Int64};    # (wafer, section, row, column)
-typealias Indices Tuple{Index, Index};    # (wafer, section, row, column)
+FourTupleIndex = NTuple{4, Int64};    # (wafer, section, row, column)
+FourTupleIndices = Tuple{FourTupleIndex, FourTupleIndex};    # (wafer, section, row, column)
 
-typealias Triangle Tuple{Int64, Int64, Int64};      # index of three points of the triangle for some point
-typealias Triangles Array{Triangle, 1};       # index of three points of the triangle for some point
+Triangle = NTuple{3, Int64};      # index of three points of the triangle for some point
+Triangles = Array{Triangle, 1};       # index of three points of the triangle for some point
 
-typealias Weight Tuple{Float64, Float64, Float64};    # weights for respective triangle
-typealias Weights Array{Weight, 1};       # weights for respective triangle
+Weight = Tuple{Float64, Float64, Float64};    # weights for respective triangle
+Weights = Array{Weight, 1};       # weights for respective triangle
 
-typealias Pairing Tuple{Int64, Int64};        # useful for abstraction
-typealias Pairings Array{Pairing, 1};       # useful for abstraction
+Pairing = Tuple{Int64, Int64};        # useful for abstraction
+Pairings = Array{Pairing, 1};       # useful for abstraction
 
-typealias Point Array{Float64, 1};        # [i; j]
-typealias Points Array{Point, 1};       # array of points
+#=
 
-typealias BinaryProperty Array{Bool, 1};    	  # array of bools
+const FourTupleIndex = NTuple{4, Int64};    # (wafer, section, row, column)
+const FourTupleIndices = Tuple{FourTupleIndex, FourTupleIndex};    # (wafer, section, row, column)
 
-typealias Edges SparseMatrixCSC{Float64, Int64}     # sparse array for edges - columns represent edges and the rows represent the nodes
-typealias FloatProperty Array{Float64, 1}   	# array of floats
+const Triangle = NTuple{3, Int64};      # index of three points of the triangle for some point
+const Triangles = Array{Triangle, 1};       # index of three points of the triangle for some point
+
+const Weight = Tuple{Float64, Float64, Float64};    # weights for respective triangle
+const Weights = Array{Weight, 1};       # weights for respective triangle
+
+const Pairing = Tuple{Int64, Int64};        # useful for abstraction
+const Pairings = Array{Pairing, 1};       # useful for abstraction
+
+  =#
+
+
+#=
+const Point = Array{Float64, 1};        # [i; j]
+const Points = Array{Point, 1};       # array of points
+=#
+
+global const BinaryProperty = Array{Bool, 1};    	  # array of bools
+global const FloatProperty = Array{Float64, 1}   	# array of floats
 
 # global constants, independent of deployment
 
@@ -109,27 +141,17 @@ global const eps = 1e-12;
 global const eps_large = 1e-4;
 global const eps_rec = 1 / eps;
 
-blas_set_num_threads(4);
+BLAS.set_num_threads(4);
 
 
+include("core/include.jl")
+include("math/include.jl")
 
-include("math/meshconjgrad.jl")
-include("math/meshgradnewton.jl")
-#include("math/convolve.jl") # legacy convolution code
-include("math/convolve_inplace.jl")
-include("math/imagecovariance.jl")
 
 include("utilities/author.jl")
 # include("utilities/parallelism.jl")
 include("utilities/utilities.jl")
 
-include("core/registry.jl")
-include("core/IO.jl")
-include("core/Mesh.jl")
-include("core/Match.jl")
-include("core/filter.jl")
-include("core/MeshSet.jl")
-include("core/solve.jl")
 
 #include("datasets/dataset_cremi.jl")
 #include("params/params_default.jl")
@@ -160,24 +182,25 @@ include("datasets/dataset_common.jl")
 include("render/render.jl")
 include("render/imageprocessing.jl")
 
-include("archive/evaluate.jl")
-include("archive/check.jl")
-include("archive/meshsession.jl")
-include("archive/tiletooverview.jl")
-include("archive/data_export.jl")
+#include("archive/evaluate.jl")
+#include("archive/check.jl")
+#include("archive/meshsession.jl")
+#include("archive/tiletooverview.jl")
+#include("archive/data_export.jl")
 
 include("import/premontage.jl")
 include("import/import_AIBS_TEM.jl")
 include("import/import_AIBS_SEM.jl")
 #include("import/old_import.jl")
 
-include("review/review.jl")
-include("review/visualize.jl")
-include("review/draw.jl")
-include("review/inspect.jl")
-include("review/player.jl")
-include("review/brushtool.jl")
-include("review/cpselect.jl")
+#include("review/review.jl")
+#include("review/visualize.jl")
+#include("review/draw.jl")
+#include("review/inspect.jl")
+#include("review/player.jl")
+#include("review/brushtool.jl")
+#include("review/cpselect.jl")
+#=
 include("tasks/tasks_env.jl")
 include("tasks/ImportTask.jl")
 include("tasks/BlockMatchTask.jl")
@@ -191,5 +214,14 @@ include("tasks/CubeStackTask.jl")
 include("tasks/awsscheduler.jl")
 
 include("utilities/migrate.jl")
+=#
 
-#end
+for s in filter(x->string(x)[1]!='#' && x!=:eval, names(Alembic,true))
+
+      println("Exporting $s")
+
+          eval(Expr(:export, s))
+
+	end
+
+end

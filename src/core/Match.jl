@@ -112,29 +112,29 @@ end
 
 ### reviewing
 function set_reviewed!(match::Match)
-	match.properties["review"]["author"] = author();
+	match.properties[:review]["author"] = author();
 	return;
 end
 
 function is_reviewed(match::Match)
-  	return match.properties["review"]["author"] == null_author()
+  	return match.properties[:review]["author"] == null_author()
 end
 
 function get_author(match::Match)
-	author = match.properties["review"]["author"]
+	author = match.properties[:review]["author"]
 	return author
 end
 
 function is_flagged(match::Match, filter_name = nothing)
-  	if filter_name == nothing return match.properties["review"]["flagged"];
+  	if filter_name == nothing return match.properties[:review]["flagged"];
 	else
-	return haskey(match.properties["review"]["flags"], filter_name); end
+	return haskey(match.properties[:review]["flags"], filter_name); end
 end
 
 function flag!(match::Match, crit = nothing)
-	match.properties["review"]["flagged"] = true;
+	match.properties[:review]["flagged"] = true;
 	if crit != nothing
-	match.properties["review"]["flags"][crit[1]] = crit[2:end];
+	match.properties[:review]["flags"][crit[1]] = crit[2:end];
       end
 end
 
@@ -151,16 +151,16 @@ end
 
 function unflag!(match::Match, filter_name = nothing)
   	if filter_name == nothing
-	match.properties["review"]["flagged"] = false;
-	for key in keys(match.properties["review"]["flags"])
-	  pop!(match.properties["review"]["flags"], key);
+	match.properties[:review]["flagged"] = false;
+	for key in keys(match.properties[:review]["flags"])
+	  pop!(match.properties[:review]["flags"], key);
 	end
       else
-	  if haskey(match.properties["review"]["flags"], filter_name)
-	  pop!(match.properties["review"]["flags"], filter_name);
+	  if haskey(match.properties[:review]["flags"], filter_name)
+	  pop!(match.properties[:review]["flags"], filter_name);
 	end
-	  if length(match.properties["review"]["flags"]) == 0
-	  match.properties["review"]["flagged"] = false;
+	  if length(match.properties[:review]["flags"]) == 0
+	  match.properties[:review]["flagged"] = false;
 	end
       end
 end
@@ -173,7 +173,7 @@ function get_correspondence_patches(match::Match, ind)
 	props = match.correspondence_properties[ind]
 
 		scale = props["ranges"]["scale"];
-		bandpass_sigmas = match.properties["params"]["match"]["bandpass_sigmas"]
+		bandpass_sigmas = match.properties[:params][:match][:bandpass_sigmas]
 		#src_patch = h5read(src_path, "img", props["ranges"]["src_range"])
 		src_pt_loc = props["ranges"]["src_pt_loc"];
 		#dst_patch = h5read(dst_path, "img", props["ranges"]["dst_range"])
@@ -212,7 +212,7 @@ end
 
 ### helper methods
 function get_ranges(pt, src_index, src_offset, src_img_size, dst_index, dst_offset, dst_img_size, params)
-	get_ranges(pt, src_index, dst_index, params["match"]["block_r"], params["match"]["search_r"], params["registry"]["global_offsets"]);
+	get_ranges(pt, src_index, dst_index, params[:match][:block_r], params[:match][:search_r], params[:registry][:global_offsets]);
 end
 
 function get_ranges(pt, src_index, src_offset, src_img_size, dst_index, dst_offset, dst_img_size, block_r::Int64, search_r::Int64, global_offsets = true)
@@ -258,10 +258,10 @@ Template match two images & record translation for source image - already scaled
 """
 function prematch(src_index, dst_index, src_image, dst_image, params=get_params(src_index))
   println("prematch:")
-	if params["match"]["prematch"] == false return; end
-	scale = params["match"]["prematch_scale"];
-	radius = params["match"]["prematch_template_radius"];
-	bandpass_sigmas = params["match"]["bandpass_sigmas"];
+	if params[:match][:prematch] == false return; end
+	scale = params[:match][:prematch_scale];
+	radius = params[:match]["prematch_template_radius"];
+	bandpass_sigmas = params[:match][:bandpass_sigmas];
 	bandpass_sigmas = (0,0)
 
 	range_in_src = ceil(Int64, size(src_image, 1) / 2) + (-radius:radius), ceil(Int64, size(src_image, 2) / 2) + (-radius:radius)
@@ -341,7 +341,7 @@ function prematch(src_index, dst_index, src_image, dst_image, params=get_params(
 
 		println("trying $angle degrees... r: $r, dv: $offset")
 		#    println("trying $angle degrees... r: $r, dv: $dv")
-		#	if params["registry"]["global_offsets"]
+		#	if params[:registry][:global_offsets]
 		#	offset = get_offset(dst_index) + round(Int64, dv) #/ scale
 
 		return r, angle, offset
@@ -502,7 +502,7 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
 end
 
 function get_match(pt, ranges, src_image, dst_image, params)
-	return get_match(pt, ranges, src_image, dst_image, params["match"]["blockmatch_scale"], params["match"]["bandpass_sigmas"]);
+	return get_match(pt, ranges, src_image, dst_image, params[:match][:blockmatch_scale], params[:match][:bandpass_sigmas]);
 end
 """
 Template match two image patches to produce point pair correspondence
@@ -781,7 +781,7 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
   	src_index = get_index(src_mesh); dst_index = get_index(dst_mesh);
 	src_img = get_image(src_index);  dst_img = get_image(dst_index);
 
-	if params["match"]["prematch"]
+	if params[:match][:prematch]
 	prematch(src_index, dst_index, src_img, dst_img, params);
         end
 
@@ -794,7 +794,7 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 	  remesh!(src_mesh);
 	end
 
-	if params["registry"]["global_offsets"] && get_rotation(dst_index) != 0
+	if params[:registry][:global_offsets] && get_rotation(dst_index) != 0
 	  println("rotation in the dst image detected with global offsets - aborting...")
 	  return nothing
 	end
@@ -812,21 +812,21 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 	  remesh!(src_mesh);
 	end
 
-	if params["match"]["prematch"]
+	if params[:match][:prematch]
 	prematch(src_index, dst_index, src_img, dst_img, params);
         end
 
 	src_offset = get_offset(src_index); dst_offset = get_offset(dst_index);
 
 
-	if params["registry"]["global_offsets"] && get_rotation(dst_index) != 0
+	if params[:registry][:global_offsets] && get_rotation(dst_index) != 0
 	  println("rotation in the dst image detected with global offsets - aborting...")
 	  return nothing
 	end
 
 
 	print("computing ranges:")
-	@time ranges = map(get_ranges, src_mesh.src_nodes, repeated(src_index), repeated(src_offset), repeated(src_size), repeated(dst_index), repeated(dst_offset), repeated(dst_size), repeated(params["match"]["block_r"]), repeated(params["match"]["search_r"]), repeated(params["registry"]["global_offsets"]));
+	@time ranges = map(get_ranges, src_mesh.src_nodes, repeated(src_index), repeated(src_offset), repeated(src_size), repeated(dst_index), repeated(dst_offset), repeated(dst_size), repeated(params[:match][:block_r]), repeated(params[:match][:search_r]), repeated(params[:registry][:global_offsets]));
 	ranged_inds = find(i -> i != nothing, ranges);
 	ranges = ranges[ranged_inds];
 	print("    ")
@@ -840,7 +840,7 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 
 	print("computing matches:")
 	print("    ")
-        @time dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(src_img), repeated(dst_img), repeated(params["match"]["blockmatch_scale"]), repeated(params["match"]["bandpass_sigmas"])) 
+        @time dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(src_img), repeated(dst_img), repeated(params[:match][:blockmatch_scale]), repeated(params[:match][:bandpass_sigmas])) 
 
 	matched_inds = find(i -> i != nothing, dst_allpoints);
 
@@ -856,8 +856,8 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 
 	filters = Array{Dict{Any, Any}}(0);
   	properties = Dict{Any, Any}(
-		"params" => params,
-		"review" => Dict{Any, Any}(
+		:params => params,
+		:review => Dict{Any, Any}(
 				"flagged" => false,
 				"flags" => Dict{Any, Any}(),
 				"author" => null_author()

@@ -1,6 +1,6 @@
 #=
 # "approximate" functions operate on a Mesh, and will try to come up with the best fit for the given nodes / nodes_t
-# "solve" functions operate on a Match (within a MeshSet), and will try to come up with the best fit for the given matches
+# :solve functions operate on a Match (within a MeshSet), and will try to come up with the best fit for the given matches
 =#
 
 #="""
@@ -97,7 +97,7 @@ end
 #="""
 Apply some weighted combination of affine and rigid, gauged by lambda
 """=#
-function regularized_solve(ms::MeshSet; k=1, lambda=ms.properties["params"]["solve"]["lambda"], globalized=false)
+function regularized_solve(ms::MeshSet; k=1, lambda=ms.properties[:params][:solve][:lambda], globalized=false)
   affine = affine_solve(ms; k=k, globalized=globalized)
   rigid = rigid_solve(ms; k=k, globalized=globalized)
   return lambda*affine + (1-lambda)*rigid
@@ -124,7 +124,7 @@ function translation_solve(ms::MeshSet; globalized=false)
 end
 
 function solve!(meshset)
-  method=meshset.properties["params"]["solve"]["method"]
+  method=meshset.properties[:params][:solve][:method]
   solve!(meshset; method=method)
   mark_solved!(meshset)
 end
@@ -137,7 +137,7 @@ function solve!(meshset; method="elastic")
 	if method == "elastic" return elastic_solve!(meshset); end
 	if method == "translation" return translation_solve!(meshset); end
 	if method == "rigid" return rigid_solve!(meshset); end
-	if method == "regularized" return regularized_solve!(meshset; lambda = meshset.properties["params"]["solve"]["lambda"]); end
+	if method == "regularized" return regularized_solve!(meshset; lambda = meshset.properties[:params][:solve][:lambda]); end
 	if method == "affine" return affine_solve!(meshset); end
 end
 
@@ -155,14 +155,14 @@ function elastic_collate(meshset; from_current = true, write = false)
 	sanitize!(meshset);
   params = get_params(meshset)
   #fixed = get_fixed(meshset)
-  match_spring_coeff = params["solve"]["match_spring_coeff"]
-  mesh_spring_coeff = params["solve"]["mesh_spring_coeff"]
-  max_iters = params["solve"]["max_iters"]
-  ftol_cg = params["solve"]["ftol_cg"]
-  eta_gd = params["solve"]["eta_gd"] 
-  ftol_gd = params["solve"]["ftol_gd"]
-  eta_newton = params["solve"]["eta_newton"]
-  ftol_newton = params["solve"]["ftol_newton"]
+  match_spring_coeff = params[:solve][:match_spring_coeff]
+  mesh_spring_coeff = params[:solve][:mesh_spring_coeff]
+  max_iters = params[:solve][:max_iters]
+  ftol_cg = params[:solve][:ftol_cg]
+  eta_gd = params[:solve][:eta_gd] 
+  ftol_gd = params[:solve][:ftol_gd]
+  eta_newton = params[:solve][:eta_newton]
+  ftol_newton = params[:solve][:ftol_newton]
 
   println("Solving meshset: $(count_nodes(meshset)) nodes, $(count_edges(meshset)) edges, $(count_filtered_correspondences(meshset)) correspondences");
 
@@ -410,7 +410,7 @@ function elastic_solve!(meshset; from_current = true, use_saved = false, write =
 end
 
 # invalids set to NO_POINT
-function get_correspondences(meshset::MeshSet, ind::Int64; filtered=false, globalized::Bool=false, global_offsets=meshset.properties["params"]["registry"]["global_offsets"], use_post = false)
+function get_correspondences(meshset::MeshSet, ind::Int64; filtered=false, globalized::Bool=false, global_offsets=meshset.properties[:params][:registry][:global_offsets], use_post = false)
   	if use_post
 	  src_mesh = meshset.meshes[find_mesh_index(meshset,get_src_index(meshset.matches[ind]))]
 	  dst_mesh = meshset.meshes[find_mesh_index(meshset,get_dst_index(meshset.matches[ind]))]
@@ -454,16 +454,16 @@ function rectify_drift(meshset::MeshSet, start_ind = 1, final_ind = count_meshes
   		continue;
   	end
 	if use_post
-	g_src_pts_after, g_dst_pts_after, filtered_after = get_correspondences(match; src_mesh = src_mesh, dst_mesh = dst_mesh, globalized = true, global_offsets = meshset.properties["params"]["registry"]["global_offsets"], use_post = true)
+	g_src_pts_after, g_dst_pts_after, filtered_after = get_correspondences(match; src_mesh = src_mesh, dst_mesh = dst_mesh, globalized = true, global_offsets = meshset.properties[:params][:registry][:global_offsets], use_post = true)
   	residuals_match_post = g_dst_pts_after[filtered_after] - g_src_pts_after[filtered_after]; 
 	avg_drift = mean(residuals_match_post);
       else
-	g_src_pts, g_dst_pts, filtered = get_correspondences(match; globalized = true, global_offsets = meshset.properties["params"]["registry"]["global_offsets"])
+	g_src_pts, g_dst_pts, filtered = get_correspondences(match; globalized = true, global_offsets = meshset.properties[:params][:registry][:global_offsets])
   	residuals_match = g_dst_pts[filtered] - g_src_pts[filtered]; 
 	avg_drift = mean(residuals_match);
       end
 
-      if get_params(meshset)["match"]["reflexive"]
+      if get_params(meshset)[:match][:reflexive]
 	if is_preceding(get_index(src_mesh), get_index(dst_mesh), 5)
 	  drifts[find_mesh_index(meshset, get_dst_index(match))] -= avg_drift/2;
 	else
@@ -545,7 +545,7 @@ function filter_stats(stats, filters)
   return f[sortperm(f[:,1]),:]
 end
 
-function calculate_stats(index::Index)
+function calculate_stats(index::FourTupleIndex)
   ms = load(MeshSet, index)
   return calculate_stats(ms)
 end
@@ -624,8 +624,8 @@ end
     
     if count_filtered_correspondences(match) > 1
 
-      g_src_pts, g_dst_pts, filtered = get_correspondences(match; global_offsets = params["registry"]["global_offsets"], globalized = true)
-      g_src_pts_after, g_dst_pts_after, filtered_after = get_correspondences(match; global_offsets = params["registry"]["global_offsets"], src_mesh = src_mesh, dst_mesh = dst_mesh, globalized = true, use_post = true)
+      g_src_pts, g_dst_pts, filtered = get_correspondences(match; global_offsets = params[:registry][:global_offsets], globalized = true)
+      g_src_pts_after, g_dst_pts_after, filtered_after = get_correspondences(match; global_offsets = params[:registry][:global_offsets], src_mesh = src_mesh, dst_mesh = dst_mesh, globalized = true, use_post = true)
 
       props = get_filtered_correspondence_properties(match);
       r_maxs_match = Array{Float64}(map(get_dfs, props, repeated("r_max")));
@@ -779,8 +779,8 @@ end
   		continue;
   	end
 
-  	g_src_pts, g_dst_pts, filtered = get_correspondences(match; global_offsets = params["registry"]["global_offsets"], globalized = true)
-  	g_src_pts_after, g_dst_pts_after, filtered_after = get_correspondences(match; global_offsets = params["registry"]["global_offsets"], src_mesh = src_mesh, dst_mesh = dst_mesh, globalized = true, use_post = true)
+  	g_src_pts, g_dst_pts, filtered = get_correspondences(match; global_offsets = params[:registry][:global_offsets], globalized = true)
+  	g_src_pts_after, g_dst_pts_after, filtered_after = get_correspondences(match; global_offsets = params[:registry][:global_offsets], src_mesh = src_mesh, dst_mesh = dst_mesh, globalized = true, use_post = true)
 
   	props = get_filtered_correspondence_properties(match);
   	r_maxs_match = Array{Float64}(map(get_dfs, props, repeated("r_max")));

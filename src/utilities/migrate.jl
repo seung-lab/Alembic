@@ -11,9 +11,9 @@ function migrate!(meshset)
   end
 
   # MAX_ITERS for solving
-  if !haskey(meshset.properties["params"]["solve"], "max_iters") 
+  if !haskey(meshset.properties[:params][:solve], :max_iters) 
   	println("MIGRATION: 2016-03-21 Params: added MAX_ITERS in params"); 
-        meshset.properties["params"]["solve"]["max_iters"] = 500;
+        meshset.properties[:params][:solve][:max_iters] = 500;
   end
 
   if !haskey(meshset.matches[match_ind].correspondence_properties[1], "xcorr")
@@ -36,7 +36,7 @@ function migrate!(meshset)
 	migrate_to_patches_dict!(meshset);
   end
 
-  if !haskey(meshset.matches[match_ind].properties, "review") || !haskey(meshset.matches[match_ind].properties["review"], "author") || !haskey(meshset.matches[match_ind].properties["review"], "flags")
+  if !haskey(meshset.matches[match_ind].properties, :review) || !haskey(meshset.matches[match_ind].properties[:review], "author") || !haskey(meshset.matches[match_ind].properties[:review], "flags")
   	println("MIGRATION: 2016-03-22 Match: making review / flags dict"); 
 	migrate_to_review_dict!(meshset);
   end
@@ -50,26 +50,26 @@ function migrate!(meshset)
 					)
   end
 
-  if !haskey(meshset.meshes[mesh_ind].properties, "params") || !haskey(meshset.matches[match_ind].properties, "params")
+  if !haskey(meshset.meshes[mesh_ind].properties, :params) || !haskey(meshset.matches[match_ind].properties, :params)
   	println("MIGRATION: 2016-03-30 MeshSet: adding params to matches / meshes"); 
 	for mesh in meshset.meshes
-	  mesh.properties["params"] = meshset.properties["params"]
+	  mesh.properties[:params] = meshset.properties[:params]
 	end
 	for match in meshset.matches
-	  match.properties["params"] = meshset.properties["params"]
+	  match.properties[:params] = meshset.properties[:params]
 	end
   end
 
-  if length(meshset.properties["params"]["review"]) == 0
+  if length(meshset.properties[:params][:review]) == 0
   	println("MIGRATION: 2016-03-30 MeshSet: adding review criteria"); 
-	meshset.properties["params"]["review"]["filtered_ratio"] = (:get_ratio_filtered, <, 0.2, 20);
-	meshset.properties["params"]["review"]["ratio_edge_proximity"] = (:get_ratio_edge_proximity, >, 0.95)
+	meshset.properties[:params][:review]["filtered_ratio"] = (:get_ratio_filtered, <, 0.2, 20);
+	meshset.properties[:params][:review][:ratio_edge_proximity] = (:get_ratio_edge_proximity, >, 0.95)
   end
 
-  if typeof(meshset.matches[match_ind].properties["review"]["flags"]) == DataType;
+  if typeof(meshset.matches[match_ind].properties[:review]["flags"]) == DataType;
   	println("MIGRATION: 2016-04-11 MeshSet: fixing flags from ::Dict{Any, Any} to Dict{Any, Any}()"); 
 	for match in meshset.matches
-	  match.properties["review"]["flags"] = Dict{Any, Any}();
+	  match.properties[:review]["flags"] = Dict{Any, Any}();
 	end
   end
 
@@ -88,15 +88,15 @@ function migrate!(meshset)
 	end
   end
 
-  if !haskey(meshset.properties["params"]["match"], "reflexive")
+  if !haskey(meshset.properties[:params][:match], :reflexive)
   	println("MIGRATION: 2016-05-19 MeshSet, Mesh, Match: adding reflexive as a field under params"); 
 	for mesh in meshset.meshes
-	  mesh.properties["params"]["match"]["reflexive"] = true;
+	  mesh.properties[:params][:match][:reflexive] = true;
 	end
 	for match in meshset.matches
-	  match.properties["params"]["match"]["reflexive"] = true;
+	  match.properties[:params][:match][:reflexive] = true;
 	end
-	  meshset.properties["params"]["match"]["reflexive"] = true;
+	  meshset.properties[:params][:match][:reflexive] = true;
   end
 
   return meshset
@@ -316,10 +316,10 @@ function migrate_to_patches_dict!(ms::MeshSet)
 end
 
 function migrate_to_review_dict!(match::Match)
-  	match.properties["review"] = Dict{Any, Any}()
-	match.properties["review"]["flagged"] = false;
-	match.properties["review"]["flags"] = Dict{Any, Any}();
-	match.properties["review"]["author"] = null_author();
+  	match.properties[:review] = Dict{Any, Any}()
+	match.properties[:review]["flagged"] = false;
+	match.properties[:review]["flags"] = Dict{Any, Any}();
+	match.properties[:review]["author"] = null_author();
 	return match
 end
 
@@ -329,9 +329,9 @@ end
 
 function check_match_flags(ms::MeshSet)
 	for match in ms.matches
-		if typeof(match.properties["review"]["flags"]) == DataType;
+		if typeof(match.properties[:review]["flags"]) == DataType;
 			println("MIGRATION: 2016-04-11 MeshSet: fixing flags from ::Dict{Any, Any} to Dict{Any, Any}()"); 
-			match.properties["review"]["flags"] = Dict{Any, Any}()
+			match.properties[:review]["flags"] = Dict{Any, Any}()
 		end
 	end
 	return ms

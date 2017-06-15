@@ -17,12 +17,12 @@ global IFFT_INPLACE_PLAN_A = plan_ifft!(COMPLEX_CONV_INTERMEDIATE_A)
 global RFFT_PLAN = plan_rfft(CONV_INTERMEDIATE_A);
 global IRFFT_PLAN = plan_irfft(COMPLEX_CONV_INTERMEDIATE_A, 10);
 
-global CONV_DT = Array{Float64, 2}();
-global CONV_IMGPAD = Array{Float64, 2}();
-global CONV_SUM = Array{Float64, 2}();
-global CONV_SUM2 = Array{Float64, 2}();
-global LOCAL_SUM = Array{Float64, 2}();
-global LOCAL_SUM2 = Array{Float64, 2}();
+global CONV_DT = Array{Float64, 2}(0,0);
+global CONV_IMGPAD = Array{Float64, 2}(0,0);
+global CONV_SUM = Array{Float64, 2}(0,0);
+global CONV_SUM2 = Array{Float64, 2}(0,0);
+global LOCAL_SUM = Array{Float64, 2}(0,0);
+global LOCAL_SUM2 = Array{Float64, 2}(0,0);
 
 end
 

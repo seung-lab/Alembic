@@ -1,12 +1,12 @@
-type Mesh
-	index::Index						# any sort of index associated with the mesh - by default a 4-tuple
+type Mesh{T} <: AbstractMesh
+	index							# any sort of index associated with the mesh - by default a 4-tuple
 
 	# all coordinates are taken with the image associated with the mesh having its left top corner at (0, 0) 
-	src_nodes::Points					# nodes as array of [i, j] coordinates, sorted in i, j order
-	dst_nodes::Points		 			# in the same order as src_nodes, after some transformation
+	src_nodes::Points{T}					# nodes as array of [i, j] coordinates, sorted in i, j order
+	dst_nodes::Points{T}		 			# in the same order as src_nodes, after some transformation
 
-	edges::Edges				                # n-by-m sparse incidence matrix, each column is zero except at two elements with value -1 and 1
-	properties::Dict{Any, Any}
+	edges::Edges{T}				                # n-by-m sparse incidence matrix, each column is zero except at two elements with value -1 and 1
+	properties::Dict{Symbol, Any}				# properties field
 end
 
 ### INDEX.jl EXTENSIONS
@@ -14,18 +14,15 @@ function is_adjacent(Am::Mesh, Bm::Mesh)		return is_adjacent(Am.index, Bm.index)
 function is_diagonal(Am::Mesh, Bm::Mesh)		return is_diagonal(Am.index, Bm.index);			end
 function is_preceding(Am::Mesh, Bm::Mesh, within = 1)	return is_preceding(Am.index, Bm.index, within);	end
 
-function globalize!(pts::Points, mesh::Mesh)
+function globalize!{T}(pts::Points{T}, mesh::Mesh{T})
   offset = get_offset(mesh)
   @inbounds o1 = offset[1];
   @inbounds o2 = offset[2];
 
-  for i in 1:length(pts)
-#    @inbounds p1 = pts[i][1];
-#    @inbounds p2 = pts[i][2];
-    @fastmath @inbounds pts[i][1] += o1;
-    @fastmath @inbounds pts[i][2] += o2;
+  @simd for i in 1:size(pts, 2)
+    @fastmath @inbounds pts[1,i] += o1;
+    @fastmath @inbounds pts[2,i] += o2;
   end 
-  #@simd for i in 1:length(pts) @fastmath @inbounds pts[i] = pts[i] + offset; end
 end
 
 ### PARAMS.jl EXTENSIONS
@@ -50,25 +47,25 @@ function get_nodes(mesh::Mesh; globalized::Bool = false, use_post::Bool=false)
 end
 
 ### counting
-function count_nodes(mesh::Mesh)			return size(mesh.src_nodes, 1);				end
+function count_nodes(mesh::Mesh)			return size(mesh.src_nodes, 2);				end
 function count_edges(mesh::Mesh)			return size(mesh.edges, 2);				end
 
 ### internal
-function get_topleft_offset(mesh::Mesh)			return mesh.src_nodes[1];				end
+function get_topleft_offset(mesh::Mesh)			return mesh.src_nodes[:, 1];				end
 
 function get_dims_and_dists(mesh::Mesh)
 	n = count_nodes(mesh);
 	@fastmath @inbounds begin
 	i_dist = 0;
-	j_dist = mesh.src_nodes[2][2] - mesh.src_nodes[1][2];
+	j_dist = mesh.src_nodes[2,2] - mesh.src_nodes[2, 1];
 	j_dim = 0;
 
 	# calculate j-dim by iterating until i changes
 	for ind in 2:count_nodes(mesh)
-		i_dif = mesh.src_nodes[ind][1] - mesh.src_nodes[ind-1][1]
+		i_dif = mesh.src_nodes[1, ind] - mesh.src_nodes[1,ind-1]
 		if i_dif == 0 j_dim = ind; else i_dist = i_dif; break; end
 	end
-	i_dim = round(Int64, 1 + (mesh.src_nodes[count_nodes(mesh)][1] - mesh.src_nodes[1][1]) / i_dist);
+	i_dim = round(Int64, 1 + (mesh.src_nodes[1,count_nodes(mesh)] - mesh.src_nodes[1, 1]) / i_dist);
       end #fmib
 	return (i_dim, j_dim), [i_dist, j_dist];
 end
@@ -96,15 +93,15 @@ end
 ### edge-length related
 
 # returns the endpoints of the edges for all edges - returns two Points arrays, where each edge runs from endpoint_a[i] to endpoint_b[i]
-function get_edge_endpoints(mesh::Mesh; globalized::Bool = false, use_post::Bool = false)
+function get_edge_endpoints{T}(mesh::Mesh{T}; globalized::Bool = false, use_post::Bool = false)
 	num_edges = count_edges(mesh);
-	endpoints_a = Points(num_edges);
-	endpoints_b = Points(num_edges);
+	endpoints_a = Points{T}(num_edges);
+	endpoints_b = Points{T}(num_edges);
 
   	for ind in 1:num_edges
-	@inbounds node_inds = findnz(mesh.edges[:, ind])[1];
-	@inbounds endpoints_a[ind] = use_post ? mesh.dst_nodes[node_inds[1]] : mesh.src_nodes[node_inds[1]]
-	@inbounds endpoints_b[ind] = use_post ? mesh.dst_nodes[node_inds[2]] : mesh.src_nodes[node_inds[2]]      	
+	@inbounds node_inds = findnz(mesh.edges[ind, :])[1];
+	@inbounds endpoints_a[ind] = use_post ? mesh.dst_nodes[:, node_inds[1]] : mesh.src_nodes[:, node_inds[1]]
+	@inbounds endpoints_b[ind] = use_post ? mesh.dst_nodes[:, node_inds[2]] : mesh.src_nodes[:, node_inds[2]]      	
         end
 
 	globalized ? globalize!(endpoints_a, mesh) : nothing
@@ -115,20 +112,23 @@ end
 # returns the midpoints of the edges for all edges - kwargs are parsed to get_edge_endpoints
 function get_edge_midpoints(mesh::Mesh; kwargs...)
   	endpoints_a, endpoints_b = get_edge_endpoints(mesh; kwargs...);
-	@simd for i in 1:length(endpoints_a)
-		@fastmath @inbounds endpoints_a[i] = endpoints_a[i] + endpoints_b[i]
-		@fastmath @inbounds endpoints_a[i] = endpoints_a[i] / 2
+	@simd for i in 1:size(endpoints_a, 2)
+		@fastmath @inbounds endpoints_a[1, i] = endpoints_a[1, i] + endpoints_b[1, i]
+		@fastmath @inbounds endpoints_a[1, i] = endpoints_a[1, i] / 2
+		@fastmath @inbounds endpoints_a[2, i] = endpoints_a[2, i] + endpoints_b[2, i]
+		@fastmath @inbounds endpoints_a[2, i] = endpoints_a[2, i] / 2
 	end
       return endpoints_a;
 end
 
 # returns the lengths of the edges for all edges - kwargs are parsed to get_edge_endpoints, though globalized should not matter at all
-function get_edge_lengths(mesh::Mesh; kwargs...)
+function get_edge_lengths{T}(mesh::Mesh{T}; kwargs...)
   	endpoints_a, endpoints_b = get_edge_endpoints(mesh; kwargs...);
-	edgelengths = zeros(Float64, length(endpoints_a))
-	@simd for i in 1:length(endpoints_a)
-		@fastmath @inbounds endpoints_a[i] = endpoints_a[i] - endpoints_b[i]
-	        @fastmath @inbounds edgelengths[i] = norm(endpoints_a[i])
+	edgelengths = zeros(T, size(endpoints_a, 2))
+	@simd for i in 1:size(endpoints_a, 2)
+		@fastmath @inbounds endpoints_a[1, i] = endpoints_a[1, i] - endpoints_b[1, i]
+		@fastmath @inbounds endpoints_a[2, i] = endpoints_a[2, i] - endpoints_b[2, i]
+	        @fastmath @inbounds edgelengths[i] = norm(endpoints_a[:, i])
 	end
       return edgelengths
 end
@@ -173,16 +173,16 @@ end
 =#
 
 ### INIT
-function Mesh(index, params = get_params(index), fixed=false; rotated = false)
+function Mesh(index, params = get_params(index), fixed=false; T=Float64, rotated = false)
 	println("Creating mesh for $index")
 	# mesh lengths in each dimension
-	dists = [params["mesh"]["mesh_length"] * sin(pi / 3); params["mesh"]["mesh_length"]];
+	dists = [params[:mesh][:mesh_length] * sin(pi / 3); params[:mesh][:mesh_length]];
 
 	# dimensions of the mesh as a rectangular grid, maximal in each dimension
 	# e.g. a mesh with 5-4-5-4-5-4-5-4 nodes in each row will have dims = (8, 5)
 	# 1 is added because of 1-indexing (in length)
 	# 2 is added to pad the mesh to extend it beyond by one meshpoint in each direction
-	dims = round(Int64, div(get_image_size(index, rotated = rotated), dists)) + 1 + 2;
+	dims = round.(Int64, div.(get_image_size(index, rotated = rotated), dists)) + 1 + 2;
 
 	# location of the first node (top left)
 	# TODO: Julia does not support rem() for two arrays, so divrem() cannot be used
@@ -192,12 +192,12 @@ function Mesh(index, params = get_params(index), fixed=false; rotated = false)
 	m = 0;
 	m_upperbound = 3 * n;
 
-	src_nodes = Points(n);
-	edges = spzeros(Float64, n, m_upperbound);
+	src_nodes = Points{T}(2, n);
+	edges = spzeros(T, n, m_upperbound);
 
 	@fastmath @inbounds for i in 1:dims[1], j in 1:dims[2]
 		k = get_mesh_index(dims, i, j); if k == 0 continue; end
-		src_nodes[k] = get_mesh_coord(dims, topleft_offset, dists, i, j);
+		view(src_nodes,:,k)[:] = get_mesh_coord(dims, topleft_offset, dists, i, j);
 		if (j != 1)
 			m += 1;	edges[k, m] = -1; edges[get_mesh_index(dims, i, j-1), m] = 1;
 		end
@@ -221,15 +221,15 @@ function Mesh(index, params = get_params(index), fixed=false; rotated = false)
 	@inbounds edges = edges[:, 1:m];
 	dst_nodes = deepcopy(src_nodes);
 
-	properties = Dict{Any, Any}(
-				    "params" => params,
-				    "fixed" => fixed);
+	properties = Dict{Symbol, Any}(
+				    :params => params,
+				    :fixed => fixed);
 
 	return Mesh(index, src_nodes, dst_nodes, edges, properties);
 end
 
 function remesh!(mesh::Mesh)
-	newmesh = Mesh(mesh.index, mesh.properties["params"], mesh.properties["fixed"]; rotated = true);
+	newmesh = Mesh(mesh.index, mesh.properties[:params], mesh.properties[:fixed]; rotated = true);
 	mesh.src_nodes = deepcopy(newmesh.src_nodes);
 	mesh.dst_nodes = deepcopy(newmesh.dst_nodes);
 	mesh.edges = deepcopy(newmesh.edges);
@@ -243,17 +243,14 @@ end
 
 
 # find the triangular mesh indices for a given point in mesh image coordinates
-function find_mesh_triangle(mesh::Mesh, point::Point)
+function find_mesh_triangle{T}(mesh::Mesh{T}, point::Point{T})
   @inbounds begin	
 	dims, dists = get_dims_and_dists(mesh); 
 	@fastmath point_padded = point - get_topleft_offset(mesh);
-
 	@fastmath indices_raw = point_padded ./ dists
-
 
 	# find which rows the point belongs to
 	i0 = round(Int64, indices_raw[1] + 1);
-	
 	if isodd(i0)
 		j0 = round(Int64, indices_raw[2] + 1);
 	else
@@ -267,9 +264,7 @@ function find_mesh_triangle(mesh::Mesh, point::Point)
 	end
 
 	node0 = mesh.src_nodes[ind0];
-
 	res = point - node0;
-
 
 	theta = abs(atan(res[1] / res[2]));
 	if (theta < pi / 3)
@@ -364,15 +359,15 @@ function find_mesh_triangle(mesh::Mesh, point::Point)
 	return (ind0, ind1, ind2);
 end
 
-function find_mesh_triangle(mesh::Mesh, points::Points)
+function find_mesh_triangle{T}(mesh::Mesh{T}, points::Points{T})
 	return Triangles(map(find_mesh_triangle, repeated(mesh), points));
 end
 
 # Convert Cartesian coordinate to triple of barycentric coefficients
-function get_triangle_weights(mesh::Mesh, point::Point, triangle::Triangle)
+function get_triangle_weights{T}(mesh::Mesh{T}, point::Point{T}, triangle::Triangle)
 	if triangle == NO_TRIANGLE::Triangle return NO_WEIGHTS::Weight; end
-	@inbounds R = vcat(mesh.src_nodes[triangle[1]]', mesh.src_nodes[triangle[2]]', mesh.src_nodes[triangle[3]]')
-	R = hcat(R, ones(Float64, 3, 1));
+	@inbounds R = vcat(mesh.src_nodes[:, triangle[1]]', mesh.src_nodes[:, triangle[2]]', mesh.src_nodes[:, triangle[3]]')
+	R = hcat(R, ones(T, 3, 1));
 	r = vcat(point, 1.0);
 
 	V = r' * R^-1;
@@ -380,13 +375,13 @@ function get_triangle_weights(mesh::Mesh, point::Point, triangle::Triangle)
 	return (V[1], V[2], V[3]);
 end
 
-function get_triangle_weights!(mesh::Mesh, point::Point, triangle::Triangle, R, r)
+function get_triangle_weights!{T}(mesh::Mesh{T}, point::Point{T}, triangle::Triangle, R, r)
 
 	if triangle == NO_TRIANGLE::Triangle return NO_WEIGHTS::Weight; end
 
-	@inbounds R[1:2, 1] = mesh.src_nodes[triangle[1]];
-	@inbounds R[1:2, 2] = mesh.src_nodes[triangle[2]];
-	@inbounds R[1:2, 3] = mesh.src_nodes[triangle[3]];
+	@inbounds R[1:2, 1] = mesh.src_nodes[:, triangle[1]];
+	@inbounds R[1:2, 2] = mesh.src_nodes[:, triangle[2]];
+	@inbounds R[1:2, 3] = mesh.src_nodes[:, triangle[3]];
 	
 	@inbounds r[1:2] = point;
 
@@ -395,21 +390,21 @@ function get_triangle_weights!(mesh::Mesh, point::Point, triangle::Triangle, R, 
 	return (V[1], V[2], V[3]);
 end
 
-function get_triangle_weights(mesh::Mesh, points::Points, triangles::Triangles)
-  	R = ones(Float64, 3, 3)
-  	r = ones(Float64, 3)
+function get_triangle_weights{T}(mesh::Mesh{T}, points::Points{T}, triangles::Triangles)
+  	R = ones(T, 3, 3)
+  	r = ones(T, 3)
 
 	return Weights(map(get_triangle_weights!, repeated(mesh), points, triangles, repeated(R), repeated(r)))
 end
 
 
 function get_tripoint_dst(mesh::Mesh, triangles::Triangles, weights::Weights)
-	return Points(map(get_tripoint_dst, repeated(mesh), triangles, weights))
+	return hcat(map(get_tripoint_dst, repeated(mesh), triangles, weights)...)
 end
 
 function get_tripoint_dst(mesh::Mesh, triangle::Triangle, weight::Weight)
 	if triangle == NO_TRIANGLE return NO_POINT; end
-	@fastmath @inbounds dst_trinodes = mesh.dst_nodes[triangle[1]], mesh.dst_nodes[triangle[2]], mesh.dst_nodes[triangle[3]]
+	@fastmath @inbounds dst_trinodes = mesh.dst_nodes[:, triangle[1]], mesh.dst_nodes[:, triangle[2]], mesh.dst_nodes[:, triangle[3]]
 	@fastmath @inbounds dst_point = dst_trinodes[1] * weight[1] + dst_trinodes[2] * weight[2] + dst_trinodes[3] * weight[3];
 	return dst_point;
 end
@@ -421,15 +416,15 @@ function deform(points::Points, mesh::Mesh)
 end
 
 function fix!(mesh::Mesh)
-	mesh.properties["fixed"] = true;
+	mesh.properties[:fixed] = true;
 end
 
 function unfix!(mesh::Mesh)
-	mesh.properties["fixed"] = false;
+	mesh.properties[:fixed] = false;
 end
 
 function is_fixed(mesh::Mesh)
-	return mesh.properties["fixed"];
+	return mesh.properties[:fixed];
 end
 
 function reset!(mesh::Mesh)

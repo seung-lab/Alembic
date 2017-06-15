@@ -400,7 +400,7 @@ function save_import_tile(fn, img)
 	close(f)	
 end
 
-function fix_contrast(src_index::Index, ref_index::Index)
+function fix_contrast(src_index::FourTupleIndex, ref_index::FourTupleIndex)
 	z_index = src_index[2]
 	import_table = load_import_table(z_index)
 	indices = get_import_indices(import_table)
@@ -733,7 +733,7 @@ function snap_bbs_pts(bbs_pts)
 	return [round(Int64, pts) for pts in bbs_pts]
 end
 
-function get_tform(index::Index, scale=1.0)
+function get_tform(index::FourTupleIndex, scale=1.0)
 	tform = eye(3)
 	tform_path = get_path("cumulative_transform", index)
 	if isfile(tform_path)
@@ -911,14 +911,14 @@ function shift_rows!(z_index, row_range, shift_in_tiles)
 	save_import_table(z_index, import_table)
 end
 
-function get_overview_size(index::Index)
+function get_overview_size(index::FourTupleIndex)
 	path = get_path(overview(index))
 	fid = h5open(path, "r")
 	dset = fid["img"]
 	return [size(dset)...]
 end
 
-function get_overview_resolution(index::Index, tile_size=[3840,3840])
+function get_overview_resolution(index::FourTupleIndex, tile_size=[3840,3840])
 	overview_size = get_overview_size(index)
 	z_index = index[2]
 	import_table = load_import_table(z_index)
@@ -948,7 +948,7 @@ function get_last_offset(import_table)
 	return [maximum(import_table[:,3]), maximum(import_table[:,2])]
 end
 
-function get_montage_original_offset(index::Index)
+function get_montage_original_offset(index::FourTupleIndex)
 	z_index = index[2]
 	import_table = load_import_table(z_index)
 	tiles = get_index_range(premontaged(index), premontaged(index))
@@ -961,7 +961,7 @@ function get_montage_original_offset(index::Index)
 	return global_offset - overview_origin
 end
 
-function get_montage_tform_from_overview(index::Index)
+function get_montage_tform_from_overview(index::FourTupleIndex)
 	src_index = index
 	dst_index = get_preceding(index)
 	tform = load("relative_transform", overview(src_index))
@@ -974,7 +974,7 @@ function get_montage_tform_from_overview(index::Index)
 	return moving_t*src_scale*tform*dst_scale^-1*fixed_t^-1
 end
 
-function initialize_montage_registry_from_overview_tform(index::Index)
+function initialize_montage_registry_from_overview_tform(index::FourTupleIndex)
 	tform = get_montage_tform_from_overview(index)
 	println("$index: $tform")
 	update_registry(index, tform)
