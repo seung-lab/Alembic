@@ -504,3 +504,10 @@ function find_idx_of_nearest_line(lines, pt, limit)
  end
  return idx
 end
+
+	function compare_alignments(ir, jr)
+	so = make_stack(prealigned(1,31), prealigned(1,42), (ir,jr))
+	sn = make_stack(aligned(1,31), aligned(1,42), (ir,jr))
+	blackbar = fill(UInt8(0), 50, length(jr), 12)
+	view_stack(cat(1, so, blackbar, sn))
+	end

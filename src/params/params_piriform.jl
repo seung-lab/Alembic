@@ -30,11 +30,11 @@ PREMATCH_SCALE_PREALIGNMENT = 0.05
 PREMATCH_ANGLES_PREALIGNMENT = 0
 
 # son of alignment
- MESH_LENGTH_ALIGNMENT = 200
+ MESH_LENGTH_ALIGNMENT = 600
  GLOBAL_OFFSETS_ALIGNMENT = true
- BLOCKMATCH_SCALE_ALIGNMENT = 0.25
- BLOCK_R_ALIGNMENT = 400
- SEARCH_R_ALIGNMENT = 150
+ BLOCKMATCH_SCALE_ALIGNMENT = 0.10
+ BLOCK_R_ALIGNMENT = 350
+ SEARCH_R_ALIGNMENT = 375
  PREMATCH_ALIGNMENT = false
  MESH_SPRING_COEFF_ALIGNMENT = 1.0
  MATCH_SPRING_COEFF_ALIGNMENT = 20.0
@@ -192,7 +192,7 @@ global PARAMS_PREALIGNMENT = Dict(
  			     	"eta_newton" => ETA_NEWTON_ALIGNMENT,
  			     	"ftol_newton" => FTOL_NEWTON_ALIGNMENT),
  			     "filter" => Dict(
- 			     		"sigma_filter_high" => (1,:get_properties, >, 6, 0.95),
+ 			     		"sigma_filter_high" => (1,:get_properties, >, 7.5, 0.95),
  			     		"sigma_filter_mid" => (2,:get_properties, >, 60, 0.75),
  			     		"sigma_filter_low" => (3,:get_properties, >, 200, 0.50),
  			     		"dyn_range_filter" => (4,:get_properties, <, 0.75, "src_normalized_dyn_range"),
@@ -200,7 +200,7 @@ global PARAMS_PREALIGNMENT = Dict(
  			     		# "norm_filter" => (:get_norms_std_sigmas, >, 5),
  			     		"kurtosis_filter" => (6,:get_properties, >, 25, "src_kurtosis"),
  			     		"kurtosis_filter_edge" => (7,:get_properties, <, -1.60, "src_kurtosis"),
- 					"centered_norm_filter" => (8,:get_centered_norms, >, 80)
+ 					"centered_norm_filter" => (8,:get_centered_norms, >, 350)
  					      ), 
 # 			     "filter" => Dict(
 # 			     		"sigma_filter_high" => (1,:get_properties, >, 3, 0.95),

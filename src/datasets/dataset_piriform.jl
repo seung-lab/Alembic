@@ -1,8 +1,8 @@
 global BUCKET = homedir()
-global DATASET = "datasets/piriform"
+global DATASET = "datasets/cb3"
 global ROI_FIRST = (1,2,0,0);
 global ROI_LAST = (8,173,0,0);
-global DATASET_RESOLUTION = [7,7,40]
+global DATASET_RESOLUTION = [4,4,40]
 
 global TASKS_LOCALE = "gcs"
 #global TASKS_LOCALE = "aws"

@@ -1,5 +1,5 @@
 # size in bytes
-global const IMG_CACHE_SIZE = 20 * 2^30 # n * gibibytes
+global const IMG_CACHE_SIZE = 70 * 2^30 # n * gibibytes
 #global const IMG_ELTYPE = UInt8
 global IMG_ELTYPE = UInt8
 
@@ -75,6 +75,8 @@ end
 # Mesh.jl	get_image(mesh::Mesh)
 # filesystem.jl	get_image() 
 function get_image_disk(path::AbstractString, dtype = IMG_ELTYPE; shared = false)
+      @everywhere gc();
+      @everywhere gc();
 	ext = splitext(path)[2];
   if ext == ".tif" || ext == ".png"
     img = data(FileIO.load(path))
@@ -94,11 +96,31 @@ function get_image_disk(path::AbstractString, dtype = IMG_ELTYPE; shared = false
     end
 	elseif ext == ".h5"
     if shared
+      i_size = 190464
+      j_size = 305152
+      @everywhere gc();
+      shared_img = SharedArray(dtype, i_size, j_size);
+      j_ranges_ends = map(round, repeated(Int64), linspace(1, j_size, nprocs()))
+      j_ranges = [j_ranges_ends[i]:j_ranges_ends[i+1] for i in 1:(length(j_ranges_ends)-1)] 
+
+      function h5read_copy(path::String, s::SharedArray, j_range)
+	myim = h5read(path, "img", (:, j_range))
+	@inbounds s.s[:, j_range] = myim[:]
+	myim = 0
+	s = 0;
+	gc();
+	gc();
+      end
+
+      pmap(h5read_copy, repeated(path), repeated(shared_img), j_ranges)
+      @everywhere gc();
+      #=
       img = h5read(path, "img")
       if typeof(img) != Array{dtype, 2} img = convert(Array{dtype, 2}, img) end
       @everywhere gc();
       shared_img = SharedArray(dtype, size(img)...);
       @inbounds shared_img.s[:,:] = img[:,:]
+      =#
       return shared_img;
     else
       return convert(Array{dtype, 2}, h5read(path, "img"))
@@ -140,16 +162,18 @@ end
 # end
 
 function reset_cache()
-  IMG_CACHE_DICT = Dict{Tuple{AbstractString, Float64}, SharedArray}()
-  IMG_CACHE_LIST = Array{Any, 1}()
+  finalize(IMG_CACHE_DICT)
+  finalize(IMG_CACHE_LIST)
   @time @everywhere gc();
-  @time @everywhere gc();
+  global IMG_CACHE_DICT = Dict{Tuple{AbstractString, Float64}, SharedArray}()
+  global IMG_CACHE_LIST = Array{Any, 1}()
 end
 
 function clean_cache()
 	if sum(map(Int64, map(length, values(IMG_CACHE_DICT)))) > IMG_CACHE_SIZE && !(length(IMG_CACHE_DICT) < 2)
 	while sum(map(Int64, map(length, values(IMG_CACHE_DICT)))) > IMG_CACHE_SIZE * 0.50 && !(length(IMG_CACHE_DICT) < 2)
 		todelete = shift!(IMG_CACHE_LIST);
+		finalize(IMG_CACHE_DICT[todelete])
 		#IMG_CACHE_DICT[todelete] = zeros(IMG_ELTYPE,0,0)
 		delete!(IMG_CACHE_DICT, todelete)
 	end
