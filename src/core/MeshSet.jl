@@ -481,13 +481,13 @@ function MeshSet(index::FourTupleIndex; kwargs...)
 	if is_prealigned(index) return prealign(montaged(index)) end
 end
 
-function MeshSet(first_index, last_index; kwargs...) #params=get_params(first_index), solve=true, solve_method="elastic")
+function MeshSet(first_index, last_index; kwargs...) #params=get_params(first_index), solve=true, solve_method=:elastic)
 	indices = get_index_range(first_index, last_index);
 	if length(indices) == 0 return nothing; end
 	MeshSet(indices; kwargs...) # params=get_params(indices[1]), solve=solve, solve_method=solve_method)
 end
 
-function MeshSet(indices::Array; params=get_params(indices[1]), solve=true, solve_method="elastic")
+function MeshSet(indices::Array; params=get_params(indices[1]), solve=true, solve_method=:elastic)
   meshes = map(Mesh, indices, repeated(params))
   sort!(meshes; by=get_index)
   matches = Array{Match, 1}(0)    
@@ -620,7 +620,7 @@ function rematch!(meshset::MeshSet, match_ind, params = get_params(meshset))
   deleteat!(meshset.matches, match_ind)
   add_match!(meshset, newmatch)
   meshset.properties[:params] = params
-  meshset.properties["author"] = author()
+  meshset.properties[:author] = author()
   #save(meshset)
 end
 
@@ -850,7 +850,7 @@ function load_stack(offsets, wafer_num, section_range)
   image = get_image(get_path(name))
   add_mesh(Mesh(name, image, index, dy, dx, false, PARAMS_ALIGNMENT), Ms)
   
-  image_shared = SharedArray(UInt8, size(image, 1), size(image, 2))
+  image_shared = SharedArray{UInt8}(size(image, 1), size(image, 2))
   image_shared[:, :] = image[:, :]
   push!(images, image_shared)
   end

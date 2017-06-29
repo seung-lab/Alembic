@@ -129,16 +129,16 @@ function solve!(meshset)
   mark_solved!(meshset)
 end
 
-function solve!(meshset; method="elastic")
+function solve!(meshset; method=:elastic)
 	sanitize!(meshset);
   assert(count_matches(meshset) != 0)
   assert(count_filtered_correspondences(meshset) >= 3)
 
-	if method == "elastic" return elastic_solve!(meshset); end
-	if method == "translation" return translation_solve!(meshset); end
-	if method == "rigid" return rigid_solve!(meshset); end
-	if method == "regularized" return regularized_solve!(meshset; lambda = meshset.properties[:params][:solve][:lambda]); end
-	if method == "affine" return affine_solve!(meshset); end
+	if method == :elastic return elastic_solve!(meshset); end
+	if method == :translation return translation_solve!(meshset); end
+	if method == :rigid return rigid_solve!(meshset); end
+	if method == :regularized return regularized_solve!(meshset; lambda = meshset.properties[:params][:solve][:lambda]); end
+	if method == :affine return affine_solve!(meshset); end
 end
 
 function elastic_solve_piecewise!(meshset::MeshSet; from_current = true)
@@ -591,7 +591,7 @@ end
     m["avg_50sig"] = avg_50sig
     m["std_50sig"] = std_50sig
     m["max_50sig"] = max_50sig
-    m["flagged"] = flagged
+    m[:flagged] = flagged
     return m
   end
 
@@ -629,9 +629,9 @@ end
 
       props = get_filtered_correspondence_properties(match);
       r_maxs_match = Array{Float64}(map(get_dfs, props, repeated("r_max")));
-      sigs95_match = Array{Float64}(map(get_dfs, props, repeated(0.95)));
-      sigs75_match = Array{Float64}(map(get_dfs, props, repeated(0.75)));
-      sigs50_match = Array{Float64}(map(get_dfs, props, repeated(0.50)));
+      sigs95_match = Array{Float64}(map(get_dfs, props, repeated(Symbol("xcorr_sigma_0.95"))));
+      sigs75_match = Array{Float64}(map(get_dfs, props, repeated(Symbol("xcorr_sigma_0.75"))));
+      sigs50_match = Array{Float64}(map(get_dfs, props, repeated(Symbol("xcorr_sigma_0.5"))));
 
       g_src_pts = g_src_pts[filtered];
       g_dst_pts = g_dst_pts[filtered];
@@ -784,7 +784,7 @@ end
 
   	props = get_filtered_correspondence_properties(match);
   	r_maxs_match = Array{Float64}(map(get_dfs, props, repeated("r_max")));
-  	sigs_match = Array{Float64}(map(get_dfs, props, repeated(0.95)));
+  	sigs_match = Array{Float64}(map(get_dfs, props, repeated(Symbol("xcorr_sigma_0.95"))));
 
   	g_src_pts = g_src_pts[filtered];
   	g_dst_pts = g_dst_pts[filtered];

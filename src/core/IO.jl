@@ -315,7 +315,7 @@ function load_section_images(session, section_num)
     max_size = max(size(image, 1), size(image, 2))
     if max_tile_size < max_size max_tile_size = max_size; end
   end
-  imageArray = SharedArray(UInt8, max_tile_size, max_tile_size, num_tiles)
+  imageArray = SharedArray{UInt8}(max_tile_size, max_tile_size, num_tiles)
 
   for k in 0:num_procs:num_tiles
     @sync @parallel for l in 1:num_procs

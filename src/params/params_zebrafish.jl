@@ -80,12 +80,12 @@ global PARAMS_MONTAGE = Dict(
 			     	:eta_newton => ETA_NEWTON_MONTAGE,
 			     	:ftol_newton => FTOL_NEWTON_MONTAGE),
 			     :filter => Dict(
-			     		"sigma_filter_high" => (1,:get_properties, >, 2, 0.95),
-			     		:sigma_filter_mid => (2,:get_properties, >, 5, 0.75),
-			     		:sigma_filter_low => (3,:get_properties, >, 50, 0.50),
-			     		"r_filter_min" => (4,:get_properties, <, 0.03, "r_max"),
-			     		"r_filter_max" => (5,:get_properties, >, 1, "r_max"),
-						 "centered_norm_filter" => (6,:get_centered_norms, >, 25)
+			     		:sigma_filter_high => (1,:get_properties, >, 2, Symbol("xcorr_sigma_0.95")),
+			     		:sigma_filter_mid => (2,:get_properties, >, 5, Symbol("xcorr_sigma_0.75")),
+			     		:sigma_filter_low => (3,:get_properties, >, 50, Symbol("xcorr_sigma_0.5")),
+			     		"r_filter_min" => (4,:get_properties, <, 0.03, :xcorr_r_max),
+			     		"r_filter_max" => (5,:get_properties, >, 1, :xcorr_r_max),
+						 :centered_norm_filter => (6,:get_centered_norms, >, 25)
 						# :norm_filter => (:get_norms_std_sigmas, >, 5)
 			     		# :norm_filter => (:get_norms_std_sigmas, >, 2.5)
 					      ),
@@ -126,7 +126,7 @@ global PARAMS_PREALIGNMENT = Dict(
 					:depth => 1,
 					:reflexive => false),
 			     :solve => Dict(
-					:method => "regularized",
+					:method => :regularized,
 					:lambda => 0.9),
 					# :mesh_spring_coeff => MESH_SPRING_COEFF_PREALIGNMENT,
 					# :match_spring_coeff => MATCH_SPRING_COEFF_PREALIGNMENT,
@@ -139,8 +139,8 @@ global PARAMS_PREALIGNMENT = Dict(
 					# :ftol_newton => FTOL_NEWTON_PREALIGNMENT)
 			     :filter => Dict(
 			     		:sigma_filter_low => (1, :get_properties, >, 1500, 0.5),
-			     		:sigma_filter_mid => (2, :get_properties, >, 500, 0.75),
-			     		:sigma_filter => (3, :get_properties, >, 50, 0.95),
+			     		:sigma_filter_mid => (2, :get_properties, >, 500, Symbol("xcorr_sigma_0.75")),
+			     		:sigma_filter => (3, :get_properties, >, 50, Symbol("xcorr_sigma_0.95")),
 					:consensus_filter => (5, :get_normalized_norm_from_filtered_consensus, >, 1.0, 4000),
 			     		:norm_filter => (4,:get_norms_std_sigmas, >, 5)
 					      ),
@@ -148,7 +148,7 @@ global PARAMS_PREALIGNMENT = Dict(
 			     		:thumbnail_scale => 0.125
 					      ),
 			     :review => Dict(
-				     	# "r_below" => (:count_filtered_properties, >, 0, "r_max", <, 0.2),
+				     	# "r_below" => (:count_filtered_properties, >, 0, :xcorr_r_max, <, 0.2),
 			     		:too_few_corresps => (:count_correspondences, <, 3),
 						:rejected_ratio => (:get_ratio_rejected, >, 0.33, 0),
 						:ratio_edge_proximity => (:get_ratio_edge_proximity, >, 0.95),
@@ -184,23 +184,23 @@ global PARAMS_ALIGNMENT = Dict(
 			     :filter => Dict(
 			     #=
 			 # son of alignment
-					"dist" => (0,:get_properties,>,60,"norm"),
-			     		"sigma_filter_high" => (1,:get_properties, >, 3.0, 0.95),
-			     		:sigma_filter_mid => (2,:get_properties, >, 15, 0.75),
-			     		:sigma_filter_low => (3,:get_properties, >, 30, 0.50)
+					"dist" => (0,:get_properties,>,60,:norm),
+			     		:sigma_filter_high => (1,:get_properties, >, 3.0, Symbol("xcorr_sigma_0.95")),
+			     		:sigma_filter_mid => (2,:get_properties, >, 15, Symbol("xcorr_sigma_0.75")),
+			     		:sigma_filter_low => (3,:get_properties, >, 30, Symbol("xcorr_sigma_0.5"))
 					=#
 
 					
 			 
-			     		"sigma_filter_high" => (1,:get_properties, >, 6.5, 0.95),
-			     		:sigma_filter_mid => (2,:get_properties, >, 35, 0.75),
-			     		:sigma_filter_low => (3,:get_properties, >, 100, 0.50),
-			     		"r_filter" => (4,:get_properties, <, 0.03, "r_max"),
+			     		:sigma_filter_high => (1,:get_properties, >, 6.5, Symbol("xcorr_sigma_0.95")),
+			     		:sigma_filter_mid => (2,:get_properties, >, 35, Symbol("xcorr_sigma_0.75")),
+			     		:sigma_filter_low => (3,:get_properties, >, 100, Symbol("xcorr_sigma_0.5")),
+			     		:r_filter => (4,:get_properties, <, 0.03, :xcorr_r_max),
 			     		# :norm_filter => (:get_norms_std_sigmas, >, 5),
-			     		"dyn_range" => (5,:get_properties, <, 0.25, "src_normalized_dyn_range"),
-			     		"kurtosis_filter" => (5,:get_properties, >, 25, "src_kurtosis"),
-			     		"kurtosis_filter_edge" => (6,:get_properties, <, -1.90, "src_kurtosis"),
-					"centered_norm_filter" => (7,:get_centered_norms, >, 250),
+			     		"dyn_range" => (5,:get_properties, <, 0.25, :patches_src_normalized_dyn_range),
+			     		:kurtosis_filter => (5,:get_properties, >, 25, :patches_src_kurtosis),
+			     		:kurtosis_filter_edge => (6,:get_properties, <, -1.90, :patches_src_kurtosis),
+					:centered_norm_filter => (7,:get_centered_norms, >, 250),
 					"consensus" => (8,:get_normalized_norm_from_filtered_consensus, >, 4, 4000)
 					
 					

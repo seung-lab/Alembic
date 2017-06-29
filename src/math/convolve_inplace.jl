@@ -1,3 +1,129 @@
+# Immutable type that contains the preallocated space needed for a convolution between two objects of a given size, as well as the precomuted plans for the rfft / irfft.
+immutable ConvolveEnv
+  size_A::NTuple{2, Int64}
+  size_B::NTuple{2, Int64}
+
+  crop::Symbol
+
+  intermediate_A::Array{Float64, 2}
+  intermediate_B::Array{Float64, 2}
+
+  complex_intermediate_A::Array{Complex{Float64}, 2}
+  complex_intermediate_B::Array{Complex{Float64}, 2}
+
+  rfft_plan
+  irfft_plan
+
+  result_ranges::Array{UnitRange{Int64},1}
+  result::Array{Float64, 2}
+end
+
+global CONVOLVE_ENVS = Dict{Symbol, ConvolveEnv}()
+
+function clear_convolveenvs()
+	global CONVOLVE_ENVS = Dict{Symbol, ConvolveEnv}()
+end
+
+function register_convolveenv(ce::ConvolveEnv)
+	CONVOLVE_ENVS[Symbol(ce.size_A, ce.size_B, ce.crop)] = ce
+end
+
+function get_convolveenv(A, B; crop = :valid)
+  if haskey(CONVOLVE_ENVS, Symbol(size(A), size(B), crop)) return CONVOLVE_ENVS[Symbol(size(A), size(B), crop)] end
+
+  ce = ConvolveEnv(A, B, crop = crop)
+  register_convolveenv(ce)
+
+  return ce
+end
+
+function ConvolveEnv(A, B; factorable = Primes.primes(10), crop = :valid)
+	if crop == :valid
+		result_ranges = [min(a,b):max(a,b) for (a,b) in zip(size(A), size(B))]
+	elseif crop == :same
+	  	result_ranges = [(min(a,b)-div(min(a,b)-1, 2)):(max(a,b)+div(min(a,b)-1, 2)) for (a,b) in zip(size(A), size(B))]
+	elseif crop == :full
+		result_ranges = [1:(a+b-1) for (a,b) in zip(size(A), size(B))]
+	end
+    #common_size=tuple(map(+,size(A),size(B))...)
+    common_size = tuple(map(maximum,result_ranges)...)
+    common_size = (nextprod(factorable, common_size[1]), nextprod(factorable, common_size[2]))
+
+    size_A = size(A)
+    size_B = size(B)
+    
+    intermediate_A = zeros(Float64, common_size)
+    intermediate_B = zeros(Float64, common_size)
+
+    complex_intermediate_A = zeros(Complex{Float64}, div(common_size[1], 2)+1, common_size[2])
+    complex_intermediate_B = zeros(Complex{Float64}, div(common_size[1], 2)+1, common_size[2])
+
+    rfft_plan = plan_rfft(intermediate_A)
+    irfft_plan = plan_irfft(complex_intermediate_A, common_size[1])
+
+
+    result_size = tuple(map(length, result_ranges)...)
+    result = zeros(Float64, result_size)
+
+    return ConvolveEnv(
+  	size_A::NTuple{2, Int64},
+  	size_B::NTuple{2, Int64},
+
+  	crop::Symbol,
+
+  	intermediate_A::Array{Float64, 2},
+  	intermediate_B::Array{Float64, 2},
+
+  	complex_intermediate_A::Array{Complex{Float64}, 2},
+  	complex_intermediate_B::Array{Complex{Float64}, 2},
+
+  	rfft_plan,
+  	irfft_plan,
+
+  	result_ranges::Array{UnitRange{Int64},1},
+  	result::Array{Float64, 2}
+    )
+end
+
+function clean!(ce::ConvolveEnv)
+  @inbounds begin
+	ce.intermediate_A[:] = Float64(0)
+	ce.intermediate_B[:] = Float64(0)
+	ce.complex_intermediate_A[:] = Complex{Float64}(0)
+	ce.complex_intermediate_B[:] = Complex{Float64}(0)
+  end
+end
+
+#=
+immutable ConvolveEnv
+
+CONV_RESULT = Array{Float64, 2}(10,10);
+COMPLEX_CONV_INTERMEDIATE_A = Array{Complex{Float64}, 2}(6,10);
+COMPLEX_CONV_INTERMEDIATE_B = Array{Complex{Float64}, 2}(6,10);
+
+CONV_INTERMEDIATE_A = Array{Float64, 2}(10,10);
+CONV_INTERMEDIATE_B = Array{Float64, 2}(10,10);
+
+IMG_CROPPED_FACTORABLE = Array{Float64, 2}(10,10);
+TEMPLATE_CROPPED_FACTORABLE = Array{Float64, 2}(10,10);
+
+FFT_INPLACE_PLAN_A = plan_fft!(COMPLEX_CONV_INTERMEDIATE_A)
+FFT_INPLACE_PLAN_B = plan_fft!(COMPLEX_CONV_INTERMEDIATE_B)
+IFFT_INPLACE_PLAN_A = plan_ifft!(COMPLEX_CONV_INTERMEDIATE_A)
+
+RFFT_PLAN = plan_rfft(CONV_INTERMEDIATE_A);
+IRFFT_PLAN = plan_irfft(COMPLEX_CONV_INTERMEDIATE_A, 10);
+
+CONV_DT = Array{Float64, 2}(0,0);
+CONV_IMGPAD = Array{Float64, 2}(0,0);
+CONV_SUM = Array{Float64, 2}(0,0);
+CONV_SUM2 = Array{Float64, 2}(0,0);
+LOCAL_SUM = Array{Float64, 2}(0,0);
+LOCAL_SUM2 = Array{Float64, 2}(0,0);
+
+end
+=#
+
 function init_Convolve()
 
 global CONV_RESULT = Array{Float64, 2}(10,10);
@@ -65,40 +191,22 @@ function convolve_Float64(A,B)
     irfft(rfft(pA).*rfft(pB),common_size[1])
 end
 
-function convolve_Float64_planned(A,B, ranges; factorable = nothing)
-    common_size=tuple(map(max,size(A),size(B))...)
-    #pad to the smallest multiple of the factorables larger than the common size in each dimensions for speed
-    if factorable != nothing
-	common_size = (nextprod(factorable, common_size[1]), nextprod(factorable, common_size[2]))
-    end
- 
-    if size(CONV_INTERMEDIATE_A) != common_size
-      global CONV_INTERMEDIATE_A=zeros(Float64,common_size)
-      global CONV_INTERMEDIATE_B=zeros(Float64,common_size)
-      global COMPLEX_CONV_INTERMEDIATE_A=zeros(Complex{Float64}, div(common_size[1], 2)+1, common_size[2])
-      global COMPLEX_CONV_INTERMEDIATE_B=zeros(Complex{Float64}, div(common_size[1], 2)+1, common_size[2])
-      global RFFT_PLAN = plan_rfft(CONV_INTERMEDIATE_A)
-      global IRFFT_PLAN = plan_irfft(COMPLEX_CONV_INTERMEDIATE_A, common_size[1])
-    else
-      CONV_INTERMEDIATE_A[:] = 0;
-      CONV_INTERMEDIATE_B[:] = 0;
-      COMPLEX_CONV_INTERMEDIATE_A[:] = 0;
-      COMPLEX_CONV_INTERMEDIATE_B[:] = 0;
-    end
+function convolve_Float64_planned(A,B; flip = true, factorable = nothing, crop = :valid, ce = get_convolveenv(A, B; crop = crop))
+	clean!(ce)
 
-    rangesA=[1:x for x in size(A)]
-    rangesB=[x:-1:1 for x in size(B)]
-    @inbounds CONV_INTERMEDIATE_A[rangesA...]=A
-    @inbounds CONV_INTERMEDIATE_B[rangesB...]=B
+    	rangesA=[1:x for x in size(A)]
+    	rangesB= flip ? [x:-1:1 for x in size(B)] : [1:x for x in size(B)] 
+    	@inbounds ce.intermediate_A[rangesA...]=A
+    	@inbounds ce.intermediate_B[rangesB...]=B
 
-    @fastmath A_mul_B!(COMPLEX_CONV_INTERMEDIATE_A, RFFT_PLAN, CONV_INTERMEDIATE_A);
-    @fastmath A_mul_B!(COMPLEX_CONV_INTERMEDIATE_B, RFFT_PLAN, CONV_INTERMEDIATE_B);
-    @fastmath elwise_mul!(COMPLEX_CONV_INTERMEDIATE_A, COMPLEX_CONV_INTERMEDIATE_B);
-    @fastmath A_mul_B!(CONV_INTERMEDIATE_A, IRFFT_PLAN, COMPLEX_CONV_INTERMEDIATE_A)
-    
-   # (IRFFT_PLAN * elwise_mul!(RFFT_PLAN * CONV_INTERMEDIATE_A, RFFT_PLAN * CONV_INTERMEDIATE_B))[ranges...]
-    CONV_RESULT[:] = slice(CONV_INTERMEDIATE_A,ranges...)
-   # irfft(rfft(pA).*rfft(pB),common_size[1])
+    	@fastmath A_mul_B!(ce.complex_intermediate_A, ce.rfft_plan, ce.intermediate_A);
+    	@fastmath A_mul_B!(ce.complex_intermediate_B, ce.rfft_plan, ce.intermediate_B);
+    	@fastmath elwise_mul!(ce.complex_intermediate_A, ce.complex_intermediate_B);
+    	@fastmath A_mul_B!(ce.intermediate_A, ce.irfft_plan, ce.complex_intermediate_A)
+
+	@inbounds ce.result[:] = view(ce.intermediate_A, ce.result_ranges...)
+
+	return ce.result
 end
 
 function elwise_complex_mul!(A, B)
@@ -167,12 +275,13 @@ function convolve_ComplexFloat64!(C,A,B,ranges)
      make_real_and_copy!(C, pA, offset)
    end
 
-
+#=
 function valid_convolve(A,B)
     ranges=[min(a,b):max(a,b) for (a,b) in zip(size(A),size(B))]
     #convolve_Float64(A,B)[ranges...]
     convolve_Float64(A,B)[ranges...]
 end
+=#
 
 function convolve_ComplexFloat64_prealloc_flipped(A,B,ranges)
     common_size=tuple(map(max,size(A),size(B))...)
@@ -208,14 +317,12 @@ function convolve_ComplexFloat64_prealloc_flipped(A,B,ranges)
 
 
 
-function valid_convolve_flipped(A,B; factorable = nothing)
-    ranges=[min(a,b):max(a,b) for (a,b) in zip(size(A),size(B))]
-    if size(CONV_RESULT) != (length(ranges[1]), length(ranges[2]))
-	global CONV_RESULT = Array{Float64}(length(ranges[1]), length(ranges[2]));
-      end
-    #=convolve_ComplexFloat64_prealloc_flipped(A,B, ranges)=#
-    convolve_Float64_planned(A, B, ranges; factorable = factorable)
-    return CONV_RESULT
+function valid_convolve(A,B; flip = true)
+    return convolve_Float64_planned(A, B; crop = :valid, flip = flip)
+end
+
+function same_convolve(A,B; flip = true)
+    return convolve_Float64_planned(A, B; crop = :same, flip = flip)
 end
 
 function cumsum2{T,ndim}(A::Array{T,ndim})
@@ -354,11 +461,11 @@ function normxcorr2_preallocated(template,img; shape = "valid", highpass_sigma =
     end
     # sufficient to subtract mean from just one variable
     if size(CONV_DT) != size(template)
-      global CONV_DT = Array(Float64, size(template)...);
+      global CONV_DT = Array{Float64}(size(template)...);
     end
     @inbounds CONV_DT[:] = template
     @fastmath @inbounds calculate_dt!(CONV_DT)
-    @fastmath @inbounds numerator=valid_convolve_flipped(img,CONV_DT; factorable = factors)
+    @fastmath @inbounds numerator=valid_convolve(img,CONV_DT; flip = true)
     @fastmath @inbounds templatevariance=sum(elwise_mul!(CONV_DT, CONV_DT))
 
     
@@ -382,8 +489,8 @@ function normxcorr2_preallocated(template,img; shape = "valid", highpass_sigma =
     @fastmath @inbounds cumsum12!(CONV_IMGPAD)
 #    @fastmath @inbounds s=CONV_SUM
     if size(LOCAL_SUM) != (m1-n1+1, m2-n2+1)
-      global LOCAL_SUM = Array(Float64, m1-n1+1, m2-n2+1);
-      global LOCAL_SUM2 = Array(Float64, m1-n1+1, m2-n2+1);
+      global LOCAL_SUM = Array{Float64}(m1-n1+1, m2-n2+1);
+      global LOCAL_SUM2 = Array{Float64}(m1-n1+1, m2-n2+1);
     end
 
 	@fastmath @inbounds calculate_local_sums(LOCAL_SUM, CONV_SUM, LOCAL_SUM2, CONV_SUM2, LL[1], LL[2], n1, n2);

@@ -62,14 +62,14 @@ function migrate!(meshset)
 
   if length(meshset.properties[:params][:review]) == 0
   	println("MIGRATION: 2016-03-30 MeshSet: adding review criteria"); 
-	meshset.properties[:params][:review]["filtered_ratio"] = (:get_ratio_filtered, <, 0.2, 20);
+	meshset.properties[:params][:review][:filtered_ratio] = (:get_ratio_filtered, <, 0.2, 20);
 	meshset.properties[:params][:review][:ratio_edge_proximity] = (:get_ratio_edge_proximity, >, 0.95)
   end
 
-  if typeof(meshset.matches[match_ind].properties[:review]["flags"]) == DataType;
+  if typeof(meshset.matches[match_ind].properties[:review][:flags]) == DataType;
   	println("MIGRATION: 2016-04-11 MeshSet: fixing flags from ::Dict{Any, Any} to Dict{Any, Any}()"); 
 	for match in meshset.matches
-	  match.properties[:review]["flags"] = Dict{Any, Any}();
+	  match.properties[:review][:flags] = Dict{Any, Any}();
 	end
   end
 
@@ -302,10 +302,10 @@ function migrate_to_patches_dict!(match::Match)
 			delete!(props, "img")
 		else
 			props["patches"] = Dict()
-			props["patches"]["src_normalized_dyn_range"] = props["src_normalized_dyn_range"]
-			props["patches"]["src_kurtosis"] = props["src_kurtosis"]
-			delete!(props, "src_normalized_dyn_range")
-			delete!(props, "src_kurtosis")
+			props["patches"][:patches_src_normalized_dyn_range] = props[:patches_src_normalized_dyn_range]
+			props["patches"][:patches_src_kurtosis] = props[:patches_src_kurtosis]
+			delete!(props, :patches_src_normalized_dyn_range)
+			delete!(props, :patches_src_kurtosis)
 		end
 	end
 	return match
@@ -317,9 +317,9 @@ end
 
 function migrate_to_review_dict!(match::Match)
   	match.properties[:review] = Dict{Any, Any}()
-	match.properties[:review]["flagged"] = false;
-	match.properties[:review]["flags"] = Dict{Any, Any}();
-	match.properties[:review]["author"] = null_author();
+	match.properties[:review][:flagged] = false;
+	match.properties[:review][:flags] = Dict{Any, Any}();
+	match.properties[:review][:author] = null_author();
 	return match
 end
 
@@ -329,9 +329,9 @@ end
 
 function check_match_flags(ms::MeshSet)
 	for match in ms.matches
-		if typeof(match.properties[:review]["flags"]) == DataType;
+		if typeof(match.properties[:review][:flags]) == DataType;
 			println("MIGRATION: 2016-04-11 MeshSet: fixing flags from ::Dict{Any, Any} to Dict{Any, Any}()"); 
-			match.properties[:review]["flags"] = Dict{Any, Any}()
+			match.properties[:review][:flags] = Dict{Any, Any}()
 		end
 	end
 	return ms

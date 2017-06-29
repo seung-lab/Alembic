@@ -185,8 +185,8 @@ function SolveMeshConjugateGradient!(Vertices, Fixed, Incidence, Stiffnesses, Re
     	@fastmath get_lengths!(Springs, Lengths);
         @fastmath @inbounds Gradient_given_lengths!(Springs, Lengths, Incidence_d, Stiffnesses_d, RestLengths_d, Forces, Gradients)
 	#@fastmath @inbounds storage[:] = Gradients[Moving]
-	@fastmath @inbounds copy!(slice(storage, 1:M), slice(Gradients,1:M));
-	@fastmath @inbounds copy!(slice(storage, M+1:2*M), slice(Gradients, N+1:N+M));
+	@fastmath @inbounds copy!(view(storage, 1:M), view(Gradients,1:M));
+	@fastmath @inbounds copy!(view(storage, M+1:2*M), view(Gradients, N+1:N+M));
 	@fastmath energy = Energy_given_lengths!(Lengths,Stiffnesses,RestLengths, Energies);
 	print("cost_and_gradient: ")
 #	cost_grad_iter += 1;
@@ -210,8 +210,8 @@ function SolveMeshConjugateGradient!(Vertices, Fixed, Incidence, Stiffnesses, Re
     @fastmath res = optimize(df,Vertices_t[Moving],method=ConjugateGradient(),show_trace=true,iterations=max_iter,ftol=ftol)
     # return res
    # Vertices_t[Moving] = res.minimum;
-    copy!(slice(Vertices_t,1:M), slice(res.minimum, 1:M));
-    copy!(slice(Vertices_t,N+1:N+M), slice(res.minimum, M+1:2*M));
+    copy!(view(Vertices_t,1:M), view(res.minimum, 1:M));
+    copy!(view(Vertices_t,N+1:N+M), view(res.minimum, M+1:2*M));
     Vertices[:] = vcat(Vertices_t[1:div(length(Vertices_t),2)]', Vertices_t[1+div(length(Vertices_t),2):end]');
     Vertices[:] = Vertices[:,invperm];
     #println("cost_iter: $cost_iter, cost_time: $cost_time")

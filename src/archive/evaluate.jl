@@ -133,10 +133,10 @@ function make_training_data(ms::MeshSet, bias=0.0)
        for m in ms.matches
 	range = (1:count_correspondences(m)) + current;
 
-              X[range, 1] = get_properties(m, "norm")[:]';
+              X[range, 1] = get_properties(m, :norm)[:]';
               X[range, 2] = get_properties(m, "r_val")[:]';
-              X[range, 3] = get_properties(m, "src_normalized_dyn_range")[:]';
-       	   X[(1:count_correspondences(m)) + current, 4] = get_properties(m, "src_kurtosis")[:]';  
+              X[range, 3] = get_properties(m, :patches_src_normalized_dyn_range)[:]';
+       	   X[(1:count_correspondences(m)) + current, 4] = get_properties(m, :patches_src_kurtosis)[:]';  
        	   Y[(collect(Int64, get_rejected_indices(m))) + current] = 1
 	  push!(ranges, range)
        	  current = current + count_correspondences(m);

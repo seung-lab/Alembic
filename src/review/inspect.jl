@@ -663,12 +663,12 @@ function filter_match_distance(imgc, img2, matches, params)
   # hack to test if a match_distance filter was just implemented
   dist = params["dist"]
   if length(matches.filters) > 0
-    if matches.filters[end]["type"] == "norm"
+    if matches.filters[end]["type"] == :norm
       undo_filter!(matches)
     end
   end
   println("Distance filter @ ", dist)
-  filter = (0,:get_properties, >, dist, "norm")
+  filter = (0,:get_properties, >, dist, :norm)
   filter!(matches, filter...)
   update_annotations(imgc, img2, matches, params)
 end
@@ -737,9 +737,9 @@ function view_dv_dispersion(index::Index)
   meshset = load("MeshSet"(index))
   fig = figure("dv $index", figsize=(20,20))
   for (i, match) in enumerate(meshset.matches)
-    dv_all = hcat(get_properties(match, "dv")...)
+    dv_all = hcat(get_properties(match, :vects_dv)...)
     dv_all_ind = ones(size(dv_all, 2))*i
-    dv = hcat(get_filtered_properties(match, "dv")...)
+    dv = hcat(get_filtered_properties(match, :vects_dv)...)
     dv_ind = ones(size(dv, 2))*i
     # println(i, " ", size(dv_all, 2), " ", size(dv, 2)) 
     if size(dv_all, 2) > 1
@@ -826,7 +826,7 @@ function view_property_histogram(match::Match, property_name; filtered=true, nbi
   end
 end
 
-function view_dv_dispersion(match, sr; filtered=true, property_name="dv")
+function view_dv_dispersion(match, sr; filtered=true, property_name=:vects_dv)
   color="#990000"
   properties_func = get_properties
   if filtered
@@ -895,13 +895,13 @@ function view_inspection_statistics(meshset::MeshSet, match_ind::Int64)
   fig = figure("image pair statistics", figsize=(20,20))
   PyPlot.clf()
   subplot(231)
-   view_property_histogram(match, "r_max"; filtered=false, nbins=20)
-   view_property_histogram(match, "r_max"; filtered=true, nbins=20)
-#   view_property_spatial_scatter(match, "r_max"; filtered=false, factor=15)
-#   view_property_spatial_scatter(match, "r_max"; filtered=true, factor=15)
-  #view_property_histogram(match, "norm"; filtered=true, nbins=20)
+   view_property_histogram(match, :xcorr_r_max; filtered=false, nbins=20)
+   view_property_histogram(match, :xcorr_r_max; filtered=true, nbins=20)
+#   view_property_spatial_scatter(match, :xcorr_r_max; filtered=false, factor=15)
+#   view_property_spatial_scatter(match, :xcorr_r_max; filtered=true, factor=15)
+  #view_property_histogram(match, :norm; filtered=true, nbins=20)
   subplot(232)
-  view_property_spatial_scatter(match, "norm"; filtered=true, factor=1)
+  view_property_spatial_scatter(match, :norm; filtered=true, factor=1)
   subplot(233)
   # view_property_spatial_scatter(match, 0.5; filtered=false, factor=1)
   # view_property_spatial_scatter(match, 0.5; filtered=true, factor=1)
@@ -930,7 +930,7 @@ function view_inspection_statistics(meshset::MeshSet, match_ind::Int64)
     ha="right",
     va="top",
     fontsize=16)
-  annotate(string("Flags:\n", join(Base.keys(match.properties[:review]["flags"]), "\n")),
+  annotate(string("Flags:\n", join(Base.keys(match.properties[:review][:flags]), "\n")),
     xy=[0;1],
     xycoords="figure fraction",
     xytext=[10,-10],

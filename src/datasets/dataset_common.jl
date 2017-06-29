@@ -40,7 +40,7 @@ function get_name(object_type::Union{DataType, AbstractString}, index)
 	      end
 	      #end hack
   	# singleton case
-	if typeof(index) == Index 			return string(object_type, "(", index, ")")	
+	if typeof(index) == FourTupleIndex 			return string(object_type, "(", index, ")")	
         elseif typeof(index) == Tuple{FourTupleIndex, FourTupleIndex} 	return string(object_type, index)	end
 end
 # used for saving - gets the canonical name of the object
@@ -56,14 +56,14 @@ function get_name(object)
 	else
 	      #end hack
 	index = get_index(object)
-	if typeof(index) == Index 			return string(typeof(object), "(", index, ")")	
+	if typeof(index) == FourTupleIndex 			return string(typeof(object), "(", index, ")")	
         elseif typeof(index) == Tuple{FourTupleIndex, FourTupleIndex} 	return string(typeof(object), index)	end
       end
 end
 
 # gets the full directory of the index as if it were an image - e.g. .../1_premontaged
 function get_dir_path(index::Union{FourTupleIndex, Tuple{FourTupleIndex, FourTupleIndex}})
-  if typeof(index) != Index index = index[1] end
+  if typeof(index) != FourTupleIndex index = index[1] end
     if is_overview(index)		return OVERVIEW_DIR_PATH
     elseif is_premontaged(index) 	return PREMONTAGED_DIR_PATH
     elseif is_montaged(index) 		return MONTAGED_DIR_PATH
@@ -74,7 +74,7 @@ end
 
 # gets the full directory of the object based on get_index
 function get_dir_path(object)
-  index = get_index(object); if typeof(index) != Index index = index[1]	end
+  index = get_index(object); if typeof(index) != FourTupleIndex index = index[1]	end
   return get_dir_path(index)
 end
 
@@ -83,21 +83,21 @@ function get_subdir(object)  			return get_subdir(typeof(object))	end
 function get_subdir(object_type::DataType)	return get_subdir(string(object_type));	end
 
 function get_subdir(string::AbstractString)
-  if 	 string == "Mesh"	return MESH_DIR, ".jls"
-  elseif string == "Match"      return MATCH_DIR, ".jls"
-  elseif string == "MeshSet"    return MESHSET_DIR, ".jls"
-  elseif string == "review"     return REVIEW_DIR, ".h5"
-  elseif string == "import"     return IMPORT_DIR, ".txt"
-  elseif string == "contrast_bias"     return CONTRAST_BIAS_DIR, ".h5"
-  elseif string == "contrast_stretch"     return CONTRAST_STRETCH_DIR, ".txt"
-  elseif string == "correspondence"     return CORRESPONDENCE_DIR, ".txt"
-  elseif string == "relative_transform"     return RELATIVE_TRANSFORM_DIR, ".txt"
-  elseif string == "cumulative_transform"     return CUMULATIVE_TRANSFORM_DIR, ".txt"
-  elseif string == "stats"     return STATS_DIR, ".json"
-  elseif string == "mask"     return MASK_DIR, ".txt"
-  elseif string == "outline"     return OUTLINE_DIR, ".png"
-  elseif string == "expunge"     return EXPUNGED_DIR, ".h5"
-  elseif string == "thumbnail"     return THUMBNAIL_DIR, ".h5"
+  if 	 contains(string, "Mesh")	return MESH_DIR, ".jls"
+  elseif contains(string, "Match")      return MATCH_DIR, ".jls"
+  elseif contains(string, "MeshSet")    return MESHSET_DIR, ".jls"
+  elseif contains(string, "review")     return REVIEW_DIR, ".h5"
+  elseif contains(string, "import")     return IMPORT_DIR, ".txt"
+  elseif contains(string, "contrast_bias")     return CONTRAST_BIAS_DIR, ".h5"
+  elseif contains(string, "contrast_stretch")     return CONTRAST_STRETCH_DIR, ".txt"
+  elseif contains(string, "correspondence")     return CORRESPONDENCE_DIR, ".txt"
+  elseif contains(string, "relative_transform")     return RELATIVE_TRANSFORM_DIR, ".txt"
+  elseif contains(string, "cumulative_transform")     return CUMULATIVE_TRANSFORM_DIR, ".txt"
+  elseif contains(string, "stats")     return STATS_DIR, ".json"
+  elseif contains(string, "mask")     return MASK_DIR, ".txt"
+  elseif contains(string, "outline")     return OUTLINE_DIR, ".png"
+  elseif contains(string, "expunge")     return EXPUNGED_DIR, ".h5"
+  elseif contains(string, "thumbnail")     return THUMBNAIL_DIR, ".h5"
   end
 end
 
@@ -110,13 +110,13 @@ function get_path(index::FourTupleIndex, ext = ".h5")
 end
 function get_path(object_type::Union{DataType, AbstractString}, index)
   # hack to support singleton load for meshsets
-  if (object_type == "stats" || object_type == "MeshSet" || string(object_type) == "MeshSet") && typeof(index) == Index
+  if (object_type == "stats" || contains(object_type, "MeshSet") || contains(string(object_type), "MeshSet")) && typeof(index) == FourTupleIndex
   return joinpath(get_dir_path(prevstage(index)), get_subdir(object_type)[1], string(get_name(object_type, index), get_subdir(object_type)[2]))
   end
   return joinpath(get_dir_path(index), get_subdir(object_type)[1], string(get_name(object_type, index), get_subdir(object_type)[2]))
 end
 function get_path(object)
-  index = get_index(object); if typeof(index) != Index index = index[1]	end
+  index = get_index(object); if typeof(index) != FourTupleIndex index = index[1]	end
   return joinpath(get_dir_path(index), get_subdir(object)[1], string(get_name(object), get_subdir(object)[2]))
 end
 function get_path(name::AbstractString)

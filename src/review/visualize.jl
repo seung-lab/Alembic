@@ -41,7 +41,7 @@ Returns:
   img2: ImageSliced2d object 
 """
 function show_mesh(imgc, img2, nodes, node_dict, color=RGB(1,1,1))   
-    lines = Array(Float64, 4, 0)
+    lines = Array{Float64}(4, 0)
     for k in sort(collect(keys(node_dict)))
         for v in node_dict[k]
             a = reverse(vec(nodes[k,:]))

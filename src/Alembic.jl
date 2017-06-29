@@ -57,6 +57,8 @@ if !contains(gethostname(), "seung") && !contains(gethostname(), "MacBook")
   using MKLSparse
 end
 
+import Base.Iterators.repeated
+
 abstract type AbstractMesh 		end
 abstract type AbstractMatch 		end
 #abstract type AbstractProperties 	end
@@ -66,6 +68,10 @@ abstract type AbstractMatch 		end
 #const Points{T <: Number} = Array{T,2};
 Point{T <: Number} = Array{T,1};
 Points{T <: Number} = Array{T,2};
+
+function columnviews{T}(pts::Points{T})
+	@inbounds return map(view, repeated(pts), repeated(:), 1:size(pts, 2))
+end
 
 # sparse array for edges - columns represent edges and the rows represent the nodes
 #const Edges{T <: Number} = SparseMatrixCSC{T, Int64}
