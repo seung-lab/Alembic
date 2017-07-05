@@ -94,14 +94,14 @@ global PARAMS_MONTAGE = Dict(
 			     		:sigma_filter_high => (1,:get_correspondence_properties, >, 2, Symbol("xcorr_sigma_0.95")),
 			     		:sigma_filter_mid => (2,:get_correspondence_properties, >, 120, Symbol("xcorr_sigma_0.75")),
 			     		:sigma_filter_low => (3,:get_correspondence_properties, >, 350, Symbol("xcorr_sigma_0.5")),
-			     		"r_filter_min" => (4,:get_correspondence_properties, <, 0.03, :xcorr_r_max),
-			     		"r_filter_max" => (5,:get_correspondence_properties, >, 1, :xcorr_r_max),
+			     		:r_filter_min => (4,:get_correspondence_properties, <, 0.03, :xcorr_r_max),
+			     		:r_filter_max => (5,:get_correspondence_properties, >, 1, :xcorr_r_max),
 					:centered_norm_filter => (6,:get_centered_norms, >, 75)
 						# :norm_filter => (:get_norms_std_sigmas, >, 5)
 			     		# :norm_filter => (:get_norms_std_sigmas, >, 2.5)
 					      ),
 			     :render => Dict(
-			     		"crop" => [300, 300],
+			     		:crop => [300, 300],
 			     		:thumbnail_scale => 0.02
 					      ),
 			     :review => Dict(

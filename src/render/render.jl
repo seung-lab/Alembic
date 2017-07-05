@@ -141,8 +141,8 @@ function render_montaged(meshset::MeshSet; render_full=true, render_review=false
   crop = [0,0]
   thumbnail_scale = 0.02
   render_params = meshset.properties[:params][:render]
-  if haskey(render_params, "crop")
-    crop = render_params["crop"]
+  if haskey(render_params, :crop)
+    crop = render_params[:crop]
   end
   if haskey(render_params, :thumbnail_scale)
     thumbnail_scale = render_params[:thumbnail_scale]
