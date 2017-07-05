@@ -82,7 +82,7 @@ function get_image_disk(path::AbstractString, dtype = IMG_ELTYPE; shared = false
     #img.properties["timedim"] = 0
     if shared
       img = convert(Array{dtype, 2}, round(convert(Array, img)*255))'
-      shared_img = SharedArray(dtype, size(img)...);
+      shared_img = SharedArray{dtype}(size(img)...);
       @inbounds shared_img.s[:,:] = img[:,:]
       return shared_img;
     else
@@ -97,7 +97,7 @@ function get_image_disk(path::AbstractString, dtype = IMG_ELTYPE; shared = false
       img = h5read(path, "img")
       if typeof(img) != Array{dtype, 2} img = convert(Array{dtype, 2}, img) end
       @everywhere gc();
-      shared_img = SharedArray(dtype, size(img)...);
+      shared_img = SharedArray{dtype}(size(img)...);
       @inbounds shared_img.s[:,:] = img[:,:]
       return shared_img;
     else
@@ -178,7 +178,7 @@ function get_image(path::AbstractString, scale=1.0, dtype = IMG_ELTYPE)
 	if !haskey(IMG_CACHE_DICT, (path, 1.0))
 	    println("$path is not in cache at full scale - loading into cache...")
 	    #img = get_image_disk(path, dtype);
-	#    shared_img = SharedArray(dtype, size(img)...);
+	#    shared_img = SharedArray{dtype}(size(img)...);
 	#    shared_img[:,:] = img[:,:];
 
             #print("Getting image from disk:") 	
@@ -196,7 +196,7 @@ function get_image(path::AbstractString, scale=1.0, dtype = IMG_ELTYPE)
 	if scale != 1.0
 	  println("$path is in cache at full scale - downsampling to scale $scale...")
 	  scaled_img = imscale(sdata(IMG_CACHE_DICT[(path, 1.0)]), scale)[1]
-    	  #shared_img_scaled = SharedArray(dtype, size(scaled_img)...);
+    	  #shared_img_scaled = SharedArray{dtype}(size(scaled_img)...);
 	  #shared_img_scaled[:,:] = scaled_img[:,:];
 
 	  push!(IMG_CACHE_LIST, (path, scale))

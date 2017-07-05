@@ -228,7 +228,7 @@ function get_offset(index::FourTupleIndex; rotated = false)
 end
 
 function get_rotation(index)
-        if myid() != IO_PROC return Float64(remotecall_fetch(get_rotation, index), IO_PROC) end
+        if myid() != IO_PROC return Float64(remotecall_fetch(get_rotation, IO_PROC, index)) end
     metadata = get_metadata(index);
     return Float64(metadata[3])
 end

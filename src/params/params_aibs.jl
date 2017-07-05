@@ -75,8 +75,8 @@ global PARAMS_MONTAGE = Dict(
 			     	:eta_newton => ETA_NEWTON_MONTAGE,
 			     	:ftol_newton => FTOL_NEWTON_MONTAGE),
 			     :filter => Dict(
-			     	#	:sigma_filter => (:get_properties, >,7.5, 0.5),
-			     		:r_filter => (:get_properties, <, 0.15, :xcorr_r_max)
+			     	#	:sigma_filter => (:get_correspondence_properties, >,7.5, 0.5),
+			     		:r_filter => (:get_correspondence_properties, <, 0.15, :xcorr_r_max)
 					      ),
 			     :render => Dict(
 					      ),

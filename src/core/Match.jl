@@ -15,7 +15,7 @@ end
 
 init_Match();
 
-struct Match{T}
+struct Match{T} <: AbstractMatch
   src_index          # source mesh index
   dst_index          # destination mesh index
 
@@ -43,12 +43,12 @@ end
 
 ### counting
 function count_correspondences(match::Match) return size(match.src_points, 2);	end
-function count_filtered_correspondences(match::Match) return length(get_filtered_indices(match)); end
-function count_rejected_correspondences(match::Match) return length(get_rejected_indices(match)); end
+function count_filtered_correspondences(match::Match) return sum(get_filtered_indices(match)); end
+function count_rejected_correspondences(match::Match) return sum(get_rejected_indices(match)); end
 
 function count_filters(match::Match) return size(match.filters, 2); end
 function count_filtered_properties(match::Match, property_name, compare, threshold)
- return sum(compare(get_filtered_properties(match::Match, property_name), threshold))
+ return sum(compare(get_correspondence_properties(match::Match, property_name; filtered = true), threshold))
 end
 
 ### correspondences related
@@ -65,13 +65,15 @@ function get_rejected_indices(match::Match)
 	end
 	return ret
 end
-function get_filtered_correspondence_properties(match::Match)
+#=
+function (match::Match)
 	return match.correspondence_properties[get_filtered_indices(match), :]
 end
+=#
 
 function get_correspondences(match::Match; globalized::Bool=false, global_offsets::Bool=true, filtered::Bool=false, use_post::Bool=false, src_mesh = nothing, dst_mesh = nothing)
   	if filtered
-	  src_pts = match.src_points[get_filtered_indices(match)]; dst_pts = match.dst_points[get_filtered_indices(match)];
+	  src_pts = match.src_points[:, get_filtered_indices(match)]; dst_pts = match.dst_points[:, get_filtered_indices(match)];
 	else
   	  src_pts = copy(match.src_points); dst_pts = copy(match.dst_points);
 	end
@@ -101,20 +103,16 @@ function get_dfs(dict::Dict, keytofetch)
 	return nothing
 end
 
-function get_properties(match::Match, property_name)
+function get_correspondence_properties(match::Match, property_name; filtered = false)
 	ret = match.correspondence_properties[property_name];
 	if length(ret) != 0
 		ret = Array{typeof(ret[1])}(ret);
 	end
-	return ret
+	return filtered ? ret[get_filtered_indices(match)] : ret
 end
 
-function get_properties(match::Match, fn::Function, args...)
-	return fn(match, args...)
-end
-
-function get_filtered_properties(match::Match, property_name)
-	return get_properties(match, property_name)[get_filtered_indices(match)]
+function get_correspondence_properties(match::Match, fn::Function, args...; filtered = false)
+	return filtered ? fn(match, args...)[get_filtered_indices(match)] : fn(match, args...)
 end
 
 ### reviewing
@@ -149,7 +147,7 @@ end
 Flag a match based on property criteria
 """
 function flag!(match::Match, property_name, compare, threshold)
-	attributes = get_filtered_properties(match, property_name)
+	attributes = get_correspondence_properties(match, property_name; filtered = true)
 	inds_to_filter = find(i -> compare(i, threshold), attributes)
 	if length(inds_to_filter) > 0
 		flag!(match, (property_name, compare, threshold))
@@ -708,7 +706,7 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 end
 
 function filter!(match::Match, priority, function_name, compare, threshold, vars...)
-	# attributes = get_properties(match, property_name)
+	# attributes = get_correspondence_properties(match, property_name)
 	attributes = eval(function_name)(match, vars...)
 	filter_col = fill(false, count_correspondences(match))
 	@inbounds for i in 1:length(attributes)
@@ -753,10 +751,6 @@ function get_residual_norms_post(match, ms)
 end
 
 function check(match::Match, function_name, compare, threshold, vars...)
-  println(function_name)
-  println(compare)
-  println(threshold)
-  println(vars...)
      return compare(eval(function_name)(match, vars...), threshold)
 end
 
@@ -854,7 +848,7 @@ function Match{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T}, params=get_params(src_me
 	ranges = ranges[ranged_inds];
 	print("    ")
 
-	println("$(length(ranged_inds)) / $(length(src_mesh.src_nodes)) nodes to check.")
+	println("$(length(ranged_inds)) / $(size(src_mesh.src_nodes, 2)) nodes to check.")
 
 	if length(ranged_inds) != 0
 		ranges = Array{typeof(ranges[1]), 1}(ranges);
@@ -891,8 +885,8 @@ function Match{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T}, params=get_params(src_me
 				) 
 			);
 
-	@everywhere init_Match();
+#	@everywhere init_Match();
 	@everywhere gc();
 
-	return Match(src_index, dst_index, src_points, dst_points, correspondence_properties, filters, properties);
+	return Match{T}(src_index, dst_index, src_points, dst_points, correspondence_properties, filters, properties);
 end

@@ -283,7 +283,7 @@ end
 function migrate_to_vects_dict!(match::Match)
 	for props in match.correspondence_properties
 	  	props["vects"] = Dict{Any, Any}();
-	  	props["vects"]["dv"] = props["dv"]
+	  	props["vects"][:vects_dv] = props["dv"]
 	  	props["vects"]["norm"] = props["norm"]
 		delete!(props, "dv")
 		delete!(props, "norm")

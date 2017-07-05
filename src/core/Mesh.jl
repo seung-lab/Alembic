@@ -1,4 +1,4 @@
-type Mesh{T} <: AbstractMesh
+struct Mesh{T} <: AbstractMesh
 	index							# any sort of index associated with the mesh - by default a 4-tuple
 
 	# all coordinates are taken with the image associated with the mesh having its left top corner at (0, 0) 
@@ -95,13 +95,13 @@ end
 # returns the endpoints of the edges for all edges - returns two Points arrays, where each edge runs from endpoint_a[i] to endpoint_b[i]
 function get_edge_endpoints{T}(mesh::Mesh{T}; globalized::Bool = false, use_post::Bool = false)
 	num_edges = count_edges(mesh);
-	endpoints_a = Points{T}(num_edges);
-	endpoints_b = Points{T}(num_edges);
+	endpoints_a = Points{T}(2, num_edges);
+	endpoints_b = Points{T}(2, num_edges);
 
   	for ind in 1:num_edges
-	@inbounds node_inds = findnz(mesh.edges[ind, :])[1];
-	@inbounds endpoints_a[ind] = use_post ? mesh.dst_nodes[:, node_inds[1]] : mesh.src_nodes[:, node_inds[1]]
-	@inbounds endpoints_b[ind] = use_post ? mesh.dst_nodes[:, node_inds[2]] : mesh.src_nodes[:, node_inds[2]]      	
+	@inbounds node_inds = findnz(mesh.edges[:, ind])[1];
+	@inbounds endpoints_a[:, ind] = use_post ? mesh.dst_nodes[:, node_inds[1]] : mesh.src_nodes[:, node_inds[1]]
+	@inbounds endpoints_b[:, ind] = use_post ? mesh.dst_nodes[:, node_inds[2]] : mesh.src_nodes[:, node_inds[2]]      	
         end
 
 	globalized ? globalize!(endpoints_a, mesh) : nothing
@@ -243,7 +243,7 @@ end
 
 
 # find the triangular mesh indices for a given point in mesh image coordinates
-function find_mesh_triangle{T}(mesh::Mesh{T}, point::Point{T})
+function find_mesh_triangle{T}(mesh::Mesh{T}, point::Union{Point{T}, SubArray{T, 1}})
   @inbounds begin	
 	dims, dists = get_dims_and_dists(mesh); 
 	@fastmath point_padded = point - get_topleft_offset(mesh);
@@ -360,11 +360,11 @@ function find_mesh_triangle{T}(mesh::Mesh{T}, point::Point{T})
 end
 
 function find_mesh_triangle{T}(mesh::Mesh{T}, points::Points{T})
-	return Triangles(map(find_mesh_triangle, repeated(mesh), points));
+	return Triangles(map(find_mesh_triangle, repeated(mesh), columnviews(points)));
 end
 
 # Convert Cartesian coordinate to triple of barycentric coefficients
-function get_triangle_weights{T}(mesh::Mesh{T}, point::Point{T}, triangle::Triangle)
+function get_triangle_weights{T}(mesh::Mesh{T}, point::Union{Point{T}, SubArray{T, 1}}, triangle::Triangle)
 	if triangle == NO_TRIANGLE::Triangle return NO_WEIGHTS::Weight; end
 	@inbounds R = vcat(mesh.src_nodes[:, triangle[1]]', mesh.src_nodes[:, triangle[2]]', mesh.src_nodes[:, triangle[3]]')
 	R = hcat(R, ones(T, 3, 1));
@@ -375,7 +375,7 @@ function get_triangle_weights{T}(mesh::Mesh{T}, point::Point{T}, triangle::Trian
 	return (V[1], V[2], V[3]);
 end
 
-function get_triangle_weights!{T}(mesh::Mesh{T}, point::Point{T}, triangle::Triangle, R, r)
+function get_triangle_weights!{T}(mesh::Mesh{T}, point::Union{Point{T}, SubArray{T, 1}}, triangle::Triangle, R, r)
 
 	if triangle == NO_TRIANGLE::Triangle return NO_WEIGHTS::Weight; end
 
@@ -394,7 +394,7 @@ function get_triangle_weights{T}(mesh::Mesh{T}, points::Points{T}, triangles::Tr
   	R = ones(T, 3, 3)
   	r = ones(T, 3)
 
-	return Weights(map(get_triangle_weights!, repeated(mesh), points, triangles, repeated(R), repeated(r)))
+	return Weights(map(get_triangle_weights!, repeated(mesh), columnviews(points), triangles, repeated(R), repeated(r)))
 end
 
 

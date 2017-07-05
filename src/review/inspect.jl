@@ -527,7 +527,7 @@ Preliminary method to test filters in the GUI
 function compare_filter(imgc, img2, match, params)
   filter = (0.5, >, 5)
   inds_to_filter = Array{Any, 1}()
-  attributes = get_properties(match, filter[1])
+  attributes = get_correspondence_properties(match, filter[1])
   push!(inds_to_filter, find(i -> filter[2](i, filter[3]), attributes))
   inds_to_filter = union(inds_to_filter...)
   rejected_inds = get_rejected_indices(match)
@@ -668,7 +668,7 @@ function filter_match_distance(imgc, img2, matches, params)
     end
   end
   println("Distance filter @ ", dist)
-  filter = (0,:get_properties, >, dist, :norm)
+  filter = (0,:get_correspondence_properties, >, dist, :norm)
   filter!(matches, filter...)
   update_annotations(imgc, img2, matches, params)
 end
@@ -699,7 +699,7 @@ function filter_match_sigma(imgc, img2, matches, params)
     end
   end
   println("Sigma filter @ ", sigma)
-  filter = (0, :get_properties, >, sigma, 0.8)
+  filter = (0, :get_correspondence_properties, >, sigma, 0.8)
   filter!(matches, filter...)
   update_annotations(imgc, img2, matches, params)
 end
@@ -737,7 +737,7 @@ function view_dv_dispersion(index::Index)
   meshset = load("MeshSet"(index))
   fig = figure("dv $index", figsize=(20,20))
   for (i, match) in enumerate(meshset.matches)
-    dv_all = hcat(get_properties(match, :vects_dv)...)
+    dv_all = hcat(get_correspondence_properties(match, :vects_dv)...)
     dv_all_ind = ones(size(dv_all, 2))*i
     dv = hcat(get_filtered_properties(match, :vects_dv)...)
     dv_ind = ones(size(dv, 2))*i
@@ -765,7 +765,7 @@ function view_property_histogram(firstindex::Index, lastindex::Index, property_n
   for index in indrange
     meshset = load("MeshSet", index)
     for match in meshset.matches
-      attr = vcat(attr, get_properties(match, property_name))
+      attr = vcat(attr, get_correspondence_properties(match, property_name))
     end
   end
   masknan = map(!, map(isnan, attr))
@@ -780,7 +780,7 @@ end
 function view_property_histogram(meshset::MeshSet, property_name, nbins=20)
   attr = []
   for match in meshset.matches
-    attr = vcat(attr, get_properties(match, property_name))
+    attr = vcat(attr, get_correspondence_properties(match, property_name))
   end
   fig = figure("histogram")
   p = plt[:hist](attr, nbins)
@@ -791,7 +791,7 @@ end
 
 
 function view_property_scatter(match, property_name)
-  attr = get_properties(match, property_name)
+  attr = get_correspondence_properties(match, property_name)
   xy = Array{Int, 2}()
   if length(attr[1]) == 2
     xy = hcat(attr...)
@@ -807,7 +807,7 @@ end
 
 function view_property_histogram(match::Match, property_name; filtered=true, nbins=20)
   color="#990000"
-  attr = get_properties(match, property_name)
+  attr = get_correspondence_properties(match, property_name)
   attr_filtered = get_filtered_properties(match, property_name)
   if length(attr) > 1
     max_bin = min(maximum(attr), 50)

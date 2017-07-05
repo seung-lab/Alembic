@@ -5,9 +5,9 @@ function eval_filters(match::Match, filters, conjunction=false, meshset=nothing)
 
 	for filter in filters
 	if typeof(filter[1]) == Function
-	attributes = get_properties(match, filter[1], meshset)
+	attributes = get_correspondence_properties(match, filter[1], meshset)
 	else
-	attributes = get_properties(match, filter[1]);
+	attributes = get_correspondence_properties(match, filter[1]);
 	end
 	push!(inds_to_filter, find(i -> filter[2](i, filter[3]), attributes));
 	push!(thresholds, filter[4]);
@@ -133,10 +133,10 @@ function make_training_data(ms::MeshSet, bias=0.0)
        for m in ms.matches
 	range = (1:count_correspondences(m)) + current;
 
-              X[range, 1] = get_properties(m, :norm)[:]';
-              X[range, 2] = get_properties(m, "r_val")[:]';
-              X[range, 3] = get_properties(m, :patches_src_normalized_dyn_range)[:]';
-       	   X[(1:count_correspondences(m)) + current, 4] = get_properties(m, :patches_src_kurtosis)[:]';  
+              X[range, 1] = get_correspondence_properties(m, :norm)[:]';
+              X[range, 2] = get_correspondence_properties(m, "r_val")[:]';
+              X[range, 3] = get_correspondence_properties(m, :patches_src_normalized_dyn_range)[:]';
+       	   X[(1:count_correspondences(m)) + current, 4] = get_correspondence_propertiesm, :patches_src_kurtosis)[:]';  
        	   Y[(collect(Int64, get_rejected_indices(m))) + current] = 1
 	  push!(ranges, range)
        	  current = current + count_correspondences(m);

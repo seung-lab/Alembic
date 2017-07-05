@@ -179,8 +179,8 @@ function elastic_collate(meshset; from_current = true, write = false)
   meshes_order = Dict{Any, Int64}();
   cum_nodes = 0; cum_edges = 0;
 
-  meshes_ref = Array{RemoteRef, 1}()
-  matches_ref = Array{RemoteRef, 1}()
+  meshes_ref = Array{RemoteChannel, 1}()
+  matches_ref = Array{RemoteChannel, 1}()
   src_indices = Array{Any, 1}();
   dst_indices = Array{Any, 1}();
 
@@ -193,14 +193,14 @@ function elastic_collate(meshset; from_current = true, write = false)
 	meshes_order[get_index(mesh)] = index;
 	cum_nodes = cum_nodes + count_nodes(mesh);
 	cum_edges = cum_edges + count_edges(mesh);
-	mesh_ref = RemoteRef(); 
+	mesh_ref = RemoteChannel(); 
 	put!(mesh_ref, mesh); push!(meshes_ref, mesh_ref);
   end
 
   @fastmath @inbounds for match in meshset.matches
 	edgeranges[get_src_and_dst_indices(match)] = cum_edges + (1:count_filtered_correspondences(match));
 	cum_edges = cum_edges + count_filtered_correspondences(match);
-	match_ref = RemoteRef(); 
+	match_ref = RemoteChannel(); 
 	put!(match_ref, match); push!(matches_ref, match_ref);
 	push!(src_indices, get_src_index(match))
 	push!(dst_indices, get_dst_index(match))
@@ -208,9 +208,9 @@ function elastic_collate(meshset; from_current = true, write = false)
 
   for mesh in meshset.meshes
     if from_current
-      @fastmath @inbounds nodes[:, noderanges[get_index(mesh)]] = hcat(get_nodes(mesh; globalized = true, use_post = true)...);
+      @fastmath @inbounds nodes[:, noderanges[get_index(mesh)]] = get_nodes(mesh; globalized = true, use_post = true)[:];
     else
-      @fastmath @inbounds nodes[:, noderanges[get_index(mesh)]] = hcat(get_nodes(mesh; globalized = true, use_post = false)...);
+      @fastmath @inbounds nodes[:, noderanges[get_index(mesh)]] = get_nodes(mesh; globalized = true, use_post = false)[:];
     end
     if is_fixed(mesh)
       @fastmath @inbounds nodes_fixed[noderanges[get_index(mesh)]] = fill(true, count_nodes(mesh));
@@ -231,9 +231,12 @@ function elastic_collate(meshset; from_current = true, write = false)
   @fastmath noderange_list = Array{UnitRange, 1}([getindex(noderanges, get_index(mesh)) for mesh in meshset.meshes]);
   @fastmath edgerange_list = Array{UnitRange, 1}([getindex(edgeranges, get_index(mesh)) for mesh in meshset.meshes]);
 
+  # initializes a local copy of the whole sparse matrix for the system
   @inbounds @fastmath function make_local_sparse(num_nodes, num_edges)
 	global LOCAL_SPM = spzeros(num_nodes, num_edges)
   end
+
+  # initialize the local sparse matrix on all processes
   @sync begin
     @async for proc in setdiff(procs(), myid())
       remotecall_wait(proc, make_local_sparse, count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset)); 
@@ -243,20 +246,19 @@ function elastic_collate(meshset; from_current = true, write = false)
 
   gc();
 
+  # copies the edges of a given mesh(by remote reference) into the specific range of the local sparse matrix
   function copy_sparse_matrix(mesh_ref, noderange, edgerange)
     mesh = fetch(mesh_ref)
     @inbounds (LOCAL_SPM::SparseMatrixCSC{Float64, Int64})[noderange, edgerange] = mesh.edges;
   end
 
+  # do so in parallel for all meshes
   pmap(copy_sparse_matrix, meshes_ref, noderange_list, edgerange_list);
 
-#  edges_subarrays_meshes = Array{SparseMatrixCSC{Float64, Int64}, 1}(pmap(pad_sparse_matrix, meshes_ref, repeated(count_nodes(meshset)), noderange_list))
-
-#  @time @inbounds @fastmath edges_subarrays_meshes = [hcat(edges_subarrays_meshes..., spzeros(count_nodes(meshset), count_filtered_correspondences(meshset)))]
-
-
+  # all mesh edges are now represented in local sparse matrices somewhere
   println("meshes collated: $(count_meshes(meshset)) meshes")
 
+  # initialize the arrays for edge lengths and the spring coeffs
   for match in meshset.matches
     	@inbounds edge_lengths[edgeranges[get_src_and_dst_indices(match)]] = fill(0, count_filtered_correspondences(match));
     	@inbounds edge_spring_coeffs[edgeranges[get_src_and_dst_indices(match)]] = fill(match_spring_coeff, count_filtered_correspondences(match));
@@ -351,7 +353,7 @@ function elastic_collate(meshset; from_current = true, write = false)
   
   edges_subarrays = Array{SparseMatrixCSC{Float64, Int64}, 1}(length(procs()))
 
-  @sync for proc in procs() @async @inbounds edges_subarrays[proc] = remotecall_fetch(proc, get_local_sparse); end 
+  @sync for proc in procs() @async @inbounds edges_subarrays[proc] = remotecall_fetch(get_local_sparse, proc); end 
 
   function add_local_sparse(sp_a, sp_b)
     global LOCAL_SPM = 0;
