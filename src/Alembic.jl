@@ -147,7 +147,7 @@ global const eps = 1e-12;
 global const eps_large = 1e-4;
 global const eps_rec = 1 / eps;
 
-BLAS.set_num_threads(4);
+BLAS.set_num_threads(1);
 
 
 include("core/include.jl")
