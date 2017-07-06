@@ -579,7 +579,7 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 	xc = normxcorr2_preallocated(SRC_PATCH, DST_PATCH; shape = full ? "full" : "valid");
 	#t = toc()
 	#to = ELAPSED_TIME
-	global ELAPSED_TIME = t + to
+	#global ELAPSED_TIME = t + to
 #=
 	if dst_range != dst_range_full
 		indices_within_range = findin(dst_range_full[1], dst_range[1]), findin(dst_range_full[2], dst_range[2])
