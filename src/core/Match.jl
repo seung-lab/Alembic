@@ -457,9 +457,11 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
 	return kernel
         end
 
+	if bnadpass_sigmas != (0,0)
 	kernel = make_bandpass_kernel(bandpass_sigmas...)
 	SRC_PATCH_FULL[:] = convolve_Float64_planned(SRC_PATCH_FULL, kernel; crop = :same)[:]
 	DST_PATCH_FULL[:] = convolve_Float64_planned(DST_PATCH_FULL, kernel; crop = :same)[:]
+      end
 
 	function imscale_src_patch(img, scale_factor)
 		if scale == 1.0
