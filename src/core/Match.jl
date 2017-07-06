@@ -573,12 +573,12 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 	xc = normxcorr2_preallocated(src_image[src_range[1], src_range[2]], dst_image[dst_range[1], dst_range[2]]);
 	end
 	=#
-	tic()
+	#tic()
  if (prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, bandpass_sigmas; meanpad = meanpad) == nothing) return nothing end;
 #	prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma)
 	xc = normxcorr2_preallocated(SRC_PATCH, DST_PATCH; shape = full ? "full" : "valid");
-	t = toc()
-	to = ELAPSED_TIME
+	#t = toc()
+	#to = ELAPSED_TIME
 	global ELAPSED_TIME = t + to
 #=
 	if dst_range != dst_range_full

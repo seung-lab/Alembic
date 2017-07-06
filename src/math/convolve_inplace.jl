@@ -465,7 +465,9 @@ function normxcorr2_preallocated(template,img; shape = "valid", highpass_sigma =
     end
     @inbounds CONV_DT[:] = template
     @fastmath @inbounds calculate_dt!(CONV_DT)
+    tic()
     @fastmath @inbounds numerator=valid_convolve(img,CONV_DT; flip = true)
+    toc()
     @fastmath @inbounds templatevariance=sum(elwise_mul!(CONV_DT, CONV_DT))
 
     
