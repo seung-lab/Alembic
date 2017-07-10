@@ -369,6 +369,10 @@ function prematch(src_index, dst_index, src_image, dst_image, params=get_params(
 end
 
 function zeropad_to_meanpad!(img)
+  @fastmath avg = mean(img)
+  @fastmath zero_entries = img .== 0.0
+  @inbounds img[zero_entries] = avg
+  #=
   running_sum = 0.0;
   count = 0;
   zero_entries = Array{Int64, 1}();
@@ -398,6 +402,7 @@ function zeropad_to_meanpad!(img)
 	    end =#
 	  end
 	end
+	=#
 end
 
 # if from_disk src_image / dst_image are indices
@@ -422,7 +427,6 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
 #		DST_PATCH_G_H[:] = 0;
 	end
 
-
 	indices_within_range = findin(dst_range_full[1], dst_range[1]), findin(dst_range_full[2], dst_range[2])
 	if !from_disk
 	@fastmath @inbounds SRC_PATCH_FULL[:] = view(src_image, src_range...)
@@ -436,6 +440,7 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
         end
 	@inbounds DST_PATCH_FULL[indices_within_range...] = h5read(get_path(dst_image), "img", dst_range)
       end
+
       if meanpad
       zeropad_to_meanpad!(SRC_PATCH_FULL)
       zeropad_to_meanpad!(DST_PATCH_FULL)
@@ -443,6 +448,17 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
 
 	#lowpass_sigma, highpass_sigma = bandpass_sigmas;
 
+	if bandpass_sigmas != (0,0)
+	kernel = make_bandpass_kernel(bandpass_sigmas...)
+	@inbounds SRC_PATCH_FULL[:] = convolve_Float64_planned(SRC_PATCH_FULL::Array{Float64,2}, kernel; crop = :same)
+	@inbounds DST_PATCH_FULL[:] = convolve_Float64_planned(DST_PATCH_FULL::Array{Float64,2}, kernel; crop = :same)
+      end
+
+imscale_src_patch(SRC_PATCH_FULL, scale);	
+imscale_dst_patch(DST_PATCH_FULL, scale);	
+
+      return SRC_PATCH, DST_PATCH
+end
 	function make_bandpass_kernel(lowpass_sigma, highpass_sigma)
 	kernel_l = Images.Kernel.gaussian(lowpass_sigma)
 	kernel_h = Images.Kernel.gaussian(highpass_sigma)
@@ -457,14 +473,8 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
 	return kernel
         end
 
-	if bandpass_sigmas != (0,0)
-	kernel = make_bandpass_kernel(bandpass_sigmas...)
-	SRC_PATCH_FULL[:] = convolve_Float64_planned(SRC_PATCH_FULL, kernel; crop = :same)[:]
-	DST_PATCH_FULL[:] = convolve_Float64_planned(DST_PATCH_FULL, kernel; crop = :same)[:]
-      end
-
 	function imscale_src_patch(img, scale_factor)
-		if scale == 1.0
+		if scale_factor == 1.0
 			if size(SRC_PATCH) != size(img)
 				bb = ImageRegistration.BoundingBox{Int64}(0,0, size(img, 1), size(img, 2))
 				global SRC_PATCH = zeros(Float64, bb.h, bb.w)
@@ -484,7 +494,7 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
 	end
 
 	function imscale_dst_patch(img, scale_factor)
-		if scale == 1.0
+		if scale_factor == 1.0
 			if size(DST_PATCH) != size(img)
 				bb = ImageRegistration.BoundingBox{Int64}(0,0, size(img, 1), size(img, 2))
 				global DST_PATCH = zeros(Float64, bb.h, bb.w)
@@ -502,12 +512,6 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
 			ImageRegistration.imwarp!(DST_PATCH, img, tform_correct);
 		end
 	end
-
-	imscale_src_patch(SRC_PATCH_FULL, scale);	
-	imscale_dst_patch(DST_PATCH_FULL, scale);	
-
-      return SRC_PATCH, DST_PATCH
-end
 
 function get_match(pt, ranges, src_image, dst_image, params)
 	return get_match(pt, ranges, src_image, dst_image, params[:match][:blockmatch_scale], params[:match][:bandpass_sigmas]);
@@ -574,9 +578,11 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 	end
 	=#
 	#tic()
-@time if (prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, bandpass_sigmas; meanpad = meanpad) == nothing) return nothing end;
+pp = prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, bandpass_sigmas; meanpad = meanpad)
+
+if (pp == nothing) return nothing end;
 #	prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma)
-	xc = normxcorr2_preallocated(SRC_PATCH, DST_PATCH; shape = full ? "full" : "valid");
+xc = normxcorr2_preallocated(SRC_PATCH, DST_PATCH; shape = full ? "full" : "valid");
 	#t = toc()
 	#to = ELAPSED_TIME
 	#global ELAPSED_TIME = t + to
@@ -864,7 +870,7 @@ function Match{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T}, params=get_params(src_me
 	print("computing matches:")
 	print("    ")
 global ELAPSED_TIME = 0.0
-        @time dst_allpoints = map(get_match, columnviews(src_mesh.src_nodes[:,ranged_inds]), ranges, repeated(src_img), repeated(dst_img), repeated(params[:match][:blockmatch_scale]), repeated(params[:match][:bandpass_sigmas])) 
+        @time dst_allpoints = pmap(get_match, columnviews(src_mesh.src_nodes[:,ranged_inds]), ranges, repeated(src_img), repeated(dst_img), repeated(params[:match][:blockmatch_scale]), repeated(params[:match][:bandpass_sigmas])) 
 	println(ELAPSED_TIME)
 
 	matched_inds = find(i -> i != nothing, dst_allpoints);
