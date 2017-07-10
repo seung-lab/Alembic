@@ -4,6 +4,7 @@ immutable ConvolveEnv
   size_B::NTuple{2, Int64}
 
   crop::Symbol
+  padding::Symbol
 
   intermediate_A::Array{Float64, 2}
   intermediate_B::Array{Float64, 2}
@@ -25,19 +26,19 @@ function clear_convolveenvs()
 end
 
 function register_convolveenv(ce::ConvolveEnv)
-	CONVOLVE_ENVS[Symbol(ce.size_A, ce.size_B, ce.crop)] = ce
+	CONVOLVE_ENVS[Symbol(ce.size_A, ce.size_B, ce.crop, ce.padding)] = ce
 end
 
-function get_convolveenv(A, B; crop = :valid)
-  if haskey(CONVOLVE_ENVS, Symbol(size(A), size(B), crop)) return CONVOLVE_ENVS[Symbol(size(A), size(B), crop)] end
+function get_convolveenv(A, B; crop = :valid, padding = :none)
+  if haskey(CONVOLVE_ENVS, Symbol(size(A), size(B), crop, padding)) return CONVOLVE_ENVS[Symbol(size(A), size(B), crop, padding)] end
 
-  ce = ConvolveEnv(A, B, crop = crop)
+  ce = ConvolveEnv(A, B, crop = crop, padding = padding)
   register_convolveenv(ce)
 
   return ce
 end
 
-function ConvolveEnv(A, B; factorable = Primes.primes(10), crop = :valid)
+function ConvolveEnv(A, B; factorable = Primes.primes(10), crop = :valid, padding = :none)
 	if crop == :valid
 		result_ranges = [min(a,b):max(a,b) for (a,b) in zip(size(A), size(B))]
 	elseif crop == :same
@@ -70,6 +71,7 @@ function ConvolveEnv(A, B; factorable = Primes.primes(10), crop = :valid)
   	size_B::NTuple{2, Int64},
 
   	crop::Symbol,
+	padding::Symbol,
 
   	intermediate_A::Array{Float64, 2},
   	intermediate_B::Array{Float64, 2},
@@ -191,11 +193,14 @@ function convolve_Float64(A,B)
     irfft(rfft(pA).*rfft(pB),common_size[1])
 end
 
-function convolve_Float64_planned(A,B; flip = true, factorable = nothing, crop = :valid, ce = get_convolveenv(A, B; crop = crop))
+function convolve_Float64_planned(A,B; flip = true, factorable = nothing, crop = :valid, padding = :none, ce = get_convolveenv(A, B; crop = crop, padding = padding))
 	clean!(ce)
 
     	rangesA=[1:x for x in size(A)]
     	rangesB= flip ? [x:-1:1 for x in size(B)] : [1:x for x in size(B)] 
+	if padding == :mean
+	  @fastmath @inbounds ce.intermediate_A[:] = mean(A)
+	end
     	@inbounds ce.intermediate_A[rangesA...]=A
     	@inbounds ce.intermediate_B[rangesB...]=B
 

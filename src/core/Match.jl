@@ -177,21 +177,21 @@ function get_correspondence_patches(match::Match, ind)
 
 	props = match.correspondence_properties[ind, :]
 
-		scale = props[:ranges_scale];
+		scale = props[:ranges_scale][1];
 		bandpass_sigmas = match.properties[:params][:match][:bandpass_sigmas]
 		#src_patch = h5read(src_path, "img", props["ranges"]["src_range"])
-		src_pt_loc = props[:ranges_src_pt_loc];
+		src_pt_loc = props[:ranges_src_pt_loc][1];
 		#dst_patch = h5read(dst_path, "img", props["ranges"]["dst_range"])
-		dst_pt_loc = props[:ranges_dst_pt_loc];
+		dst_pt_loc = props[:ranges_dst_pt_loc][1];
 
 		src_pt = ceil.(Int64, src_pt_loc * scale)
 		dst_pt = dst_pt_loc
 
-		dst_range_full = props[:ranges_dst_range_full]
+		dst_range_full = props[:ranges_dst_range_full][1]
 		dst_pt_locs_full = [findfirst(dst_range_full[1] .== dst_pt[1]), findfirst(dst_range_full[2] .== dst_pt[2])]
 		dst_pt_max = ceil.(Int64, max(dst_pt, dst_pt_locs_full) * scale)
 
-	prepare_patches(src_path, dst_path, props[:ranges_src_range], props[:ranges_dst_range], props[:ranges_dst_range_full], scale, bandpass_sigmas; from_disk = true)
+	prepare_patches(src_path, dst_path, props[:ranges_src_range][1], props[:ranges_dst_range][1], props[:ranges_dst_range_full][1], scale, bandpass_sigmas; from_disk = true)
 
 	function rescale(img)
 	  img_new = copy(img)
@@ -211,7 +211,7 @@ function get_correspondence_patches(match::Match, ind)
 
 	#return SRC_PATCH, DST_PATCH
 	xc = normxcorr2_preallocated(SRC_PATCH, DST_PATCH);
-	dv = ceil(Int64, props[:vects_dv] * scale)
+	dv = ceil(Int64, props[:vects_dv][1] * scale)
 	return src_patch, src_pt, dst_patch, dst_pt, xc, dst_pt_max-src_pt+dv
 end
 
@@ -450,8 +450,8 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
 
 	if bandpass_sigmas != (0,0)
 	kernel = make_bandpass_kernel(bandpass_sigmas...)
-	@inbounds SRC_PATCH_FULL[:] = convolve_Float64_planned(SRC_PATCH_FULL::Array{Float64,2}, kernel; crop = :same)
-	@inbounds DST_PATCH_FULL[:] = convolve_Float64_planned(DST_PATCH_FULL::Array{Float64,2}, kernel; crop = :same)
+	@inbounds SRC_PATCH_FULL[:] = convolve_Float64_planned(SRC_PATCH_FULL::Array{Float64,2}, kernel; crop = :same, padding = :mean)
+	@inbounds DST_PATCH_FULL[:] = convolve_Float64_planned(DST_PATCH_FULL::Array{Float64,2}, kernel; crop = :same, padding = :mean)
       end
 
 imscale_src_patch(SRC_PATCH_FULL, scale);	
@@ -520,6 +520,7 @@ end
 Template match two image patches to produce point pair correspondence
 """
 function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigmas = (0, 0); full = false, meanpad = true)
+  @time begin
 	src_index, src_range, src_pt_loc, dst_index, dst_range, dst_range_full, dst_pt_loc, dst_pt_loc_full, rel_offset = ranges;
 #=	if sum(src_image[src_range[1], first(src_range[2])]) == 0 && sum(src_image[src_range[1], last(src_range[2])]) == 0 &&
 			sum(src_image[first(src_range[1]), src_range[2]]) == 0 && sum(src_image[last(src_range[1]), src_range[2]]) == 0 return nothing end
@@ -713,6 +714,7 @@ xc = normxcorr2_preallocated(SRC_PATCH, DST_PATCH; shape = full ? "full" : "vali
 	correspondence_properties[:vects_dv] = [[di, dj]];
 	correspondence_properties[:vects_norm] = norm([di, dj]);
 	#correspondence_properties[:posts] = Dict{Any, Any}();
+      end
 
 	return vcat(pt + rel_offset + [di, dj], correspondence_properties);
 end
@@ -870,7 +872,7 @@ function Match{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T}, params=get_params(src_me
 	print("computing matches:")
 	print("    ")
 global ELAPSED_TIME = 0.0
-        @time dst_allpoints = pmap(get_match, columnviews(src_mesh.src_nodes[:,ranged_inds]), ranges, repeated(src_img), repeated(dst_img), repeated(params[:match][:blockmatch_scale]), repeated(params[:match][:bandpass_sigmas])) 
+        @time dst_allpoints = map(get_match, columnviews(src_mesh.src_nodes[:,ranged_inds]), ranges, repeated(src_img), repeated(dst_img), repeated(params[:match][:blockmatch_scale]), repeated(params[:match][:bandpass_sigmas])) 
 	println(ELAPSED_TIME)
 
 	matched_inds = find(i -> i != nothing, dst_allpoints);
