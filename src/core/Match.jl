@@ -1,3 +1,116 @@
+# Immutable type that contains the preallocated space needed for match
+immutable MatchEnv
+  # sizes of the full size patches
+  size_src::NTuple{2, Int64}
+  size_dst::NTuple{2, Int64}
+
+  # blockmatch scale
+  scale::Float64
+  # bandpass values
+  bandpass
+
+  # bandpass filter for xcorr
+  kernel::Array{Float64, 2}
+
+  # tforms for scaling
+  tform_src::Array{Float64, 2}
+  tform_dst::Array{Float64, 2}
+
+  # locations for the full size patches
+  src_patch_full::Array{Float64, 2}
+  dst_patch_full::Array{Float64, 2}
+
+  # locations for the scaled patches
+  src_patch::Array{Float64, 2}
+  dst_patch::Array{Float64, 2}
+end
+
+global MATCH_ENVS = Dict{Symbol, MatchEnv}()
+
+function clear_matchenvs()
+	global MATCH_ENVS = Dict{Symbol, MatchEnv}()
+end
+
+function register_matchenv(me::MatchEnv)
+	MATCH_ENVS[Symbol(me.size_src, me.size_dst, me.scale, me.bandpass)] = me
+end
+
+function get_matchenv(src_range, dst_range; scale = 1.0, bandpass = (0,0))
+  if haskey(MATCH_ENVS, Symbol(map(length, src_range), map(length, dst_range), scale, bandpass)) 
+    return MATCH_ENVS[Symbol(map(length, src_range), map(length, dst_range), scale, bandpass)]
+  end
+
+  me = MatchEnv(src_range, dst_range; scale = scale, bandpass = bandpass)
+  register_matchenv(me)
+
+  return me
+end
+
+function MatchEnv(src_range, dst_range; scale = 1.0, bandpass = (0,0))
+  size_src = map(length, src_range)
+  size_dst = map(length, dst_range)
+
+  src_patch_full = zeros(Float64, size_src...)
+  dst_patch_full = zeros(Float64, size_dst...)
+
+  if scale == 1.0
+    src_patch = zeros(Float64, size_src...)
+    dst_patch = zeros(Float64, size_dst...)
+    tform_src = zeros(Float64, 0, 0)
+    tform_dst = zeros(Float64, 0, 0)
+  else
+    tform = [scale 0 0; 0 scale 0; 0 0 1]
+
+    bb_src = ImageRegistration.BoundingBox{Float64}(0,0, size_src...)
+    wbb_src = tform_bb(bb_src, tform)
+    tbb_src = snap_bb(wbb_src)
+    src_patch = zeros(Float64, tbb_src.h, tbb_src.w)
+    tform_src = [tbb_src.h/size_src[1] - eps 0 0; 0 tbb_src.w/size_src[2] - eps 0; 0 0 1]
+
+    bb_dst = ImageRegistration.BoundingBox{Float64}(0,0, size_dst...)
+    wbb_dst = tform_bb(bb_dst, tform)
+    tbb_dst = snap_bb(wbb_dst)
+    dst_patch = zeros(Float64, tbb_dst.h, tbb_dst.w)
+    tform_dst = [tbb_dst.h/size_dst[1] - eps 0 0; 0 tbb_dst.w/size_dst[2] - eps 0; 0 0 1]
+  end
+   
+  if bandpass == (0, 0)
+    kernel = zeros(Float64, 0, 0)
+  else
+    kernel = make_bandpass_kernel(bandpass...) 
+  end
+
+    return MatchEnv(
+  size_src::NTuple{2, Int64},
+  size_dst::NTuple{2, Int64},
+
+  scale::Float64,
+  bandpass,
+
+  kernel::Array{Float64, 2},
+
+  tform_src::Array{Float64, 2},
+  tform_dst::Array{Float64, 2},
+
+  src_patch_full::Array{Float64, 2},
+  dst_patch_full::Array{Float64, 2},
+
+  src_patch::Array{Float64, 2},
+  dst_patch::Array{Float64, 2}
+    )
+end
+
+function clean!(me::MatchEnv)
+  @inbounds begin
+	me.src_patch_full[:] = Float64(0)
+	me.dst_patch_full[:] = Float64(0)
+	me.src_patch[:] = Float64(0)
+	me.dst_patch[:] = Float64(0)
+  end
+end
+
+
+
 function init_Match()
 
 global SRC_PATCH_FULL = Array{Float64, 2}(1,1);
@@ -407,57 +520,40 @@ end
 
 # if from_disk src_image / dst_image are indices
 # function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma; from_disk = false)
-function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, bandpass_sigmas; from_disk = false, meanpad = true)
-  	# the following two if statements should only ever be called together
-	if size(SRC_PATCH_FULL) != map(length,src_range)
-		global SRC_PATCH_FULL = Array{Float64, 2}(map(length, src_range)...);
-	#	global SRC_PATCH_FULL_H = Array{Float64, 2}(map(length, src_range)...);
-#		global SRC_PATCH_G_L = zeros(Float64, map(length, src_range)...)
-#		global SRC_PATCH_G_H = zeros(Float64, map(length, src_range)...)
-	end
-	if size(DST_PATCH_FULL) != map(length,dst_range_full)
-		global DST_PATCH_FULL = Array{Float64, 2}(map(length, dst_range_full)...);
-	#	global DST_PATCH_FULL_H = Array{Float64, 2}(map(length, dst_range_full)...);
-#		global DST_PATCH_G_L = zeros(Float64, map(length, dst_range_full)...)
-#		global DST_PATCH_G_H = zeros(Float64, map(length, dst_range_full)...)
-	      else
-		DST_PATCH_FULL[:] = 0;
-#		DST_PATCH_FULL_H[:] = 0; # this gets overwritten anyway
-#		DST_PATCH_G_L[:] = 0;
-#		DST_PATCH_G_H[:] = 0;
-	end
+function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, bandpass_sigmas; me = get_matchenv(src_range, dst_range_full, scale = scale, bandpass = bandpass_sigmas), from_disk = false, meanpad = true)
+
+  clean!(me)
 
 	indices_within_range = findin(dst_range_full[1], dst_range[1]), findin(dst_range_full[2], dst_range[2])
 	if !from_disk
-	@fastmath @inbounds SRC_PATCH_FULL[:] = view(src_image, src_range...)
-#	@inbounds SRC_PATCH_FULL[:] = src_image[src_range...]
-	@fastmath @inbounds DST_PATCH_FULL[indices_within_range...] = view(dst_image, dst_range...)
-	#@inbounds DST_PATCH_FULL[indices_within_range...] = dst_image[dst_range...]
+	@fastmath @inbounds me.src_patch_full[:] = view(src_image, src_range...)
+	@fastmath @inbounds me.dst_patch_full[indices_within_range...] = view(dst_image, dst_range...)
       else
-	if get_rotation(src_image) != 0 @inbounds SRC_PATCH_FULL[:] = imrotate(h5read(get_path(src_image), "img"), get_rotation(src_image); parallel = true)[src_range...];
+	if get_rotation(src_image) != 0 @inbounds me.src_patch_full[:] = imrotate(h5read(get_path(src_image), "img"), get_rotation(src_image); parallel = true)[src_range...];
 	else
-	@inbounds SRC_PATCH_FULL[:] = h5read(get_path(src_image), "img", src_range);
+	@inbounds me.src_patch_full[:] = h5read(get_path(src_image), "img", src_range);
         end
-	@inbounds DST_PATCH_FULL[indices_within_range...] = h5read(get_path(dst_image), "img", dst_range)
+	@inbounds me.dst_patch_full[indices_within_range...] = h5read(get_path(dst_image), "img", dst_range)
       end
 
       if meanpad
-      zeropad_to_meanpad!(SRC_PATCH_FULL)
-      zeropad_to_meanpad!(DST_PATCH_FULL)
+      zeropad_to_meanpad!(me.src_patch_full)
+      zeropad_to_meanpad!(me.dst_patch_full)
       end
 
-	#lowpass_sigma, highpass_sigma = bandpass_sigmas;
-
-	if bandpass_sigmas != (0,0)
-	kernel = make_bandpass_kernel(bandpass_sigmas...)
-	@inbounds SRC_PATCH_FULL[:] = convolve_Float64_planned(SRC_PATCH_FULL::Array{Float64,2}, kernel; crop = :same, padding = :mean)
-	@inbounds DST_PATCH_FULL[:] = convolve_Float64_planned(DST_PATCH_FULL::Array{Float64,2}, kernel; crop = :same, padding = :mean)
+      if bandpass_sigmas != (0,0)
+	@inbounds me.src_patch_full[:] = convolve_Float64_planned(me.src_patch_full, me.kernel; crop = :same, padding = :mean)
+	@inbounds me.dst_patch_full[:] = convolve_Float64_planned(me.dst_patch_full, me.kernel; crop = :same, padding = :mean)
       end
 
-imscale_src_patch(SRC_PATCH_FULL, scale);	
-imscale_dst_patch(DST_PATCH_FULL, scale);	
+      if scale == 1.0
+	return me.src_patch_full, me.dst_patch_full
+      else
+	ImageRegistration.imwarp!(me.src_patch, me.src_patch_full, me.tform_src)
+	ImageRegistration.imwarp!(me.dst_patch, me.dst_patch_full, me.tform_dst)
+	return me.src_patch, me.dst_patch
+      end
 
-      return SRC_PATCH, DST_PATCH
 end
 	function make_bandpass_kernel(lowpass_sigma, highpass_sigma)
 	kernel_l = Images.Kernel.gaussian(lowpass_sigma)
@@ -473,45 +569,6 @@ end
 	return kernel
         end
 
-	function imscale_src_patch(img, scale_factor)
-		if scale_factor == 1.0
-			if size(SRC_PATCH) != size(img)
-				bb = ImageRegistration.BoundingBox{Int64}(0,0, size(img, 1), size(img, 2))
-				global SRC_PATCH = zeros(Float64, bb.h, bb.w)
-			end
-			@inbounds SRC_PATCH[:] = img
-		else
-			tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
-			bb = ImageRegistration.BoundingBox{Float64}(0,0, size(img, 1), size(img, 2))
-			wbb = tform_bb(bb, tform)
-			tbb = snap_bb(wbb)
-			if size(SRC_PATCH) != (tbb.h, tbb.w)
-				global SRC_PATCH = zeros(Float64, tbb.h, tbb.w)
-			end
-			tform_correct = [tbb.h/size(img,1) - eps 0 0; 0 tbb.w/size(img,2) - eps 0; 0 0 1];
-			ImageRegistration.imwarp!(SRC_PATCH, img, tform_correct);
-		end
-	end
-
-	function imscale_dst_patch(img, scale_factor)
-		if scale_factor == 1.0
-			if size(DST_PATCH) != size(img)
-				bb = ImageRegistration.BoundingBox{Int64}(0,0, size(img, 1), size(img, 2))
-				global DST_PATCH = zeros(Float64, bb.h, bb.w)
-			end
-			@inbounds DST_PATCH[:] = img
-		else
-			tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
-			bb = ImageRegistration.BoundingBox{Float64}(0,0, size(img, 1), size(img, 2))
-			wbb = tform_bb(bb, tform)
-			tbb = snap_bb(wbb)
-			if size(DST_PATCH) != (tbb.h, tbb.w)
-				global DST_PATCH = zeros(Float64, tbb.h, tbb.w)
-			end
-			tform_correct = [tbb.h/size(img,1) - eps 0 0; 0 tbb.w/size(img,2) - eps 0; 0 0 1];
-			ImageRegistration.imwarp!(DST_PATCH, img, tform_correct);
-		end
-	end
 
 function get_match(pt, ranges, src_image, dst_image, params)
 	return get_match(pt, ranges, src_image, dst_image, params[:match][:blockmatch_scale], params[:match][:bandpass_sigmas]);
@@ -520,7 +577,6 @@ end
 Template match two image patches to produce point pair correspondence
 """
 function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigmas = (0, 0); full = false, meanpad = true)
-  @time begin
 	src_index, src_range, src_pt_loc, dst_index, dst_range, dst_range_full, dst_pt_loc, dst_pt_loc_full, rel_offset = ranges;
 #=	if sum(src_image[src_range[1], first(src_range[2])]) == 0 && sum(src_image[src_range[1], last(src_range[2])]) == 0 &&
 			sum(src_image[first(src_range[1]), src_range[2]]) == 0 && sum(src_image[last(src_range[1]), src_range[2]]) == 0 return nothing end
@@ -579,11 +635,11 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 	end
 	=#
 	#tic()
-pp = prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, bandpass_sigmas; meanpad = meanpad)
+src_patch, dst_patch = prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, bandpass_sigmas; meanpad = meanpad)
 
-if (pp == nothing) return nothing end;
+#if (pp == nothing) return nothing end;
 #	prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma)
-xc = normxcorr2_preallocated(SRC_PATCH, DST_PATCH; shape = full ? "full" : "valid");
+xc = normxcorr2_preallocated(src_patch, dst_patch; shape = full ? "full" : "valid");
 	#t = toc()
 	#to = ELAPSED_TIME
 	#global ELAPSED_TIME = t + to
@@ -714,7 +770,6 @@ xc = normxcorr2_preallocated(SRC_PATCH, DST_PATCH; shape = full ? "full" : "vali
 	correspondence_properties[:vects_dv] = [[di, dj]];
 	correspondence_properties[:vects_norm] = norm([di, dj]);
 	#correspondence_properties[:posts] = Dict{Any, Any}();
-      end
 
 	return vcat(pt + rel_offset + [di, dj], correspondence_properties);
 end
@@ -871,9 +926,7 @@ function Match{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T}, params=get_params(src_me
 
 	print("computing matches:")
 	print("    ")
-global ELAPSED_TIME = 0.0
-        @time dst_allpoints = map(get_match, columnviews(src_mesh.src_nodes[:,ranged_inds]), ranges, repeated(src_img), repeated(dst_img), repeated(params[:match][:blockmatch_scale]), repeated(params[:match][:bandpass_sigmas])) 
-	println(ELAPSED_TIME)
+        @time dst_allpoints = pmap(get_match, columnviews(src_mesh.src_nodes[:,ranged_inds]), ranges, repeated(src_img), repeated(dst_img), repeated(params[:match][:blockmatch_scale]), repeated(params[:match][:bandpass_sigmas])) 
 
 	matched_inds = find(i -> i != nothing, dst_allpoints);
 

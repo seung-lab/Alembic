@@ -3,16 +3,14 @@ Multiple dispatch for meshwarp on Mesh object
 """
 function meshwarp_mesh(mesh::Mesh)
   img = get_image(mesh)
-  src_nodes = hcat(get_nodes(mesh; globalized = true, use_post = false)...)'
-  dst_nodes = hcat(get_nodes(mesh; globalized = true, use_post = true)...)'
+  src_nodes = get_nodes(mesh; globalized = true, use_post = false)
+  dst_nodes = get_nodes(mesh; globalized = true, use_post = true)
   offset = get_offset(mesh);
   #=print("incidence_to_dict: ")
   @time node_dict = incidence_to_dict(mesh.edges') #'
   print("dict_to_triangles: ")
   @time triangles = dict_to_triangles(node_dict)=#
-  node_dict = incidence_to_dict(mesh.edges') #
-  triangles = dict_to_triangles(node_dict)
-  return @time meshwarp(img, src_nodes, dst_nodes, triangles, offset), get_index(mesh)
+  return @time meshwarp(img, src_nodes, dst_nodes, incidence_to_triangles(mesh.edges), offset), get_index(mesh)
 end
 
 """
@@ -20,16 +18,14 @@ Reverts transform that went from index and returns the image at the index
 """
 function meshwarp_revert(index::FourTupleIndex, img = get_image(nextstage(index)), interp = false)
   mesh = load("Mesh", index)
-  src_nodes = hcat(get_nodes(mesh; globalized = true, use_post = false)...)'
-  dst_nodes = hcat(get_nodes(mesh; globalized = true, use_post = true)...)'
+  src_nodes = get_nodes(mesh; globalized = true, use_post = false)
+  dst_nodes = get_nodes(mesh; globalized = true, use_post = true)
   offset = get_offset(nextstage(index));
   #=print("incidence_to_dict: ")
   @time node_dict = incidence_to_dict(mesh.edges') #'
   print("dict_to_triangles: ")
   @time triangles = dict_to_triangles(node_dict)=#
-  node_dict = incidence_to_dict(mesh.edges') #
-  triangles = dict_to_triangles(node_dict)
-  @time reverted_img, reverted_offset = meshwarp(img, dst_nodes, src_nodes, triangles, offset, interp)
+  @time reverted_img, reverted_offset = meshwarp(img, dst_nodes, src_nodes, incident_to_triangles(mesh.edges), offset, interp)
   original_image_size = get_image_size(index)
   original_offset = get_offset(index)
   i_range = (1:original_image_size[1]) - reverted_offset[1] + original_offset[1] 

@@ -417,9 +417,9 @@ function update_registry(index; rotation::Union{Float64, Int64} = get_rotation(i
     registry_line = [image_fn, rotation, offset..., image_size..., rendered]
     idx = findfirst(registry[:,1], image_fn)
     if idx != 0
-      registry[idx, :] = registry_line';
+      registry[idx, :] = reshape(registry_line, 1, :);
     else
-      registry = vcat(registry, registry_line')
+      registry = vcat(registry, reshape(registry_line, 1, :))
     end
   end
   registry = registry[sortperm(registry[:, 1], by=parse_name), :];

@@ -396,15 +396,17 @@ function elastic_solve!(meshset; from_current = true, use_saved = false, write =
   if write 
     save(string(splitext(get_filename(meshset))[1], "_collated.jls"), (collation, noderanges, edgeranges))
   end
-
-  dst_nodes = Points(0)
+#=
+  dst_nodes = zeros(Float64, 2, count_nodes(meshset))
   nodes = collation[1]
   for i in 1:size(nodes, 2)
           push!(dst_nodes, vec(nodes[:, i]))
         end
+	=#
+	dst_nodes = reshape(collation[1], :, 2)'
 
   for mesh in meshset.meshes
-	mesh.dst_nodes = dst_nodes[noderanges[get_index(mesh)]] - fill(get_offset(mesh), count_nodes(mesh));
+	broadcast!(-, mesh.dst_nodes, dst_nodes[:, noderanges[get_index(mesh)]], get_offset(mesh));
   end
 
  # stats(meshset; summary = true);
