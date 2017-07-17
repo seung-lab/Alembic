@@ -96,6 +96,7 @@ function get_image_disk(path::AbstractString, dtype = IMG_ELTYPE; shared = false
     end
 	elseif ext == ".h5"
     if shared
+      #=
       i_size = 190464
       j_size = 305152
       @everywhere gc();
@@ -121,6 +122,12 @@ function get_image_disk(path::AbstractString, dtype = IMG_ELTYPE; shared = false
       shared_img = SharedArray(dtype, size(img)...);
       @inbounds shared_img.s[:,:] = img[:,:]
       =#
+      =#
+      
+      img = h5read(path, "img")
+
+      shared_img = SharedArray(UInt8, size(img)...)
+      shared_img[:] = img[:]
       return shared_img;
     else
       return convert(Array{dtype, 2}, h5read(path, "img"))

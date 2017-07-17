@@ -1,9 +1,9 @@
-global BUCKET = "/home/ubuntu"
-global DATASET = "datasets/myelin"
+global BUCKET = homedir()
+global DATASET = "datasets/cb3"
 #global ROI_FIRST = (1,1,0,0);
-global ROI_FIRST = (3,1,0,0);
+global ROI_FIRST = (1,1,0,0);
 global ROI_LAST = (8,173,0,0);
-global DATASET_RESOLUTION = [30,30,40]
+global DATASET_RESOLUTION = [4,4,40]
 
 global TASKS_LOCALE = "gcs"
 #global TASKS_LOCALE = "aws"

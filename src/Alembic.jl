@@ -21,12 +21,12 @@ end
 global const USE_PYPLOT = false;
 
 
-PKGS_USED = ["HDF5", "JLD", "Images", "ImageView", "Colors", "FixedPointNumbers", "Cairo", "IterativeSolvers", "Optim", "Distributions", "RegERMs", "PyPlot"]
+PKGS_USED = ["HDF5", "JLD", "Images", "ImageView", "Colors", "FixedPointNumbers", "Cairo", "IterativeSolvers", "Optim", "Distributions", "RegERMs", "PyPlot", "SimpleTasks"]
 
 PKGS_USED_CLONABLE = ["https://github.com/JuliaSparse/MKLSparse.jl.git", 
                       "https://github.com/seung-lab/ImageRegistration.git", 
 		      "https://github.com/madeleineudell/ParallelSparseMatMul.jl.git",
-                      "https://github.com/macrintr/ImageView.jl.git"]
+                      ]
 
 using HDF5
 using JLD
@@ -44,7 +44,7 @@ using Graphics
 using StatsBase
 using JSON
 using SimpleTasks
-if VERSION != v"0.4.6"
+if VERSION != v"0.4.6" || VERSION != v"0.4.7"
 using Primes
 end
 if USE_PYPLOT
@@ -54,7 +54,9 @@ end
   using ImageView
 if !contains(gethostname(), "seung") && !contains(gethostname(), "MacBook")
   using PyCall
+  if haskey(ENV, "MKLROOT")
   using MKLSparse
+  end
 end
 
 #import Base.filter!
@@ -132,12 +134,12 @@ include("core/MeshSet.jl")
 include("core/solve.jl")
 
 #include("datasets/dataset_cremi.jl")
-include("datasets/dataset_piriform.jl")
-include("params/params_piriform.jl")
+#include("datasets/dataset_piriform.jl")
+#include("params/params_piriform.jl")
 
 #include("datasets/dataset_s1.jl")
-#include("datasets/dataset_myelin.jl")
-#include("params/params_myelin.jl")
+include("datasets/dataset_myelin.jl")
+include("params/params_myelin.jl")
 # include("datasets/dataset_davit.jl")
 # include("params/params_davit.jl")
 # include("datasets/dataset_zebrafish.jl")
