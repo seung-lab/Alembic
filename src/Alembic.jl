@@ -44,7 +44,7 @@ using Graphics
 using StatsBase
 using JSON
 using SimpleTasks
-if VERSION != v"0.4.6" || VERSION != v"0.4.7"
+if VERSION != v"0.4.6" && VERSION != v"0.4.7"
 using Primes
 end
 if USE_PYPLOT
