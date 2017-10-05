@@ -21,29 +21,30 @@ class PreprocessChunkTask():
 		self.contrast = Storage(contrastlayer)
 		self.order = Storage(orderlayer)
 		self.out = CloudVolume(outlayer)
-		self.x_slice = x_slice
-		self.y_slice = y_slice
-		self.dst_z_slice = z_slice
+		self.x_slice = slice(*x_slice)
+		self.y_slice = slice(*y_slice)
+		self.dst_z_slice = slice(*z_slice)
 
 		self.bbox = box(self.x_slice.start, self.y_slice.start, 
 										self.x_slice.stop, self.y_slice.stop)
 
 		f = self.order.get_file('dst_to_src.csv')
 		order_arr = np.genfromtxt(BytesIO(f), dtype=np.int, 
-											dleimiter=',', skip_header=1)
+											delimiter=',', skip_header=1)
 		self.dst_to_src = {order_arr[i,0]:order_arr[i,1] 
 									for i in range(order_arr.shape[0])}
 		src_z_range = []
 		for dst_z in range(self.dst_z_slice.start, self.dst_z_slice.stop):
-			src_z_range.append(self.dst_to_src[dst_z])
+			if dst_z in self.dst_to_src:
+				src_z_range.append(self.dst_to_src[dst_z])
 		self.src_z_slice = slice(min(src_z_range), max(src_z_range)+1)
 
 		self.src_chunk = self.vol[self.x_slice, self.y_slice, self.src_z_slice]
 		self.src_shape = self.src_chunk.shape
 		self.src_chunk = np.reshape(self.src_chunk, self.src_shape[:3])
-		self.dst_chunk = np.zeros((x_slice.stop-x_slice.start,
-									y_slice.stop-y_slice.start,
-									z_slice.stop-z_slice.start), np.uint8)
+		self.dst_chunk = np.zeros((self.x_slice.stop-self.x_slice.start,
+						self.y_slice.stop-self.y_slice.start,
+						self.dst_z_slice.stop-self.dst_z_slice.start), np.uint8)
 
 
 		z_range = list(range(self.src_z_slice.start, self.src_z_slice.stop))
@@ -90,13 +91,15 @@ class PreprocessChunkTask():
 
 	def correct_contrast_src_chunk(self):
 		"""Autostretch contrast between 5 and 95% quantile values
+		Only correct if contrast file is available
 		"""
 		for src_z in range(self.src_z_slice.start, self.src_z_slice.stop):
-			z = src_z - self.src_z_slice.start
-			im = self.src_chunk[:,:,z]
-			v_min = self.quantiles[src_z][1]  #  5% -> 0
-			v_max = self.quantiles[src_z][-2] # 95% -> 1
-			self.src_chunk[:,:,z] = self.stretch_contrast(im, v_min, v_max)
+			if src_z in self.quantiles:
+				z = src_z - self.src_z_slice.start
+				im = self.src_chunk[:,:,z]
+				v_min = self.quantiles[src_z][1]  #  5% -> 0
+				v_max = self.quantiles[src_z][-2] # 95% -> 1
+				self.src_chunk[:,:,z] = self.stretch_contrast(im, v_min, v_max)
 
 	def get_section_polygon_mask(self, z):
 		"""Retrieve points list from gcloud for given slice & create polygon
@@ -131,15 +134,16 @@ class PreprocessChunkTask():
 		"""Apply slice-wise mask to src_chunk
 		"""
 		for z in range(self.src_z_slice.start, self.src_z_slice.stop):
-			self.apply_src_mask(z)
+			self.mask_src_section(z)
 
 	def copy_src_to_dst(self):
 		"""Copy over the slices from src to dst as specified by dst_to_src
 		"""
 		for z in range(self.dst_z_slice.start, self.dst_z_slice.stop):
-			src_z = self.dst_to_src[z] - self.src_z_slice.start
-			dst_z = z - self.dst_z_slice.start
-			self.dst_chunk[:,:,dst_z] = self.src_chunk[:,:,src_z]
+			if z in self.dst_to_src:
+				src_z = self.dst_to_src[z] - self.src_z_slice.start
+				dst_z = z - self.dst_z_slice.start
+				self.dst_chunk[:,:,dst_z] = self.src_chunk[:,:,src_z]
 
 	def execute(self):
 		self.correct_contrast_src_chunk()
@@ -153,9 +157,9 @@ def test():
 	contrastlayer = 'gs://neuroglancer/pinky100_v0/contrast'
 	masklayer = 'gs://neuroglancer/pinky100_v0/edge_mask'
 	orderlayer = 'gs://neuroglancer/pinky100_v0/z_order_corrected'
-	x_slice = slice(78272-24*64, 78272-0*64)
-	y_slice = slice(76800-12*64, 76800-0*64)
-	z_slice = slice(129, 193)
+	x_slice = (78272-24*64, 78272-0*64)
+	y_slice = (76800-12*64, 76800-0*64)
+	z_slice = (129, 193)
 	c = Chunk(inlayer, outlayer, contrastlayer, masklayer, orderlayer,
 						x_slice, y_slice, z_slice)
 	c.execute()

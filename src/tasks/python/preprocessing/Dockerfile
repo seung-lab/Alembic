@@ -24,4 +24,4 @@ RUN mkdir -p ~/.cloudvolume/secrets/
 RUN ln -s /run/secrets ~/.cloudvolume/secrets/
 
 # Run run.py when the container launches
-CMD ["python", "run.py"]
+ENTRYPOINT ["python", "run.py"]
