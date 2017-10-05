@@ -1,0 +1,7 @@
+cloud-volume
+numpy
+scipy
+tqdm
+json
+shapely
+PIL
