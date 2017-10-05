@@ -1,18 +1,18 @@
 # Use an official Python runtime as a parent image
-FROM python:2.7-alpine
+FROM python:2.7
 
 # Attach author
 MAINTAINER macrintr
 
-# Download git
-RUN apk update && apk upgrade && \
-    apk add --no-cache bash git py-pip
+# Download git & other packages
+RUN apt-get update
+RUN apt-get install -y libblas-dev liblapack-dev liblapacke-dev gfortran git
 
 # Copy git repo
 RUN git clone https://github.com/seung-lab/Alembic.git
 
 # Set the working directory to ../preprocessing
-WORKDIR /Alembic/src/tasks/python/preprocessing/
+WORKDIR /Alembic/src/tasks/python/preprocessing
 
 # Install any needed packages specified in requirements.txt
 RUN pip install -r requirements.txt
