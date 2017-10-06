@@ -18,10 +18,13 @@ WORKDIR /Alembic/src/tasks/python/preprocessing
 RUN pip install -r requirements.txt
 
 # Setup cloud-volume dirs & vars
-RUN mkdir -p ~/.cloudvolume/secrets/
-
+RUN mkdir -p /root/.cloudvolume/secrets
+RUN echo $GOOGLE_STORAGE_PROJECT > /root/.cloudvolume/project_name
+ 
 # Create symlink to /run/secrets/.. for cloud-volume
-RUN ln -s /run/secrets ~/.cloudvolume/secrets/
+# RUN ln -s /run/secrets/ /root/.cloudvolume/
+# COPY aws-secret.json /root/.cloudvolume/secrets/aws-secret.json
+# COPY google-secret.json /root/.cloudvolume/secrets/google-secret.json
 
 # Run run.py when the container launches
-ENTRYPOINT ["python", "run.py"]
+CMD ["python", "build_secrets.py", "python", "run.py"] 
