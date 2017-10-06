@@ -24,6 +24,9 @@ class PreprocessChunkTask():
 		self.x_slice = slice(*x_slice)
 		self.y_slice = slice(*y_slice)
 		self.dst_z_slice = slice(*z_slice)
+		self.name  = str(self.x_slice.start)+'-'+str(self.x_slice.stop)+'_'
+		self.name += str(self.y_slice.start)+'-'+str(self.y_slice.stop)+'_'
+		self.name += str(self.dst_z_slice.start)+'-'+str(self.dst_z_slice.stop)
 
 		self.bbox = box(self.x_slice.start, self.y_slice.start, 
 										self.x_slice.stop, self.y_slice.stop)
@@ -146,6 +149,7 @@ class PreprocessChunkTask():
 				self.dst_chunk[:,:,dst_z] = self.src_chunk[:,:,src_z]
 
 	def execute(self):
+		print('preprocessing {0}'.format(self.name))
 		self.correct_contrast_src_chunk()
 		self.mask_src_chunk()
 		self.copy_src_to_dst()
