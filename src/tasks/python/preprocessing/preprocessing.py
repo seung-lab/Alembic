@@ -5,6 +5,7 @@ import numpy as np
 from io import BytesIO
 from PIL import Image, ImageDraw
 import json
+import sys
 
 class PreprocessChunkTask():
 	"""Run the following image processing tasks on a per chunk basis:
@@ -164,6 +165,15 @@ def test():
 	x_slice = (78272-24*64, 78272-0*64)
 	y_slice = (76800-12*64, 76800-0*64)
 	z_slice = (129, 193)
-	c = Chunk(inlayer, outlayer, contrastlayer, masklayer, orderlayer,
+	c = PreprocessChunkTask(inlayer, outlayer, contrastlayer, 
+						masklayer, orderlayer,
 						x_slice, y_slice, z_slice)
 	c.execute()
+
+def main(arg):
+	params = json.loads(arg)
+	task = PreprocessChunkTask(**params)
+	task.execute()
+
+if __name__ == "__main__":
+	main(sys.argv[1])

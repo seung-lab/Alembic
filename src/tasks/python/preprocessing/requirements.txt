@@ -4,3 +4,4 @@ scipy
 tqdm
 shapely
 Pillow
+google-cloud-pubsub

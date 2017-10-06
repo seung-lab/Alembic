@@ -1,0 +1,28 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: alembic_preprocessing
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: preprocessing
+    spec:
+      containers:
+        - name: neuroglancer
+          image: macrintr/neuroglancer
+          imagePullPolicy: Always
+          command: ["/bin/sh"]
+          args: ["-c", "python receiver.py neuromancer-seung-import alembic_preprocessing"]
+          volumeMounts:
+          - name: secrets
+            mountPath: "/usr/ubuntu/.cloudvolume/secrets"
+            readOnly: true
+          resources:
+            requests:
+              memory: 6Gi
+      volumes:
+      - name: secrets
+        secret:
+          secretName: secrets
