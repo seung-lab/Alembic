@@ -2,6 +2,7 @@ import boto.sqs
 from boto.sqs.message import Message
 import json
 import os
+import sys
 
 def get_connection():
 	secrets_subpath = ".cloudvolume/secrets/aws-secret.json"
@@ -35,8 +36,8 @@ def publish_messages(queue_name):
 	chunk_dims = [64,64,64]
 
 	# test
-	x_start = 64000 
-	x_stop = 64064 #78272 # 24 chunks
+	x_start = 64000-64
+	x_stop = 64064-64 #78272 # 24 chunks
 	y_start = 75776 
 	y_stop = 75776+64
 	z_start = 129

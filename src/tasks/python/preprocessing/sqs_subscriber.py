@@ -29,7 +29,7 @@ def receive_messages(queue_name):
 			m = messages[0]
 			message = m.get_body().encode('latin-1')
 			preprocessing.main(message)
-			q.delete_message(m)
+			return q.delete_message(m)
 		time.sleep(60)
 
 if __name__ == "__main__":
