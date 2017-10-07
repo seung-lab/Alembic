@@ -33,6 +33,8 @@ function save(path::AbstractString, data; chunksize = 1000)
 	open(path, "w") do file serialize(file, data) end
       	elseif ext == ".jld"
 	open(path, "w") do file write(file, "data", data) end
+      	elseif ext == ".json"
+	open(path, "w") do file JSON.print(file, data) end
       	end
 end
 
@@ -54,7 +56,8 @@ function load(path::AbstractString; kwargs...)
   elseif ext == ".txt"
     data = readdlm(path)
   elseif ext == ".json"
-    data = JSON.parsefile(path; dicttype=Dict, use_mmap=true)
+    #data = JSON.parsefile(path; dicttype=Dict{Symbol, Any}, use_mmap=true)
+    data = JSON.parsefile(path; dicttype=Dict{Symbol, Any}, use_mmap=false)
 	end
   println("Loaded $(typeof(data)) from ", path)
 #=  if typeof(data) == Match

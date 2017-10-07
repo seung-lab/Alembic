@@ -95,7 +95,7 @@ global PARAMS_MONTAGE_FALLBACK = PARAMS_MONTAGE;
 
 #PARAMS_MONTAGE_FALLBACK[:match][:search_r] = 128;
 
-global PARAMS_PREALIGNMENT = Dict(
+global PARAMS_PREALIGNMENT = Dict(:meta => Dict(:parent_stack => "montaged"), 
 			     :mesh => Dict(
 					:mesh_length => MESH_LENGTH_PREALIGNMENT), 
 			     :match => Dict(

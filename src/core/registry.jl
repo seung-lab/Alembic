@@ -1,5 +1,7 @@
 global REGISTRY_UPDATES = Array{Any, 1}();
 
+
+
 # functions to get indices in different pipeline stages
 # index -> index
 function overview(index)        return (index[1], index[2], OVERVIEW_INDEX, OVERVIEW_INDEX);        end

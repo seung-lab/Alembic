@@ -1,4 +1,5 @@
 global BUCKET = "/home/ubuntu"
+global BUCKET_NEW = "/home/ubuntu/datasets/"
 global DATASET = "datasets/myelin"
 #global ROI_FIRST = (1,1,0,0);
 global ROI_FIRST = (3,1,0,0);
