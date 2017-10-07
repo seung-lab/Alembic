@@ -27,4 +27,4 @@ COPY aws-secret.json /root/.cloudvolume/secrets/aws-secret.json
 COPY google-secret.json /root/.cloudvolume/secrets/google-secret.json
 
 # Run run.py when the container launches
-CMD ["python", "subscriber.py"]
+CMD ["python", "sqs_subscriber.py"]
