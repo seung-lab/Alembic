@@ -7,6 +7,7 @@ from PIL import Image, ImageDraw
 import json
 import sys
 
+# Hack for persistent CloudVolume objects... clean up with a cache or something
 vol = None
 mask = None
 contrast = None
