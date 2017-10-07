@@ -7,6 +7,12 @@ from PIL import Image, ImageDraw
 import json
 import sys
 
+vol = None
+mask = None
+contrast = None
+order = None
+out = None
+
 class PreprocessChunkTask():
 	"""Run the following image processing tasks on a per chunk basis:
 		* Stretch the contrast (requires precomputed quantiles: see contrast.py)
@@ -17,11 +23,26 @@ class PreprocessChunkTask():
 	"""
 	def __init__(self, inlayer, outlayer, contrastlayer, masklayer, orderlayer,
 						x_slice, y_slice, z_slice):
-		self.vol = CloudVolume(inlayer)
-		self.mask = Storage(masklayer)
-		self.contrast = Storage(contrastlayer)
-		self.order = Storage(orderlayer)
-		self.out = CloudVolume(outlayer)
+		global vol
+		global mask
+		global contrast
+		global order
+		global out
+		if vol is None:
+			vol = CloudVolume(inlayer)
+		if mask is None:
+			mask = Storage(masklayer)
+		if contrast is None:
+			contrast = Storage(contrastlayer)
+		if order is None:
+			order = Storage(orderlayer)
+		if out is None:
+			out = CloudVolume(outlayer)
+		self.vol = vol
+		self.mask = mask
+		self.contrast = contrast
+		self.order = order
+		self.out = out
 		self.x_slice = slice(*x_slice)
 		self.y_slice = slice(*y_slice)
 		self.dst_z_slice = slice(*z_slice)

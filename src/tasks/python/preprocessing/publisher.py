@@ -18,20 +18,14 @@ def publish_messages(project, topic_name):
 	publisher = pubsub_v1.PublisherClient()
 	topic_path = publisher.topic_path(project, topic_name)
 	chunk_dims = [1024,1024,64]
-	# x_start = 35840
-	# x_stop = 35840+100352 - chunk_dims[0]
-	# y_start = 26624
-	# y_stop = 26624+62464 - chunk_dims[1]
-	# z_start = 1
-	# z_stop = 64 #1+2240 - chunk_dims[2]
-
-	# test
-	x_start = 35840 
-	x_stop = 35840 + 48*64 #78272 # 24 chunks
-	y_start = 75200 - 48*64
-	y_stop = 75200
+	x_start = 35840
+	x_stop = 35840+100352 - chunk_dims[0]
+	y_start = 26624
+	y_stop = 26624+62464 - chunk_dims[1]
 	z_start = 1
-	z_stop = 64
+	z_stop = 1+2240 - chunk_dims[2]
+
+	# 64 x 36 x 36
 
 	n = 1
 	for x in range(x_start, x_stop, chunk_dims[0]):

@@ -23,8 +23,8 @@ RUN echo $GOOGLE_STORAGE_PROJECT > /root/.cloudvolume/project_name
 
 # Create symlink to /run/secrets/.. for cloud-volume
 # RUN ln -s /run/secrets/ /root/.cloudvolume/
-COPY aws-secret.json /root/.cloudvolume/secrets/aws-secret.json
-COPY google-secret.json /root/.cloudvolume/secrets/google-secret.json
+# COPY aws-secret.json /root/.cloudvolume/secrets/aws-secret.json
+# COPY google-secret.json /root/.cloudvolume/secrets/google-secret.json
 
 # Run run.py when the container launches
 CMD ["python", "sqs_subscriber.py"]

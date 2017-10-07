@@ -33,15 +33,13 @@ def create_preprocessing_task(origin, chunk_dims):
 def publish_messages(queue_name):
 	"""Publishes multiple messages to SQS queue."""
 	q = get_queue(queue_name)
-	chunk_dims = [64,64,64]
-
-	# test
-	x_start = 64000-64
-	x_stop = 64064-64 #78272 # 24 chunks
-	y_start = 75776 
-	y_stop = 75776+64
-	z_start = 129
-	z_stop = 193
+	chunk_dims = [1024,1024,64]
+	x_start = 35840
+	x_stop = 35840+2048 #35840+100352 - chunk_dims[0]
+	y_start = 26624
+	y_stop = 26624+2048 #26624+62464 - chunk_dims[1]
+	z_start = 1
+	z_stop = 129#1+2240 - chunk_dims[2]
 
 	n = 0
 	for x in range(x_start, x_stop, chunk_dims[0]):

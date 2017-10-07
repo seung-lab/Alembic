@@ -29,8 +29,9 @@ def receive_messages(queue_name):
 			m = messages[0]
 			message = m.get_body().encode('latin-1')
 			preprocessing.main(message)
-			return q.delete_message(m)
-		time.sleep(60)
+			q.delete_message(m)
+		else:
+			time.sleep(5)
 
 if __name__ == "__main__":
     receive_messages(sys.argv[1])
