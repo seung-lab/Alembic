@@ -1,5 +1,7 @@
 global REGISTRY_UPDATES = Array{Any, 1}();
 
+
+
 # functions to get indices in different pipeline stages
 # index -> index
 function overview(index)        return (index[1], index[2], OVERVIEW_INDEX, OVERVIEW_INDEX);        end
@@ -74,30 +76,30 @@ function is_preceding(A_index, B_index, within = 1)
   return false;
 end
 
-function get_neighbor(index::Index, direction=[0,1])
+function get_neighbor(index::FourTupleIndex, direction=[0,1])
   if !(is_premontaged(index)) return NO_INDEX end
   neighbor_index = (index[1:2]..., index[3]+direction[1], index[4]+direction[2])
   if !in_registry(neighbor_index) return NO_INDEX end
   return neighbor_index
 end
 
-function get_above(index::Index)
+function get_above(index::FourTupleIndex)
   return get_neighbor(index, [-1,0])
 end
 
-function get_below(index::Index)
+function get_below(index::FourTupleIndex)
   return get_neighbor(index, [1,0])
 end
 
-function get_right(index::Index)
+function get_right(index::FourTupleIndex)
   return get_neighbor(index, [0,1])
 end
 
-function get_left(index::Index)
+function get_left(index::FourTupleIndex)
   return get_neighbor(index, [0,-1])
 end
 
-function get_cardinal_neighbors(index::Index)
+function get_cardinal_neighbors(index::FourTupleIndex)
   neighbors = [get_above(index), get_left(index), get_below(index), get_right(index)] 
   return filter(i->i!=NO_INDEX, neighbors)
 end
@@ -151,7 +153,7 @@ function find_in_registry(index)
   return findfirst(registry[:,2], index);
 end
 
-function in_registry(index::Index)
+function in_registry(index::FourTupleIndex)
   if index[3] == 0 || index[4] == 0 return false end
   return find_in_registry(index) != 0
 end
@@ -176,7 +178,7 @@ end
 """
 Remove index from registry file & reload that registry
 """
-function purge_from_registry!(index::Index)
+function purge_from_registry!(index::FourTupleIndex)
   # assert(is_premontaged(index))
   registry_path = get_registry_path(index)
   registry = readdlm(registry_path)
@@ -187,7 +189,7 @@ function purge_from_registry!(index::Index)
   reload_registry(index)
 end
 
-function clean_registry!(index::Index)
+function clean_registry!(index::FourTupleIndex)
   return clean_registry!(get_registry(index))
 end
 
@@ -211,8 +213,8 @@ function get_metadata(index)
 end
 
 # rotated offset is just the offset of the image once rotated around [0,0]
-function get_offset(index::Index; rotated = false)
-    if myid() != IO_PROC return Point(remotecall_fetch(IO_PROC, ()->get_offset(index; rotated = rotated)))
+function get_offset(index::FourTupleIndex; rotated = false)
+    if myid() != IO_PROC return Point(remotecall_fetch(()->get_offset(index; rotated = rotated), IO_PROC))
     else
     metadata = get_metadata(index);
     if rotated
@@ -224,17 +226,17 @@ function get_offset(index::Index; rotated = false)
     ret = metadata[4:5];
       end
     end
-      return Point(ret);
+      return Point{Float64}(ret);
 end
 
 function get_rotation(index)
-        if myid() != IO_PROC return Float64(remotecall_fetch(IO_PROC, get_rotation, index)) end
+        if myid() != IO_PROC return Float64(remotecall_fetch(get_rotation, IO_PROC, index)) end
     metadata = get_metadata(index);
     return Float64(metadata[3])
 end
 
 function get_image_size(index; rotated = false)
-        if myid() != IO_PROC return Array{Int64, 1}(remotecall_fetch(IO_PROC, ()->get_image_size(index; rotated = rotated))) end
+        if myid() != IO_PROC return Array{Int64, 1}(remotecall_fetch(()->get_image_size(index; rotated = rotated), IO_PROC)) end
     metadata = get_metadata(index);
     ret = metadata[6:7];
     if rotated
@@ -403,7 +405,7 @@ function update_registry(index, tform)
 end
 
 function update_registry(index; rotation::Union{Float64, Int64} = get_rotation(index), offset::Union{Point, Array{Int64, 1}} = get_offset(index), image_size::Union{Array{Int64, 1}, Tuple{Int64, Int64}} = get_image_size(index), rendered::Bool = is_rendered(index))
-  if myid() != IO_PROC return remotecall_fetch(IO_PROC, () -> update_registry(index, rotation = rotation, offset = offset, image_size = image_size, rendered = rendered)) end
+  if myid() != IO_PROC return remotecall_fetch(() -> update_registry(index, rotation = rotation, offset = offset, image_size = image_size, rendered = rendered), IO_PROC) end
   image_fn = string(get_name(index));
   registry_fp = get_registry_path(index)
   println("Updating registry for ", image_fn, " in:\n", registry_fp, ": rotation: $rotation, offset: $offset, image_size: $image_size")
@@ -417,9 +419,9 @@ function update_registry(index; rotation::Union{Float64, Int64} = get_rotation(i
     registry_line = [image_fn, rotation, offset..., image_size..., rendered]
     idx = findfirst(registry[:,1], image_fn)
     if idx != 0
-      registry[idx, :] = registry_line';
+      registry[idx, :] = reshape(registry_line, 1, :);
     else
-      registry = vcat(registry, registry_line')
+      registry = vcat(registry, reshape(registry_line, 1, :))
     end
   end
   registry = registry[sortperm(registry[:, 1], by=parse_name), :];
@@ -454,7 +456,7 @@ function update_offsets(indices, rotations, offsets, sizes, rendered=trues(lengt
   registry = registry[sortperm(registry[:, 1], by=parse_name), :]
   writedlm(registry_fp, registry)
   reload_registry(index)
-  remotecall_fetch(IO_PROC, reload_registry, index)
+  remotecall_fetch(reload_registry, IO_PROC, index)
   for (i, index) in enumerate(indices)
      push!(REGISTRY_UPDATES, Dict{Any, Any}("index" => index, "rotation" => rotations[i], "offset" => offsets[i], "image_size" => sizes[i], "rendered" => rendered[i]));
   end
@@ -471,7 +473,7 @@ end
 
 function reload_registries()
   indices = [premontaged(0,0), montaged(0,0), prealigned(0,0), aligned(0,0)]
-  for index in indices reload_registry(index); remotecall_fetch(IO_PROC, reload_registry, index) end
+  for index in indices reload_registry(index); remotecall_fetch(reload_registry, IO_PROC, index) end
 end
 
 function globalize!(pts::Points, offset::Point)

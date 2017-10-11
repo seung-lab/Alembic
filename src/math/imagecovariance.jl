@@ -1,5 +1,5 @@
 function subtract_beta(img, beta = 0.5)
-	return max(img - beta * maximum(img), 0)
+	return max.(img - beta * maximum(img), 0)
 end
 
 function sigma(img, beta = 0.5)

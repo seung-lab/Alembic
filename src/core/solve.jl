@@ -1,6 +1,6 @@
 #=
 # "approximate" functions operate on a Mesh, and will try to come up with the best fit for the given nodes / nodes_t
-# "solve" functions operate on a Match (within a MeshSet), and will try to come up with the best fit for the given matches
+# :solve functions operate on a Match (within a MeshSet), and will try to come up with the best fit for the given matches
 =#
 
 #="""
@@ -97,7 +97,7 @@ end
 #="""
 Apply some weighted combination of affine and rigid, gauged by lambda
 """=#
-function regularized_solve(ms::MeshSet; k=1, lambda=ms.properties["params"]["solve"]["lambda"], globalized=false)
+function regularized_solve(ms::MeshSet; k=1, lambda=ms.properties[:params][:solve][:lambda], globalized=false)
   affine = affine_solve(ms; k=k, globalized=globalized)
   rigid = rigid_solve(ms; k=k, globalized=globalized)
   return lambda*affine + (1-lambda)*rigid
@@ -124,21 +124,21 @@ function translation_solve(ms::MeshSet; globalized=false)
 end
 
 function solve!(meshset)
-  method=meshset.properties["params"]["solve"]["method"]
+  method=meshset.properties[:params][:solve][:method]
   solve!(meshset; method=method)
   mark_solved!(meshset)
 end
 
-function solve!(meshset; method="elastic")
+function solve!(meshset; method=:elastic)
 	sanitize!(meshset);
   assert(count_matches(meshset) != 0)
   assert(count_filtered_correspondences(meshset) >= 3)
 
-	if method == "elastic" return elastic_solve!(meshset); end
-	if method == "translation" return translation_solve!(meshset); end
-	if method == "rigid" return rigid_solve!(meshset); end
-	if method == "regularized" return regularized_solve!(meshset; lambda = meshset.properties["params"]["solve"]["lambda"]); end
-	if method == "affine" return affine_solve!(meshset); end
+	if method == :elastic return elastic_solve!(meshset); end
+	if method == :translation return translation_solve!(meshset); end
+	if method == :rigid return rigid_solve!(meshset); end
+	if method == :regularized return regularized_solve!(meshset; lambda = meshset.properties[:params][:solve][:lambda]); end
+	if method == :affine return affine_solve!(meshset); end
 end
 
 function elastic_solve_piecewise!(meshset::MeshSet; from_current = true)
@@ -155,14 +155,14 @@ function elastic_collate(meshset; from_current = true, write = false)
 	sanitize!(meshset);
   params = get_params(meshset)
   #fixed = get_fixed(meshset)
-  match_spring_coeff = params["solve"]["match_spring_coeff"]
-  mesh_spring_coeff = params["solve"]["mesh_spring_coeff"]
-  max_iters = params["solve"]["max_iters"]
-  ftol_cg = params["solve"]["ftol_cg"]
-  eta_gd = params["solve"]["eta_gd"] 
-  ftol_gd = params["solve"]["ftol_gd"]
-  eta_newton = params["solve"]["eta_newton"]
-  ftol_newton = params["solve"]["ftol_newton"]
+  match_spring_coeff = params[:solve][:match_spring_coeff]
+  mesh_spring_coeff = params[:solve][:mesh_spring_coeff]
+  max_iters = params[:solve][:max_iters]
+  ftol_cg = params[:solve][:ftol_cg]
+  eta_gd = params[:solve][:eta_gd] 
+  ftol_gd = params[:solve][:ftol_gd]
+  eta_newton = params[:solve][:eta_newton]
+  ftol_newton = params[:solve][:ftol_newton]
 
   println("Solving meshset: $(count_nodes(meshset)) nodes, $(count_edges(meshset)) edges, $(count_filtered_correspondences(meshset)) correspondences");
 
@@ -179,8 +179,8 @@ function elastic_collate(meshset; from_current = true, write = false)
   meshes_order = Dict{Any, Int64}();
   cum_nodes = 0; cum_edges = 0;
 
-  meshes_ref = Array{RemoteRef, 1}()
-  matches_ref = Array{RemoteRef, 1}()
+  meshes_ref = Array{RemoteChannel, 1}()
+  matches_ref = Array{RemoteChannel, 1}()
   src_indices = Array{Any, 1}();
   dst_indices = Array{Any, 1}();
 
@@ -193,14 +193,14 @@ function elastic_collate(meshset; from_current = true, write = false)
 	meshes_order[get_index(mesh)] = index;
 	cum_nodes = cum_nodes + count_nodes(mesh);
 	cum_edges = cum_edges + count_edges(mesh);
-	mesh_ref = RemoteRef(); 
+	mesh_ref = RemoteChannel(); 
 	put!(mesh_ref, mesh); push!(meshes_ref, mesh_ref);
   end
 
   @fastmath @inbounds for match in meshset.matches
 	edgeranges[get_src_and_dst_indices(match)] = cum_edges + (1:count_filtered_correspondences(match));
 	cum_edges = cum_edges + count_filtered_correspondences(match);
-	match_ref = RemoteRef(); 
+	match_ref = RemoteChannel(); 
 	put!(match_ref, match); push!(matches_ref, match_ref);
 	push!(src_indices, get_src_index(match))
 	push!(dst_indices, get_dst_index(match))
@@ -208,9 +208,9 @@ function elastic_collate(meshset; from_current = true, write = false)
 
   for mesh in meshset.meshes
     if from_current
-      @fastmath @inbounds nodes[:, noderanges[get_index(mesh)]] = hcat(get_nodes(mesh; globalized = true, use_post = true)...);
+      @fastmath @inbounds nodes[:, noderanges[get_index(mesh)]] = get_nodes(mesh; globalized = true, use_post = true)[:];
     else
-      @fastmath @inbounds nodes[:, noderanges[get_index(mesh)]] = hcat(get_nodes(mesh; globalized = true, use_post = false)...);
+      @fastmath @inbounds nodes[:, noderanges[get_index(mesh)]] = get_nodes(mesh; globalized = true, use_post = false)[:];
     end
     if is_fixed(mesh)
       @fastmath @inbounds nodes_fixed[noderanges[get_index(mesh)]] = fill(true, count_nodes(mesh));
@@ -231,9 +231,12 @@ function elastic_collate(meshset; from_current = true, write = false)
   @fastmath noderange_list = Array{UnitRange, 1}([getindex(noderanges, get_index(mesh)) for mesh in meshset.meshes]);
   @fastmath edgerange_list = Array{UnitRange, 1}([getindex(edgeranges, get_index(mesh)) for mesh in meshset.meshes]);
 
+  # initializes a local copy of the whole sparse matrix for the system
   @inbounds @fastmath function make_local_sparse(num_nodes, num_edges)
 	global LOCAL_SPM = spzeros(num_nodes, num_edges)
   end
+
+  # initialize the local sparse matrix on all processes
   @sync begin
     @async for proc in setdiff(procs(), myid())
       remotecall_wait(proc, make_local_sparse, count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset)); 
@@ -243,20 +246,19 @@ function elastic_collate(meshset; from_current = true, write = false)
 
   gc();
 
+  # copies the edges of a given mesh(by remote reference) into the specific range of the local sparse matrix
   function copy_sparse_matrix(mesh_ref, noderange, edgerange)
     mesh = fetch(mesh_ref)
     @inbounds (LOCAL_SPM::SparseMatrixCSC{Float64, Int64})[noderange, edgerange] = mesh.edges;
   end
 
+  # do so in parallel for all meshes
   pmap(copy_sparse_matrix, meshes_ref, noderange_list, edgerange_list);
 
-#  edges_subarrays_meshes = Array{SparseMatrixCSC{Float64, Int64}, 1}(pmap(pad_sparse_matrix, meshes_ref, repeated(count_nodes(meshset)), noderange_list))
-
-#  @time @inbounds @fastmath edges_subarrays_meshes = [hcat(edges_subarrays_meshes..., spzeros(count_nodes(meshset), count_filtered_correspondences(meshset)))]
-
-
+  # all mesh edges are now represented in local sparse matrices somewhere
   println("meshes collated: $(count_meshes(meshset)) meshes")
 
+  # initialize the arrays for edge lengths and the spring coeffs
   for match in meshset.matches
     	@inbounds edge_lengths[edgeranges[get_src_and_dst_indices(match)]] = fill(0, count_filtered_correspondences(match));
     	@inbounds edge_spring_coeffs[edgeranges[get_src_and_dst_indices(match)]] = fill(match_spring_coeff, count_filtered_correspondences(match));
@@ -351,7 +353,7 @@ function elastic_collate(meshset; from_current = true, write = false)
   
   edges_subarrays = Array{SparseMatrixCSC{Float64, Int64}, 1}(length(procs()))
 
-  @sync for proc in procs() @async @inbounds edges_subarrays[proc] = remotecall_fetch(proc, get_local_sparse); end 
+  @sync for proc in procs() @async @inbounds edges_subarrays[proc] = remotecall_fetch(get_local_sparse, proc); end 
 
   function add_local_sparse(sp_a, sp_b)
     global LOCAL_SPM = 0;
@@ -394,15 +396,17 @@ function elastic_solve!(meshset; from_current = true, use_saved = false, write =
   if write 
     save(string(splitext(get_filename(meshset))[1], "_collated.jls"), (collation, noderanges, edgeranges))
   end
-
-  dst_nodes = Points(0)
+#=
+  dst_nodes = zeros(Float64, 2, count_nodes(meshset))
   nodes = collation[1]
   for i in 1:size(nodes, 2)
           push!(dst_nodes, vec(nodes[:, i]))
         end
+	=#
+	dst_nodes = reshape(collation[1], :, 2)'
 
   for mesh in meshset.meshes
-	mesh.dst_nodes = dst_nodes[noderanges[get_index(mesh)]] - fill(get_offset(mesh), count_nodes(mesh));
+	broadcast!(-, mesh.dst_nodes, dst_nodes[:, noderanges[get_index(mesh)]], get_offset(mesh));
   end
 
  # stats(meshset; summary = true);
@@ -410,7 +414,7 @@ function elastic_solve!(meshset; from_current = true, use_saved = false, write =
 end
 
 # invalids set to NO_POINT
-function get_correspondences(meshset::MeshSet, ind::Int64; filtered=false, globalized::Bool=false, global_offsets=meshset.properties["params"]["registry"]["global_offsets"], use_post = false)
+function get_correspondences(meshset::MeshSet, ind::Int64; filtered=false, globalized::Bool=false, global_offsets=meshset.properties[:params][:registry][:global_offsets], use_post = false)
   	if use_post
 	  src_mesh = meshset.meshes[find_mesh_index(meshset,get_src_index(meshset.matches[ind]))]
 	  dst_mesh = meshset.meshes[find_mesh_index(meshset,get_dst_index(meshset.matches[ind]))]
@@ -454,16 +458,16 @@ function rectify_drift(meshset::MeshSet, start_ind = 1, final_ind = count_meshes
   		continue;
   	end
 	if use_post
-	g_src_pts_after, g_dst_pts_after, filtered_after = get_correspondences(match; src_mesh = src_mesh, dst_mesh = dst_mesh, globalized = true, global_offsets = meshset.properties["params"]["registry"]["global_offsets"], use_post = true)
+	g_src_pts_after, g_dst_pts_after, filtered_after = get_correspondences(match; src_mesh = src_mesh, dst_mesh = dst_mesh, globalized = true, global_offsets = meshset.properties[:params][:registry][:global_offsets], use_post = true)
   	residuals_match_post = g_dst_pts_after[filtered_after] - g_src_pts_after[filtered_after]; 
 	avg_drift = mean(residuals_match_post);
       else
-	g_src_pts, g_dst_pts, filtered = get_correspondences(match; globalized = true, global_offsets = meshset.properties["params"]["registry"]["global_offsets"])
+	g_src_pts, g_dst_pts, filtered = get_correspondences(match; globalized = true, global_offsets = meshset.properties[:params][:registry][:global_offsets])
   	residuals_match = g_dst_pts[filtered] - g_src_pts[filtered]; 
 	avg_drift = mean(residuals_match);
       end
 
-      if get_params(meshset)["match"]["reflexive"]
+      if get_params(meshset)[:match][:reflexive]
 	if is_preceding(get_index(src_mesh), get_index(dst_mesh), 5)
 	  drifts[find_mesh_index(meshset, get_dst_index(match))] -= avg_drift/2;
 	else
@@ -545,7 +549,7 @@ function filter_stats(stats, filters)
   return f[sortperm(f[:,1]),:]
 end
 
-function calculate_stats(index::Index)
+function calculate_stats(index::FourTupleIndex)
   ms = load(MeshSet, index)
   return calculate_stats(ms)
 end
@@ -591,7 +595,7 @@ end
     m["avg_50sig"] = avg_50sig
     m["std_50sig"] = std_50sig
     m["max_50sig"] = max_50sig
-    m["flagged"] = flagged
+    m[:flagged] = flagged
     return m
   end
 
@@ -624,14 +628,14 @@ end
     
     if count_filtered_correspondences(match) > 1
 
-      g_src_pts, g_dst_pts, filtered = get_correspondences(match; global_offsets = params["registry"]["global_offsets"], globalized = true)
-      g_src_pts_after, g_dst_pts_after, filtered_after = get_correspondences(match; global_offsets = params["registry"]["global_offsets"], src_mesh = src_mesh, dst_mesh = dst_mesh, globalized = true, use_post = true)
+      g_src_pts, g_dst_pts, filtered = get_correspondences(match; global_offsets = params[:registry][:global_offsets], globalized = true)
+      g_src_pts_after, g_dst_pts_after, filtered_after = get_correspondences(match; global_offsets = params[:registry][:global_offsets], src_mesh = src_mesh, dst_mesh = dst_mesh, globalized = true, use_post = true)
 
       props = get_filtered_correspondence_properties(match);
       r_maxs_match = Array{Float64}(map(get_dfs, props, repeated("r_max")));
-      sigs95_match = Array{Float64}(map(get_dfs, props, repeated(0.95)));
-      sigs75_match = Array{Float64}(map(get_dfs, props, repeated(0.75)));
-      sigs50_match = Array{Float64}(map(get_dfs, props, repeated(0.50)));
+      sigs95_match = Array{Float64}(map(get_dfs, props, repeated(Symbol("xcorr_sigma_0.95"))));
+      sigs75_match = Array{Float64}(map(get_dfs, props, repeated(Symbol("xcorr_sigma_0.75"))));
+      sigs50_match = Array{Float64}(map(get_dfs, props, repeated(Symbol("xcorr_sigma_0.5"))));
 
       g_src_pts = g_src_pts[filtered];
       g_dst_pts = g_dst_pts[filtered];
@@ -779,12 +783,12 @@ end
   		continue;
   	end
 
-  	g_src_pts, g_dst_pts, filtered = get_correspondences(match; global_offsets = params["registry"]["global_offsets"], globalized = true)
-  	g_src_pts_after, g_dst_pts_after, filtered_after = get_correspondences(match; global_offsets = params["registry"]["global_offsets"], src_mesh = src_mesh, dst_mesh = dst_mesh, globalized = true, use_post = true)
+  	g_src_pts, g_dst_pts, filtered = get_correspondences(match; global_offsets = params[:registry][:global_offsets], globalized = true)
+  	g_src_pts_after, g_dst_pts_after, filtered_after = get_correspondences(match; global_offsets = params[:registry][:global_offsets], src_mesh = src_mesh, dst_mesh = dst_mesh, globalized = true, use_post = true)
 
   	props = get_filtered_correspondence_properties(match);
   	r_maxs_match = Array{Float64}(map(get_dfs, props, repeated("r_max")));
-  	sigs_match = Array{Float64}(map(get_dfs, props, repeated(0.95)));
+  	sigs_match = Array{Float64}(map(get_dfs, props, repeated(Symbol("xcorr_sigma_0.95"))));
 
   	g_src_pts = g_src_pts[filtered];
   	g_dst_pts = g_dst_pts[filtered];

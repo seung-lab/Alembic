@@ -46,7 +46,7 @@ end
 """
 Premontage based on order of r-values
 """
-function premontage(index::Index)
+function premontage(index::FourTupleIndex)
   scale = 0.5
   println("Premontaging tiles in $(premontaged(index))")
   tile_indices = get_index_range(premontaged(index), premontaged(index))
@@ -121,7 +121,7 @@ end
 # Works in most cases
 # Fails when tiles only have neighboring fixed tiles as diagonals
 # """
-# function premontage(index::Index)
+# function premontage(index::FourTupleIndex)
 #   scale = 0.5
 #   println("Premontaging tiles in $(premontaged(index))")
 #   tile_indices = spiral_sort(get_index_range(premontaged(index), premontaged(index)))
@@ -176,7 +176,7 @@ end
 #   save_premontage_review(index)
 # end
 
-function premontage(firstindex::Index, lastindex::Index)
+function premontage(firstindex::FourTupleIndex, lastindex::FourTupleIndex)
   indices = get_index_range(firstindex, lastindex)
   sections = unique([ind[1:2] for ind in indices])
   for sec in sections
@@ -190,7 +190,7 @@ function find_translation(overlap)
   return mindex, findex, moving_bb, fixed_bb, r, dv
 end
 
-function find_translation(moving_index::Index, fixed_index::Index, mbb=get_bb(moving_index), fbb=get_bb(fixed_index); scale=0.5, highpass_sigma = 10)
+function find_translation(moving_index::FourTupleIndex, fixed_index::FourTupleIndex, mbb=get_bb(moving_index), fbb=get_bb(fixed_index); scale=0.5, highpass_sigma = 10)
   println("Translating $moving_index to $fixed_index")
   overlap_bb = mbb - fbb
   moving = get_slice(moving_index, overlap_bb, is_global=true)
@@ -215,7 +215,7 @@ function find_translation(moving_index::Index, fixed_index::Index, mbb=get_bb(mo
   return xc, moving, fixed
 end
 
-function find_translation_offset(moving_index::Index, fixed_index::Index, mbb=get_bb(moving_index), fbb=get_bb(fixed_index); scale=0.5)
+function find_translation_offset(moving_index::FourTupleIndex, fixed_index::FourTupleIndex, mbb=get_bb(moving_index), fbb=get_bb(fixed_index); scale=0.5)
   xc, moving, fixed = find_translation(moving_index, fixed_index, mbb, fbb, scale=scale)
   rm, ind = findmax(xc)
   i_max, j_max = ind2sub(xc, ind);
@@ -229,18 +229,18 @@ function get_major_overlaps(indices)
   neighbors = map(get_cardinal_neighbors, indices)
 end
 
-function check_premontage(index::Index)
+function check_premontage(index::FourTupleIndex)
   indices = get_index_range(premontaged(index), premontaged(index))
 end
 
-function set_relative_offset(moving_index::Index, fixed_index::Index, rel_offset)
+function set_relative_offset(moving_index::FourTupleIndex, fixed_index::FourTupleIndex, rel_offset)
 
   offset = get_offset(fixed_index) + rel_offset
   println("$moving_index, $fixed_index, $rel_offset")
   # update_offset(moving_index, offset, get_image_size(moving_index))
 end
 
-function snap(index::Index, overlap=[880, 690])
+function snap(index::FourTupleIndex, overlap=[880, 690])
   h, w = get_image_size(index)
   offset = get_offset(index)
   vertical = 0

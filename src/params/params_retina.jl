@@ -53,105 +53,105 @@ FTOL_NEWTON_ALIGNMENT = 1e-8
 global GLOBAL_BB = BoundingBox(0,0,16000,16000)
 
 global PARAMS_MONTAGE = Dict(
-			     "mesh" => Dict(
-					"mesh_length" => MESH_LENGTH_MONTAGE), 
-			     "match" => Dict(
-					"blockmatch_scale" => BLOCKMATCH_SCALE_MONTAGE,
-					"block_r" => BLOCK_R_MONTAGE, 
-					"search_r" => SEARCH_R_MONTAGE,
-					"monoblock_scale" => MONOBLOCK_SCALE_MONTAGE, 
-			#		"monoblock_padding" => MONOBLOCK_PADDING_MONTAGE, 
-					"monoblock_ratio" => MONOBLOCK_RATIO_MONTAGE, 
-					"monoblock_match" => MONOBLOCK_MATCH_MONTAGE,
-					"depth" => 1),
-			     "solve" => Dict(
-					"mesh_spring_coeff" => MESH_SPRING_COEFF_MONTAGE,
-					"match_spring_coeff" => MATCH_SPRING_COEFF_MONTAGE,
-					"ftol_cg" => FTOL_CG_MONTAGE,
-					"max_iters" => MAX_ITERS_MONTAGE,
-			     	"use_conjugate_gradient" => USE_CONJUGATE_GRADIENT_MONTAGE,
-			     	"eta_gd" => ETA_GD_MONTAGE,
-			     	"ftol_gd" => FTOL_GD_MONTAGE,
-			     	"eta_newton" => ETA_NEWTON_MONTAGE,
-			     	"ftol_newton" => FTOL_NEWTON_MONTAGE),
-			     "filter" => Dict(
+			     :mesh => Dict(
+					:mesh_length => MESH_LENGTH_MONTAGE), 
+			     :match => Dict(
+					:blockmatch_scale => BLOCKMATCH_SCALE_MONTAGE,
+					:block_r => BLOCK_R_MONTAGE, 
+					:search_r => SEARCH_R_MONTAGE,
+					:monoblock_scale => MONOBLOCK_SCALE_MONTAGE, 
+			#		:monoblock_padding => MONOBLOCK_PADDING_MONTAGE, 
+					:monoblock_ratio => MONOBLOCK_RATIO_MONTAGE, 
+					:monoblock_match => MONOBLOCK_MATCH_MONTAGE,
+					:depth => 1),
+			     :solve => Dict(
+					:mesh_spring_coeff => MESH_SPRING_COEFF_MONTAGE,
+					:match_spring_coeff => MATCH_SPRING_COEFF_MONTAGE,
+					:ftol_cg => FTOL_CG_MONTAGE,
+					:max_iters => MAX_ITERS_MONTAGE,
+			     	:use_conjugate_gradient => USE_CONJUGATE_GRADIENT_MONTAGE,
+			     	:eta_gd => ETA_GD_MONTAGE,
+			     	:ftol_gd => FTOL_GD_MONTAGE,
+			     	:eta_newton => ETA_NEWTON_MONTAGE,
+			     	:ftol_newton => FTOL_NEWTON_MONTAGE),
+			     :filter => Dict(
 					      ),
-			     "render" => Dict(
+			     :render => Dict(
 					      ),
-			     "review" => Dict(
+			     :review => Dict(
 					      ),
-			     "registry" => Dict(
-					"global_offsets" => GLOBAL_OFFSETS_MONTAGE
+			     :registry => Dict(
+					:global_offsets => GLOBAL_OFFSETS_MONTAGE
 					)
 			     )
 
 
 global PARAMS_MONTAGE_FALLBACK = PARAMS_MONTAGE;
 
-#PARAMS_MONTAGE_FALLBACK["match"]["search_r"] = 128;
+#PARAMS_MONTAGE_FALLBACK[:match][:search_r] = 128;
 
-global PARAMS_PREALIGNMENT = Dict(
-			     "mesh" => Dict(
-					"mesh_length" => MESH_LENGTH_PREALIGNMENT), 
-			     "match" => Dict(
-					"blockmatch_scale" => BLOCKMATCH_SCALE_PREALIGNMENT,
-					"block_r" => BLOCK_R_PREALIGNMENT, 
-					"search_r" => SEARCH_R_PREALIGNMENT,
-					"monoblock_scale" => MONOBLOCK_SCALE_PREALIGNMENT, 
-					"monoblock_ratio" => MONOBLOCK_RATIO_PREALIGNMENT, 
-					"monoblock_match" => MONOBLOCK_MATCH_PREALIGNMENT,
-					"depth" => 1),
-			     "solve" => Dict(
-					"method" => "regularized",
-					"lambda" => 0.9),
-					# "mesh_spring_coeff" => MESH_SPRING_COEFF_PREALIGNMENT,
-					# "match_spring_coeff" => MATCH_SPRING_COEFF_PREALIGNMENT,
-					# "ftol_cg" => FTOL_CG_PREALIGNMENT,
-					# "max_iters" => MAX_ITERS_PREALIGNMENT,
-					# "use_conjugate_gradient" => USE_CONJUGATE_GRADIENT_PREALIGNMENT,
-					# "eta_gd" => ETA_GD_PREALIGNMENT,
-					# "ftol_gd" => FTOL_GD_PREALIGNMENT,
-					# "eta_newton" => ETA_NEWTON_PREALIGNMENTE,
-					# "ftol_newton" => FTOL_NEWTON_PREALIGNMENT)
-			     "filter" => Dict(
+global PARAMS_PREALIGNMENT = Dict(:meta => Dict(:parent_stack => "montaged"), 
+			     :mesh => Dict(
+					:mesh_length => MESH_LENGTH_PREALIGNMENT), 
+			     :match => Dict(
+					:blockmatch_scale => BLOCKMATCH_SCALE_PREALIGNMENT,
+					:block_r => BLOCK_R_PREALIGNMENT, 
+					:search_r => SEARCH_R_PREALIGNMENT,
+					:monoblock_scale => MONOBLOCK_SCALE_PREALIGNMENT, 
+					:monoblock_ratio => MONOBLOCK_RATIO_PREALIGNMENT, 
+					:monoblock_match => MONOBLOCK_MATCH_PREALIGNMENT,
+					:depth => 1),
+			     :solve => Dict(
+					:method => :regularized,
+					:lambda => 0.9),
+					# :mesh_spring_coeff => MESH_SPRING_COEFF_PREALIGNMENT,
+					# :match_spring_coeff => MATCH_SPRING_COEFF_PREALIGNMENT,
+					# :ftol_cg => FTOL_CG_PREALIGNMENT,
+					# :max_iters => MAX_ITERS_PREALIGNMENT,
+					# :use_conjugate_gradient => USE_CONJUGATE_GRADIENT_PREALIGNMENT,
+					# :eta_gd => ETA_GD_PREALIGNMENT,
+					# :ftol_gd => FTOL_GD_PREALIGNMENT,
+					# :eta_newton => ETA_NEWTON_PREALIGNMENTE,
+					# :ftol_newton => FTOL_NEWTON_PREALIGNMENT)
+			     :filter => Dict(
 					      ),
-			     "render" => Dict(
+			     :render => Dict(
 					      ),
-			     "review" => Dict(
+			     :review => Dict(
 					      ),
-			     "registry" => Dict(
-					"global_offsets" => GLOBAL_OFFSETS_PREALIGNMENT
+			     :registry => Dict(
+					:global_offsets => GLOBAL_OFFSETS_PREALIGNMENT
 					)
 			     )
 global PARAMS_ALIGNMENT = Dict(
-			     "mesh" => Dict(
-					"mesh_length" => MESH_LENGTH_ALIGNMENT), 
-			     "match" => Dict(
-					"blockmatch_scale" => BLOCKMATCH_SCALE_ALIGNMENT,
-					"block_r" => BLOCK_R_ALIGNMENT, 
-					"search_r" => SEARCH_R_ALIGNMENT,
-					"monoblock_scale" => MONOBLOCK_SCALE_ALIGNMENT, 
-			#		"monoblock_padding" => MONOBLOCK_PADDING_ALIGNMENT, 
-					"monoblock_ratio" => MONOBLOCK_RATIO_ALIGNMENT, 
-					"monoblock_match" => MONOBLOCK_MATCH_ALIGNMENT,
-					"depth" => 3),
-			     "solve" => Dict(
-					"mesh_spring_coeff" => MESH_SPRING_COEFF_ALIGNMENT,
-					"match_spring_coeff" => MATCH_SPRING_COEFF_ALIGNMENT,
-					"ftol_cg" => FTOL_CG_ALIGNMENT,
-					"max_iters" => MAX_ITERS_ALIGNMENT,
-			     	"use_conjugate_gradient" => USE_CONJUGATE_GRADIENT_ALIGNMENT,
-			     	"eta_gd" => ETA_GD_ALIGNMENT,
-			     	"ftol_gd" => FTOL_GD_ALIGNMENT,
-			     	"eta_newton" => ETA_NEWTON_ALIGNMENT,
-			     	"ftol_newton" => FTOL_NEWTON_ALIGNMENT),
-			     "filter" => Dict(
+			     :mesh => Dict(
+					:mesh_length => MESH_LENGTH_ALIGNMENT), 
+			     :match => Dict(
+					:blockmatch_scale => BLOCKMATCH_SCALE_ALIGNMENT,
+					:block_r => BLOCK_R_ALIGNMENT, 
+					:search_r => SEARCH_R_ALIGNMENT,
+					:monoblock_scale => MONOBLOCK_SCALE_ALIGNMENT, 
+			#		:monoblock_padding => MONOBLOCK_PADDING_ALIGNMENT, 
+					:monoblock_ratio => MONOBLOCK_RATIO_ALIGNMENT, 
+					:monoblock_match => MONOBLOCK_MATCH_ALIGNMENT,
+					:depth => 3),
+			     :solve => Dict(
+					:mesh_spring_coeff => MESH_SPRING_COEFF_ALIGNMENT,
+					:match_spring_coeff => MATCH_SPRING_COEFF_ALIGNMENT,
+					:ftol_cg => FTOL_CG_ALIGNMENT,
+					:max_iters => MAX_ITERS_ALIGNMENT,
+			     	:use_conjugate_gradient => USE_CONJUGATE_GRADIENT_ALIGNMENT,
+			     	:eta_gd => ETA_GD_ALIGNMENT,
+			     	:ftol_gd => FTOL_GD_ALIGNMENT,
+			     	:eta_newton => ETA_NEWTON_ALIGNMENT,
+			     	:ftol_newton => FTOL_NEWTON_ALIGNMENT),
+			     :filter => Dict(
 					      ),
-			     "render" => Dict(
+			     :render => Dict(
 					      ),
-			     "review" => Dict(
+			     :review => Dict(
 					      ),
-			     "registry" => Dict(
-					"global_offsets" => GLOBAL_OFFSETS_ALIGNMENT
+			     :registry => Dict(
+					:global_offsets => GLOBAL_OFFSETS_ALIGNMENT
 					)
 			     )
