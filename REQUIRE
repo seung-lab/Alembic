@@ -1,4 +1,4 @@
-julia 0.4.0-pre+7340
+julia 0.6
 Images
 JLD
 Cairo
@@ -8,7 +8,6 @@ Colors
 FixedPointNumbers
 Cairo
 IterativeSolvers
-ImageRegistration
 Optim
 Distributions
 Compat

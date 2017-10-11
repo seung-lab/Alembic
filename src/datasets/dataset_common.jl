@@ -171,10 +171,10 @@ function parse_name(name::AbstractString)
 end
 
 function parse_registry(path::AbstractString)
-    registry = cell(0, 0)
+    registry = Array{Any}(0, 0)
     if isfile(path)
         file = readdlm(path)
-        registry = cell(size(file, 1), size(file, 2) + 1) # name, index, dx, dy
+        registry = Array{Any}(size(file, 1), size(file, 2) + 1) # name, index, dx, dy
         for i in 1:size(registry, 1)
             index = parse_name(file[i, 1])
             registry[i, 1] = get_name(index)
@@ -264,4 +264,4 @@ function check_dirs(dataset_name::AbstractString = DATASET)
     end
 end
 
-check_dirs()
+# check_dirs()

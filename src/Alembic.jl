@@ -25,7 +25,8 @@ PKGS_USED = ["HDF5", "JLD", "Images", "ImageView", "Colors", "FixedPointNumbers"
 
 PKGS_USED_CLONABLE = ["https://github.com/JuliaSparse/MKLSparse.jl.git", 
                       "https://github.com/seung-lab/ImageRegistration.git", 
-		      "https://github.com/madeleineudell/ParallelSparseMatMul.jl.git",
+            		      "https://github.com/madeleineudell/ParallelSparseMatMul.jl.git",
+                      "https://github.com/seung-lab/CloudVolume.jl.git"
                       ]
 
 using HDF5
@@ -43,7 +44,8 @@ using Images
 using Graphics
 using StatsBase
 using JSON
-using SimpleTasks
+# using SimpleTasks # Need to make SimpleTasks pass its tests
+using CloudVolume
 if VERSION != v"0.4.6" && VERSION != v"0.4.7"
 using Primes
 end
@@ -111,7 +113,7 @@ global const eps = 1e-12;
 global const eps_large = 1e-4;
 global const eps_rec = 1 / eps;
 
-blas_set_num_threads(4);
+# blas_set_num_threads(4); #
 
 
 
@@ -138,48 +140,42 @@ include("core/solve.jl")
 #include("params/params_piriform.jl")
 
 #include("datasets/dataset_s1.jl")
-include("datasets/dataset_myelin.jl")
-include("params/params_myelin.jl")
+# include("datasets/dataset_myelin.jl")
+# include("params/params_myelin.jl")
 # include("datasets/dataset_davit.jl")
 # include("params/params_davit.jl")
 # include("datasets/dataset_zebrafish.jl")
 #include("datasets/dataset_zebrafish.jl")
 #include("datasets/dataset_default.jl")
 #include("params/params_zebrafish.jl")
-#=
-if ON_CLOUD
-  include("datasets/dataset_zebrafish.jl")
-  include("datasets/dataset_pinky.jl")
-  #include("params_default.jl")
-  include("params/params_pinky.jl")
-else
-  include("datasets/dataset_default.jl")
-  # include("dataset_zebrafish.jl")
-  include("params/params_pinky.jl")
-end
-=#
+# include("datasets/dataset_zebrafish.jl")
+include("datasets/dataset_pinky100.jl")
+# #include("params_default.jl")
+include("params/params_pinky100.jl")
+# include("datasets/dataset_default.jl")
+# # include("dataset_zebrafish.jl")
+# include("params/params_pinky.jl")
 include("datasets/dataset_common.jl")
-
 include("render/render.jl")
 include("render/imageprocessing.jl")
 
-include("archive/evaluate.jl")
-include("archive/check.jl")
-include("archive/meshsession.jl")
-include("archive/tiletooverview.jl") 
-include("archive/data_export.jl") 
-include("import/premontage.jl") 
-include("import/import_AIBS_TEM.jl") 
-include("import/import_AIBS_SEM.jl")
+# include("archive/evaluate.jl")
+# include("archive/check.jl")
+# include("archive/meshsession.jl")
+# include("archive/tiletooverview.jl") 
+# include("archive/data_export.jl") 
+# include("import/premontage.jl") 
+# include("import/import_AIBS_TEM.jl") 
+# include("import/import_AIBS_SEM.jl")
 #include("import/old_import.jl")
 
-include("review/review.jl")
-include("review/visualize.jl")
-include("review/draw.jl")
-include("review/inspect.jl")
-include("review/player.jl")
-include("review/brushtool.jl")
-include("review/cpselect.jl")
+# include("review/review.jl")
+# include("review/visualize.jl")
+# include("review/draw.jl")
+# include("review/inspect.jl")
+# include("review/player.jl")
+# include("review/brushtool.jl")
+# include("review/cpselect.jl")
 include("tasks/tasks_env.jl")
 include("tasks/ImportTask.jl")
 include("tasks/BlockMatchTask.jl")

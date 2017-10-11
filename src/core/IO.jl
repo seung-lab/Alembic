@@ -320,7 +320,7 @@ end
 
 function parse_rough_align(info_path::AbstractString)
   file = readdlm(info_path)
-  session = cell(size(file, 1), 4); # name, index, dx, dy
+  session = Array{Any}(size(file, 1), 4); # name, index, dx, dy
   for i in 1:size(file, 1)
   m = Base.match(r"(Tile\S+).tif", file[i, 1])
   session[i, 1] = m[1]

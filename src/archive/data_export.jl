@@ -109,7 +109,7 @@ end
 
 function upload_ground_truth_to_google()
 	dirs = ["vol01"]
-	subdirs = ["cell_segmentation", "raw"]
+	subdirs = ["Array{Any}_segmentation", "raw"]
 	src_root = joinpath(homedir(), "seungmount/Omni/TracerTasks/AIBS_practice_234251S6R_01_01_aligned_01/ground_truth/")
 	dst_root = "gs://s6r_ground_truth"
 	for dir in dirs
