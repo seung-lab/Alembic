@@ -1,5 +1,5 @@
-from cloudvolume import CloudVolume, Storage
 from __future__ import division
+from cloudvolume import CloudVolume, Storage
 from PIL import Image
 import numpy as np
 import math
@@ -129,17 +129,20 @@ def main():
 	# y = 57923
 	# z_range = range(256,272)
 
-	x = 101894
-	y = 44578
-	z_range = range(544,560)
+	x = 63744
+	y = 37056
+	z_range = range(385,450)
 
 	# x = 71229
 	# y = 62974
 	# z_range = range(572,573)
 
 	catmaid_dir = 'gs://aibs_alignment/20170927_PINKY100_BOSSPRECURSOR'
-	inlayer = 'gs://neuroglancer/pinky100_v0/image'
-	outlayer = 'gs://neuroglancer/pinky100_v0/image_corrected'
+	inlayer = 'gs://neuroglancer/pinky100_v0/image_corrected'
+	outlayer = 'gs://neuroglancer/pinky100_v0/image_test'
 	ic = IngestCATMAID(catmaid_dir, inlayer, inlayer)
 	ic.get_catmaid_files(x, y, z_range)
 	ic.upload_catmaid_stack(x, y, z_range)
+
+if __name__ == "__main__":
+    main()
