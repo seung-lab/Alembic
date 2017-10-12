@@ -1,25 +1,4 @@
-#module Alembic
-
-if !haskey(ENV, "USER")
-  ENV["USER"] = "ubuntu"
-end
-
-if ENV["USER"] != "ubuntu"
-  global const ON_CLOUD = false;
-else
-  global const ON_CLOUD = true;
-end
-#=
-if contains(gethostname(), "seunglab") || contains(gethostname(), "seungom") || ENV["USER"] == "dih"
-  global const USE_PYPLOT = false;
-else
-  global const USE_PYPLOT = true;
-end
-=#
-
-#global const USE_PYPLOT = true;
-global const USE_PYPLOT = false;
-
+module Alembic
 
 PKGS_USED = ["HDF5", "JLD", "Images", "ImageView", "Colors", "FixedPointNumbers", "Cairo", "IterativeSolvers", "Optim", "Distributions", "RegERMs", "PyPlot", "SimpleTasks"]
 
@@ -31,12 +10,14 @@ PKGS_USED_CLONABLE = ["https://github.com/JuliaSparse/MKLSparse.jl.git",
 
 using HDF5
 using JLD
+using DataFrames
 using Colors
 using FixedPointNumbers
 using Base.Test
 using Cairo
 using IterativeSolvers
 using ImageRegistration
+importall ImageRegistration
 using Optim
 using Distributions
 using Compat
@@ -46,14 +27,9 @@ using StatsBase
 using JSON
 # using SimpleTasks # Need to make SimpleTasks pass its tests
 using CloudVolume
-if VERSION != v"0.4.6" && VERSION != v"0.4.7"
+using SimpleTasks
+#using SimpleTasks
 using Primes
-end
-if USE_PYPLOT
-  using PyPlot
-end
-  using Tk
-  using ImageView
 if !contains(gethostname(), "seung") && !contains(gethostname(), "MacBook")
   using PyCall
   if haskey(ENV, "MKLROOT")
@@ -61,40 +37,42 @@ if !contains(gethostname(), "seung") && !contains(gethostname(), "MacBook")
   end
 end
 
-#import Base.filter!
+import Base.Iterators.repeated
 
-# TypeAliases
-export Index
-export Triangle, Triangles
-export Weight, Weights
-export Pairing, Pairings
-export Point, Points
-export Edges
-export BinaryProperty, FloatProperty
-export Match, Mesh
+abstract type AbstractMesh 		end
+abstract type AbstractMatch 		end
+#abstract type AbstractProperties 	end
 
-typealias Index Tuple{Int64, Int64, Int64, Int64};    # (wafer, section, row, column)
-typealias Indices Tuple{Index, Index};    # (wafer, section, row, column)
+# Aliases for Points - a Point is a 1D array (with two elements), and a Points is a 2xN array where each column is a Point. 
+#const Point{T <: Number} = Array{T,1};
+#const Points{T <: Number} = Array{T,2};
+Point{T <: Number} = Array{T,1};
+Points{T <: Number} = Array{T,2};
 
-typealias Triangle Tuple{Int64, Int64, Int64};      # index of three points of the triangle for some point
-typealias Triangles Array{Triangle, 1};       # index of three points of the triangle for some point
+function columnviews{T}(pts::Points{T})
+	@inbounds return map(view, repeated(pts), repeated(:), 1:size(pts, 2))
+end
 
-typealias Weight Tuple{Float64, Float64, Float64};    # weights for respective triangle
-typealias Weights Array{Weight, 1};       # weights for respective triangle
+# sparse array for edges - columns represent edges and the rows represent the nodes
+#const Edges{T <: Number} = SparseMatrixCSC{T, Int64}
+Edges{T <: Number} = SparseMatrixCSC{T, Int64}
 
-typealias Pairing Tuple{Int64, Int64};        # useful for abstraction
-typealias Pairings Array{Pairing, 1};       # useful for abstraction
+FourTupleIndex = NTuple{4, Int64};    # (wafer, section, row, column)
+FourTupleIndices = Tuple{FourTupleIndex, FourTupleIndex};    # (wafer, section, row, column)
 
-typealias Point Array{Float64, 1};        # [i; j]
-typealias Points Array{Point, 1};       # array of points
+Triangle = NTuple{3, Int64};      # index of three points of the triangle for some point
+Triangles = Array{Triangle, 1};       # index of three points of the triangle for some point
 
-typealias BinaryProperty Array{Bool, 1};    	  # array of bools
+Weight = Tuple{Float64, Float64, Float64};    # weights for respective triangle
+Weights = Array{Weight, 1};       # weights for respective triangle
 
-typealias Edges SparseMatrixCSC{Float64, Int64}     # sparse array for edges - columns represent edges and the rows represent the nodes
-typealias FloatProperty Array{Float64, 1}   	# array of floats
+Pairing = Tuple{Int64, Int64};        # useful for abstraction
+Pairings = Array{Pairing, 1};       # useful for abstraction
+
+global const BinaryProperty = Array{Bool, 1};    	  # array of bools
+global const FloatProperty = Array{Float64, 1}   	# array of floats
 
 # global constants, independent of deployment
-
 global const NO_MATCH = [0; 0; -1];
 global const NO_TRIANGLE = (0, 0, 0);
 global const NO_WEIGHTS = (0.0, 0.0, 0.0);
@@ -115,80 +93,21 @@ global const eps_rec = 1 / eps;
 
 # blas_set_num_threads(4); #
 
-
-
-include("math/meshconjgrad.jl")
-include("math/meshgradnewton.jl")
-#include("math/convolve.jl") # legacy convolution code
-include("math/convolve_inplace.jl")
-include("math/imagecovariance.jl")
-
+include("params/load.jl")
+include("core/include.jl")
+include("math/include.jl")
 include("utilities/author.jl")
-# include("utilities/parallelism.jl")
 include("utilities/utilities.jl")
-
-include("core/registry.jl")
-include("core/IO.jl")
-include("core/Mesh.jl")
-include("core/Match.jl")
-include("core/filter.jl")
-include("core/MeshSet.jl")
-include("core/solve.jl")
-
-#include("datasets/dataset_cremi.jl")
-#include("datasets/dataset_piriform.jl")
-#include("params/params_piriform.jl")
-
-#include("datasets/dataset_s1.jl")
-# include("datasets/dataset_myelin.jl")
-# include("params/params_myelin.jl")
-# include("datasets/dataset_davit.jl")
-# include("params/params_davit.jl")
-# include("datasets/dataset_zebrafish.jl")
-#include("datasets/dataset_zebrafish.jl")
-#include("datasets/dataset_default.jl")
-#include("params/params_zebrafish.jl")
-# include("datasets/dataset_zebrafish.jl")
-include("datasets/dataset_pinky100.jl")
-# #include("params_default.jl")
-include("params/params_pinky100.jl")
-# include("datasets/dataset_default.jl")
-# # include("dataset_zebrafish.jl")
-# include("params/params_pinky.jl")
 include("datasets/dataset_common.jl")
 include("render/render.jl")
 include("render/imageprocessing.jl")
 
-# include("archive/evaluate.jl")
-# include("archive/check.jl")
-# include("archive/meshsession.jl")
-# include("archive/tiletooverview.jl") 
-# include("archive/data_export.jl") 
-# include("import/premontage.jl") 
-# include("import/import_AIBS_TEM.jl") 
-# include("import/import_AIBS_SEM.jl")
-#include("import/old_import.jl")
+for s in filter(x->string(x)[1]!='#' && x!=:eval, names(Alembic,true))
 
-# include("review/review.jl")
-# include("review/visualize.jl")
-# include("review/draw.jl")
-# include("review/inspect.jl")
-# include("review/player.jl")
-# include("review/brushtool.jl")
-# include("review/cpselect.jl")
-include("tasks/tasks_env.jl")
-include("tasks/ImportTask.jl")
-include("tasks/BlockMatchTask.jl")
-include("tasks/RenderTask.jl")
-include("tasks/SolveTask.jl")
-include("tasks/MaskTask.jl")
-include("tasks/ThumbnailTask.jl")
-include("tasks/RenderReviewTask.jl")
-include("tasks/SaveStackTask.jl")
-include("tasks/CubeStackTask.jl")
-include("tasks/awsscheduler.jl")
+      println("Exporting $s")
 
+          eval(Expr(:export, s))
 
-include("utilities/migrate.jl")
-#include("davit/davit.jl")
-#end
+	end
+
+end

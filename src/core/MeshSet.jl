@@ -1,14 +1,14 @@
 type MeshSet
- 	meshes::Array{Mesh, 1}			# vector of meshes in the set
- 	matches::Array{Match, 1}		# vector of matches in the set
-  	properties::Dict{Any, Any}		# in the same array order, contains parameters and filters
+ 	meshes::Array{Mesh, 1}			    # vector of meshes in the set
+ 	matches::Array{Match, 1}		    # vector of matches in the set
+  properties::Dict{Symbol, Any}		# in the same array order, contains parameters and filters
 end
 
 ### IO.jl
 function get_index(meshset::MeshSet) 	return get_index(meshset.meshes[1]), get_index(meshset.meshes[end]) end
 function get_images(meshset::MeshSet, dtype = UInt8)	return map(get_image, meshset.meshes, repeated(dtype));	end
 function get_correspondence_patches(meshset::MeshSet, match_ind, corr_ind) return get_correspondence_patches(meshset.matches[match_ind], corr_ind)	end
-function get_params(meshset::MeshSet)			return meshset.properties["params"];		end
+function get_params(meshset::MeshSet)			return meshset.properties[:params];		end
 
 #function get_fixed(meshset::MeshSet)			return meshset.properties["fixed"];		end
 
@@ -198,13 +198,13 @@ function is_flagged(meshset::MeshSet)
   return |(map(is_flagged, meshset.matches)...)
 end
 
-function check!(meshset::MeshSet, crits=meshset.properties["params"]["review"])
+function check!(meshset::MeshSet, crits=meshset.properties[:params][:review])
   unflag!(meshset)
-  meshset.properties["params"]["review"] = crits
+  meshset.properties[:params][:review] = crits
   return |(map(check!, meshset.matches, repeated(Base.values(crits)))...)
 end
 
-function filter!(meshset::MeshSet, filters::Dict=meshset.properties["params"]["filter"])
+function filter!(meshset::MeshSet, filters::Dict=meshset.properties[:params][:filter])
   filters = collect(Base.values(filters))
   filters = filters[sortperm(map(getindex, filters, repeated(1)))]
   for filter in filters
@@ -225,12 +225,12 @@ function clear_filters!(meshset::MeshSet)
   end
 end
 
-function refilter!(meshset::MeshSet, filters=meshset.properties["params"]["filter"])
+function refilter!(meshset::MeshSet, filters=meshset.properties[:params][:filter])
   clear_filters!(meshset)
   filter!(meshset, filters)
 end
 
-function check_and_fix!(meshset::MeshSet, crits = Base.values(meshset.properties["params"]["review"]), filters = Base.values(meshset.properties["params"]["filter"])) 
+function check_and_fix!(meshset::MeshSet, crits = Base.values(meshset.properties[:params][:review]), filters = Base.values(meshset.properties[:params][:filter])) 
   if check!(meshset, crits)
     for match in meshset.matches
       if is_flagged(match)
@@ -255,9 +255,9 @@ end
 
 function get_parent(meshset::MeshSet)
   parent = nothing
-  if haskey(meshset.properties, "meta")
-    if haskey(meshset.properties["meta"], "parent")
-      parent = meshset.properties["meta"]["parent"]
+  if haskey(meshset.properties, :meta)
+    if haskey(meshset.properties[:meta], :parent)
+      parent = meshset.properties[:meta][:parent]
     end
   end
   return parent
@@ -273,7 +273,7 @@ function split_meshset(meshset::MeshSet)
 	return (vcat(map(get_path, meshset.meshes), map(get_path, meshset.matches)));
 end
 
-function compile_meshset(first_index::Index, last_index::Index)
+function compile_meshset(first_index::FourTupleIndex, last_index::FourTupleIndex)
   #meshes = Array{Mesh, 1}()
   #matches = Array{Match, 1}()
   inds = get_index_range(first_index, last_index);
@@ -319,7 +319,7 @@ function compile_meshset(first_index::Index, last_index::Index)
   ms = MeshSet();
   ms.meshes = meshes;
   ms.matches = matches;
-  ms.properties = Dict{Any, Any}("author" => author(), "meta" => Dict{Any, Any}("parent" => nothing, "split_index" => 0), "params" => deepcopy(meshes[1].properties["params"]))
+  ms.properties = Dict{Symbol, Any}(:author => author(), :meta => Dict{Symbol, Any}(:parent => nothing, :split_index => 0), :params => deepcopy(meshes[1].properties[:params]))
   
   @everywhere gc();
 
@@ -332,8 +332,8 @@ function split_meshset(meshset::MeshSet)
 
 	for i in 1:count_matches(meshset)
 		properties = deepcopy(meshset.properties);
-		properties["meta"]["parent"] = parent_name;
-		properties["meta"]["split_index"] = i;
+		properties[:meta][:parent] = parent_name;
+		properties[:meta][:split_index] = i;
 		matches = Array{Match, 1}();
 		push!(matches, meshset.matches[i])
 		meshes = Array{Mesh, 1}();
@@ -357,8 +357,8 @@ function concat_meshset(parent_name)
 
 		if i == 1
 			ms.properties = deepcopy(cms.properties);
-			ms.properties["meta"]["parent"] = nothing;
-			ms.properties["meta"]["split_index"] = 0;
+			ms.properties[:meta][:parent] = nothing;
+			ms.properties[:meta][:split_index] = 0;
 		end
 		println("Child ", i, " / ", count_children(parent_name), " concatanated");
 	end
@@ -374,7 +374,7 @@ function compile_partial_meshset(parent_name, firstindex, lastindex)
   indices = get_index_range(prealigned(firstindex), prealigned(lastindex))
   ind = []
   ms.properties = deepcopy(load_split(parent_name, 1).properties)
-  delete!(ms.properties, "meta")
+  delete!(ms.properties, :meta)
   for i = 1:count_children(parent_name)
     child_ms = load_split(parent_name, i)
     if length(intersect(map(get_index, child_ms.meshes), indices)) > 0
@@ -449,7 +449,7 @@ end
 function MeshSet()
  	meshes = Array{Mesh, 1}(0)
  	matches = Array{Match, 1}(0)		
-  properties = Dict{Any, Any}()
+  properties = Dict{Symbol, Any}()
 	return MeshSet(meshes, matches, properties)
 end
 
@@ -460,46 +460,46 @@ function prealign(index; params=get_params(index), to_fixed=false)
 	dst_index = aligned(dst_index);
 	end
 	meshset = MeshSet();
-	meshset.properties["params"] = params;
-	meshset.properties["meta"] = Dict{Any, Any}();
+	meshset.properties[:params] = params;
+	meshset.properties[:meta] = Dict{Symbol, Any}();
 	push!(meshset.meshes, Mesh(src_index, params))
 	push!(meshset.meshes, Mesh(dst_index, params, to_fixed))
 	push!(meshset.matches, Match(meshset.meshes[1], meshset.meshes[2], params))
 	filter!(meshset);
 	check!(meshset);
   try
-  	solve!(meshset, method=params["solve"]["method"]);
+  	solve!(meshset, method=params[:solve][:method]);
   end
 	save(meshset);
 	return meshset;
 end
 
-function MeshSet(index::Index; kwargs...)
+function MeshSet(index::FourTupleIndex; kwargs...)
 #  return MeshSet(ancestors(index)...; kwargs...);
 	if is_premontaged(index) return MeshSet(index, index; kwargs...); end
 	if is_montaged(index) return MeshSet(premontaged(index), premontaged(index); kwargs...); end
 	if is_prealigned(index) return prealign(montaged(index)) end
 end
 
-function MeshSet(first_index, last_index; kwargs...) #params=get_params(first_index), solve=true, solve_method="elastic")
+function MeshSet(first_index, last_index; kwargs...) #params=get_params(first_index), solve=true, solve_method=:elastic)
 	indices = get_index_range(first_index, last_index);
 	if length(indices) == 0 return nothing; end
 	MeshSet(indices; kwargs...) # params=get_params(indices[1]), solve=solve, solve_method=solve_method)
 end
 
-function MeshSet(indices::Array; params=get_params(indices[1]), solve=true, solve_method="elastic")
+function MeshSet(indices::Array; params=get_params(indices[1]), solve=true, solve_method=:elastic)
   meshes = map(Mesh, indices, repeated(params))
   sort!(meshes; by=get_index)
   matches = Array{Match, 1}(0)    
-  properties = Dict{Any, Any}(  
-  	  "params"  => params,
-          "author" => author(),
-          "meta" => Dict{Any, Any}(
-          "parent" => nothing,
-          "split_index" => 0)
+  properties = Dict{Symbol, Any}(  
+  	  :params  => params,
+          :author => author(),
+          :meta => Dict{Symbol, Any}(
+          :parent => nothing,
+          :split_index => 0)
           )
   meshset = MeshSet(meshes, matches, properties);
-  match!(meshset, params["match"]["depth"]; reflexive = params["match"]["reflexive"]);
+  match!(meshset, params[:match][:depth]; reflexive = params[:match][:reflexive]);
 
   save(meshset)
   filter!(meshset);
@@ -514,7 +514,7 @@ function MeshSet(indices::Array; params=get_params(indices[1]), solve=true, solv
   return meshset;
 end
 
-# function MeshSet(firstindex::Index, lastindex::Index, fixed_meshes::Array{Mesh,1}; params=get_params(firstindex))
+# function MeshSet(firstindex::FourTupleIndex, lastindex::FourTupleIndex, fixed_meshes::Array{Mesh,1}; params=get_params(firstindex))
 #   println("Using ", length(fixed_meshes), " fixed meshes to build meshset")
 #   indices = get_index_range(firstindex, lastindex)
 #   if length(indices) == 0 
@@ -525,17 +525,17 @@ end
 #   map(fix!, fixed_meshes)
 #   merge_meshes!(meshes, fixed_meshes) # merge meshes into fixed_meshes
 #   matches = Array{Match, 1}(0)
-#   properties = Dict{Any, Any}(  "params"  => params,
-#           "author" => author(),
-#           "meta" => Dict{Any, Any}(
-#           "parent" => nothing,
-#           "split_index" => 0)
+#   properties = Dict{Symbol, Any}(  :params  => params,
+#           :author => author(),
+#           :meta => Dict{Symbol, Any}(
+#           :parent => nothing,
+#           :split_index => 0)
 #           )
 #   for mesh in fixed_meshes
 #     println(get_index(mesh), " ", length(mesh.src_nodes))
 #   end
 #   meshset = MeshSet(fixed_meshes, matches, properties);
-#   match!(meshset, params["match"]["depth"]);
+#   match!(meshset, params[:match][:depth]);
 
 #   filter!(meshset);
 #   check_and_fix!(meshset);
@@ -545,7 +545,7 @@ end
 # end
 
 function mark_solved!(meshset::MeshSet)
-  meshset.properties["meta"]["solved"] = author()
+  meshset.properties[:meta]["solved"] = author()
 end
 
 function reset!(meshset::MeshSet)
@@ -554,7 +554,7 @@ function reset!(meshset::MeshSet)
     for mesh in meshset.meshes
       reset!(mesh)
     end
-    meshset.properties["meta"]["reset"] = author()
+    meshset.properties[:meta]["reset"] = author()
   end
 end
 
@@ -602,7 +602,7 @@ function match!(meshset::MeshSet, within = 1; reflexive = true)
 	pairs = get_all_overlaps(meshset, within; reflexive = reflexive);
 	for i in 1:length(pairs)
 	#for i in 1:2:(length(pairs) - 2)
-	        #prefetched = prefetch(get_index(meshset.meshes[pairs[i+2][2]]), get_params(meshset)["match"]["blockmatch_scale"]);
+	        #prefetched = prefetch(get_index(meshset.meshes[pairs[i+2][2]]), get_params(meshset)[:match][:blockmatch_scale]);
 		add_match!(meshset, Match(meshset.meshes[pairs[i][1]], meshset.meshes[pairs[i][2]], params));
 	#	add_match!(meshset, Match(meshset.meshes[pairs[i+1][1]], meshset.meshes[pairs[i+1][2]], params));
 		#load_prefetched(prefetched);
@@ -619,11 +619,12 @@ function rematch!(meshset::MeshSet, match_ind, params = get_params(meshset))
   newmatch = Match(src_mesh, dst_mesh, params)
   deleteat!(meshset.matches, match_ind)
   add_match!(meshset, newmatch)
-  meshset.properties["params"] = params
-  meshset.properties["author"] = author()
+  meshset.properties[:params] = params
+  meshset.properties[:author] = author()
   #save(meshset)
 end
 
+# filters any correspondence that cannot be triangulated
 function sanitize!(meshset::MeshSet)
   meshes = Dict{Any, Any}();
   for mesh in meshset.meshes
@@ -634,12 +635,12 @@ function sanitize!(meshset::MeshSet)
     	src_mesh = meshes[match.src_index];
     	dst_mesh = meshes[match.dst_index];
 	src_pts, dst_pts = get_correspondences(match);
-	src_pt_triangles = map(find_mesh_triangle, repeated(src_mesh), src_pts);
-	dst_pt_triangles = map(find_mesh_triangle, repeated(dst_mesh), dst_pts);
+	src_pt_triangles = map(find_mesh_triangle, repeated(src_mesh), columnviews(src_pts));
+	dst_pt_triangles = map(find_mesh_triangle, repeated(dst_mesh), columnviews(dst_pts));
 	invalids = union(find(ind -> src_pt_triangles[ind] == NO_TRIANGLE, 1:count_correspondences(match)), find(ind -> dst_pt_triangles[ind] == NO_TRIANGLE, 1:count_correspondences(match)))
 	if length(invalids) !=0
-	clear_filters!(match; filtertype = "sanitization");
-	filter_manual!(match, invalids; filtertype = "sanitization");
+	clear_filters!(match; filtertype = :sanitization);
+	filter_manual!(match, invalids; filtertype = :sanitization);
 	end
   end
 end
@@ -656,7 +657,7 @@ end=#
 #=
 function save(meshset::MeshSet)
   if has_parent(meshset)
-    foldername = joinpath(ALIGNED_DIR, meshset.properties["meta"]["parent"])
+    foldername = joinpath(ALIGNED_DIR, meshset.properties[:meta][:parent])
     if !isdir(foldername) mkdir(foldername) end
     split_index = get_split_index(meshset);
     filename = joinpath(foldername, "$split_index.jls")
@@ -705,7 +706,7 @@ function get_filename(meshset::MeshSet)
   end
 end
 
-function get_filename(firstindex::Index, lastindex::Index)
+function get_filename(firstindex::FourTupleIndex, lastindex::FourTupleIndex)
   filename = string(get_name(firstindex, lastindex), ".jls")
   if (((is_montaged(firstindex) || is_prealigned(firstindex) || is_aligned(firstindex)) && is_montaged(lastindex)) ||
   ((is_montaged(lastindex) || is_prealigned(lastindex) || is_aligned(lastindex)) && is_montaged(firstindex))) && (firstindex != lastindex)
@@ -759,13 +760,13 @@ function load_split(parent_name, split_index)
 end
 
 function has_parent(meshset::MeshSet)
-	if !haskey(meshset.properties, "meta") || !haskey(meshset.properties["meta"], "parent") || meshset.properties["meta"]["parent"] == nothing return false end
+	if !haskey(meshset.properties, :meta) || !haskey(meshset.properties[:meta], :parent) || meshset.properties[:meta][:parent] == nothing return false end
 	return true
 end
 
 function get_split_index(meshset::MeshSet)
-	if !haskey(meshset.properties, "meta") || !haskey(meshset.properties["meta"], "parent") || meshset.properties["meta"]["parent"] == nothing return 0 end
-	return meshset.properties["meta"]["split_index"];
+	if !haskey(meshset.properties, :meta) || !haskey(meshset.properties[:meta], :parent) || meshset.properties[:meta][:parent] == nothing return 0 end
+	return meshset.properties[:meta][:split_index];
 end
 #=
 function load(firstindex, lastindex)
@@ -814,7 +815,7 @@ function make_stack(first_index, last_index, fixed_interval = 0)
   for i in indices
     name = registry[i, 1]
     index = registry[i, 2]
-    if params["global_offsets"] == true
+    if params[:global_offsets] == true
     	dy = registry[i, 3]
     	dx = registry[i, 4]
     elseif i == maximum(indices)
@@ -850,7 +851,7 @@ function load_stack(offsets, wafer_num, section_range)
   image = get_image(get_path(name))
   add_mesh(Mesh(name, image, index, dy, dx, false, PARAMS_ALIGNMENT), Ms)
   
-  image_shared = SharedArray(UInt8, size(image, 1), size(image, 2))
+  image_shared = SharedArray{UInt8}(size(image, 1), size(image, 2))
   image_shared[:, :] = image[:, :]
   push!(images, image_shared)
   end
@@ -880,9 +881,9 @@ end
 #=
 function get_param(meshset::MeshSet, property_name)
   property = nothing;
-  if haskey(meshset.properties, "params")
-    if haskey(meshset.properties["params"], "match")
-      if haskey(meshset.properties["params"]["match"], property_name)
+  if haskey(meshset.properties, :params)
+    if haskey(meshset.properties[:params], :match)
+      if haskey(meshset.properties[:params][:match], property_name)
         property = meshset.properties[property_name]
       end
     end
@@ -925,12 +926,12 @@ function autoblockmatch(index; params=get_params(index))
   meshes = pmap(Mesh, indices, repeated(params));
   sort!(meshes; by=get_index)
   matches = Array{Match, 1}(0)
-  properties = Dict{Any, Any}(  
-          "params"  => params,
-          "author" => author(),
-          "meta" => Dict{Any, Any}(
-          "parent" => nothing,
-          "split_index" => 0)
+  properties = Dict{Symbol, Any}(  
+          :params  => params,
+          :author => author(),
+          :meta => Dict{Symbol, Any}(
+          :parent => nothing,
+          :split_index => 0)
           )
   meshset = MeshSet(meshes, matches, properties);
   for mesh in meshset.meshes
@@ -942,7 +943,7 @@ function autoblockmatch(index; params=get_params(index))
 end
 
 function get_correspondence_properties(meshset::MeshSet, key)
-  return map(get_properties, meshset.matches, repeated(key))
+  return map(get_correspondence_properties, meshset.matches, repeated(key))
 end
 
 function get_correspondence_stats(ms::MeshSet, key)

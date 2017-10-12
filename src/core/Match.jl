@@ -1,3 +1,116 @@
+# Immutable type that contains the preallocated space needed for match
+immutable MatchEnv
+  # sizes of the full size patches
+  size_src::NTuple{2, Int64}
+  size_dst::NTuple{2, Int64}
+
+  # blockmatch scale
+  scale::Float64
+  # bandpass values
+  bandpass
+
+  # bandpass filter for xcorr
+  kernel::Array{Float64, 2}
+
+  # tforms for scaling
+  tform_src::Array{Float64, 2}
+  tform_dst::Array{Float64, 2}
+
+  # locations for the full size patches
+  src_patch_full::Array{Float64, 2}
+  dst_patch_full::Array{Float64, 2}
+
+  # locations for the scaled patches
+  src_patch::Array{Float64, 2}
+  dst_patch::Array{Float64, 2}
+end
+
+global MATCH_ENVS = Dict{Symbol, MatchEnv}()
+
+function clear_matchenvs()
+	global MATCH_ENVS = Dict{Symbol, MatchEnv}()
+end
+
+function register_matchenv(me::MatchEnv)
+	MATCH_ENVS[Symbol(me.size_src, me.size_dst, me.scale, me.bandpass)] = me
+end
+
+function get_matchenv(src_range, dst_range; scale = 1.0, bandpass = (0,0))
+  if haskey(MATCH_ENVS, Symbol(map(length, src_range), map(length, dst_range), scale, bandpass)) 
+    return MATCH_ENVS[Symbol(map(length, src_range), map(length, dst_range), scale, bandpass)]
+  end
+
+  me = MatchEnv(src_range, dst_range; scale = scale, bandpass = bandpass)
+  register_matchenv(me)
+
+  return me
+end
+
+function MatchEnv(src_range, dst_range; scale = 1.0, bandpass = (0,0))
+  size_src = map(length, src_range)
+  size_dst = map(length, dst_range)
+
+  src_patch_full = zeros(Float64, size_src...)
+  dst_patch_full = zeros(Float64, size_dst...)
+
+  if scale == 1.0
+    src_patch = zeros(Float64, size_src...)
+    dst_patch = zeros(Float64, size_dst...)
+    tform_src = zeros(Float64, 0, 0)
+    tform_dst = zeros(Float64, 0, 0)
+  else
+    tform = [scale 0 0; 0 scale 0; 0 0 1]
+
+    bb_src = ImageRegistration.BoundingBox{Float64}(0,0, size_src...)
+    wbb_src = tform_bb(bb_src, tform)
+    tbb_src = snap_bb(wbb_src)
+    src_patch = zeros(Float64, tbb_src.h, tbb_src.w)
+    tform_src = [tbb_src.h/size_src[1] - eps 0 0; 0 tbb_src.w/size_src[2] - eps 0; 0 0 1]
+
+    bb_dst = ImageRegistration.BoundingBox{Float64}(0,0, size_dst...)
+    wbb_dst = tform_bb(bb_dst, tform)
+    tbb_dst = snap_bb(wbb_dst)
+    dst_patch = zeros(Float64, tbb_dst.h, tbb_dst.w)
+    tform_dst = [tbb_dst.h/size_dst[1] - eps 0 0; 0 tbb_dst.w/size_dst[2] - eps 0; 0 0 1]
+  end
+   
+  if bandpass == (0, 0)
+    kernel = zeros(Float64, 0, 0)
+  else
+    kernel = make_bandpass_kernel(bandpass...) 
+  end
+
+    return MatchEnv(
+  size_src::NTuple{2, Int64},
+  size_dst::NTuple{2, Int64},
+
+  scale::Float64,
+  bandpass,
+
+  kernel::Array{Float64, 2},
+
+  tform_src::Array{Float64, 2},
+  tform_dst::Array{Float64, 2},
+
+  src_patch_full::Array{Float64, 2},
+  dst_patch_full::Array{Float64, 2},
+
+  src_patch::Array{Float64, 2},
+  dst_patch::Array{Float64, 2}
+    )
+end
+
+function clean!(me::MatchEnv)
+  @inbounds begin
+	me.src_patch_full[:] = Float64(0)
+	me.dst_patch_full[:] = Float64(0)
+	me.src_patch[:] = Float64(0)
+	me.dst_patch[:] = Float64(0)
+  end
+end
+
+
+
 function init_Match()
 
 global SRC_PATCH_FULL = Array{Float64, 2}(1,1);
@@ -15,16 +128,16 @@ end
 
 init_Match();
 
-type Match
+struct Match{T} <: AbstractMatch
   src_index          # source mesh index
   dst_index          # destination mesh index
 
-  src_points::Points	    # source point coordinate in image
-  dst_points::Points        # destination point coordinate in image
-  correspondence_properties::Array{Dict{Any, Any}} # in the same array order as points, contains properties of correspondences
+  src_points::Points{T}	    # source point coordinate in image
+  dst_points::Points{T}        # destination point coordinate in image
+  correspondence_properties    # in the same array order as points, contains properties of correspondences
 
-  filters::Array{Dict{Any, Any}}    # Array of filters 
-  properties::Dict{Any, Any}
+  filters    # Array of filters 
+  properties::Dict{Symbol, Any}
 end
 
 ### index related
@@ -42,29 +155,38 @@ function get_src_and_dst_indices(match::Match)
 end
 
 ### counting
-function count_correspondences(match::Match) return size(match.src_points, 1);	end
-function count_filtered_correspondences(match::Match) return length(get_filtered_indices(match)); end
-function count_rejected_correspondences(match::Match) return length(get_rejected_indices(match)); end
+function count_correspondences(match::Match) return size(match.src_points, 2);	end
+function count_filtered_correspondences(match::Match) return sum(get_filtered_indices(match)); end
+function count_rejected_correspondences(match::Match) return sum(get_rejected_indices(match)); end
 
-function count_filters(match::Match) return length(match.filters); end
+function count_filters(match::Match) return size(match.filters, 2); end
 function count_filtered_properties(match::Match, property_name, compare, threshold)
- return sum(compare(get_filtered_properties(match::Match, property_name), threshold))
+ return sum(compare(get_correspondence_properties(match::Match, property_name; filtered = true), threshold))
 end
 
 ### correspondences related
 function get_filtered_indices(match::Match)
-	return setdiff(1:count_correspondences(match), union(map(getindex, match.filters, repeated("rejected"))...));
+	return map(!, get_rejected_indices(match))
 end
 function get_rejected_indices(match::Match)
-	return union(map(getindex, match.filters, repeated("rejected"))...)
+  	ret = fill(false, count_correspondences(match));
+	for j in 1:count_filters(match)
+	  dfcol::Array{Bool, 1} = match.filters.columns[j]
+	  for i in 1:length(dfcol)
+	    @inbounds ret[i] = ret[i] || dfcol[i]
+	  end
+	end
+	return ret
 end
-function get_filtered_correspondence_properties(match::Match)
-	return match.correspondence_properties[get_filtered_indices(match)]
+#=
+function (match::Match)
+	return match.correspondence_properties[get_filtered_indices(match), :]
 end
+=#
 
 function get_correspondences(match::Match; globalized::Bool=false, global_offsets::Bool=true, filtered::Bool=false, use_post::Bool=false, src_mesh = nothing, dst_mesh = nothing)
   	if filtered
-	  src_pts = match.src_points[get_filtered_indices(match)]; dst_pts = match.dst_points[get_filtered_indices(match)];
+	  src_pts = match.src_points[:, get_filtered_indices(match)]; dst_pts = match.dst_points[:, get_filtered_indices(match)];
 	else
   	  src_pts = copy(match.src_points); dst_pts = copy(match.dst_points);
 	end
@@ -94,47 +216,43 @@ function get_dfs(dict::Dict, keytofetch)
 	return nothing
 end
 
-function get_properties(match::Match, property_name)
-	ret = map(get_dfs, match.correspondence_properties, repeated(property_name));
+function get_correspondence_properties(match::Match, property_name; filtered = false)
+	ret = match.correspondence_properties[property_name];
 	if length(ret) != 0
 		ret = Array{typeof(ret[1])}(ret);
 	end
+	return filtered ? ret[get_filtered_indices(match)] : ret
 end
 
-function get_properties(match::Match, fn::Function, args...)
-	return fn(match, args...)
-end
-
-function get_filtered_properties(match::Match, property_name)
-	cp = get_filtered_correspondence_properties(match)
-	return map(get_dfs, cp, repeated(property_name));
+function get_correspondence_properties(match::Match, fn::Function, args...; filtered = false)
+	return filtered ? fn(match, args...)[get_filtered_indices(match)] : fn(match, args...)
 end
 
 ### reviewing
 function set_reviewed!(match::Match)
-	match.properties["review"]["author"] = author();
+	match.properties[:review][:author] = author();
 	return;
 end
 
 function is_reviewed(match::Match)
-  	return match.properties["review"]["author"] == null_author()
+  	return match.properties[:review][:author] == null_author()
 end
 
 function get_author(match::Match)
-	author = match.properties["review"]["author"]
+	author = match.properties[:review][:author]
 	return author
 end
 
 function is_flagged(match::Match, filter_name = nothing)
-  	if filter_name == nothing return match.properties["review"]["flagged"];
+  	if filter_name == nothing return match.properties[:review][:flagged];
 	else
-	return haskey(match.properties["review"]["flags"], filter_name); end
+	return haskey(match.properties[:review][:flags], filter_name); end
 end
 
 function flag!(match::Match, crit = nothing)
-	match.properties["review"]["flagged"] = true;
+	match.properties[:review][:flagged] = true;
 	if crit != nothing
-	match.properties["review"]["flags"][crit[1]] = crit[2:end];
+	match.properties[:review][:flags][crit[1]] = crit[2:end];
       end
 end
 
@@ -142,7 +260,7 @@ end
 Flag a match based on property criteria
 """
 function flag!(match::Match, property_name, compare, threshold)
-	attributes = get_filtered_properties(match, property_name)
+	attributes = get_correspondence_properties(match, property_name; filtered = true)
 	inds_to_filter = find(i -> compare(i, threshold), attributes)
 	if length(inds_to_filter) > 0
 		flag!(match, (property_name, compare, threshold))
@@ -151,16 +269,16 @@ end
 
 function unflag!(match::Match, filter_name = nothing)
   	if filter_name == nothing
-	match.properties["review"]["flagged"] = false;
-	for key in keys(match.properties["review"]["flags"])
-	  pop!(match.properties["review"]["flags"], key);
+	match.properties[:review][:flagged] = false;
+	for key in keys(match.properties[:review][:flags])
+	  pop!(match.properties[:review][:flags], key);
 	end
       else
-	  if haskey(match.properties["review"]["flags"], filter_name)
-	  pop!(match.properties["review"]["flags"], filter_name);
+	  if haskey(match.properties[:review][:flags], filter_name)
+	  pop!(match.properties[:review][:flags], filter_name);
 	end
-	  if length(match.properties["review"]["flags"]) == 0
-	  match.properties["review"]["flagged"] = false;
+	  if length(match.properties[:review][:flags]) == 0
+	  match.properties[:review][:flagged] = false;
 	end
       end
 end
@@ -170,23 +288,23 @@ function get_correspondence_patches(match::Match, ind)
 	dst_path = match.dst_index;
 	#assert(src_path[end-1:end] == "h5")
 
-	props = match.correspondence_properties[ind]
+	props = match.correspondence_properties[ind, :]
 
-		scale = props["ranges"]["scale"];
-		bandpass_sigmas = match.properties["params"]["match"]["bandpass_sigmas"]
+		scale = props[:ranges_scale][1];
+		bandpass_sigmas = match.properties[:params][:match][:bandpass_sigmas]
 		#src_patch = h5read(src_path, "img", props["ranges"]["src_range"])
-		src_pt_loc = props["ranges"]["src_pt_loc"];
+		src_pt_loc = props[:ranges_src_pt_loc][1];
 		#dst_patch = h5read(dst_path, "img", props["ranges"]["dst_range"])
-		dst_pt_loc = props["ranges"]["dst_pt_loc"];
+		dst_pt_loc = props[:ranges_dst_pt_loc][1];
 
-		src_pt = ceil(Int64, src_pt_loc * scale)
+		src_pt = ceil.(Int64, src_pt_loc * scale)
 		dst_pt = dst_pt_loc
 
-		dst_range_full = props["ranges"]["dst_range_full"]
+		dst_range_full = props[:ranges_dst_range_full][1]
 		dst_pt_locs_full = [findfirst(dst_range_full[1] .== dst_pt[1]), findfirst(dst_range_full[2] .== dst_pt[2])]
-		dst_pt_max = ceil(Int64, max(dst_pt, dst_pt_locs_full) * scale)
+		dst_pt_max = ceil.(Int64, max(dst_pt, dst_pt_locs_full) * scale)
 
-	prepare_patches(src_path, dst_path, props["ranges"]["src_range"], props["ranges"]["dst_range"], props["ranges"]["dst_range_full"], scale, bandpass_sigmas; from_disk = true)
+	prepare_patches(src_path, dst_path, props[:ranges_src_range][1], props[:ranges_dst_range][1], props[:ranges_dst_range_full][1], scale, bandpass_sigmas; from_disk = true)
 
 	function rescale(img)
 	  img_new = copy(img)
@@ -206,25 +324,25 @@ function get_correspondence_patches(match::Match, ind)
 
 	#return SRC_PATCH, DST_PATCH
 	xc = normxcorr2_preallocated(SRC_PATCH, DST_PATCH);
-	dv = ceil(Int64, props["vects"]["dv"] * scale)
+	dv = ceil(Int64, props[:vects_dv][1] * scale)
 	return src_patch, src_pt, dst_patch, dst_pt, xc, dst_pt_max-src_pt+dv
 end
 
 ### helper methods
 function get_ranges(pt, src_index, src_offset, src_img_size, dst_index, dst_offset, dst_img_size, params)
-	get_ranges(pt, src_index, dst_index, params["match"]["block_r"], params["match"]["search_r"], params["registry"]["global_offsets"]);
+	get_ranges(pt, src_index, dst_index, params[:match][:block_r], params[:match][:search_r], params[:registry][:global_offsets]);
 end
 
 function get_ranges(pt, src_index, src_offset, src_img_size, dst_index, dst_offset, dst_img_size, block_r::Int64, search_r::Int64, global_offsets = true)
 	# convert to local coordinates in both src / dst images, and then round up to an integer
-	src_pt = ceil(Int64, pt);
+	src_pt = ceil.(Int64, pt);
 	if global_offsets
 	  rel_offset = src_offset - dst_offset;
 	else
 	  rel_offset = src_offset
 	end
 	dst_pt = src_pt + rel_offset
-	dst_pt = ceil(Int64, dst_pt);
+	dst_pt = ceil.(Int64, dst_pt);
 
 	block_range = -block_r:block_r;
 	search_range = -(block_r+search_r):(block_r+search_r);
@@ -258,15 +376,15 @@ Template match two images & record translation for source image - already scaled
 """
 function prematch(src_index, dst_index, src_image, dst_image, params=get_params(src_index))
   println("prematch:")
-	if params["match"]["prematch"] == false return; end
-	scale = params["match"]["prematch_scale"];
-	radius = params["match"]["prematch_template_radius"];
-	bandpass_sigmas = params["match"]["bandpass_sigmas"];
+	if params[:match][:prematch] == false return; end
+	scale = params[:match][:prematch_scale];
+	radius = params[:match][:prematch_template_radius];
+	bandpass_sigmas = params[:match][:bandpass_sigmas];
 	bandpass_sigmas = (0,0)
 
-	range_in_src = ceil(Int64, size(src_image, 1) / 2) + (-radius:radius), ceil(Int64, size(src_image, 2) / 2) + (-radius:radius)
+	range_in_src = ceil.(Int64, size(src_image, 1) / 2) + (-radius:radius), ceil.(Int64, size(src_image, 2) / 2) + (-radius:radius)
 	src_pt_locs = [radius, radius]
-	dst_pt_locs = [ceil(Int64, size(src_image, 1) / 2), ceil(Int64, size(src_image, 2) / 2)]
+	dst_pt_locs = [ceil.(Int64, size(src_image, 1) / 2), ceil.(Int64, size(src_image, 2) / 2)]
 
 	#dst_range_full = ceil(Int64, size(src_image, 1) / 2) + (-3 * scaled_rads[1]:3 * scaled_rads[1]), ceil(Int64, size(src_image, 2) / 2) + (-3 * scaled_rads[2]: 3 * scaled_rads[2])
 	#range_in_dst = intersect(dst_range_full[1], 1:size(dst_image, 1)), intersect(dst_range_full[2], 1:size(dst_image, 2));
@@ -279,8 +397,8 @@ function prematch(src_index, dst_index, src_image, dst_image, params=get_params(
 		
 	if match == nothing return [0, 0] end
 	
-	dv = match[3]["vects"]["dv"]
-	offset = round(Int64, dv);
+	dv = match[3][:vects_dv]
+	offset = round.(Int64, dv);
 	update_registry(src_index; rotation = get_rotation(src_index), offset = offset);
 	println("Prematch complete... offset: $offset")
 
@@ -335,13 +453,13 @@ function prematch(src_index, dst_index, src_image, dst_image, params=get_params(
 
 		if match == nothing return 0, 0, [0, 0] end
 
-		r = match[3]["xcorr"]["r_max"]
-		dv = match[3]["vects"]["dv"]
+		r = match[3][:xcorr_r_max]
+		dv = match[3][:vects_dv]
 		offset = round(Int64, dv) #/ scale
 
 		println("trying $angle degrees... r: $r, dv: $offset")
 		#    println("trying $angle degrees... r: $r, dv: $dv")
-		#	if params["registry"]["global_offsets"]
+		#	if params[:registry][:global_offsets]
 		#	offset = get_offset(dst_index) + round(Int64, dv) #/ scale
 
 		return r, angle, offset
@@ -364,6 +482,10 @@ function prematch(src_index, dst_index, src_image, dst_image, params=get_params(
 end
 
 function zeropad_to_meanpad!(img)
+  @fastmath avg = mean(img)
+  @fastmath zero_entries = img .== 0.0
+  @inbounds img[zero_entries] = avg
+  #=
   running_sum = 0.0;
   count = 0;
   zero_entries = Array{Int64, 1}();
@@ -393,116 +515,63 @@ function zeropad_to_meanpad!(img)
 	    end =#
 	  end
 	end
+	=#
 end
 
 # if from_disk src_image / dst_image are indices
 # function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma; from_disk = false)
-function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, bandpass_sigmas; from_disk = false, meanpad = true)
-  	# the following two if statements should only ever be called together
-	if size(SRC_PATCH_FULL) != map(length,src_range)
-		global SRC_PATCH_FULL = zeros(Float64, map(length, src_range)...);
-		global SRC_PATCH_FULL_H = zeros(Float64, map(length, src_range)...);
-#		global SRC_PATCH_G_L = zeros(Float64, map(length, src_range)...)
-#		global SRC_PATCH_G_H = zeros(Float64, map(length, src_range)...)
-	end
-	if size(DST_PATCH_FULL) != map(length,dst_range_full)
-		global DST_PATCH_FULL = zeros(Float64, map(length, dst_range_full)...);
-		global DST_PATCH_FULL_H = zeros(Float64, map(length, dst_range_full)...);
-#		global DST_PATCH_G_L = zeros(Float64, map(length, dst_range_full)...)
-#		global DST_PATCH_G_H = zeros(Float64, map(length, dst_range_full)...)
-	      else
-		DST_PATCH_FULL[:] = 0;
-#		DST_PATCH_FULL_H[:] = 0; # this gets overwritten anyway
-#		DST_PATCH_G_L[:] = 0;
-#		DST_PATCH_G_H[:] = 0;
-	end
+function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, bandpass_sigmas; me = get_matchenv(src_range, dst_range_full, scale = scale, bandpass = bandpass_sigmas), from_disk = false, meanpad = true)
 
+  clean!(me)
 
 	indices_within_range = findin(dst_range_full[1], dst_range[1]), findin(dst_range_full[2], dst_range[2])
 	if !from_disk
-	@fastmath @inbounds SRC_PATCH_FULL[:] = slice(src_image, src_range...)
-#	@inbounds SRC_PATCH_FULL[:] = src_image[src_range...]
-	@fastmath @inbounds DST_PATCH_FULL[indices_within_range...] = slice(dst_image, dst_range...)
-	#@inbounds DST_PATCH_FULL[indices_within_range...] = dst_image[dst_range...]
+	@fastmath @inbounds me.src_patch_full[:] = view(src_image, src_range...)
+	@fastmath @inbounds me.dst_patch_full[indices_within_range...] = view(dst_image, dst_range...)
       else
-	if get_rotation(src_image) != 0 @inbounds SRC_PATCH_FULL[:] = imrotate(h5read(get_path(src_image), "img"), get_rotation(src_image); parallel = true)[src_range...];
+	if get_rotation(src_image) != 0 @inbounds me.src_patch_full[:] = imrotate(h5read(get_path(src_image), "img"), get_rotation(src_image); parallel = true)[src_range...];
 	else
-	@inbounds SRC_PATCH_FULL[:] = h5read(get_path(src_image), "img", src_range);
+	@inbounds me.src_patch_full[:] = h5read(get_path(src_image), "img", src_range);
         end
-	@inbounds DST_PATCH_FULL[indices_within_range...] = h5read(get_path(dst_image), "img", dst_range)
+	@inbounds me.dst_patch_full[indices_within_range...] = h5read(get_path(dst_image), "img", dst_range)
       end
+
       if meanpad
-      zeropad_to_meanpad!(SRC_PATCH_FULL)
-      zeropad_to_meanpad!(DST_PATCH_FULL)
-      end
-	lowpass_sigma, highpass_sigma = bandpass_sigmas;
-	if highpass_sigma != 0
-		@inbounds SRC_PATCH_FULL_H[:] = SRC_PATCH_FULL
-		@inbounds DST_PATCH_FULL_H[:] = DST_PATCH_FULL
-	      end
-
-	lowpass_sigma, highpass_sigma = bandpass_sigmas;
-
-	if lowpass_sigma != 0
-		@fastmath Images.imfilter_gaussian_no_nans!(SRC_PATCH_FULL, [lowpass_sigma, lowpass_sigma]; emit_warning=false)
-		@fastmath Images.imfilter_gaussian_no_nans!(DST_PATCH_FULL, [lowpass_sigma, lowpass_sigma]; emit_warning=false)
+      zeropad_to_meanpad!(me.src_patch_full)
+      zeropad_to_meanpad!(me.dst_patch_full)
       end
 
-	if highpass_sigma != 0
-		@fastmath Images.imfilter_gaussian_no_nans!(SRC_PATCH_FULL_H, [highpass_sigma, highpass_sigma]; emit_warning=false)
-		@fastmath Images.imfilter_gaussian_no_nans!(DST_PATCH_FULL_H, [highpass_sigma, highpass_sigma]; emit_warning=false)
-		elwise_sub!(SRC_PATCH_FULL, SRC_PATCH_FULL_H);
-		elwise_sub!(DST_PATCH_FULL, DST_PATCH_FULL_H);
-      end 
+      if bandpass_sigmas != (0,0)
+	@inbounds me.src_patch_full[:] = convolve_Float64_planned(me.src_patch_full, me.kernel; crop = :same, padding = :mean)
+	@inbounds me.dst_patch_full[:] = convolve_Float64_planned(me.dst_patch_full, me.kernel; crop = :same, padding = :mean)
+      end
 
-	function imscale_src_patch(img, scale_factor)
-		if scale == 1.0
-			if size(SRC_PATCH) != size(img)
-				bb = ImageRegistration.BoundingBox{Int64}(0,0, size(img, 1), size(img, 2))
-				global SRC_PATCH = zeros(Float64, bb.h, bb.w)
-			end
-			@inbounds SRC_PATCH[:] = img
-		else
-			tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
-			bb = ImageRegistration.BoundingBox{Float64}(0,0, size(img, 1), size(img, 2))
-			wbb = tform_bb(bb, tform)
-			tbb = snap_bb(wbb)
-			if size(SRC_PATCH) != (tbb.h, tbb.w)
-				global SRC_PATCH = zeros(Float64, tbb.h, tbb.w)
-			end
-			tform_correct = [tbb.h/size(img,1) - eps 0 0; 0 tbb.w/size(img,2) - eps 0; 0 0 1];
-			ImageRegistration.imwarp!(SRC_PATCH, img, tform_correct);
-		end
-	end
+      if scale == 1.0
+	return me.src_patch_full, me.dst_patch_full
+      else
+	ImageRegistration.imwarp!(me.src_patch, me.src_patch_full, me.tform_src)
+	ImageRegistration.imwarp!(me.dst_patch, me.dst_patch_full, me.tform_dst)
+	return me.src_patch, me.dst_patch
+      end
 
-	function imscale_dst_patch(img, scale_factor)
-		if scale == 1.0
-			if size(DST_PATCH) != size(img)
-				bb = ImageRegistration.BoundingBox{Int64}(0,0, size(img, 1), size(img, 2))
-				global DST_PATCH = zeros(Float64, bb.h, bb.w)
-			end
-			@inbounds DST_PATCH[:] = img
-		else
-			tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
-			bb = ImageRegistration.BoundingBox{Float64}(0,0, size(img, 1), size(img, 2))
-			wbb = tform_bb(bb, tform)
-			tbb = snap_bb(wbb)
-			if size(DST_PATCH) != (tbb.h, tbb.w)
-				global DST_PATCH = zeros(Float64, tbb.h, tbb.w)
-			end
-			tform_correct = [tbb.h/size(img,1) - eps 0 0; 0 tbb.w/size(img,2) - eps 0; 0 0 1];
-			ImageRegistration.imwarp!(DST_PATCH, img, tform_correct);
-		end
-	end
-
-	imscale_src_patch(SRC_PATCH_FULL, scale);	
-	imscale_dst_patch(DST_PATCH_FULL, scale);	
-
-      return SRC_PATCH, DST_PATCH
 end
+	function make_bandpass_kernel(lowpass_sigma, highpass_sigma)
+	kernel_l = Images.Kernel.gaussian(lowpass_sigma)
+	kernel_h = Images.Kernel.gaussian(highpass_sigma)
+	oset = kernel_l.offsets[1]+1
+
+	for j in oset:-oset
+	  for i in oset:-oset
+	    kernel_h[i, j] -= kernel_l[i,j]
+	  end
+	end
+	kernel = -kernel_h.parent
+	return kernel
+        end
+
 
 function get_match(pt, ranges, src_image, dst_image, params)
-	return get_match(pt, ranges, src_image, dst_image, params["match"]["blockmatch_scale"], params["match"]["bandpass_sigmas"]);
+	return get_match(pt, ranges, src_image, dst_image, params[:match][:blockmatch_scale], params[:match][:bandpass_sigmas]);
 end
 """
 Template match two image patches to produce point pair correspondence
@@ -540,14 +609,13 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 #	if sum(dst_image[round(Int64,linspace(dst_range[1][1], dst_range[1][end], 5)[2]), dst_range[2]]) == 0 return nothing end
 #	if sum(dst_image[round(Int64,linspace(dst_range[1][1], dst_range[1][end], 5)[4]), dst_range[2]]) == 0 return nothing end
 
-	correspondence_properties = Dict{Any, Any}();
-	correspondence_properties["ranges"] = Dict{Any, Any}();
-	correspondence_properties["ranges"]["src_pt_loc"] = src_pt_loc;
-	correspondence_properties["ranges"]["src_range"] = src_range;
-	correspondence_properties["ranges"]["dst_pt_loc"] = dst_pt_loc;
-	correspondence_properties["ranges"]["dst_range"] = dst_range;
-	correspondence_properties["ranges"]["dst_range_full"] = dst_range_full;
-	correspondence_properties["ranges"]["scale"] = scale;
+	correspondence_properties = DataFrame();
+	correspondence_properties[:ranges_src_pt_loc] = [src_pt_loc];
+	correspondence_properties[:ranges_src_range] = src_range;
+	correspondence_properties[:ranges_dst_pt_loc] = [dst_pt_loc];
+	correspondence_properties[:ranges_dst_range] = dst_range;
+	correspondence_properties[:ranges_dst_range_full] = dst_range_full;
+	correspondence_properties[:ranges_scale] = scale;
 
 #=
 	src_range = ceil(Int64, scale * first(src_range[1])) : ceil(Int64, scale * last(src_range[1])), ceil(Int64, scale * first(src_range[2])) : ceil(Int64, scale * last(src_range[2]))
@@ -572,9 +640,15 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 	xc = normxcorr2_preallocated(src_image[src_range[1], src_range[2]], dst_image[dst_range[1], dst_range[2]]);
 	end
 	=#
- if (prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, bandpass_sigmas; meanpad = meanpad) == nothing) println("This should never be seen"); return nothing end;
+	#tic()
+src_patch, dst_patch = prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, bandpass_sigmas; meanpad = meanpad)
+
+#if (pp == nothing) return nothing end;
 #	prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma)
-	xc = normxcorr2_preallocated(SRC_PATCH, DST_PATCH; shape = full ? "full" : "valid");
+xc = normxcorr2_preallocated(src_patch, dst_patch; shape = full ? "full" : "valid");
+	#t = toc()
+	#to = ELAPSED_TIME
+	#global ELAPSED_TIME = t + to
 #=
 	if dst_range != dst_range_full
 		indices_within_range = findin(dst_range_full[1], dst_range[1]), findin(dst_range_full[2], dst_range[2])
@@ -695,44 +769,30 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 	#println("di: $di, dj: $dj, scale = $scale")
 
 
-	correspondence_properties["patches"] = Dict{Any, Any}();
-	correspondence_properties["patches"]["src_normalized_dyn_range"] = (maximum(src_image[src_range...]) - minimum(src_image[src_range...])) / typemax(eltype(src_image));
-	correspondence_properties["patches"]["src_kurtosis"] = kurtosis(src_image[src_range...]);
-	correspondence_properties["patches"]["dst_kurtosis"] = kurtosis(dst_image[dst_range...]);
-	correspondence_properties["xcorr"] = Dict{Any, Any}();
-	correspondence_properties["xcorr"]["r_max"] = r_max;
-	correspondence_properties["xcorr"]["sigmas"] = Dict{Float64, Any}();
-	correspondence_properties["xcorr"]["difference"] = Dict{Int64, Any}();
-
-	function compute_r_diff(xc, rad, i_max, j_max)
-	  xc = copy(xc)
-
-	  r_max_original = maximum(xc)
-	  range_i = intersect(1:size(xc, 1), (-rad:rad) + i_max)
-	  range_j = intersect(1:size(xc, 2), (-rad:rad) + j_max)
-	  @inbounds xc[range_i, range_j] = -Inf
-	  r_max_new = maximum(xc)
-
-	  return r_max_original - r_max_new
-	end
-
-	for rad in [5, 10, 15]
-	    correspondence_properties["xcorr"]["difference"][rad] = compute_r_diff(xc, rad, i_max_int, j_max_int)
-	end
+	correspondence_properties[:patches_src_normalized_dyn_range] = (maximum(src_image[src_range...]) - minimum(src_image[src_range...])) / typemax(eltype(src_image));
+	correspondence_properties[:patches_src_kurtosis] = kurtosis(src_image[src_range...]);
+	correspondence_properties[:patches_dst_kurtosis] = kurtosis(dst_image[dst_range...]);
+	correspondence_properties[:xcorr_r_max] = r_max;
 	for beta in [0.5, 0.75, 0.95]
-	correspondence_properties["xcorr"]["sigmas"][beta] = sigma(xc, beta) / scale;
+	correspondence_properties[Symbol(string("xcorr_sigma_", beta))] = sigma(xc, beta) / scale;
         end
-	correspondence_properties["vects"] = Dict{Any, Any}();
-	correspondence_properties["vects"]["dv"] = [di, dj];
-	correspondence_properties["vects"]["norm"] = norm([di, dj]);
-	correspondence_properties["posts"] = Dict{Any, Any}();
+	correspondence_properties[:vects_dv] = [[di, dj]];
+	correspondence_properties[:vects_norm] = norm([di, dj]);
+	#correspondence_properties[:posts] = Dict{Any, Any}();
 
 	return vcat(pt + rel_offset + [di, dj], correspondence_properties);
 end
 
 function filter!(match::Match, priority, function_name, compare, threshold, vars...)
-	# attributes = get_properties(match, property_name)
+	# attributes = get_correspondence_properties(match, property_name)
 	attributes = eval(function_name)(match, vars...)
+	filter_col = fill(false, count_correspondences(match))
+	@inbounds for i in 1:length(attributes)
+	  filter_col[i] = compare(attributes[i], threshold)
+	end
+	match.filters[Symbol(tuple(priority, function_name, compare, threshold, vars...))] = filter_col;
+	return sum(filter_col)
+	#=
 	if attributes == nothing return 0; end
 	inds_to_filter = find(i -> compare(i, threshold), attributes);
 	type_name = function_name
@@ -740,14 +800,15 @@ function filter!(match::Match, priority, function_name, compare, threshold, vars
 		type_name = vars[1]
 	end	
 	push!(match.filters, Dict{Any, Any}(
-				"author" => author(),
-				"type"	  => type_name,
-				"threshold" => threshold,
-				"rejected"  => inds_to_filter,
-				"function" => function_name
+				:author => author(),
+				:type	  => type_name,
+				:threshold => threshold,
+				:rejected  => inds_to_filter,
+				:function => function_name
 			      ));
 	#println("$(length(inds_to_filter)) / $(count_correspondences(match)) rejected.");
 	return length(inds_to_filter);
+	=#
 end
 
 function filter!(match::Match, filter::Tuple)
@@ -756,7 +817,15 @@ end
 
 function get_residual_norms_post(match, ms)
 	src_pts_after, dst_pts_after, filtered = get_globalized_correspondences_post(ms, findfirst(match_in_ms -> match_in_ms.src_index == match.src_index && match_in_ms.dst_index == match.dst_index, ms.matches));
-	return(map(norm, dst_pts_after - src_pts_after))
+	norms = zeros(eltype(dst_pts_after), size(dst_pts_after, 2))
+	@fastmath @inbounds begin
+	  @simd for i in 1:size(dst_pts_after, 2)
+	  d1 = dst_pts_after[1,i] - src_pts_after[1,i]
+	  d2 = dst_pts_after[2,i] - src_pts_after[2,i]
+	  norms[i] = sqrt(d1^2+d2^2)
+	end
+        end
+	return norms
 end
 
 function check(match::Match, function_name, compare, threshold, vars...)
@@ -775,17 +844,17 @@ end
 
 ### ADD MANUAL FILTER
 function filter_manual!(match::Match, inds_to_filter; filtertype="manual")
-	push!(match.filters, Dict{Any, Any}(
-				"author"	  => author(),
-				"type"	  => filtertype,
-				"rejected"  => inds_to_filter
+	push!(match.filters, Dict{Symbol, Any}(
+				:author	  => author(),
+				:type	  => filtertype,
+				:rejected  => inds_to_filter
 			      ));
 	return;
 end
 
 function clear_filters!(match::Match; filtertype=nothing)
-	match.filters = match.filters[setdiff(1:length(match.filters), find(filter -> filter["type"] == filtertype, match.filters))]
-	if filtertype == nothing	match.filters = Array{Dict{Any, Any}, 1}(); end
+	match.filters = match.filters[setdiff(1:length(match.filters), find(filter -> filter[:type] == filtertype, match.filters))]
+	if filtertype == nothing	match.filters = DataFrame(); end
 
 end
 
@@ -795,7 +864,7 @@ function undo_filter!(match::Match)
 	end
 end
 
-function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rotate=0)
+function Match{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T}, params=get_params(src_mesh);rotate=0)
 	println("Matching $(get_index(src_mesh)) -> $(get_index(dst_mesh)):")
 	# if src_mesh == dst_mesh
 	# 	println("nothing at")
@@ -807,7 +876,7 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
   	src_index = get_index(src_mesh); dst_index = get_index(dst_mesh);
 	src_img = get_image(src_index);  dst_img = get_image(dst_index);
 
-	if params["match"]["prematch"]
+	if params[:match][:prematch]
 	prematch(src_index, dst_index, src_img, dst_img, params);
         end
 
@@ -820,7 +889,7 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 	  remesh!(src_mesh);
 	end
 
-	if params["registry"]["global_offsets"] && get_rotation(dst_index) != 0
+	if params[:registry][:global_offsets] && get_rotation(dst_index) != 0
 	  println("rotation in the dst image detected with global offsets - aborting...")
 	  return nothing
 	end
@@ -838,26 +907,26 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 	  remesh!(src_mesh);
 	end
 
-	if params["match"]["prematch"]
+	if params[:match][:prematch]
 	prematch(src_index, dst_index, src_img, dst_img, params);
         end
 
 	src_offset = get_offset(src_index); dst_offset = get_offset(dst_index);
 
 
-	if params["registry"]["global_offsets"] && get_rotation(dst_index) != 0
+	if params[:registry][:global_offsets] && get_rotation(dst_index) != 0
 	  println("rotation in the dst image detected with global offsets - aborting...")
 	  return nothing
 	end
 
 
 	print("computing ranges:")
-	@time ranges = map(get_ranges, src_mesh.src_nodes, repeated(src_index), repeated(src_offset), repeated(src_size), repeated(dst_index), repeated(dst_offset), repeated(dst_size), repeated(params["match"]["block_r"]), repeated(params["match"]["search_r"]), repeated(params["registry"]["global_offsets"]));
+	@time ranges = map(get_ranges, columnviews(src_mesh.src_nodes), repeated(src_index), repeated(src_offset), repeated(src_size), repeated(dst_index), repeated(dst_offset), repeated(dst_size), repeated(params[:match][:block_r]), repeated(params[:match][:search_r]), repeated(params[:registry][:global_offsets]));
 	ranged_inds = find(i -> i != nothing, ranges);
 	ranges = ranges[ranged_inds];
 	print("    ")
 
-	println("$(length(ranged_inds)) / $(length(src_mesh.src_nodes)) nodes to check.")
+	println("$(length(ranged_inds)) / $(size(src_mesh.src_nodes, 2)) nodes to check.")
 
 	if length(ranged_inds) != 0
 		ranges = Array{typeof(ranges[1]), 1}(ranges);
@@ -866,7 +935,7 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 
 	print("computing matches:")
 	print("    ")
-        @time dst_allpoints = pmap(get_match, src_mesh.src_nodes[ranged_inds], ranges, repeated(src_img), repeated(dst_img), repeated(params["match"]["blockmatch_scale"]), repeated(params["match"]["bandpass_sigmas"])) 
+        @time dst_allpoints = pmap(get_match, columnviews(src_mesh.src_nodes[:,ranged_inds]), ranges, repeated(src_img), repeated(dst_img), repeated(params[:match][:blockmatch_scale]), repeated(params[:match][:bandpass_sigmas])) 
 
 	matched_inds = find(i -> i != nothing, dst_allpoints);
 
@@ -876,22 +945,26 @@ function Match(src_mesh::Mesh, dst_mesh::Mesh, params=get_params(src_mesh); rota
 	  end
 	end=#
 
-	src_points = copy(src_mesh.src_nodes[ranged_inds][matched_inds]);
-	dst_points = [convert(Point, dst_allpoints[ind][1:2]) for ind in matched_inds]
-	correspondence_properties = [dst_allpoints[ind][3] for ind in matched_inds]
+	src_points = copy(src_mesh.src_nodes[:,ranged_inds[matched_inds]]);
+	dst_points = similar(src_points)
+	for j in 1:size(dst_points, 2)
+	  @inbounds dst_points[1,j] = dst_allpoints[matched_inds[j]][1]
+	  @inbounds dst_points[2,j] = dst_allpoints[matched_inds[j]][2]
+	end
+	correspondence_properties = vcat([dst_allpoints[ind][3] for ind in matched_inds]...)
 
-	filters = Array{Dict{Any, Any}}(0);
-  	properties = Dict{Any, Any}(
-		"params" => params,
-		"review" => Dict{Any, Any}(
-				"flagged" => false,
-				"flags" => Dict{Any, Any}(),
-				"author" => null_author()
+	filters = DataFrame();
+  	properties = Dict{Symbol, Any}(
+		:params => params,
+		:review => Dict{Symbol, Any}(
+				:flagged => false,
+				:flags => Dict{Symbol, Any}(),
+				:author => null_author()
 				) 
 			);
 
-	@everywhere init_Match();
+#	@everywhere init_Match();
 	@everywhere gc();
 
-	return Match(src_index, dst_index, src_points, dst_points, correspondence_properties, filters, properties);
+	return Match{T}(src_index, dst_index, src_points, dst_points, correspondence_properties, filters, properties);
 end

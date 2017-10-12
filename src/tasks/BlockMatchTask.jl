@@ -53,7 +53,7 @@ function BlockMatchTaskDetails(first_index::Main.Index, last_index::Main.Index; 
 		possible_pairs = [(first_index, last_index)]
 	 else
 	possible_pairs = collect([(indexA, indexB) for indexA in indices, indexB in indices])
-	possible_pairs = possible_pairs[map(pair -> Main.is_preceding(pair[1], pair[2], Main.get_params(last_index)["match"]["depth"]), possible_pairs)] 
+	possible_pairs = possible_pairs[map(pair -> Main.is_preceding(pair[1], pair[2], Main.get_params(last_index)[:match][:depth]), possible_pairs)] 
 	end
 
 	inputs_images = map(Main.truncate_path, map(Main.get_path, indices));
