@@ -1,4 +1,4 @@
-include("./registry.jl")
+#include("./registry.jl")
 include("./newregistry.jl")
 include("./IO.jl")
 include("./Mesh.jl")

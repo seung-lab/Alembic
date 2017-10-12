@@ -45,6 +45,7 @@ using Images
 using Graphics
 using StatsBase
 using JSON
+using URIParser
 #using SimpleTasks
 using Primes
 if USE_PYPLOT

@@ -91,28 +91,28 @@ global PARAMS_MONTAGE = Dict(
 			     	:eta_newton => ETA_NEWTON_MONTAGE,
 			     	:ftol_newton => FTOL_NEWTON_MONTAGE),
 			     :filter => Dict(
-			     		:sigma_filter_high => (1,:get_correspondence_properties, >, 2, Symbol("xcorr_sigma_0.95")),
-			     		:sigma_filter_mid => (2,:get_correspondence_properties, >, 120, Symbol("xcorr_sigma_0.75")),
-			     		:sigma_filter_low => (3,:get_correspondence_properties, >, 350, Symbol("xcorr_sigma_0.5")),
-			     		:r_filter_min => (4,:get_correspondence_properties, <, 0.03, :xcorr_r_max),
-			     		:r_filter_max => (5,:get_correspondence_properties, >, 1, :xcorr_r_max),
-					:centered_norm_filter => (6,:get_centered_norms, >, 75)
-						# :norm_filter => (:get_norms_std_sigmas, >, 5)
-			     		# :norm_filter => (:get_norms_std_sigmas, >, 2.5)
+			     		:sigma_filter_high => (1,:get_correspondence_properties, ">", 2, Symbol("xcorr_sigma_0.95")),
+			     		:sigma_filter_mid => (2,:get_correspondence_properties, ">", 120, Symbol("xcorr_sigma_0.75")),
+			     		:sigma_filter_low => (3,:get_correspondence_properties, ">", 350, Symbol("xcorr_sigma_0.5")),
+			     		:r_filter_min => (4,:get_correspondence_properties, "<", 0.03, :xcorr_r_max),
+			     		:r_filter_max => (5,:get_correspondence_properties, ">", 1, :xcorr_r_max),
+					:centered_norm_filter => (6,:get_centered_norms, ">", 75)
+						# :norm_filter => (:get_norms_std_sigmas, ">", 5)
+			     		# :norm_filter => (:get_norms_std_sigmas, ">", 2.5)
 					      ),
 			     :render => Dict(
 			     		:crop => [300, 300],
 			     		:thumbnail_scale => 0.02
 					      ),
 			     :review => Dict(
-						# :too_few_corresps => (:count_correspondences, <, 10),
-						:rejected_ratio => (:get_ratio_rejected, >, 0.66, 20),
-						:ratio_edge_proximity => (:get_ratio_edge_proximity, >, 0.95),
-						#:norm_outliers => (:count_outlier_norms, >, 0, 3), # too useless because they're so close to each other to begin with
-						:centered_norm => (:get_maximum_centered_norm, >, 80)
+						# :too_few_corresps => (:count_correspondences, "<", 10),
+						:rejected_ratio => (:get_ratio_rejected, ">", 0.66, 20),
+						:ratio_edge_proximity => (:get_ratio_edge_proximity, ">", 0.95),
+						#:norm_outliers => (:count_outlier_norms, ">", 0, 3), # too useless because they're so close to each other to begin with
+						:centered_norm => (:get_maximum_centered_norm, ">", 80)
 					      ),
 			     :registry => Dict(
-					:global_offsets => GLOBAL_OFFSETS_MONTAGE
+					:global_offsets => GLOBAL_OFFSETS_MONTAGE, :parent_stack => "premontaged"
 					)
 			     )
 
@@ -121,7 +121,7 @@ global PARAMS_MONTAGE_FALLBACK = PARAMS_MONTAGE;
 
 #PARAMS_MONTAGE_FALLBACK[:match][:search_r] = 128;
 
-global PARAMS_PREALIGNMENT = Dict(:meta => Dict(:parent_stack => "montaged"), 
+global PARAMS_PREALIGNMENT = Dict( 
 			     :mesh => Dict(
 					:mesh_length => MESH_LENGTH_PREALIGNMENT), 
 			     :match => Dict(
@@ -149,24 +149,24 @@ global PARAMS_PREALIGNMENT = Dict(:meta => Dict(:parent_stack => "montaged"),
 					# :eta_newton => ETA_NEWTON_PREALIGNMENTE,
 					# :ftol_newton => FTOL_NEWTON_PREALIGNMENT)
 			     :filter => Dict(
-			     		:sigma_filter_high => (1,:get_correspondence_properties, >, 80, Symbol("xcorr_sigma_0.95")),
-			     		:sigma_filter_mid => (2,:get_correspondence_properties, >, 200, Symbol("xcorr_sigma_0.75")),
-			     		:sigma_filter_low => (3,:get_correspondence_properties, >, 500, Symbol("xcorr_sigma_0.5"))
-			     		# :norm_filter => (:get_norms_std_sigmas, >, 5)
+			     		:sigma_filter_high => (1,:get_correspondence_properties, ">", 80, Symbol("xcorr_sigma_0.95")),
+			     		:sigma_filter_mid => (2,:get_correspondence_properties, ">", 200, Symbol("xcorr_sigma_0.75")),
+			     		:sigma_filter_low => (3,:get_correspondence_properties, ">", 500, Symbol("xcorr_sigma_0.5"))
+			     		# :norm_filter => (:get_norms_std_sigmas, ">", 5)
 					      ),
 			     :render => Dict(
 			     		:thumbnail_scale => 0.05
 					      ),
 			     :review => Dict(
-				     	# "r_below" => (:count_filtered_properties, >, 0, :xcorr_r_max, <, 0.2),
-			     		:too_few_corresps => (:count_correspondences, <, 3),
-						:rejected_ratio => (:get_ratio_rejected, >, 0.25, 0),
-						:ratio_edge_proximity => (:get_ratio_edge_proximity, >, 0.95),
-						# :norm_outliers => (:count_outlier_norms, >, 0, 3),
-						:centered_norm => (:get_maximum_centered_norm, >, 1000)
+				     	# "r_below" => (:count_filtered_properties, ">", 0, :xcorr_r_max, "<", 0.2),
+			     		:too_few_corresps => (:count_correspondences, "<", 3),
+						:rejected_ratio => (:get_ratio_rejected, ">", 0.25, 0),
+						:ratio_edge_proximity => (:get_ratio_edge_proximity, ">", 0.95),
+						# :norm_outliers => (:count_outlier_norms, ">", 0, 3),
+						:centered_norm => (:get_maximum_centered_norm, ">", 1000)
 					      ),
 			     :registry => Dict(
-					:global_offsets => GLOBAL_OFFSETS_PREALIGNMENT
+					:global_offsets => GLOBAL_OFFSETS_PREALIGNMENT, :parent_stack => "montaged"
 					)
 			     )
 # son of alignment
@@ -195,43 +195,43 @@ global PARAMS_ALIGNMENT = Dict(
 			     	:eta_newton => ETA_NEWTON_ALIGNMENT,
 			     	:ftol_newton => FTOL_NEWTON_ALIGNMENT),
 #=			     :filter => Dict(
-			     		:sigma_filter_high => (:get_correspondence_properties, >, 6, Symbol("xcorr_sigma_0.95")),
-			     		:sigma_filter_mid => (:get_correspondence_properties, >, 60, Symbol("xcorr_sigma_0.75")),
-			     		:sigma_filter_low => (:get_correspondence_properties, >, 360, Symbol("xcorr_sigma_0.5")),
-			     		:dyn_range_filter => (:get_correspondence_properties, <, 0.75, :patches_src_normalized_dyn_range),
-			     		:r_filter => (:get_correspondence_properties, <, 0.0275, :xcorr_r_max),
-			     		# :norm_filter => (:get_norms_std_sigmas, >, 5),
-			     		:kurtosis_filter => (:get_correspondence_properties, >, 25, :patches_src_kurtosis),
-			     		:kurtosis_filter_edge => (:get_correspondence_properties, <, -1.60, :patches_src_kurtosis),
-					:centered_norm_filter => (:get_centered_norms, >, 600)
+			     		:sigma_filter_high => (:get_correspondence_properties, ">", 6, Symbol("xcorr_sigma_0.95")),
+			     		:sigma_filter_mid => (:get_correspondence_properties, ">", 60, Symbol("xcorr_sigma_0.75")),
+			     		:sigma_filter_low => (:get_correspondence_properties, ">", 360, Symbol("xcorr_sigma_0.5")),
+			     		:dyn_range_filter => (:get_correspondence_properties, "<", 0.75, :patches_src_normalized_dyn_range),
+			     		:r_filter => (:get_correspondence_properties, "<", 0.0275, :xcorr_r_max),
+			     		# :norm_filter => (:get_norms_std_sigmas, ">", 5),
+			     		:kurtosis_filter => (:get_correspondence_properties, ">", 25, :patches_src_kurtosis),
+			     		:kurtosis_filter_edge => (:get_correspondence_properties, "<", -1.60, :patches_src_kurtosis),
+					:centered_norm_filter => (:get_centered_norms, ">", 600)
 					      ), =#
 			     :filter => Dict(
-			     		:sigma_filter_high => (1,:get_correspondence_properties, >, 6.5, Symbol("xcorr_sigma_0.95")),
-			     		:sigma_filter_mid => (2,:get_correspondence_properties, >, 20, Symbol("xcorr_sigma_0.75")),
-			     		:sigma_filter_low => (3,:get_correspondence_properties, >, 40, Symbol("xcorr_sigma_0.5")),
-			     		#:sigma_filter_high => (1,:get_correspondence_properties, >, 3.5, Symbol("xcorr_sigma_0.95")),
-			     		#:sigma_filter_mid => (2,:get_correspondence_properties, >, 8, Symbol("xcorr_sigma_0.75")),
-			     		#:sigma_filter_low => (3,:get_correspondence_properties, >, 15, Symbol("xcorr_sigma_0.5")),
-			     		:dyn_range_filter => (4,:get_correspondence_properties, <, 0.50, :patches_src_normalized_dyn_range),
-			     		:r_filter => (5,:get_correspondence_properties, <, 0.0275, :xcorr_r_max),
-			     		# :norm_filter => (:get_norms_std_sigmas, >, 5),
-			     		:kurtosis_filter => (6,:get_correspondence_properties, >, 25, :patches_src_kurtosis),
+			     		:sigma_filter_high => (1,:get_correspondence_properties, ">", 6.5, Symbol("xcorr_sigma_0.95")),
+			     		:sigma_filter_mid => (2,:get_correspondence_properties, ">", 20, Symbol("xcorr_sigma_0.75")),
+			     		:sigma_filter_low => (3,:get_correspondence_properties, ">", 40, Symbol("xcorr_sigma_0.5")),
+			     		#:sigma_filter_high => (1,:get_correspondence_properties, ">", 3.5, Symbol("xcorr_sigma_0.95")),
+			     		#:sigma_filter_mid => (2,:get_correspondence_properties, ">", 8, Symbol("xcorr_sigma_0.75")),
+			     		#:sigma_filter_low => (3,:get_correspondence_properties, ">", 15, Symbol("xcorr_sigma_0.5")),
+			     		:dyn_range_filter => (4,:get_correspondence_properties, "<", 0.50, :patches_src_normalized_dyn_range),
+			     		:r_filter => (5,:get_correspondence_properties, "<", 0.0275, :xcorr_r_max),
+			     		# :norm_filter => (:get_norms_std_sigmas, ">", 5),
+			     		:kurtosis_filter => (6,:get_correspondence_properties, ">", 25, :patches_src_kurtosis),
 					#for blotches in dst
-			     		"kurtosis_filter_dst" => (7,:get_correspondence_properties, >, 50, "dst_kurtosis"),
-			     		:kurtosis_filter_edge => (8,:get_correspondence_properties, <, -1.60, :patches_src_kurtosis),
-#					:centered_norm_filter => (8,:get_centered_norms, >, 600)
+			     		"kurtosis_filter_dst" => (7,:get_correspondence_properties, ">", 50, "dst_kurtosis"),
+			     		:kurtosis_filter_edge => (8,:get_correspondence_properties, "<", -1.60, :patches_src_kurtosis),
+#					:centered_norm_filter => (8,:get_centered_norms, ">", 600)
 					      ),
 			     :render => Dict(
 					      ),
 			     :review => Dict(
-			     		:too_few_corresps => (:count_correspondences, <, 100),
-						:rejected_ratio => (:get_ratio_rejected, >, 0.35),
-						:ratio_edge_proximity => (:get_ratio_edge_proximity, >, 0.80),
-						# :norm_outliers => (:count_outlier_norms, >, 0, 4),
-#						:centered_norm => (:get_maximum_centered_norm, >, 500)
+			     		:too_few_corresps => (:count_correspondences, "<", 100),
+						:rejected_ratio => (:get_ratio_rejected, ">", 0.35),
+						:ratio_edge_proximity => (:get_ratio_edge_proximity, ">", 0.80),
+						# :norm_outliers => (:count_outlier_norms, ">", 0, 4),
+#						:centered_norm => (:get_maximum_centered_norm, ">", 500)
 					      ),
 			     :registry => Dict(
-					:global_offsets => GLOBAL_OFFSETS_ALIGNMENT
+					:global_offsets => GLOBAL_OFFSETS_ALIGNMENT, :parent_stack => "prealigned"
 					)
 )
 
@@ -262,37 +262,37 @@ global PARAMS_ALIGNMENT = Dict(
 			     	:eta_newton => ETA_NEWTON_ALIGNMENT,
 			     	:ftol_newton => FTOL_NEWTON_ALIGNMENT),
 #=			     :filter => Dict(
-			     		:sigma_filter_high => (:get_correspondence_properties, >, 6, Symbol("xcorr_sigma_0.95")),
-			     		:sigma_filter_mid => (:get_correspondence_properties, >, 60, Symbol("xcorr_sigma_0.75")),
-			     		:sigma_filter_low => (:get_correspondence_properties, >, 360, Symbol("xcorr_sigma_0.5")),
-			     		:dyn_range_filter => (:get_correspondence_properties, <, 0.75, :patches_src_normalized_dyn_range),
-			     		:r_filter => (:get_correspondence_properties, <, 0.0275, :xcorr_r_max),
-			     		# :norm_filter => (:get_norms_std_sigmas, >, 5),
-			     		:kurtosis_filter => (:get_correspondence_properties, >, 25, :patches_src_kurtosis),
-			     		:kurtosis_filter_edge => (:get_correspondence_properties, <, -1.60, :patches_src_kurtosis),
-					:centered_norm_filter => (:get_centered_norms, >, 600)
+			     		:sigma_filter_high => (:get_correspondence_properties, ">", 6, Symbol("xcorr_sigma_0.95")),
+			     		:sigma_filter_mid => (:get_correspondence_properties, ">", 60, Symbol("xcorr_sigma_0.75")),
+			     		:sigma_filter_low => (:get_correspondence_properties, ">", 360, Symbol("xcorr_sigma_0.5")),
+			     		:dyn_range_filter => (:get_correspondence_properties, "<", 0.75, :patches_src_normalized_dyn_range),
+			     		:r_filter => (:get_correspondence_properties, "<", 0.0275, :xcorr_r_max),
+			     		# :norm_filter => (:get_norms_std_sigmas, ">", 5),
+			     		:kurtosis_filter => (:get_correspondence_properties, ">", 25, :patches_src_kurtosis),
+			     		:kurtosis_filter_edge => (:get_correspondence_properties, "<", -1.60, :patches_src_kurtosis),
+					:centered_norm_filter => (:get_centered_norms, ">", 600)
 					      ), =#
 			     :filter => Dict(
 			     #=
-			     		:sigma_filter_high => (1,:get_correspondence_properties, >, 50, Symbol("xcorr_sigma_0.95")),
-			     		:sigma_filter_mid => (2,:get_correspondence_properties, >, 250, Symbol("xcorr_sigma_0.75")),
-			     		:sigma_filter_low => (3,:get_correspondence_properties, >, 400, Symbol("xcorr_sigma_0.5")),
-			     		:kurtosis_filter_edge => (4,:get_correspondence_properties, <, -1.2, :patches_src_kurtosis),
-			     		:kurtosis_filter => (5,:get_correspondence_properties, >, 25, :patches_src_kurtosis),
+			     		:sigma_filter_high => (1,:get_correspondence_properties, ">", 50, Symbol("xcorr_sigma_0.95")),
+			     		:sigma_filter_mid => (2,:get_correspondence_properties, ">", 250, Symbol("xcorr_sigma_0.75")),
+			     		:sigma_filter_low => (3,:get_correspondence_properties, ">", 400, Symbol("xcorr_sigma_0.5")),
+			     		:kurtosis_filter_edge => (4,:get_correspondence_properties, "<", -1.2, :patches_src_kurtosis),
+			     		:kurtosis_filter => (5,:get_correspondence_properties, ">", 25, :patches_src_kurtosis),
 			     		:dyn_range_filter => (6,:get_correspondence_properties, ==, 1.0, :patches_src_normalized_dyn_range),
-			     		:dyn_range_filter => (7,:get_correspondence_properties, <, 0.02, :xcorr_r_max)=#
+			     		:dyn_range_filter => (7,:get_correspondence_properties, "<", 0.02, :xcorr_r_max)=#
 					      ),
 			     :render => Dict(
 					      ),
 			     :review => Dict(
-			     		:too_few_corresps => (:count_correspondences, <, 100),
-						:rejected_ratio => (:get_ratio_rejected, >, 0.15),
-						:ratio_edge_proximity => (:get_ratio_edge_proximity, >, 0.95),
-						# :norm_outliers => (:count_outlier_norms, >, 0, 4),
-						:centered_norm => (:get_maximum_centered_norm, >, 500)
+			     		:too_few_corresps => (:count_correspondences, "<", 100),
+						:rejected_ratio => (:get_ratio_rejected, ">", 0.15),
+						:ratio_edge_proximity => (:get_ratio_edge_proximity, ">", 0.95),
+						# :norm_outliers => (:count_outlier_norms, ">", 0, 4),
+						:centered_norm => (:get_maximum_centered_norm, ">", 500)
 					      ),
 			     :registry => Dict(
-					:global_offsets => GLOBAL_OFFSETS_ALIGNMENT
+					:global_offsets => GLOBAL_OFFSETS_ALIGNMENT, :parent_stack => "prealigned"
 					)
 )
 =#
@@ -301,21 +301,21 @@ global PARAMS_ALIGNMENT = Dict(
 global PARAMS_ALIGNMENT_SKIPPED = deepcopy(PARAMS_ALIGNMENT);
 PARAMS_ALIGNMENT_SKIPPED[:match][:search_r] = 1400;
 PARAMS_ALIGNMENT_SKIPPED[:filter] = Dict(
-			     		:sigma_filter_high => (:get_correspondence_properties, >, 7, Symbol("xcorr_sigma_0.95")),
-			     		:sigma_filter_mid => (:get_correspondence_properties, >, 100, Symbol("xcorr_sigma_0.75")),
-			     		:sigma_filter_low => (:get_correspondence_properties, >, 250, Symbol("xcorr_sigma_0.5")),
-			     		:r_filter => (:get_correspondence_properties, <, 0.02, :xcorr_r_max),
-			     		# :norm_filter => (:get_norms_std_sigmas, >, 5),
-			     		:kurtosis_filter => (:get_correspondence_properties, >, 25, :patches_src_kurtosis),
-			     		:kurtosis_filter_edge => (:get_correspondence_properties, <, -1.60, :patches_src_kurtosis),
-					:centered_norm_filter => (:get_centered_norms, >, 700)
+			     		:sigma_filter_high => (:get_correspondence_properties, ">", 7, Symbol("xcorr_sigma_0.95")),
+			     		:sigma_filter_mid => (:get_correspondence_properties, ">", 100, Symbol("xcorr_sigma_0.75")),
+			     		:sigma_filter_low => (:get_correspondence_properties, ">", 250, Symbol("xcorr_sigma_0.5")),
+			     		:r_filter => (:get_correspondence_properties, "<", 0.02, :xcorr_r_max),
+			     		# :norm_filter => (:get_norms_std_sigmas, ">", 5),
+			     		:kurtosis_filter => (:get_correspondence_properties, ">", 25, :patches_src_kurtosis),
+			     		:kurtosis_filter_edge => (:get_correspondence_properties, "<", -1.60, :patches_src_kurtosis),
+					:centered_norm_filter => (:get_centered_norms, ">", 700)
 					      );
 
 PARAMS_ALIGNMENT_SKIPPED[:review] = Dict(
-			     		:too_few_corresps => (:count_correspondences, <, 100),
-						:rejected_ratio => (:get_ratio_rejected, >, 0.45),
-						:ratio_edge_proximity => (:get_ratio_edge_proximity, >, 0.95),
-						:centered_norm => (:get_maximum_centered_norm, >, BLOCK_R_ALIGNMENT * 1.25)
+			     		:too_few_corresps => (:count_correspondences, "<", 100),
+						:rejected_ratio => (:get_ratio_rejected, ">", 0.45),
+						:ratio_edge_proximity => (:get_ratio_edge_proximity, ">", 0.95),
+						:centered_norm => (:get_maximum_centered_norm, ">", BLOCK_R_ALIGNMENT * 1.25)
 
 )
 

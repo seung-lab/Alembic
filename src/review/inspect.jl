@@ -525,7 +525,7 @@ end
 Preliminary method to test filters in the GUI
 """
 function compare_filter(imgc, img2, match, params)
-  filter = (0.5, >, 5)
+  filter = (0.5, ">", 5)
   inds_to_filter = Array{Any, 1}()
   attributes = get_correspondence_properties(match, filter[1])
   push!(inds_to_filter, find(i -> filter[2](i, filter[3]), attributes))
@@ -668,7 +668,7 @@ function filter_match_distance(imgc, img2, matches, params)
     end
   end
   println("Distance filter @ ", dist)
-  filter = (0,:get_correspondence_properties, >, dist, :norm)
+  filter = (0,:get_correspondence_properties, ">", dist, :norm)
   filter!(matches, filter...)
   update_annotations(imgc, img2, matches, params)
 end
@@ -699,7 +699,7 @@ function filter_match_sigma(imgc, img2, matches, params)
     end
   end
   println("Sigma filter @ ", sigma)
-  filter = (0, :get_correspondence_properties, >, sigma, 0.8)
+  filter = (0, :get_correspondence_properties, ">", sigma, 0.8)
   filter!(matches, filter...)
   update_annotations(imgc, img2, matches, params)
 end

@@ -778,6 +778,7 @@ function filter!(match::Match, priority, function_name, compare, threshold, vars
 	# attributes = get_correspondence_properties(match, property_name)
 	attributes = eval(function_name)(match, vars...)
 	filter_col = fill(false, count_correspondences(match))
+	compare = eval(Symbol(compare))
 	@inbounds for i in 1:length(attributes)
 	  filter_col[i] = compare(attributes[i], threshold)
 	end

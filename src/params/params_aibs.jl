@@ -75,18 +75,18 @@ global PARAMS_MONTAGE = Dict(
 			     	:eta_newton => ETA_NEWTON_MONTAGE,
 			     	:ftol_newton => FTOL_NEWTON_MONTAGE),
 			     :filter => Dict(
-			     	#	:sigma_filter => (:get_correspondence_properties, >,7.5, 0.5),
-			     		:r_filter => (:get_correspondence_properties, <, 0.15, :xcorr_r_max)
+			     	#	:sigma_filter => (:get_correspondence_properties, ">",7.5, 0.5),
+			     		:r_filter => (:get_correspondence_properties, "<", 0.15, :xcorr_r_max)
 					      ),
 			     :render => Dict(
 					      ),
 			     :review => Dict(
-					#	:too_few_corresps => (:count_correspondences, <, 10),
-						:filtered_ratio => (:get_ratio_filtered, <, 0.2, 20)
-					#	:ratio_edge_proximity => (:get_ratio_edge_proximity, >, 0.95)
+					#	:too_few_corresps => (:count_correspondences, "<", 10),
+						:filtered_ratio => (:get_ratio_filtered, "<", 0.2, 20)
+					#	:ratio_edge_proximity => (:get_ratio_edge_proximity, ">", 0.95)
 					      ),
 			     :registry => Dict(
-					:global_offsets => GLOBAL_OFFSETS_MONTAGE
+					:global_offsets => GLOBAL_OFFSETS_MONTAGE, :parent_stack => "premontaged"
 					)
 			     )
 
@@ -95,7 +95,7 @@ global PARAMS_MONTAGE_FALLBACK = PARAMS_MONTAGE;
 
 #PARAMS_MONTAGE_FALLBACK[:match][:search_r] = 128;
 
-global PARAMS_PREALIGNMENT = Dict(:meta => Dict(:parent_stack => "montaged"), 
+global PARAMS_PREALIGNMENT = Dict( 
 			     :mesh => Dict(
 					:mesh_length => MESH_LENGTH_PREALIGNMENT), 
 			     :match => Dict(
@@ -125,7 +125,7 @@ global PARAMS_PREALIGNMENT = Dict(:meta => Dict(:parent_stack => "montaged"),
 			     :review => Dict(
 					      ),
 			     :registry => Dict(
-					:global_offsets => GLOBAL_OFFSETS_PREALIGNMENT
+					:global_offsets => GLOBAL_OFFSETS_PREALIGNMENT, :parent_stack => "montaged"
 					)
 			     )
 global PARAMS_ALIGNMENT = Dict(
@@ -157,6 +157,6 @@ global PARAMS_ALIGNMENT = Dict(
 			     :review => Dict(
 					      ),
 			     :registry => Dict(
-					:global_offsets => GLOBAL_OFFSETS_ALIGNMENT
+					:global_offsets => GLOBAL_OFFSETS_ALIGNMENT, :parent_stack => "prealigned"
 					)
 			     )

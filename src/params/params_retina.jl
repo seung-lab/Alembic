@@ -81,7 +81,7 @@ global PARAMS_MONTAGE = Dict(
 			     :review => Dict(
 					      ),
 			     :registry => Dict(
-					:global_offsets => GLOBAL_OFFSETS_MONTAGE
+					:global_offsets => GLOBAL_OFFSETS_MONTAGE, :parent_stack => "premontaged"
 					)
 			     )
 
@@ -90,7 +90,7 @@ global PARAMS_MONTAGE_FALLBACK = PARAMS_MONTAGE;
 
 #PARAMS_MONTAGE_FALLBACK[:match][:search_r] = 128;
 
-global PARAMS_PREALIGNMENT = Dict(:meta => Dict(:parent_stack => "montaged"), 
+global PARAMS_PREALIGNMENT = Dict( 
 			     :mesh => Dict(
 					:mesh_length => MESH_LENGTH_PREALIGNMENT), 
 			     :match => Dict(
@@ -120,7 +120,7 @@ global PARAMS_PREALIGNMENT = Dict(:meta => Dict(:parent_stack => "montaged"),
 			     :review => Dict(
 					      ),
 			     :registry => Dict(
-					:global_offsets => GLOBAL_OFFSETS_PREALIGNMENT
+					:global_offsets => GLOBAL_OFFSETS_PREALIGNMENT, :parent_stack => "montaged"
 					)
 			     )
 global PARAMS_ALIGNMENT = Dict(
@@ -152,6 +152,6 @@ global PARAMS_ALIGNMENT = Dict(
 			     :review => Dict(
 					      ),
 			     :registry => Dict(
-					:global_offsets => GLOBAL_OFFSETS_ALIGNMENT
+					:global_offsets => GLOBAL_OFFSETS_ALIGNMENT, :parent_stack => "prealigned"
 					)
 			     )

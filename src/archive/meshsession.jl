@@ -278,7 +278,7 @@ function d_montage(z, threshold=3)
   ms = load(MeshSet, index);
   # for i in 1:length(ms.matches)
   #   calculate_post_statistics!(ms, i)
-  #   flag!(ms.matches[i], "norm_post", >, 3)
+  #   flag!(ms.matches[i], "norm_post", ">", 3)
   # end
   # save(ms)
   s = load("stats", index); 

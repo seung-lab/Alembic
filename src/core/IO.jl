@@ -24,7 +24,7 @@ function save(path::AbstractString, img::Array)
         close(f)
 end=#
 
-function save(path::AbstractString, data; chunksize = 1000)
+function save(path::AbstractString, data; chunksize = 1024)
 	println("Saving $(typeof(data)) to ", path)
   	ext = splitext(path)[2];
 	if ext == ".h5"
@@ -64,6 +64,10 @@ function load(path::AbstractString; kwargs...)
   data.correspondence_properties = Array{Dict{Any, Any},1}(); end
   gc(); =#
 	return data
+end
+
+function load(; kwargs...)
+  load(get_path(; kwargs...))
 end
 
 function save(data; kwargs...)
@@ -165,7 +169,11 @@ function clean_cache()
 	println("current cache usage: $cur_cache_size / $IMG_CACHE_SIZE (bytes), $(round(Int64, cur_cache_size/IMG_CACHE_SIZE * 100))%")
 end
 
-function get_image(path::AbstractString, scale=1.0, dtype = IMG_ELTYPE)
+function get_image_path(path::AbstractString, scale=1.0, dtype = IMG_ELTYPE)
+        pathuri = URI(path)
+	if pathuri.scheme == "file"
+	  path = pathuri.path
+	end
 #=  	if myid() != IO_PROC
 	  return remotecall_fetch(IO_PROC, get_image, path, scale, dtype);
 	end =#
@@ -188,7 +196,8 @@ function get_image(path::AbstractString, scale=1.0, dtype = IMG_ELTYPE)
 
 	    push!(IMG_CACHE_LIST, (path, 1.0))
 	    #IMG_CACHE_DICT[(path, 1.0)] = img;
-	    @time IMG_CACHE_DICT[(path, 1.0)] = get_image_disk(path, dtype; shared = true)
+	    #@time IMG_CACHE_DICT[(path, 1.0)] = get_image_disk(path, dtype; shared = true)
+	    IMG_CACHE_DICT[(path, 1.0)] = get_image_disk(path, dtype; shared = true)
             #print("image share and store to cache:")
 	    #@time IMG_CACHE_DICT[(path, 1.0)] = img
 	    #img = 0;
@@ -216,7 +225,7 @@ function get_image(path::AbstractString, scale=1.0, dtype = IMG_ELTYPE)
 end
 
 function get_image(index, scale = 1.0, dtype = IMG_ELTYPE)
-  return get_image(get_path(index), scale, dtype)
+  return get_image_path(get_path(index), scale, dtype)
 end
 
 function ufixed8_to_uint8(img)
@@ -314,7 +323,7 @@ function load_section_images(session, section_num)
   for i in 1:num_tiles
     name = session[i, 1]
     paths[i] = get_path(name)
-    image = get_image(paths[i])
+    image = get_image_path(paths[i])
     max_size = max(size(image, 1), size(image, 2))
     if max_tile_size < max_size max_tile_size = max_size; end
   end
@@ -324,7 +333,7 @@ function load_section_images(session, section_num)
     @sync @parallel for l in 1:num_procs
     i = k+l
     if i > num_tiles return; end
-    image = get_image(paths[i])
+    image = get_image_path(paths[i])
     imageArray[1:size(image, 1), 1:size(image, 2), i] = image
     end
   end

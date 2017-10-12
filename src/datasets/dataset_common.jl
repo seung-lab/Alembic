@@ -65,7 +65,7 @@ end
 # global ROI_LAST = (9,163,0,0)			# where the dataset ends
 
 # gets the url of the image for the given tileid
-function get_path(tileid::AbstractString, mipmap = 0; bucket::AbstractString = BUCKET_NEW, dataset::AbstractString = "", stack::AbstractString = "")
+function get_path(tileid::AbstractString, mipmap = 0; bucket::AbstractString = CUR_BUCKET, dataset::AbstractString = CUR_DATASET, stack::AbstractString = get_stack(tileid))
 	  tilespec = load(get_path(; bucket = bucket, dataset = dataset, stack = stack, obj_name = "tilespec", tileid = tileid))
 	  return get_path(tilespec, mipmap)
 end
@@ -76,19 +76,32 @@ function get_path(tilespec::Dict, mipmap = 0)
 end
 
 # returns the path of the object from a tileid
-function get_path(; bucket::AbstractString = BUCKET_NEW, dataset::AbstractString = "", stack::AbstractString = "", obj_name::AbstractString = "", tileid::AbstractString = "")
+function get_path(; bucket::AbstractString = CUR_BUCKET, dataset::AbstractString = CUR_DATASET, stack::AbstractString = "", obj_name::AbstractString = "", tileid::Union{AbstractString, Tuple{AbstractString, AbstractString}} = "")
   	subdir, ext = get_subdir(obj_name)
 	# return the folder if the tileid is not given, suppressing the extenstion
 	if tileid == ""
 		return joinpath(bucket, dataset, stack, subdir)
 	end
 	if obj_name != ""
+	  # singleton tile case
+	  	if typeof(tileid) <: AbstractString
 		return joinpath(bucket, dataset, stack, subdir, string(obj_name, "(", tileid, ")", ext))
+	        else
+	  # handling for meshset cases
+		return joinpath(bucket, dataset, stack, subdir, string(obj_name, tileid, ext))
+		end
 	      else
 		return joinpath(bucket, dataset, stack, subdir, string(tileid, ext))
 	end
 end
 
+# catch-all for finding path for data types
+function get_path(data)
+	object_type = string(typeof(data))
+	tileid = get_index(data)
+	return get_path(; stack = nextstack(get_stack(typeof(tileid) <: AbstractString ? tileid : tileid[1])), obj_name = object_type, tileid = tileid)
+	end
+#=
 # default get_name for objects
 function get_name(object)
 	if string(typeof(object)) == "MeshSet"
@@ -105,11 +118,12 @@ function get_name(object)
       end
 	
 end
+=#
 #=
 function get_name(object_type::DataType, dataset::AbstractString, stack::AbstractString, tileid::AbstractString)
 end
 =#
-
+#=
 function get_name(index::FourTupleIndex)
     if is_overview(index)	    	return string(index[1], ",", index[2], "_overview")
     elseif is_premontaged(index)	return string(index)
@@ -120,10 +134,21 @@ function get_name(index::FourTupleIndex)
     elseif is_aligned(index)		return string(index[1], ",", index[2], "_aligned")
     elseif is_finished(index) 		return string(index[1], ",", index[2], "_finished")
     end
-end
+  end
+=#
 # used for loading - i.e. getting the name of the Mesh by calling get_name((2,3,1,4), Mesh) returns "Mesh((2,3,1,4))"
 function get_name(object_type::Union{DataType, AbstractString}, index)	
+  #=
 	if object_type == "MeshSet" || string(object_type) == "MeshSet"
+	  if typeof(index) == Tuple{AbstractString, AbstractString}
+	    firsttile = index[1]
+	    lasttile = index[2]
+	      return string("MeshSet(", firsttile, lasttile ")")
+	  elseif typeof(index) == AbstractString 
+	    return string("MeshSet(", index, ")")
+	end
+	=#
+	  #=
 	  # hack for old names
 	  if typeof(index) == Tuple{FourTupleIndex, FourTupleIndex}
 		firstindex = index[1]
@@ -137,9 +162,10 @@ function get_name(object_type::Union{DataType, AbstractString}, index)
 	      end
 	      end
 	      #end hack
+	      =#
   	# singleton case
-	if typeof(index) == FourTupleIndex 			return string(object_type, "(", index, ")")	
-        elseif typeof(index) == Tuple{FourTupleIndex, FourTupleIndex} 	return string(object_type, index)	end
+	if typeof(index) == AbstractString 			return string(object_type, "(", index, ")")	
+        elseif typeof(index) == Tuple{AbstractString, AbstractString} 	return string(object_type, index)	end
 end
 # used for saving - gets the canonical name of the object
 function get_name(object)		
@@ -148,17 +174,23 @@ function get_name(object)
 	if string(typeof(object)) == "MeshSet"
 		firstindex = get_index(object.meshes[1]);
 		lastindex = get_index(object.meshes[end]);
+		if get_z(firstindex) == get_z(lastindex)
+		  return "MeshSet($(nextstage(firstindex)))"
+		else return "MeshSet($firstindex,$lastindex)"
+		end
+#=
 		if is_premontaged(firstindex) return "$(firstindex[1]),$(firstindex[2])_montaged";
 		elseif is_montaged(firstindex) return "$(firstindex[1]),$(firstindex[2])_prealigned";
 		else  return "$(firstindex[1]),$(firstindex[2])-$(lastindex[1]),$(lastindex[2])_aligned"; end
+		=#
 	else
 	      #end hack
 	index = get_index(object)
-	if typeof(index) == FourTupleIndex 			return string(typeof(object), "(", index, ")")	
-        elseif typeof(index) == Tuple{FourTupleIndex, FourTupleIndex} 	return string(typeof(object), index)	end
+	if typeof(index) == AbstractString 			return string(typeof(object), "(", index, ")")	
+        elseif typeof(index) == Tuple{AbstractString, AbstractString} 	return string(typeof(object), index)	end
       end
 end
-
+#=
 # gets the full directory of the index as if it were an image - e.g. .../1_premontaged
 function get_dir_path(index::Union{FourTupleIndex, Tuple{FourTupleIndex, FourTupleIndex}})
   if typeof(index) != FourTupleIndex index = index[1] end
@@ -169,6 +201,7 @@ function get_dir_path(index::Union{FourTupleIndex, Tuple{FourTupleIndex, FourTup
     elseif is_aligned(index) 		return ALIGNED_DIR_PATH
     elseif is_finished(index) 		return FINISHED_DIR_PATH	end
 end
+=#
 
 # gets the full directory of the object based on get_index
 function get_dir_path(object)
@@ -209,12 +242,15 @@ function get_subdir(string::AbstractString)
 end
 
 # 
-
+#=
 # function get_path()
 # methods: 
 function get_path(index::FourTupleIndex, ext = ".h5")
   return joinpath(get_dir_path(index), string(get_name(index), ext))
 end
+=#
+
+#=
 function get_path(object_type::Union{DataType, AbstractString}, index)
   # hack to support singleton load for meshsets
   if (object_type == "stats" || contains(object_type, "MeshSet") || contains(string(object_type), "MeshSet")) && typeof(index) == FourTupleIndex
@@ -226,6 +262,8 @@ function get_path(object)
   index = get_index(object); if typeof(index) != FourTupleIndex index = index[1]	end
   return joinpath(get_dir_path(index), get_subdir(object)[1], string(get_name(object), get_subdir(object)[2]))
 end
+=#
+#=
 function get_path(name::AbstractString)
     return get_path(parse_name(name))
 end
@@ -293,14 +331,15 @@ function parse_registry(path::AbstractString)
       end
     return registry
 end
-
+=#
+#=
 global OVERVIEW_DIR = "0_overview"
 global PREMONTAGED_DIR = "1_premontaged"
 global MONTAGED_DIR = "2_montaged"
 global PREALIGNED_DIR = "3_prealigned"
 global ALIGNED_DIR = "4_aligned"
 global FINISHED_DIR = "5_finished"
-
+=#
 global MESH_DIR = "mesh"
 global MATCH_DIR = "match"
 global MESHSET_DIR = "meshset"
@@ -319,6 +358,7 @@ global RELATIVE_TRANSFORM_DIR = "relative_transform"
 global CUMULATIVE_TRANSFORM_DIR = "cumulative_transform"
 global IMAGE_DIR = "image"
 
+#=
 global OVERVIEW_DIR_PATH = joinpath(BUCKET, DATASET, OVERVIEW_DIR)
 global PREMONTAGED_DIR_PATH = joinpath(BUCKET, DATASET, PREMONTAGED_DIR)
 global MONTAGED_DIR_PATH = joinpath(BUCKET, DATASET, MONTAGED_DIR)
@@ -339,15 +379,16 @@ function get_registry_path(index)
     elseif is_aligned(index) 		return joinpath(ALIGNED_DIR_PATH, REGISTRY_FILENAME)
     end
 end
+=#
 
-function get_dirs()
+function get_subdirs()
   # change the default
-  dirs = [ OVERVIEW_DIR, PREMONTAGED_DIR, MONTAGED_DIR, PREALIGNED_DIR, ALIGNED_DIR, FINISHED_DIR ]
+#  dirs = [ OVERVIEW_DIR, PREMONTAGED_DIR, MONTAGED_DIR, PREALIGNED_DIR, ALIGNED_DIR, FINISHED_DIR ]
   subdirs = [ MESH_DIR, MATCH_DIR, MESHSET_DIR, EXPUNGED_DIR, REVIEW_DIR, MASK_DIR, IMPORT_DIR, STATS_DIR, TILESPEC_DIR, CONTRAST_BIAS_DIR, CONTRAST_STRETCH_DIR, OUTLINE_DIR, THUMBNAIL_DIR, CORRESPONDENCE_DIR, RELATIVE_TRANSFORM_DIR, CUMULATIVE_TRANSFORM_DIR, IMAGE_DIR ]
-  return dirs, subdirs  
+  return subdirs  
 end
 
-function check_dirs(dataset_name::AbstractString = DATASET)
+function check_dirs(stack, bucket = CUR_BUCKET, dataset = CUR_DATASET)
     function setup_dir(dir)
         if !isdir(dir)
             println("Creating $dir")
@@ -355,14 +396,21 @@ function check_dirs(dataset_name::AbstractString = DATASET)
         end
     end
 
-    dataset_dir = joinpath(BUCKET, dataset_name)
-    dirs, subdirs = get_dirs()
+    dataset_dir = joinpath(bucket, dataset)
+    setup_dir(dataset_dir)
+    stack_dir = joinpath(dataset_dir, stack)
+    setup_dir(stack_dir)
+    subdirs = get_subdirs()
+    for sd in subdirs
+      setup_dir(joinpath(stack_dir,sd))
+    end
 
     # b_split = split(BUCKET,"/")
     # for k in 2:length(b_split)
     #    mkdir(joinpath(b_split[1:k]...))
     # end
 
+    #=
     setup_dir(dataset_dir)
     for d in dirs
         path = joinpath(dataset_dir, d)
@@ -372,6 +420,8 @@ function check_dirs(dataset_name::AbstractString = DATASET)
        	  setup_dir(subpath)
 	end
     end
+    =#
 end
-
+#=
 check_dirs()
+=#

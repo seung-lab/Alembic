@@ -62,8 +62,8 @@ function migrate!(meshset)
 
   if length(meshset.properties[:params][:review]) == 0
   	println("MIGRATION: 2016-03-30 MeshSet: adding review criteria"); 
-	meshset.properties[:params][:review][:filtered_ratio] = (:get_ratio_filtered, <, 0.2, 20);
-	meshset.properties[:params][:review][:ratio_edge_proximity] = (:get_ratio_edge_proximity, >, 0.95)
+	meshset.properties[:params][:review][:filtered_ratio] = (:get_ratio_filtered, "<", 0.2, 20);
+	meshset.properties[:params][:review][:ratio_edge_proximity] = (:get_ratio_edge_proximity, ">", 0.95)
   end
 
   if typeof(meshset.matches[match_ind].properties[:review][:flags]) == DataType;
