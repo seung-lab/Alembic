@@ -1,6 +1,3 @@
-#global const IMG_ELTYPE = UInt8
-global IMG_ELTYPE = UInt8
-
 global const IO_PROC = nprocs();
 if nprocs() > 2
 global const WORKER_PROCS = setdiff(procs(), [1, IO_PROC]);
@@ -71,7 +68,7 @@ function get_scale()
   return PARAMS[:match][:blockmatch_scale]
 end
 
-function get_z(index):
+function get_z(index)
   return index
 end
 
@@ -89,198 +86,36 @@ function save(path::AbstractString, data; chunksize = 1000)
         end
 end
 
-function load(path::AbstractString; kwargs...)
-  println("Loading data from ", path)
-  if !isfile(path) return nothing end
-  ext = splitext(path)[2];
-  if ext == ".h5"
-    data = get_image_disk(path; kwargs...)
-  elseif ext == ".jls"
-    data = open(deserialize, path)
-    # data = open(path)
-  elseif ext == ".jld"
-    data = load(path, "data")
-  elseif ext == ".png"
-    data = load_mask(path)
-  elseif ext == ".jpg"
-    data = load_mask(path)
-  elseif ext == ".txt"
-    data = readdlm(path)
-  elseif ext == ".json"
-    #data = JSON.parsefile(path; dicttype=Dict{Symbol, Any}, use_mmap=true)
-    data = JSON.parsefile(path; dicttype=Dict{Symbol, Any}, use_mmap=false)
+function load(index, obj_name)
+  println("Loading $obj_name for $index")
+  storage_objects = ["mesh", "match"]
+  if obj_name in storage_objects
+    s = StorageWrapper(obj_name)
+    return s[k]
+  else
+    println("Not a Storage object, use `get_image`")
   end
-  println("Loaded $(typeof(data)) from ", path)
-#=  if typeof(data) == Match
-  data.correspondence_properties = Array{Dict{Any, Any},1}(); end
-  gc(); =#
-  return data
-end
-
-function save(data; kwargs...)
-  save(get_path(data), data; kwargs...)
-end
-
-function load(args...; kwargs...)
-  return load(get_path(args...); kwargs...);
 end
 
 function get_offset(obj_name, mip=get_scale())
   return offset(CloudVolumeWrapper(get_path(obj_name), mip=mip))
 end
 
-function get_image(index, mip=get_scale())
-  cv = CloudVolumeWrapper(get_path("src_image"), mip=mip)
+function get_image(index, obj_name::AbstractString, mip=get_scale())
+  cv = CloudVolumeWrapper(get_path(obj_name), mip=mip)
   offset = offset(cv)[1:2]
   sz = size(cv)[1:2]
   z = get_z(index)
-  return cv[map(range, zip(offset, sz)...)..., z]
+  xy_slice = map(range, zip(offset, sz)...)
+  slice = tuple(xy_slice..., z:z)
+  return get_image(cv, slice)
 end
 
-function get_slice(index::FourTupleIndex, bb::ImageRegistration.BoundingBox, scale=1.0; is_global=true, thumb=false)
-  if is_global
-    if thumb
-      offset = [0,0]
-    else
-      offset = get_offset(index)
-    end
-    bb = translate_bb(bb, -offset+[1,1])
-  end
-  return get_slice(index, bb_to_slice(bb), scale, thumb=thumb)
+function get_image(index, obj_name::AbstractString, slice, mip)
+  cv = CloudVolumeWrapper(get_path(obj_name), mip=mip)
+  return get_image(cv, slice)
 end
 
-function get_slice(index::FourTupleIndex, slice::Tuple{UnitRange{Int64},UnitRange{Int64}}, scale=1.0; thumb=false)
-  path = thumb ? get_path("thumbnail", index) : get_path(index)
-  return get_slice(path, slice, scale)
-end
-
-function get_slice(path::AbstractString, slice, scale=1.0)
-  dtype = UInt8
-  output_bb = slice_to_bb(slice)
-  scaled_output_bb = snap_bb(scale_bb(output_bb, scale))
-  output = zeros(dtype, ImageRegistration.get_size(scaled_output_bb)...)
-  o = [1,1]
-
-  fid = h5open(path, "r")
-  dset = fid["img"]
-  data_size = size(dset)
-  image_bb = ImageRegistration.BoundingBox(o..., data_size...)
-
-  if intersects(output_bb, image_bb)
-    shared_bb = image_bb - output_bb
-    image_slice = bb_to_slice(shared_bb)
-    img = h5read(path, "img", image_slice)
-
-    if scale != 1.0
-      img, _ = imscale(img, scale)
-    end
-
-    output_offset = ImageRegistration.get_offset(output_bb)
-    output_roi = translate_bb(shared_bb, -output_offset+o)
-    output_roi = translate_bb(scale_bb(translate_bb(output_roi, -o), scale), o)
-    output_slice = bb_to_slice(snap_bb(output_roi))
-    output[output_slice...] = img
-  end
-  return output
-end
-
-function load_mask(index::FourTupleIndex; clean=true)
-    path = get_path("mask", index)
-    return load_mask(path, clean=clean)
-end
-
-function load_mask(path; clean=true)
-    img = Images.load(path).data'
-    mask = reinterpret(UInt8, img)
-    mask = permutedims(mask[1,:,:], [2, 3, 1])[:,:,1]
-    if clean
-        clean_mask!(mask)
-    end
-    return mask
-end
-
-# extensions:
-# MeshSet.jl load_section_images(Ms::MeshSet)
-function load_section_images(session, section_num)
-  indices = find(i -> session[i,2][2] == section_num, 1:size(session, 1))
-  max_tile_size = 0
-  num_tiles = length(indices)
-  paths = Array{AbstractString, 1}(num_tiles)
-  for i in 1:num_tiles
-    name = session[i, 1]
-    paths[i] = get_path(name)
-    image = get_image(paths[i])
-    max_size = max(size(image, 1), size(image, 2))
-    if max_tile_size < max_size max_tile_size = max_size; end
-  end
-  imageArray = SharedArray{UInt8}(max_tile_size, max_tile_size, num_tiles)
-
-  for k in 0:num_procs:num_tiles
-    @sync @parallel for l in 1:num_procs
-    i = k+l
-    if i > num_tiles return; end
-    image = get_image(paths[i])
-    imageArray[1:size(image, 1), 1:size(image, 2), i] = image
-    end
-  end
-
-  return imageArray
-end
-
-function make_slice(center, radius)
-  x, y = center
-  return (x-radius+1):(x+radius), (y-radius+1):(y+radius)
-end
-
-"""
-Return bool indicating if image has mask
-"""
-function image_has_mask(path::AbstractString)
-  if ishdf5(path)
-    f = h5open(path, "r")
-    return HDF5.exists(attrs(f), "masks")
-  else
-    return false
-  end
-end
-
-"""
-Given image size, create Array{Bool, 2} for all of image
-
-Key
-  false:  padding
-  true:   tissue
-
-Note: HDF5.jl does not currently support H5T_BITFIELD, so the BitArray is 
-reinterpretted into an Array{UInt8,2}. In order to reinterpret it back
-into a proper BitArray, the size of the image needs to be given.
-
-Might consider implementing the mask as a set of polygons, using fillpoly!
-in ImageRegistration.jl to generate the image mask when needed.
-"""
-function create_mask(sz::Array{Int,2})
-  return ones(Bool, sz)
-end
-
-"""
-Given HDF5 path, return Array{Bool,2} representing image padding mask
-"""
-function get_mask(path::AbstractString)
-  f = h5open(path, "r")
-  sz = size(f["img"])
-  if "mask" in names(f)
-    return convert(Array{Bool,2}, UInt8_to_BitArray(f["mask"], sz))
-  else
-    return create_mask(sz)
-  end
-end
-
-function BitArray_to_UInt8(B)
-  return reinterpret(UInt8, B.chunks)
-end
-
-function UInt8_to_BitArray(b, sz)
-  B = BitArray(sz)
-  B.chunks = reinterpret(UInt64, b)
-  return B
+function get_image(cv::CloudVolumeWrapper, slice)
+  return OffsetArray(cv[slice...], slice)
 end

@@ -1,8 +1,7 @@
 julia 0.6
-Images
 JLD
 Cairo
-HDF5
+OffsetArrays
 JLD
 Colors
 FixedPointNumbers

@@ -8,7 +8,7 @@ PKGS_USED_CLONABLE = ["https://github.com/JuliaSparse/MKLSparse.jl.git",
                       "https://github.com/seung-lab/CloudVolume.jl.git"
                       ]
 
-using HDF5
+using OffsetArrays
 using JLD
 using DataFrames
 using Colors
@@ -21,14 +21,11 @@ importall ImageRegistration
 using Optim
 using Distributions
 using Compat
-using Images
 using Graphics
 using StatsBase
 using JSON
 # using SimpleTasks # Need to make SimpleTasks pass its tests
 using CloudVolume
-using SimpleTasks
-#using SimpleTasks
 using Primes
 if !contains(gethostname(), "seung") && !contains(gethostname(), "MacBook")
   using PyCall
@@ -98,7 +95,6 @@ include("core/include.jl")
 include("math/include.jl")
 include("utilities/author.jl")
 include("utilities/utilities.jl")
-include("datasets/dataset_common.jl")
 include("render/render.jl")
 include("render/imageprocessing.jl")
 
