@@ -7,7 +7,6 @@ else
 global const WORKER_PROCS = [1];
 end
 
-
 # generates Janelia-type tilespec from the registry
 function generate_tilespec_from_registry(index; dataset = "", stack = "", stack_type = "", parent_stack = "")
   tileid = "$(index[1]),$(index[2])_$stack"
@@ -64,50 +63,50 @@ function get_path(obj_name::AbstractString)
   return PARAMS[:dirs][Symbol(obj_name)]
 end
 
+function get_mip()
+  return PARAMS[:match][:mip]
+end
+
 function get_scale()
-  return PARAMS[:match][:blockmatch_scale]
+  return 1/(2^get_mip())
 end
 
 function get_z(index)
   return index
 end
 
-function save(path::AbstractString, data; chunksize = 1000)
-  println("Saving $(typeof(data)) to ", path)
-    ext = splitext(path)[2];
-  if ext == ".h5"
-    f = h5open(path, "w"); @time f["img", "chunk", (chunksize, chunksize)] = (typeof(data) <: SharedArray ? data.s : data); close(f)
-  elseif ext == ".jls"
-  open(path, "w") do file serialize(file, data) end
-        elseif ext == ".jld"
-  open(path, "w") do file write(file, "data", data) end
-        elseif ext == ".json"
-  open(path, "w") do file JSON.print(file, data) end
-        end
+function get_image_size(obj_name, mip=get_mip())
+  cv = CloudVolumeWrapper(get_path(obj_name), mip=mip)
+  return size(cv)[1:2]
+end
+
+function get_offset(obj_name, mip=get_mip())
+  cv = CloudVolumeWrapper(get_path(obj_name), mip=mip)
+  return offset(cv)[1:2]
 end
 
 function load(index, obj_name)
   println("Loading $obj_name for $index")
   storage_objects = ["mesh", "match"]
   if obj_name in storage_objects
-    s = StorageWrapper(obj_name)
+    s = StorageWrapper(get_path(obj_name))
     return s[k]
   else
     println("Not a Storage object, use `get_image`")
   end
 end
 
-function get_offset(obj_name, mip=get_scale())
-  return offset(CloudVolumeWrapper(get_path(obj_name), mip=mip))
+function get_offset(obj_name, mip=get_mip())
+  return offset(CloudVolumeWrapper(get_path(obj_name), mip=mip))[1:2]
 end
 
-function get_image(index, obj_name::AbstractString, mip=get_scale())
+function get_image(index, obj_name::AbstractString, mip=get_mip())
   cv = CloudVolumeWrapper(get_path(obj_name), mip=mip)
-  offset = offset(cv)[1:2]
-  sz = size(cv)[1:2]
+  o = get_offset(obj_name, mip)
+  s = get_image_size(obj_name, mip)
   z = get_z(index)
-  xy_slice = map(range, zip(offset, sz)...)
-  slice = tuple(xy_slice..., z:z)
+  xy_slice = map(range, (o, s)...)
+  slice = tuple(xy_slice..., z)
   return get_image(cv, slice)
 end
 
@@ -117,5 +116,9 @@ function get_image(index, obj_name::AbstractString, slice, mip)
 end
 
 function get_image(cv::CloudVolumeWrapper, slice)
-  return OffsetArray(cv[slice...], slice)
+  # return OffsetArray(cv[slice...], slice[1:2])
+  img = cv[slice...]
+  shared_img = SharedArray(UInt8, size(img)...)
+  shared_img[:] = img[:]
+  return shared_img
 end

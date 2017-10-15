@@ -24,19 +24,14 @@ function globalize!{T}(pts::Points{T}, mesh::Mesh{T})
     @fastmath @inbounds pts[2,i] += o2;
   end 
 end
-
-### PARAMS.jl EXTENSIONS
-function get_params(mesh::Mesh)				return get_params(mesh.index);				end
-	     
+    
 ### META.jl EXTENSIONS
-function get_offset(mesh::Mesh)				return get_offset(mesh.index);				end
-function get_image_size(mesh::Mesh)			return get_image_size(get_metadata(mesh.index));	end
+function get_offset(mesh::Mesh)				return get_offset("src_image");				end
+function get_image_size(mesh::Mesh)			return get_image_size("src_image");			end
 function get_metadata(mesh::Mesh)			return get_metadata(mesh.index);			end
 
 ### IO.jl EXTENSIONS
-function get_image_path(mesh::Mesh)			return get_image_path(mesh.index);			end
-function get_image(mesh::Mesh; kwargs...)		return get_image(mesh.index; kwargs...);		end
-#function get_name(mesh::Mesh)				return get_name(mesh.index);				end
+function get_image(mesh::Mesh)				return get_image(mesh.index, "src_image");	end
 
 ### retrieval
 function get_index(mesh::Mesh)				return mesh.index;					end
@@ -173,20 +168,20 @@ end
 =#
 
 ### INIT
-function Mesh(index, params = get_params(index), fixed=false; T=Float64, rotated = false)
+function Mesh(index, fixed=false; T=Float64)
 	println("Creating mesh for $index")
 	# mesh lengths in each dimension
-	dists = [params[:mesh][:mesh_length] * sin(pi / 3); params[:mesh][:mesh_length]];
+	dists = [PARAMS[:mesh][:mesh_length] * sin(pi / 3); PARAMS[:mesh][:mesh_length]];
 
 	# dimensions of the mesh as a rectangular grid, maximal in each dimension
 	# e.g. a mesh with 5-4-5-4-5-4-5-4 nodes in each row will have dims = (8, 5)
 	# 1 is added because of 1-indexing (in length)
 	# 2 is added to pad the mesh to extend it beyond by one meshpoint in each direction
-	dims = round.(Int64, div.(get_image_size(index, rotated = rotated), dists)) + 1 + 2;
+	dims = round.(Int64, div.(get_image_size("src_image"), dists)) + 1 + 2;
 
 	# location of the first node (top left)
 	# TODO: Julia does not support rem() for two arrays, so divrem() cannot be used
-	topleft_offset = (get_image_size(index, rotated = rotated) .% dists) / 2 - dists;
+	topleft_offset = (get_image_size("src_image") .% dists) / 2 - dists;
 
 	n = maximum([get_mesh_index(dims, dims[1], dims[2]); get_mesh_index(dims, dims[1], dims[2]-1)]);
 	m = 0;

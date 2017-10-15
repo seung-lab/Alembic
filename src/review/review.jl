@@ -37,7 +37,7 @@ function find_overlaps(boundingboxes)
 end
 
 function find_boundingboxes(meshset)
-  nodes = [get_nodes(mesh; use_post = true, globalized = true) for mesh in meshset.meshes]
+  nodes = [get_nodes(mesh; use_post = true) for mesh in meshset.meshes]
   return map(ImageRegistration.find_mesh_bb, nodes)
 end
 

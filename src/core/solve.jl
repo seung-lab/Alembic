@@ -208,9 +208,9 @@ function elastic_collate(meshset; from_current = true, write = false)
 
   for mesh in meshset.meshes
     if from_current
-      @fastmath @inbounds nodes[:, noderanges[get_index(mesh)]] = get_nodes(mesh; globalized = true, use_post = true)[:];
+      @fastmath @inbounds nodes[:, noderanges[get_index(mesh)]] = get_nodes(mesh; use_post = true)[:];
     else
-      @fastmath @inbounds nodes[:, noderanges[get_index(mesh)]] = get_nodes(mesh; globalized = true, use_post = false)[:];
+      @fastmath @inbounds nodes[:, noderanges[get_index(mesh)]] = get_nodes(mesh; use_post = false)[:];
     end
     if is_fixed(mesh)
       @fastmath @inbounds nodes_fixed[noderanges[get_index(mesh)]] = fill(true, count_nodes(mesh));

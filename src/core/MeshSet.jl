@@ -325,26 +325,7 @@ function compile_meshset(first_index::FourTupleIndex, last_index::FourTupleIndex
 
   return ms;
 end
-  #=
-### splitting
-function split_meshset(meshset::MeshSet)
-	parent_name = get_name(meshset)
 
-	for i in 1:count_matches(meshset)
-		properties = deepcopy(meshset.properties);
-		properties[:meta][:parent] = parent_name;
-		properties[:meta][:split_index] = i;
-		matches = Array{Match, 1}();
-		push!(matches, meshset.matches[i])
-		meshes = Array{Mesh, 1}();
-		src_mesh = meshset.meshes[find_mesh_index(meshset, get_src_index(meshset.matches[i]))]
-		dst_mesh = meshset.meshes[find_mesh_index(meshset, get_dst_index(meshset.matches[i]))]
-		push!(meshes, src_mesh, dst_mesh)
-		save(MeshSet(meshes, matches, properties));
-		println("Child ", i, " / ", count_matches(meshset), " saved");
-	end
-end
-=#
 function concat_meshset(parent_name)
 	ms = MeshSet();
 	for i in 1:count_children(parent_name)
@@ -453,53 +434,25 @@ function MeshSet()
 	return MeshSet(meshes, matches, properties)
 end
 
-function prealign(index; params=get_params(index), to_fixed=false)
-	src_index = index;
-	dst_index = get_preceding(src_index)
-	if to_fixed
-	dst_index = aligned(dst_index);
-	end
-	meshset = MeshSet();
-	meshset.properties[:params] = params;
-	meshset.properties[:meta] = Dict{Symbol, Any}();
-	push!(meshset.meshes, Mesh(src_index, params))
-	push!(meshset.meshes, Mesh(dst_index, params, to_fixed))
-	push!(meshset.matches, Match(meshset.meshes[1], meshset.meshes[2], params))
-	filter!(meshset);
-	check!(meshset);
-  try
-  	solve!(meshset, method=params[:solve][:method]);
-  end
-	save(meshset);
-	return meshset;
-end
-
-function MeshSet(index::FourTupleIndex; kwargs...)
-#  return MeshSet(ancestors(index)...; kwargs...);
-	if is_premontaged(index) return MeshSet(index, index; kwargs...); end
-	if is_montaged(index) return MeshSet(premontaged(index), premontaged(index); kwargs...); end
-	if is_prealigned(index) return prealign(montaged(index)) end
-end
-
 function MeshSet(first_index, last_index; kwargs...) #params=get_params(first_index), solve=true, solve_method=:elastic)
 	indices = get_index_range(first_index, last_index);
 	if length(indices) == 0 return nothing; end
 	MeshSet(indices; kwargs...) # params=get_params(indices[1]), solve=solve, solve_method=solve_method)
 end
 
-function MeshSet(indices::Array; params=get_params(indices[1]), solve=true, solve_method=:elastic)
-  meshes = map(Mesh, indices, repeated(params))
+function MeshSet(indices::Array; solve=true, solve_method=:elastic)
+  meshes = map(Mesh, indices)
   sort!(meshes; by=get_index)
   matches = Array{Match, 1}(0)    
   properties = Dict{Symbol, Any}(  
-  	  :params  => params,
+  	  :params  => PARAMS,
           :author => author(),
           :meta => Dict{Symbol, Any}(
           :parent => nothing,
           :split_index => 0)
           )
   meshset = MeshSet(meshes, matches, properties);
-  match!(meshset, params[:match][:depth]; reflexive = params[:match][:reflexive]);
+  match!(meshset, PARAMS[:match][:depth]; reflexive = PARAMS[:match][:reflexive]);
 
   save(meshset)
   filter!(meshset);
@@ -513,36 +466,6 @@ function MeshSet(indices::Array; params=get_params(indices[1]), solve=true, solv
 
   return meshset;
 end
-
-# function MeshSet(firstindex::FourTupleIndex, lastindex::FourTupleIndex, fixed_meshes::Array{Mesh,1}; params=get_params(firstindex))
-#   println("Using ", length(fixed_meshes), " fixed meshes to build meshset")
-#   indices = get_index_range(firstindex, lastindex)
-#   if length(indices) == 0 
-#     return nothing; 
-#   end
-#   meshes = pmap(Mesh, indices, repeated(params));
-#   sort!(meshes; by=get_index)
-#   map(fix!, fixed_meshes)
-#   merge_meshes!(meshes, fixed_meshes) # merge meshes into fixed_meshes
-#   matches = Array{Match, 1}(0)
-#   properties = Dict{Symbol, Any}(  :params  => params,
-#           :author => author(),
-#           :meta => Dict{Symbol, Any}(
-#           :parent => nothing,
-#           :split_index => 0)
-#           )
-#   for mesh in fixed_meshes
-#     println(get_index(mesh), " ", length(mesh.src_nodes))
-#   end
-#   meshset = MeshSet(fixed_meshes, matches, properties);
-#   match!(meshset, params[:match][:depth]);
-
-#   filter!(meshset);
-#   check_and_fix!(meshset);
-
-#   save(meshset);
-#   return meshset;
-# end
 
 function mark_solved!(meshset::MeshSet)
   meshset.properties[:meta]["solved"] = author()
@@ -645,29 +568,6 @@ function sanitize!(meshset::MeshSet)
   end
 end
 
-# JLS SAVE
-#=
-function save(filename::AbstractString, meshset::MeshSet)
-  println("Saving meshset to ", filename)
-  open(filename, "w") do file
-    serialize(file, meshset)
-  end
-end=#
-
-#=
-function save(meshset::MeshSet)
-  if has_parent(meshset)
-    foldername = joinpath(ALIGNED_DIR, meshset.properties[:meta][:parent])
-    if !isdir(foldername) mkdir(foldername) end
-    split_index = get_split_index(meshset);
-    filename = joinpath(foldername, "$split_index.jls")
-  else
-    filename = get_filename(meshset)
-  end
-  save(filename, meshset);
-end
-=#
-
 function parse_meshset_filename(name::AbstractString)
     indexA, indexB = NO_INDEX, NO_INDEX
     # aligned-section
@@ -677,22 +577,6 @@ function parse_meshset_filename(name::AbstractString)
     indexB = aligned(parse(Int, m[3]), parse(Int, m[4]))
     end
     return indexA, indexB
-end
-
-function get_jls(dir)
-  assert(isdir(dir))
-  files = readdir(dir)
-  return filter(x -> contains(x, ".jls"), files)
-end
-
-function filter_jls(dir, wafer_num)
-  jls = get_jls(dir)
-  index = (wafer_num, 0, 0, 0)
-  files = filter(x -> in_same_wafer(parse_meshset_filename(x)[1], index), jls)
-  indices = map(parse_meshset_filename, files)
-  sections = map(getindex, map(getindex, indices, repeated(1)), repeated(2))
-  sorted_files = files[sortperm(sections)]
-  return map(joinpath, repeated(dir), sorted_files)
 end
 
 function get_filename(meshset::MeshSet)
@@ -787,26 +671,8 @@ function load_split(parent_name, split_index)
     println("Loading meshset for ", parent_name, ": child ", split_index, " / ", count_children(parent_name));
     return load(filename);
 end
-#=
-function load(index)
-  if is_montaged(index)
-	  return load(index, index)
-  elseif is_prealigned(index)
-	  return load(montaged(index), (get_preceding(montaged(index)))) 
-  end
-end=#
-#=
-function load(filename::AbstractString)
-  if !isfile(filename) return nothing end
-  return open(deserialize, filename)
-end=#
 
-function make_stack(first_index, last_index, fixed_interval = 0)
-	if first_index[3] != last_index[3] || first_index[4] != last_index[4]
-		println("The indices are from different pipeline stages. Aborting.");
-		return Void;
-	end
-
+function make_stack(first_index, last_index)
 	registry = get_registry(first_index); params = get_params(first_index); indices = get_range_in_registry(first_index, last_index);
 
 	Ms = MeshSet(params);
@@ -830,14 +696,6 @@ function make_stack(first_index, last_index, fixed_interval = 0)
   return Ms;
 end
 
-function crop_center(image, rad_ratio)
-	size_i, size_j = size(image);
-	rad = round(Int64, rad_ratio * (minimum([size_i, size_j]) / 2));
-	range_i = round(Int64, size_i / 2) + (-rad:rad);
-	range_j = round(Int64, size_j / 2) + (-rad:rad);
-	return image[range_i, range_j];
-end
-
 function load_stack(offsets, wafer_num, section_range)
   indices = find(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] in section_range, 1:size(offsets, 1))
   Ms = MeshSet(PARAMS_ALIGNMENT)
@@ -859,87 +717,6 @@ function load_stack(offsets, wafer_num, section_range)
   optimize_all_cores(Ms.params)
 
   return Ms, images
-end
-
-"""
-Calculate the maximum bounding box of all the meshes in a meshset
-"""
-function get_global_bb(meshset)
-  bbs = []
-  println("Calculating global bounding box")
-  for mesh in meshset.meshes
-      nodes = hcat(mesh.nodes_t...)'
-      push!(bbs, snap_bb(find_mesh_bb(nodes)))
-  end
-  global_bb = sum(bbs)
-  global_bb.h += 1
-  global_bb.w += 1
-  println(global_bb)
-  return global_bb
-end  
-
-#=
-function get_param(meshset::MeshSet, property_name)
-  property = nothing;
-  if haskey(meshset.properties, :params)
-    if haskey(meshset.properties[:params], :match)
-      if haskey(meshset.properties[:params][:match], property_name)
-        property = meshset.properties[property_name]
-      end
-    end
-  end
-  end  
-  return property
-end =#
-
-function calculate_depth(firstindex, lastindex, num_tiles=16)
-  index_depth = []
-  firstsection = NO_INDEX
-  lastsection = NO_INDEX
-  parent_name = get_name(firstindex, lastindex)
-  depth = 1
-  for index in get_index_range(prealigned(firstindex), prealigned(lastindex))
-    pindex = premontaged(index)
-    tiles = get_index_range(pindex, pindex)
-    if length(tiles) < num_tiles
-      if depth == 1
-        firstsection = get_preceding(index)
-      end
-      depth += 1
-      println(index, " ", depth, " ", length(tiles))
-    else
-      if depth > 1
-        lastsection = index
-        push!(index_depth, (firstsection, lastsection, depth))
-      end
-      depth = 1
-    end
-  end
-  return index_depth
-end
-
-function autoblockmatch(index; params=get_params(index))
-  indices = get_index_range(index, index)
-  if length(indices) == 0 
-    return nothing; 
-  end
-  meshes = pmap(Mesh, indices, repeated(params));
-  sort!(meshes; by=get_index)
-  matches = Array{Match, 1}(0)
-  properties = Dict{Symbol, Any}(  
-          :params  => params,
-          :author => author(),
-          :meta => Dict{Symbol, Any}(
-          :parent => nothing,
-          :split_index => 0)
-          )
-  meshset = MeshSet(meshes, matches, properties);
-  for mesh in meshset.meshes
-    add_match!(meshset, Match(mesh, mesh, params));
-  end
-
-  save(meshset);
-  return meshset;
 end
 
 function get_correspondence_properties(meshset::MeshSet, key)
@@ -978,19 +755,6 @@ function flatten_correspondence_stats(stats)
     s[k] = convert(Array{typeof(stats[1][k][1]), 1}, s[k])
   end
   return s
-end
-
-function plot_correspondence_stats(stats)
-  s = flatten_correspondence_stats(stats)
-  color = "#009900"
-  fig = figure("correspondence stats")
-  stats_keys = ["min", "med", "max", "std"]
-  for (i, k) in enumerate(stats_keys)
-    subplot(410+i)
-    plt[:scatter](1:length(s[k]), s[k], alpha=0.2, color=color)
-    grid("on")
-    title(k)
-  end
 end
 
 function flag_correspondence_stats(stats, k="med", sigma=1.5)

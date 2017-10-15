@@ -329,18 +329,18 @@ function get_correspondence_patches(match::Match, ind)
 end
 
 ### helper methods
-function get_ranges(pt, src_index, src_offset, src_img_size, dst_index, dst_offset, dst_img_size, params)
-	get_ranges(pt, src_index, dst_index, params[:match][:block_r], params[:match][:search_r], params[:registry][:global_offsets]);
+function get_ranges(pt, src_index, src_offset, src_image_size, dst_index, dst_offset, dst_image_size)
+	get_ranges(pt, src_index, dst_index, PARAMS[:match][:block_r], PARAMS[:match][:search_r]);
 end
 
-function get_ranges(pt, src_index, src_offset, src_img_size, dst_index, dst_offset, dst_img_size, block_r::Int64, search_r::Int64, global_offsets = true)
+function get_ranges(pt, src_index, src_offset, src_image_size, dst_index, dst_offset, dst_image_size, block_r::Int64, search_r::Int64)
 	# convert to local coordinates in both src / dst images, and then round up to an integer
 	src_pt = ceil.(Int64, pt);
-	if global_offsets
-	  rel_offset = src_offset - dst_offset;
-	else
-	  rel_offset = src_offset
-	end
+	# if global_offsets
+    rel_offset = src_offset - dst_offset;
+	# else
+	#   rel_offset = src_offset
+	# end
 	dst_pt = src_pt + rel_offset
 	dst_pt = ceil.(Int64, dst_pt);
 
@@ -350,14 +350,14 @@ function get_ranges(pt, src_index, src_offset, src_img_size, dst_index, dst_offs
 	src_range_full = src_pt[1] + block_range, src_pt[2] + block_range;
 	dst_range_full = dst_pt[1] + search_range, dst_pt[2] + search_range;
 
-	range_in_src = intersect(src_range_full[1], 1:src_img_size[1]), intersect(src_range_full[2], 1:src_img_size[2]);
+	range_in_src = intersect(src_range_full[1], 1:src_image_size[1]), intersect(src_range_full[2], 1:src_image_size[2]);
 	if length(range_in_src[1]) % 2 != 1
 	  range_in_src = range_in_src[1][1:end-1], range_in_src[2];
 	end
 	if length(range_in_src[2]) % 2 != 1
 	  range_in_src = range_in_src[1], range_in_src[2][1:end-1];
 	end
-	range_in_dst = intersect(dst_range_full[1], 1:dst_img_size[1]), intersect(dst_range_full[2], 1:dst_img_size[2]);
+	range_in_dst = intersect(dst_range_full[1], 1:dst_image_size[1]), intersect(dst_range_full[2], 1:dst_image_size[2]);
 
 	src_pt_locs = findfirst(range_in_src[1] .== src_pt[1]), findfirst(range_in_src[2] .== src_pt[2]);
 	dst_pt_locs = findfirst(range_in_dst[1] .== dst_pt[1]), findfirst(range_in_dst[2] .== dst_pt[2]);
@@ -522,56 +522,57 @@ end
 # function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma; from_disk = false)
 function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, bandpass_sigmas; me = get_matchenv(src_range, dst_range_full, scale = scale, bandpass = bandpass_sigmas), from_disk = false, meanpad = true)
 
-  clean!(me)
+    clean!(me)
 
-	indices_within_range = findin(dst_range_full[1], dst_range[1]), findin(dst_range_full[2], dst_range[2])
-	if !from_disk
-	@fastmath @inbounds me.src_patch_full[:] = view(src_image, src_range...)
-	@fastmath @inbounds me.dst_patch_full[indices_within_range...] = view(dst_image, dst_range...)
-      else
-	if get_rotation(src_image) != 0 @inbounds me.src_patch_full[:] = imrotate(h5read(get_path(src_image), "img"), get_rotation(src_image); parallel = true)[src_range...];
-	else
-	@inbounds me.src_patch_full[:] = h5read(get_path(src_image), "img", src_range);
+    indices_within_range = findin(dst_range_full[1], dst_range[1]), findin(dst_range_full[2], dst_range[2])
+    if !from_disk
+        @fastmath @inbounds me.src_patch_full[:] = view(src_image, src_range...)
+        @fastmath @inbounds me.dst_patch_full[indices_within_range...] = view(dst_image, dst_range...)
+    else
+        if get_rotation(src_image) != 0 
+            @inbounds me.src_patch_full[:] = imrotate(h5read(get_path(src_image), "img"), get_rotation(src_image); parallel = true)[src_range...];
+        else
+            @inbounds me.src_patch_full[:] = h5read(get_path(src_image), "img", src_range);
         end
-	@inbounds me.dst_patch_full[indices_within_range...] = h5read(get_path(dst_image), "img", dst_range)
-      end
+        @inbounds me.dst_patch_full[indices_within_range...] = h5read(get_path(dst_image), "img", dst_range)
+    end
 
-      if meanpad
-      zeropad_to_meanpad!(me.src_patch_full)
-      zeropad_to_meanpad!(me.dst_patch_full)
-      end
+    if meanpad
+        zeropad_to_meanpad!(me.src_patch_full)
+        zeropad_to_meanpad!(me.dst_patch_full)
+    end
 
-      if bandpass_sigmas != (0,0)
-	@inbounds me.src_patch_full[:] = convolve_Float64_planned(me.src_patch_full, me.kernel; crop = :same, padding = :mean)
-	@inbounds me.dst_patch_full[:] = convolve_Float64_planned(me.dst_patch_full, me.kernel; crop = :same, padding = :mean)
-      end
+    if bandpass_sigmas != (0,0)
+        @inbounds me.src_patch_full[:] = convolve_Float64_planned(me.src_patch_full, me.kernel; crop = :same, padding = :mean)
+        @inbounds me.dst_patch_full[:] = convolve_Float64_planned(me.dst_patch_full, me.kernel; crop = :same, padding = :mean)
+    end
 
-      if scale == 1.0
-	return me.src_patch_full, me.dst_patch_full
-      else
-	ImageRegistration.imwarp!(me.src_patch, me.src_patch_full, me.tform_src)
-	ImageRegistration.imwarp!(me.dst_patch, me.dst_patch_full, me.tform_dst)
-	return me.src_patch, me.dst_patch
-      end
-
+    if scale == 1.0
+        return me.src_patch_full, me.dst_patch_full
+    else
+        ImageRegistration.imwarp!(me.src_patch, me.src_patch_full, me.tform_src)
+        ImageRegistration.imwarp!(me.dst_patch, me.dst_patch_full, me.tform_dst)
+        return me.src_patch, me.dst_patch
+    end
 end
-	function make_bandpass_kernel(lowpass_sigma, highpass_sigma)
-	kernel_l = Images.Kernel.gaussian(lowpass_sigma)
-	kernel_h = Images.Kernel.gaussian(highpass_sigma)
-	oset = kernel_l.offsets[1]+1
 
-	for j in oset:-oset
-	  for i in oset:-oset
-	    kernel_h[i, j] -= kernel_l[i,j]
-	  end
-	end
-	kernel = -kernel_h.parent
-	return kernel
-        end
+function make_bandpass_kernel(lowpass_sigma, highpass_sigma)
+    kernel_l = Images.Kernel.gaussian(lowpass_sigma)
+    kernel_h = Images.Kernel.gaussian(highpass_sigma)
+    oset = kernel_l.offsets[1]+1
+
+    for j in oset:-oset
+      for i in oset:-oset
+        kernel_h[i, j] -= kernel_l[i,j]
+      end
+    end
+    kernel = -kernel_h.parent
+    return kernel
+end
 
 
 function get_match(pt, ranges, src_image, dst_image, params)
-	return get_match(pt, ranges, src_image, dst_image, params[:match][:blockmatch_scale], params[:match][:bandpass_sigmas]);
+	return get_match(pt, ranges, src_image, dst_image, get_scale(), PARAMS[:match][:bandpass_sigmas]);
 end
 """
 Template match two image patches to produce point pair correspondence
@@ -864,64 +865,17 @@ function undo_filter!(match::Match)
 	end
 end
 
-function Match{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T}, params=get_params(src_mesh);rotate=0)
-	println("Matching $(get_index(src_mesh)) -> $(get_index(dst_mesh)):")
-	# if src_mesh == dst_mesh
-	# 	println("nothing at")
-	# 	println(get_index(src_mesh))
-	# 	println(get_index(dst_mesh))
-	# 	return nothing
-	# end
-#=
-  	src_index = get_index(src_mesh); dst_index = get_index(dst_mesh);
-	src_img = get_image(src_index);  dst_img = get_image(dst_index);
-
-	if params[:match][:prematch]
-	prematch(src_index, dst_index, src_img, dst_img, params);
-        end
-
-	src_offset = get_offset(src_index); dst_offset = get_offset(dst_index);
-	src_size = get_image_size(src_index); dst_size = get_image_size(dst_index);
-
-	if get_rotation(src_index) != 0
-	  src_img = imrotate(src_img, get_rotation(src_index); parallel = true);
-	  src_size = get_image_size(src_index; rotated = true);
-	  remesh!(src_mesh);
-	end
-
-	if params[:registry][:global_offsets] && get_rotation(dst_index) != 0
-	  println("rotation in the dst image detected with global offsets - aborting...")
-	  return nothing
-	end
-	=#
-
-  	src_index = get_index(src_mesh); dst_index = get_index(dst_mesh);
-	src_img = get_image(src_index);  dst_img = get_image(dst_index);
-
-	src_offset = get_offset(src_index); dst_offset = get_offset(dst_index);
-	src_size = get_image_size(src_index); dst_size = get_image_size(dst_index);
-
-	if get_rotation(src_index) != 0
-	  src_img = imrotate(src_img, get_rotation(src_index); parallel = true);
-	  src_size = get_image_size(src_index; rotated = true);
-	  remesh!(src_mesh);
-	end
-
-	if params[:match][:prematch]
-	prematch(src_index, dst_index, src_img, dst_img, params);
-        end
-
-	src_offset = get_offset(src_index); dst_offset = get_offset(dst_index);
-
-
-	if params[:registry][:global_offsets] && get_rotation(dst_index) != 0
-	  println("rotation in the dst image detected with global offsets - aborting...")
-	  return nothing
-	end
-
+function Match{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T})
+  	src_index = get_index(src_mesh); 
+    dst_index = get_index(dst_mesh);
+    println("Matching $(src_index) -> $(dst_index):")
+	src_image = get_image(src_index, "src_image");  
+    dst_image = get_image(dst_index, "src_image");
+	image_size = get_image_size("src_image");
+	image_offset = Alembic.get_offset("src_image");
 
 	print("computing ranges:")
-	@time ranges = map(get_ranges, columnviews(src_mesh.src_nodes), repeated(src_index), repeated(src_offset), repeated(src_size), repeated(dst_index), repeated(dst_offset), repeated(dst_size), repeated(params[:match][:block_r]), repeated(params[:match][:search_r]), repeated(params[:registry][:global_offsets]));
+	@time ranges = map(get_ranges, columnviews(src_mesh.src_nodes), repeated(src_index), repeated(image_offset), repeated(image_size), repeated(dst_index), repeated(image_offset), repeated(image_size), repeated(PARAMS[:match][:block_r]), repeated(PARAMS[:match][:search_r]));
 	ranged_inds = find(i -> i != nothing, ranges);
 	ranges = ranges[ranged_inds];
 	print("    ")
@@ -935,7 +889,7 @@ function Match{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T}, params=get_params(src_me
 
 	print("computing matches:")
 	print("    ")
-        @time dst_allpoints = pmap(get_match, columnviews(src_mesh.src_nodes[:,ranged_inds]), ranges, repeated(src_img), repeated(dst_img), repeated(params[:match][:blockmatch_scale]), repeated(params[:match][:bandpass_sigmas])) 
+        @time dst_allpoints = pmap(get_match, columnviews(src_mesh.src_nodes[:,ranged_inds]), ranges, repeated(src_image), repeated(dst_image), repeated(get_scale()), repeated(PARAMS[:match][:bandpass_sigmas])) 
 
 	matched_inds = find(i -> i != nothing, dst_allpoints);
 

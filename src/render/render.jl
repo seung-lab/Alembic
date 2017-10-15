@@ -3,8 +3,8 @@ Multiple dispatch for meshwarp on Mesh object
 """
 function meshwarp_mesh(mesh::Mesh)
   img = get_image(mesh)
-  src_nodes = get_nodes(mesh; globalized = true, use_post = false)
-  dst_nodes = get_nodes(mesh; globalized = true, use_post = true)
+  src_nodes = get_nodes(mesh; use_post = false)
+  dst_nodes = get_nodes(mesh; use_post = true)
   offset = get_offset(mesh);
   #=print("incidence_to_dict: ")
   @time node_dict = incidence_to_dict(mesh.edges') #'
@@ -18,8 +18,8 @@ Reverts transform that went from index and returns the image at the index
 """
 function meshwarp_revert(index::FourTupleIndex, img = get_image(nextstage(index)), interp = false)
   mesh = load("Mesh", index)
-  src_nodes = get_nodes(mesh; globalized = true, use_post = false)
-  dst_nodes = get_nodes(mesh; globalized = true, use_post = true)
+  src_nodes = get_nodes(mesh; use_post = false)
+  dst_nodes = get_nodes(mesh; use_post = true)
   offset = get_offset(nextstage(index));
   #=print("incidence_to_dict: ")
   @time node_dict = incidence_to_dict(mesh.edges') #'
