@@ -23,3 +23,6 @@ Register prealigned sections to each other, and N+k neighboring sections, by blo
 
 
 # Getting started  
+Alembic.jl requires Julia v0.6, and depends on a chunked-volume storage system that can be interfaced with through (CloudVolume)[https://github.com/seung-lab/cloud-volume].  
+
+Setup the Julia wrapper for CloudVolume by following the documentation (here)[https://github.com/seung-lab/CloudVolume.jl].
