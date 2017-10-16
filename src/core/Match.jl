@@ -865,60 +865,100 @@ function undo_filter!(match::Match)
 	end
 end
 
-function Match{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T})
-  	src_index = get_index(src_mesh); 
+"""
+Create matches between two meshes
+
+Args:
+    * src_mesh (source image)
+    * dst_mesh (destination image)
+
+Output:
+    * List of Match objects for each pair of src & dst mask components
+
+Description:
+    * Load mesh images & associated masks (indexed image)
+    * Calculate the number of mask components for both src & dst
+    * Create Match object for each pair of mask components
+"""
+function get_matches{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T})
+    src_index = get_index(src_mesh); 
     dst_index = get_index(dst_mesh);
-    println("Matching $(src_index) -> $(dst_index):")
-	src_image = get_image(src_index, "src_image");  
+    src_image = get_image(src_index, "src_image");  
     dst_image = get_image(dst_index, "src_image");
-	image_size = get_image_size("src_image");
-	image_offset = Alembic.get_offset("src_image");
+    image_size = get_image_size("src_image");
+    image_offset = get_offset("src_image");
+    println("Getting masks for $(src_index) & $(dst_index):")
+    src_mask = get_image(src_index, "mask");
+    dst_mask = get_image(dst_index, "mask");
+    println("Compiling mask components")
+    src_components = unique(src_mask)
+    dst_components = unique(dst_mask)
+    matches = []
+    for sc in src_components
+        for dc in dst_components
+            src_id = src_index + sc/SPLIT_MESH_BASIS
+            dst_id = dst_index + dc/SPLIT_MESH_BASIS
+            push!(matches, Match(src_mesh, dst_mesh, 
+                                    src_id, dst_id, 
+                                    src_image.*(src_mask.==sc), 
+                                    dst_image.*(dst_mask.==dc)))
+        end
+    end
+    return matches
+end
 
-	print("computing ranges:")
-	@time ranges = map(get_ranges, columnviews(src_mesh.src_nodes), repeated(src_index), repeated(image_offset), repeated(image_size), repeated(dst_index), repeated(image_offset), repeated(image_size), repeated(PARAMS[:match][:block_r]), repeated(PARAMS[:match][:search_r]));
-	ranged_inds = find(i -> i != nothing, ranges);
-	ranges = ranges[ranged_inds];
-	print("    ")
+function Match{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T}, 
+                src_index=get_index(src_mesh), dst_index=get_index(dst_mesh), 
+                src_image=get_image(src_mesh), dst_image=get_image(dst_mesh))
+    println("Matching $(src_index) -> $(dst_index):")
+    image_size = get_image_size("src_image");
+    image_offset = get_offset("src_image");
 
-	println("$(length(ranged_inds)) / $(size(src_mesh.src_nodes, 2)) nodes to check.")
+    print("computing ranges:")
+    @time ranges = map(get_ranges, columnviews(src_mesh.src_nodes), repeated(src_index), repeated(image_offset), repeated(image_size), repeated(dst_index), repeated(image_offset), repeated(image_size), repeated(PARAMS[:match][:block_r]), repeated(PARAMS[:match][:search_r]));
+    ranged_inds = find(i -> i != nothing, ranges);
+    ranges = ranges[ranged_inds];
+    print("    ")
 
-	if length(ranged_inds) != 0
-		ranges = Array{typeof(ranges[1]), 1}(ranges);
-	end
+    println("$(length(ranged_inds)) / $(size(src_mesh.src_nodes, 2)) nodes to check.")
+
+    if length(ranged_inds) != 0
+        ranges = Array{typeof(ranges[1]), 1}(ranges);
+    end
 
 
-	print("computing matches:")
-	print("    ")
+    print("computing matches:")
+    print("    ")
         @time dst_allpoints = pmap(get_match, columnviews(src_mesh.src_nodes[:,ranged_inds]), ranges, repeated(src_image), repeated(dst_image), repeated(get_scale()), repeated(PARAMS[:match][:bandpass_sigmas])) 
 
-	matched_inds = find(i -> i != nothing, dst_allpoints);
+    matched_inds = find(i -> i != nothing, dst_allpoints);
 
-	#=for ap in dst_allpoints
-	  if typeof(ap) == RemoteException
-	    println(ap)
-	  end
-	end=#
+    #=for ap in dst_allpoints
+      if typeof(ap) == RemoteException
+        println(ap)
+      end
+    end=#
 
-	src_points = copy(src_mesh.src_nodes[:,ranged_inds[matched_inds]]);
-	dst_points = similar(src_points)
-	for j in 1:size(dst_points, 2)
-	  @inbounds dst_points[1,j] = dst_allpoints[matched_inds[j]][1]
-	  @inbounds dst_points[2,j] = dst_allpoints[matched_inds[j]][2]
-	end
-	correspondence_properties = vcat([dst_allpoints[ind][3] for ind in matched_inds]...)
+    src_points = copy(src_mesh.src_nodes[:,ranged_inds[matched_inds]]);
+    dst_points = similar(src_points)
+    for j in 1:size(dst_points, 2)
+      @inbounds dst_points[1,j] = dst_allpoints[matched_inds[j]][1]
+      @inbounds dst_points[2,j] = dst_allpoints[matched_inds[j]][2]
+    end
+    correspondence_properties = vcat([dst_allpoints[ind][3] for ind in matched_inds]...)
 
-	filters = DataFrame();
-  	properties = Dict{Symbol, Any}(
-		:params => params,
-		:review => Dict{Symbol, Any}(
-				:flagged => false,
-				:flags => Dict{Symbol, Any}(),
-				:author => null_author()
-				) 
-			);
+    filters = DataFrame();
+    properties = Dict{Symbol, Any}(
+        :params => params,
+        :review => Dict{Symbol, Any}(
+                :flagged => false,
+                :flags => Dict{Symbol, Any}(),
+                :author => null_author()
+                ) 
+            );
 
-#	@everywhere init_Match();
-	@everywhere gc();
+#   @everywhere init_Match();
+    @everywhere gc();
 
-	return Match{T}(src_index, dst_index, src_points, dst_points, correspondence_properties, filters, properties);
+    return Match{T}(src_index, dst_index, src_points, dst_points, correspondence_properties, filters, properties);
 end

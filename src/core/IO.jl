@@ -72,18 +72,14 @@ function get_scale()
 end
 
 function get_z(index)
-  return index
+  return Int(floor(index))
 end
 
-function get_image_size(obj_name, mip=get_mip())
-  cv = CloudVolumeWrapper(get_path(obj_name), mip=mip)
-  return size(cv)[1:2]
+function get_mask_id(index)
+  return Int((index % get_z(index)) * SPLIT_MESH_BASIS)
 end
 
-function get_offset(obj_name, mip=get_mip())
-  cv = CloudVolumeWrapper(get_path(obj_name), mip=mip)
-  return offset(cv)[1:2]
-end
+## Non-image related (Storage)
 
 function load(index, obj_name)
   println("Loading $obj_name for $index")
@@ -96,8 +92,26 @@ function load(index, obj_name)
   end
 end
 
+function save(index, obj)
+  obj_name = lowercase(string(typeof(obj)))
+  if obj_name in ["mesh", "match"]
+    s = StorageWrapper(get_path(obj_name))
+    s[string(index)] = obj
+  else
+    println("Not a Storage object")
+  end
+end
+
+## Image related (CloudVolume)
+
+function get_image_size(obj_name, mip=get_mip())
+  cv = CloudVolumeWrapper(get_path(obj_name), mip=mip)
+  return size(cv)[1:2]
+end
+
 function get_offset(obj_name, mip=get_mip())
-  return offset(CloudVolumeWrapper(get_path(obj_name), mip=mip))[1:2]
+  cv = CloudVolumeWrapper(get_path(obj_name), mip=mip)
+  return offset(cv)[1:2]
 end
 
 function get_image(index, obj_name::AbstractString, mip=get_mip())
@@ -118,7 +132,21 @@ end
 function get_image(cv::CloudVolumeWrapper, slice)
   # return OffsetArray(cv[slice...], slice[1:2])
   img = cv[slice...]
-  shared_img = SharedArray(UInt8, size(img)...)
+  shared_img = SharedArray{UInt8}(size(img))
   shared_img[:] = img[:]
   return shared_img
+end
+
+function save_image(index, obj_name::AbstractString, img)
+  cv = CloudVolumeWrapper(get_path(obj_name), mip=mip)
+  o = get_offset(obj_name, mip)
+  s = get_image_size(obj_name, mip)
+  z = get_z(index)
+  xy_slice = map(range, (o, s)...)
+  slice = tuple(xy_slice..., z)
+  return get_image(cv, slice, img)
+end
+
+function save_image(cv::CloudVolumeWrapper, slice, img)
+  cv[slice...] = img
 end

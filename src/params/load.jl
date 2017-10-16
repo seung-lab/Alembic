@@ -14,10 +14,14 @@ function load_params(fn)
 		 	:bucket => root,
 		 	:src_image => joinpath(root, d["src_image"]),
 		 	:dst_image => joinpath(root, d["dst_image"]),
-		 	:match_image => joinpath(root, d["src_image"], d["match_image"]),
-		 	:mask => joinpath(root, d["src_image"], d["mask"]),
-		 	:mesh => joinpath(root, d["src_image"], d["mesh"]),
-		 	:match => joinpath(root, d["src_image"], d["match"])
+		 	# :match_image => joinpath(root, d["src_image"], d["match_image"]),
+		 	# :mask => joinpath(root, d["src_image"], d["mask"]),
+		 	# :mesh => joinpath(root, d["src_image"], d["mesh"]),
+		 	# :match => joinpath(root, d["src_image"], d["match"])
+		 	:match_image => joinpath(root, d["match_image"]),
+		 	:mask => joinpath(root, d["mask"]),
+		 	:mesh => joinpath(root, d["mesh"]),
+		 	:match => joinpath(root, d["match"])
 		  ),
 	     :mesh => Dict(
 			:mesh_length => p["mesh_length"]), 

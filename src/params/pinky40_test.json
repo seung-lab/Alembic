@@ -3,12 +3,12 @@
 	"dirs":{
 		"bucket":"gs://neuroglancer",
 		"dataset":"pinky40_alignment",
-		"src_image":"test",
-		"dst_image":"post_test",
-		"match_image":"ncc",
-		"match":"match",
-		"mask":"mask",
-		"mesh":"mesh"
+		"src_image":"test_prealigned",
+		"dst_image":"test_aligned",
+		"match_image":"test_ncc",
+		"match":"test_match",
+		"mask":"test_mask",
+		"mesh":"test_mesh"
 	},
 	"params":{
 		"method": "elastic",
