@@ -1,3 +1,4 @@
+	typeof(tileid) <: AbstractString ? tileid : tileid[1]
 global PARAMS = Dict()
 global BUCKET = ""
 global DATASET = ""
@@ -48,21 +49,21 @@ function load_params(fn)
 	     	:ftol_newton => 0,
 	     	:method => p["method"]),
 	     :filter => Dict(
-	     		:sigma_filter_high => (1,:get_correspondence_properties, >, 6.5, Symbol("xcorr_sigma_0.95")),
-	     		:sigma_filter_mid => (2,:get_correspondence_properties, >, 20, Symbol("xcorr_sigma_0.75")),
-	     		:sigma_filter_low => (3,:get_correspondence_properties, >, 40, Symbol("xcorr_sigma_0.5")),
-	     		:dyn_range_filter => (4,:get_correspondence_properties, <, 0.50, :patches_src_normalized_dyn_range),
-	     		:r_filter => (5,:get_correspondence_properties, <, 0.0275, :xcorr_r_max),
-	     		:kurtosis_filter => (6,:get_correspondence_properties, >, 25, :patches_src_kurtosis),
-	     		:kurtosis_filter_dst => (7,:get_correspondence_properties, >, 50, "dst_kurtosis"),
-	     		:kurtosis_filter_edge => (8,:get_correspondence_properties, <, -1.60, :patches_src_kurtosis),
+	     		:sigma_filter_high => (1,:get_correspondence_properties, Symbol(>), 6.5, Symbol("xcorr_sigma_0.95")),
+	     		:sigma_filter_mid => (2,:get_correspondence_properties, Symbol(>), 20, Symbol("xcorr_sigma_0.75")),
+	     		:sigma_filter_low => (3,:get_correspondence_properties, Symbol(>), 40, Symbol("xcorr_sigma_0.5")),
+	     		:dyn_range_filter => (4,:get_correspondence_properties, Symbol(<), 0.50, :patches_src_normalized_dyn_range),
+	     		:r_filter => (5,:get_correspondence_properties, Symbol(<), 0.0275, :xcorr_r_max),
+	     		:kurtosis_filter => (6,:get_correspondence_properties, Symbol(>), 25, :patches_src_kurtosis),
+	     		:kurtosis_filter_dst => (7,:get_correspondence_properties, Symbol(>), 50, "dst_kurtosis"),
+	     		:kurtosis_filter_edge => (8,:get_correspondence_properties, Symbol(<), -1.60, :patches_src_kurtosis),
 			      ),
 	     :render => Dict(
 			      ),
 	     :review => Dict(
-	     		:too_few_corresps => (:count_correspondences, <, 100),
-				:rejected_ratio => (:get_ratio_rejected, >, 0.35),
-				:ratio_edge_proximity => (:get_ratio_edge_proximity, >, 0.80)
+	     		:too_few_corresps => (:count_correspondences, Symbol(<), 100),
+				:rejected_ratio => (:get_ratio_rejected, Symbol(>), 0.35),
+				:ratio_edge_proximity => (:get_ratio_edge_proximity, Symbol(>), 0.80)
 		)
 		)
 end

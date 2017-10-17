@@ -766,6 +766,7 @@ end
 function filter!(match::Match, priority, function_name, compare, threshold, vars...)
 	# attributes = get_correspondence_properties(match, property_name)
 	attributes = eval(function_name)(match, vars...)
+	compare = eval(compare)
 	filter_col = fill(false, count_correspondences(match))
 	@inbounds for i in 1:length(attributes)
 	  filter_col[i] = compare(attributes[i], threshold)
@@ -864,21 +865,40 @@ function get_matches{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T})
     dst_index = get_index(dst_mesh);
     src_image = get_image(src_index, "src_image");  
     dst_image = get_image(dst_index, "src_image");
+    src_image_sub = deepcopy(src_image)
+    dst_image_sub = deepcopy(dst_image)
     println("Getting masks for $(src_index) & $(dst_index):")
     src_mask = get_image(src_index, "mask");
     dst_mask = get_image(dst_index, "mask");
     println("Compiling mask components")
-    src_components = unique(src_mask)
-    dst_components = unique(dst_mask)
+    src_subsections = unique(src_mask)
+    dst_subsections = unique(dst_mask)
     matches = Array{Match,1}()
-    for sc in src_components
-        for dc in dst_components
-            src_id = src_index + (sc-1)/SPLIT_MESH_BASIS
-            dst_id = dst_index + (dc-1)/SPLIT_MESH_BASIS
+    for ss in src_subsections
+        for ds in dst_subsections
+            src_id = src_index + (ss-1)/SPLIT_MESH_BASIS
+            dst_id = dst_index + (ds-1)/SPLIT_MESH_BASIS
+	    @simd for i in 1:length(src_image)
+	      @inbounds src_image_sub[i] = src_image[i]
+	    end
+	    @simd for i in 1:length(dst_image)
+	      @inbounds dst_image_sub[i] = dst_image[i]
+	    end
+	    for i in 1:length(src_image)
+		@inbounds if src_mask[i] != ss
+		  src_image_sub[i] = 0
+		end
+	    end
+	    for i in 1:length(dst_image)
+		@inbounds if dst_mask[i] != ds
+		  dst_image_sub[i] = 0
+		end
+	    end
+	    
             push!(matches, Match(src_mesh, dst_mesh, 
                                     src_id, dst_id, 
-                                    src_image.*(src_mask.==sc), 
-                                    dst_image.*(dst_mask.==dc)))
+                                    src_image_sub, 
+                                    dst_image_sub))
         end
     end
     return matches
