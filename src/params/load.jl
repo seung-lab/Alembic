@@ -1,4 +1,3 @@
-	typeof(tileid) <: AbstractString ? tileid : tileid[1]
 global PARAMS = Dict()
 global BUCKET = ""
 global DATASET = ""
