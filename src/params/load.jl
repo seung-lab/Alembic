@@ -21,11 +21,14 @@ function load_params(fn)
 		 	:match_image => joinpath(root, d["match_image"]),
 		 	:mask => joinpath(root, d["mask"]),
 		 	:mesh => joinpath(root, d["mesh"]),
-		 	:match => joinpath(root, d["match"])
+		 	:match => joinpath(root, d["match"]),
+		 	:cache => d["cache"]
 		  ),
 	     :mesh => Dict(
 			:mesh_length => p["mesh_length"]), 
 	     :match => Dict(
+	     	:z_start => p["z_start"],
+	     	:z_stop => p["z_stop"],
 			:prematch => false,
 			:mip => p["mip"],
 			:block_r => p["block_r"], 

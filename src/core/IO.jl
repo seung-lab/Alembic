@@ -75,28 +75,57 @@ function get_z(index)
   return Int(floor(index))
 end
 
-function get_mask_id(index)
-  return Int((index % get_z(index)) * SPLIT_MESH_BASIS)
+function is_subsection(index)
+  return get_subsection(index) != 0
+end
+
+function get_subsection(index)
+  return Int(round((index % get_z(index)) * SPLIT_MESH_BASIS))
+end
+
+function get_z_range()
+  return PARAMS[:match][:z_start]:PARAMS[:match][:z_stop]
+end
+
+function get_name(obj)
+  return string(get_index(obj))
+end
+
+function get_preceding(index, n=1)
+  return get_z(index)-n
+end
+
+function use_cache()
+  return PARAMS[:dirs][:cache]
+end
+
+function is_preceding(indexA, indexB, within=1)
+  for i in 1:within 
+    if indexA == get_preceding(indexB, i)
+      return true
+    end
+  end
+  return false;
 end
 
 ## Non-image related (Storage)
 
-function load(index, obj_name)
-  println("Loading $obj_name for $index")
+function load(fn, obj_name)
+  println("Loading $obj_name for $fn")
   storage_objects = ["mesh", "match"]
   if obj_name in storage_objects
     s = StorageWrapper(get_path(obj_name))
-    return s[k]
+    return s[fn]
   else
     println("Not a Storage object, use `get_image`")
   end
 end
 
-function save(index, obj)
+function save(fn, obj)
   obj_name = lowercase(string(typeof(obj)))
   if obj_name in ["mesh", "match"]
     s = StorageWrapper(get_path(obj_name))
-    s[string(index)] = obj
+    s[fn] = obj
   else
     println("Not a Storage object")
   end
@@ -104,28 +133,35 @@ end
 
 ## Image related (CloudVolume)
 
-function get_image_size(obj_name, mip=get_mip())
-  cv = CloudVolumeWrapper(get_path(obj_name), mip=mip)
+function get_cloudvolume(obj_name)
+  path = get_path(obj_name)
+  mip = get_mip()
+  cache = use_cache()
+  return CloudVolumeWrapper(path, mip=mip, cache=cache)
+end
+
+function get_image_size(obj_name)
+  cv = get_cloudvolume(obj_name)
   return size(cv)[1:2]
 end
 
-function get_offset(obj_name, mip=get_mip())
-  cv = CloudVolumeWrapper(get_path(obj_name), mip=mip)
+function get_offset(obj_name)
+  cv = get_cloudvolume(obj_name)
   return offset(cv)[1:2]
 end
 
-function get_image(index, obj_name::AbstractString, mip=get_mip())
-  cv = CloudVolumeWrapper(get_path(obj_name), mip=mip)
-  o = get_offset(obj_name, mip)
-  s = get_image_size(obj_name, mip)
+function get_image(index, obj_name::AbstractString)
+  cv = get_cloudvolume(obj_name)
+  o = get_offset(obj_name)
+  s = get_image_size(obj_name)
   z = get_z(index)
   xy_slice = map(range, (o, s)...)
   slice = tuple(xy_slice..., z)
   return get_image(cv, slice)
 end
 
-function get_image(index, obj_name::AbstractString, slice, mip)
-  cv = CloudVolumeWrapper(get_path(obj_name), mip=mip)
+function get_image(index, obj_name::AbstractString, slice)
+  cv = get_cloudvolume(obj_name)
   return get_image(cv, slice)
 end
 
@@ -138,9 +174,9 @@ function get_image(cv::CloudVolumeWrapper, slice)
 end
 
 function save_image(index, obj_name::AbstractString, img)
-  cv = CloudVolumeWrapper(get_path(obj_name), mip=mip)
-  o = get_offset(obj_name, mip)
-  s = get_image_size(obj_name, mip)
+  cv = get_cloudvolume(obj_name)
+  o = get_offset(obj_name)
+  s = get_image_size(obj_name)
   z = get_z(index)
   xy_slice = map(range, (o, s)...)
   slice = tuple(xy_slice..., z)

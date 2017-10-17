@@ -8,31 +8,28 @@ PKGS_USED_CLONABLE = ["https://github.com/JuliaSparse/MKLSparse.jl.git",
                       "https://github.com/seung-lab/CloudVolume.jl.git"
                       ]
 
-using OffsetArrays
+# using OffsetArrays
 using JLD
 using DataFrames
-using Colors
+# using Colors
 using FixedPointNumbers
-using Base.Test
-using Cairo
+# using Base.Test
+# using Cairo
 using IterativeSolvers
 using ImageRegistration
 importall ImageRegistration
 using Optim
 using Distributions
 using Compat
-using Graphics
+# using Graphics
 using StatsBase
 using JSON
 using Images
 # using SimpleTasks # Need to make SimpleTasks pass its tests
 using CloudVolume
 using Primes
-if !contains(gethostname(), "seung") && !contains(gethostname(), "MacBook")
-  using PyCall
-  if haskey(ENV, "MKLROOT")
+if haskey(ENV, "MKLROOT")
   using MKLSparse
-  end
 end
 
 import Base.Iterators.repeated
@@ -102,11 +99,8 @@ include("render/render.jl")
 include("render/imageprocessing.jl")
 
 for s in filter(x->string(x)[1]!='#' && x!=:eval, names(Alembic,true))
-
-      println("Exporting $s")
-
-          eval(Expr(:export, s))
-
-	end
+  # println("Exporting $s")
+  eval(Expr(:export, s))
+end
 
 end

@@ -9,6 +9,12 @@ struct Mesh{T} <: AbstractMesh
 	properties::Dict{Symbol, Any}				# properties field
 end
 
+function Base.deepcopy(m::Mesh; index=m.index, src_nodes=m.src_nodes, 
+				dst_nodes=m.dst_nodes, edges=m.edges, properties=m.properties)
+	return Mesh(index, src_nodes, dst_nodes, edges, properties)
+end
+
+
 ### INDEX.jl EXTENSIONS
 function is_adjacent(Am::Mesh, Bm::Mesh)		return is_adjacent(Am.index, Bm.index);			end
 function is_diagonal(Am::Mesh, Bm::Mesh)		return is_diagonal(Am.index, Bm.index);			end
@@ -34,7 +40,10 @@ function get_metadata(mesh::Mesh)			return get_metadata(mesh.index);			end
 function get_image(mesh::Mesh)				return get_image(mesh.index, "src_image");	end
 
 ### retrieval
-function get_index(mesh::Mesh)				return mesh.index;					end
+function get_index(mesh::Mesh)				
+	return mesh.index;	
+end
+
 function get_nodes(mesh::Mesh; globalized::Bool = false, use_post::Bool=false)
 	nodes = use_post ? deepcopy(mesh.dst_nodes) : deepcopy(mesh.src_nodes);
 	globalized ? globalize!(nodes, mesh) : nothing

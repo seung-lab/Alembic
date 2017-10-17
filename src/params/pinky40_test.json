@@ -8,10 +8,13 @@
 		"match_image":"test_ncc",
 		"match":"test_match",
 		"mask":"test_mask",
-		"mesh":"test_mesh"
+		"mesh":"test_mesh",
+		"cache":true
 	},
 	"params":{
 		"method": "elastic",
+		"z_start": 781,
+		"z_stop": 782,
 		"mesh_length": 500,
 		"mip": 0,
 		"block_r": 100,

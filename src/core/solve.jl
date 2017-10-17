@@ -123,22 +123,17 @@ function translation_solve(ms::MeshSet; globalized=false)
   # incomplete
 end
 
-function solve!(meshset)
-  method=meshset.properties[:params][:solve][:method]
-  solve!(meshset; method=method)
-  mark_solved!(meshset)
-end
-
-function solve!(meshset; method=:elastic)
+function solve!(meshset; method=meshset.properties[:params][:solve][:method])
 	sanitize!(meshset);
   assert(count_matches(meshset) != 0)
   assert(count_filtered_correspondences(meshset) >= 3)
 
-	if method == :elastic return elastic_solve!(meshset); end
-	if method == :translation return translation_solve!(meshset); end
-	if method == :rigid return rigid_solve!(meshset); end
-	if method == :regularized return regularized_solve!(meshset; lambda = meshset.properties[:params][:solve][:lambda]); end
-	if method == :affine return affine_solve!(meshset); end
+	if method == :elastic elastic_solve!(meshset); end
+	if method == :translation translation_solve!(meshset); end
+	if method == :rigid rigid_solve!(meshset); end
+	if method == :regularized regularized_solve!(meshset; lambda = meshset.properties[:params][:solve][:lambda]); end
+	if method == :affine affine_solve!(meshset); end
+  mark_solved!(meshset)
 end
 
 function elastic_solve_piecewise!(meshset::MeshSet; from_current = true)

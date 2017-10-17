@@ -520,22 +520,11 @@ end
 
 # if from_disk src_image / dst_image are indices
 # function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma; from_disk = false)
-function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, bandpass_sigmas; me = get_matchenv(src_range, dst_range_full, scale = scale, bandpass = bandpass_sigmas), from_disk = false, meanpad = true)
-
+function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, bandpass_sigmas; me = get_matchenv(src_range, dst_range_full, bandpass = bandpass_sigmas), meanpad = true)
     clean!(me)
-
     indices_within_range = findin(dst_range_full[1], dst_range[1]), findin(dst_range_full[2], dst_range[2])
-    if !from_disk
-        @fastmath @inbounds me.src_patch_full[:] = view(src_image, src_range...)
-        @fastmath @inbounds me.dst_patch_full[indices_within_range...] = view(dst_image, dst_range...)
-    else
-        if get_rotation(src_image) != 0 
-            @inbounds me.src_patch_full[:] = imrotate(h5read(get_path(src_image), "img"), get_rotation(src_image); parallel = true)[src_range...];
-        else
-            @inbounds me.src_patch_full[:] = h5read(get_path(src_image), "img", src_range);
-        end
-        @inbounds me.dst_patch_full[indices_within_range...] = h5read(get_path(dst_image), "img", dst_range)
-    end
+    @fastmath @inbounds me.src_patch_full[:] = view(src_image, src_range...)
+    @fastmath @inbounds me.dst_patch_full[indices_within_range...] = view(dst_image, dst_range...)
 
     if meanpad
         zeropad_to_meanpad!(me.src_patch_full)
@@ -547,13 +536,7 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
         @inbounds me.dst_patch_full[:] = convolve_Float64_planned(me.dst_patch_full, me.kernel; crop = :same, padding = :mean)
     end
 
-    if scale == 1.0
-        return me.src_patch_full, me.dst_patch_full
-    else
-        ImageRegistration.imwarp!(me.src_patch, me.src_patch_full, me.tform_src)
-        ImageRegistration.imwarp!(me.dst_patch, me.dst_patch_full, me.tform_dst)
-        return me.src_patch, me.dst_patch
-    end
+    return me.src_patch_full, me.dst_patch_full
 end
 
 function make_bandpass_kernel(lowpass_sigma, highpass_sigma)
@@ -570,10 +553,6 @@ function make_bandpass_kernel(lowpass_sigma, highpass_sigma)
     return kernel
 end
 
-
-function get_match(pt, ranges, src_image, dst_image, params)
-	return get_match(pt, ranges, src_image, dst_image, get_scale(), PARAMS[:match][:bandpass_sigmas]);
-end
 """
 Template match two image patches to produce point pair correspondence
 """
@@ -642,11 +621,11 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 	end
 	=#
 	#tic()
-src_patch, dst_patch = prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, bandpass_sigmas; meanpad = meanpad)
+    src_patch, dst_patch = prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, bandpass_sigmas; meanpad = meanpad)
 
-#if (pp == nothing) return nothing end;
-#	prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma)
-xc = normxcorr2_preallocated(src_patch, dst_patch; shape = full ? "full" : "valid");
+    #if (pp == nothing) return nothing end;
+    #	prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma)
+    xc = normxcorr2_preallocated(src_patch, dst_patch; shape = full ? "full" : "valid");
 	#t = toc()
 	#to = ELAPSED_TIME
 	#global ELAPSED_TIME = t + to
@@ -885,19 +864,17 @@ function get_matches{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T})
     dst_index = get_index(dst_mesh);
     src_image = get_image(src_index, "src_image");  
     dst_image = get_image(dst_index, "src_image");
-    image_size = get_image_size("src_image");
-    image_offset = get_offset("src_image");
     println("Getting masks for $(src_index) & $(dst_index):")
     src_mask = get_image(src_index, "mask");
     dst_mask = get_image(dst_index, "mask");
     println("Compiling mask components")
     src_components = unique(src_mask)
     dst_components = unique(dst_mask)
-    matches = []
+    matches = Array{Match,1}()
     for sc in src_components
         for dc in dst_components
-            src_id = src_index + sc/SPLIT_MESH_BASIS
-            dst_id = dst_index + dc/SPLIT_MESH_BASIS
+            src_id = src_index + (sc-1)/SPLIT_MESH_BASIS
+            dst_id = dst_index + (dc-1)/SPLIT_MESH_BASIS
             push!(matches, Match(src_mesh, dst_mesh, 
                                     src_id, dst_id, 
                                     src_image.*(src_mask.==sc), 

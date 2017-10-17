@@ -5,10 +5,21 @@ type MeshSet
 end
 
 ### IO.jl
-function get_index(meshset::MeshSet) 	return get_index(meshset.meshes[1]), get_index(meshset.meshes[end]) end
+function get_index(meshset::MeshSet) 	
+  return get_index(meshset.meshes[1]), get_index(meshset.meshes[end]) 
+end
+
 function get_images(meshset::MeshSet, dtype = UInt8)	return map(get_image, meshset.meshes, repeated(dtype));	end
 function get_correspondence_patches(meshset::MeshSet, match_ind, corr_ind) return get_correspondence_patches(meshset.matches[match_ind], corr_ind)	end
 function get_params(meshset::MeshSet)			return meshset.properties[:params];		end
+
+function Base.string(ms::MeshSet)
+  s = Dict()
+  s["meshes"] = [get_name(m) for m in ms.meshes]
+  s["matches"] = [get_name(m) for m in ms.matches]
+  s["properties"] = ms.properties
+  return JSON.dump(s)
+end
 
 #function get_fixed(meshset::MeshSet)			return meshset.properties["fixed"];		end
 
@@ -83,28 +94,40 @@ function make_submeshsets(meshset::MeshSet)
 end
 
 # Mesh.jl extensions
-function fix!(meshset::MeshSet, mesh_ind::Int64) 	fix!(meshset.meshes[mesh_ind]); 	end
-function fix!(meshset::MeshSet, mesh_ind_first::Int64, mesh_ind_last::Int64)
-	for mesh_ind in mesh_ind_first:mesh_ind_last	fix!(meshset.meshes[mesh_ind]);		end
+function fix!(meshset::MeshSet, mesh_ind::Int64) 	
+  fix!(meshset.meshes[mesh_ind]); 	
 end
+
+function fix!(meshset::MeshSet, mesh_ind_first::Int64, mesh_ind_last::Int64)
+	for mesh_ind in mesh_ind_first:mesh_ind_last	
+    fix!(meshset.meshes[mesh_ind]);		
+  end
+end
+
 function fix!(meshset::MeshSet)
-	for mesh in meshset.meshes			fix!(mesh);			 	end
+	for mesh in meshset.meshes			
+    fix!(mesh);			 	
+  end
 end
 
 function fix_ends!(meshset::MeshSet)
    unfix!(meshset); fix!(meshset, 1); fix!(meshset, length(meshset.meshes));
 end
-function unfix!(meshset::MeshSet, mesh_ind::Int64)	unfix!(meshset.meshes[mesh_ind]);	end
+
+function unfix!(meshset::MeshSet, mesh_ind::Int64)	
+  unfix!(meshset.meshes[mesh_ind]);	
+end
+
 function unfix!(meshset::MeshSet, mesh_ind_first::Int64, mesh_ind_last::Int64)
-  	for mesh_ind in mesh_ind_first:mesh_ind_last
-	unfix!(meshset.meshes[mesh_ind]);
-      end
+	for mesh_ind in mesh_ind_first:mesh_ind_last
+  	unfix!(meshset.meshes[mesh_ind]);
+  end
 end
 
 function unfix!(meshset::MeshSet)
   for mesh in meshset.meshes
-	unfix!(mesh);
-      end
+  	unfix!(mesh);
+  end
 end
 
 ### adding
@@ -115,6 +138,11 @@ end
 
 function add_match!(meshset::MeshSet, match::Match)
   push!(meshset.matches, match);
+  sort!(meshset.matches; by=get_src_and_dst_indices)
+end
+
+function add_matches!(meshset::MeshSet, matches::Array{Match,1})
+  append!(meshset.matches, matches);
   sort!(meshset.matches; by=get_src_and_dst_indices)
 end
 
@@ -138,40 +166,12 @@ function set_reviewed!(meshset::MeshSet, match_ind, flag = false)
 	set_reviewed!(meshset.matches[match_ind], flag);
 end
 
-function flag!(meshset::MeshSet, match_ind=1)
-	flag!(meshset.matches[match_ind])
-end
-
-function unflag!(meshset::MeshSet, match_ind)
-	unflag!(meshset.matches[match_ind])
-end
-
 function is_reviewed(meshset::MeshSet, match_ind)
   return is_reviewed(meshset.matches[match_ind])
 end
 
 function is_reviewed(meshset::MeshSet)
   return (&)(map(is_reviewed, meshset.matches)...)
-end
-
-function is_flagged(meshset::MeshSet, match_ind)
-	return is_flagged(meshset.matches[match_ind])
-end
-
-function is_flagged(meshset::MeshSet)
-	return |(map(is_flagged, meshset.matches)...)
-end
-
-function is_montaged(meshset::MeshSet)
-  return is_premontaged(meshset.meshes[1].index)
-end
-
-function is_prealigned(meshset::MeshSet)
-  return is_montaged(meshset.meshes[1].index) || is_montaged(meshset.meshes[2].index)
-end
-
-function is_aligned(meshset::MeshSet)
-  return is_prealigned(meshset.meshes[1].index) || is_prealigned(meshset.meshes[2].index)
 end
 
 function count_flags(meshset::MeshSet)
@@ -230,7 +230,9 @@ function refilter!(meshset::MeshSet, filters=meshset.properties[:params][:filter
   filter!(meshset, filters)
 end
 
-function check_and_fix!(meshset::MeshSet, crits = Base.values(meshset.properties[:params][:review]), filters = Base.values(meshset.properties[:params][:filter])) 
+function check_and_fix!(meshset::MeshSet, 
+                  crits = Base.values(meshset.properties[:params][:review]), 
+                  filters = Base.values(meshset.properties[:params][:filter])) 
   if check!(meshset, crits)
     for match in meshset.matches
       if is_flagged(match)
@@ -273,9 +275,7 @@ function split_meshset(meshset::MeshSet)
 	return (vcat(map(get_path, meshset.meshes), map(get_path, meshset.matches)));
 end
 
-function compile_meshset(first_index::FourTupleIndex, last_index::FourTupleIndex)
-  #meshes = Array{Mesh, 1}()
-  #matches = Array{Match, 1}()
+function compile_meshset(first_index, last_index)
   inds = get_index_range(first_index, last_index);
   println("Compiling MeshSet between $first_index and $last_index - $(length(inds)) meshes expected")
   mesh_inds = Array{Index, 1}();
@@ -430,14 +430,12 @@ end
 function MeshSet()
  	meshes = Array{Mesh, 1}(0)
  	matches = Array{Match, 1}(0)		
-  properties = Dict{Symbol, Any}()
+  properties = Dict{Symbol, Any}(  
+    :params  => PARAMS,
+        :author => author(),
+        :meta => Dict{Symbol, Any}()
+        )
 	return MeshSet(meshes, matches, properties)
-end
-
-function MeshSet(first_index, last_index; kwargs...) #params=get_params(first_index), solve=true, solve_method=:elastic)
-	indices = get_index_range(first_index, last_index);
-	if length(indices) == 0 return nothing; end
-	MeshSet(indices; kwargs...) # params=get_params(indices[1]), solve=solve, solve_method=solve_method)
 end
 
 function MeshSet(indices::Array; solve=true, solve_method=:elastic)
@@ -454,14 +452,14 @@ function MeshSet(indices::Array; solve=true, solve_method=:elastic)
   meshset = MeshSet(meshes, matches, properties);
   match!(meshset, PARAMS[:match][:depth]; reflexive = PARAMS[:match][:reflexive]);
 
-  save(meshset)
+  # save(meshset)
   filter!(meshset);
   check!(meshset);
-  save(meshset);
+  # save(meshset);
 
   if solve == true
     solve!(meshset, method=solve_method);
-    save(meshset);
+    # save(meshset);
   end
 
   return meshset;
@@ -481,30 +479,16 @@ function reset!(meshset::MeshSet)
   end
 end
 
-
 ### match
-function get_all_overlaps(meshset::MeshSet, within = 1; reflexive = reflexive)	return get_all_overlaps(meshset.meshes, within; reflexive = reflexive);	end;
+function get_all_overlaps(meshset::MeshSet, within = 1; reflexive = reflexive)	
+  return get_all_overlaps(meshset.meshes, within; reflexive = reflexive);	
+end
+
 function get_all_overlaps(meshes::Array{Mesh, 1}, within = 1; reflexive = true)
-adjacent_pairs = Pairings(0)
-diagonal_pairs = Pairings(0)
-preceding_pairs = Pairings(0)
-succeeding_pairs = Pairings(0)
+  preceding_pairs = Pairings(0)
+  succeeding_pairs = Pairings(0)
 
   for i in 1:length(meshes), j in 1:length(meshes)
-    if is_adjacent(get_index(meshes[i]), get_index(meshes[j])) 
-      if i < j 
-        push!(adjacent_pairs, (i, j)); 
-      elseif reflexive 
-        push!(adjacent_pairs, (i, j)); 
-      end
-    end
-    if is_diagonal(get_index(meshes[i]), get_index(meshes[j])) 
-      if i < j 
-        push!(diagonal_pairs, (i, j)); 
-      elseif reflexive 
-        push!(diagonal_pairs, (i, j)); 
-      end
-    end
     if is_preceding(get_index(meshes[i]), get_index(meshes[j]), within) 
     	push!(preceding_pairs, (i, j)); 
     	if reflexive 
@@ -513,38 +497,38 @@ succeeding_pairs = Pairings(0)
     end
   end
 
-  pairs = vcat(adjacent_pairs, diagonal_pairs, preceding_pairs, succeeding_pairs)
+  pairs = vcat(preceding_pairs, succeeding_pairs)
   sort!(pairs)
   pairs = unique(pairs)
   println("$(length(pairs)) pairs found")
   return pairs
 end
 
-function match!(meshset::MeshSet, within = 1; reflexive = true)
-	params = get_params(meshset);
-	pairs = get_all_overlaps(meshset, within; reflexive = reflexive);
-	for i in 1:length(pairs)
-	#for i in 1:2:(length(pairs) - 2)
-	        #prefetched = prefetch(get_index(meshset.meshes[pairs[i+2][2]]), get_params(meshset)[:match][:blockmatch_scale]);
-		add_match!(meshset, Match(meshset.meshes[pairs[i][1]], meshset.meshes[pairs[i][2]], params));
-	#	add_match!(meshset, Match(meshset.meshes[pairs[i+1][1]], meshset.meshes[pairs[i+1][2]], params));
-		#load_prefetched(prefetched);
-	end
-#	add_match!(meshset, Match(meshset.meshes[pairs[end-1][1]], meshset.meshes[pairs[end-1][2]], params));
-#	add_match!(meshset, Match(meshset.meshes[pairs[end][1]], meshset.meshes[pairs[end][2]], params));
-end
+"""
+Generate matches between all meshes (& components) that overlap
 
-function rematch!(meshset::MeshSet, match_ind, params = get_params(meshset))
-  src_index = get_src_index(meshset.matches[match_ind])
-  dst_index = get_dst_index(meshset.matches[match_ind])
-  src_mesh = meshset.meshes[find_mesh_index(meshset, src_index)]
-  dst_mesh = meshset.meshes[find_mesh_index(meshset, dst_index)]
-  newmatch = Match(src_mesh, dst_mesh, params)
-  deleteat!(meshset.matches, match_ind)
-  add_match!(meshset, newmatch)
-  meshset.properties[:params] = params
-  meshset.properties[:author] = author()
-  #save(meshset)
+  See `get_all_overlaps` to see how meshes are determined to overlap.
+  Uses `get_matches` which matches taking crack & fold masks into account.
+    Meshes will be duplicated so that each mask component has its own mesh.
+"""
+function match!(ms::MeshSet, within=1; reflexive=true)
+	pairs = get_all_overlaps(ms, within; reflexive=reflexive);
+	for pair in pairs
+		add_matches!(ms, get_matches(ms.meshes[pair[1]], ms.meshes[pair[2]]));
+	end
+  # add meshes for sections with multiple mask components
+  for m in ms.matches
+    if is_subsection(m.src_index) & contains_mesh(ms, m.src_index)
+      mesh = ms.meshes[find_mesh_index(ms, get_z(m.src_index))]
+      new_mesh = deepcopy(mesh, index=m.src_index)
+      add_mesh!(ms, new_mesh)
+    end
+    if is_subsection(m.dst_index) & contains_mesh(ms, m.dst_index)
+      mesh = ms.meshes[find_mesh_index(ms, get_z(m.dst_index))]
+      new_mesh = deepcopy(mesh, index=m.dst_index)
+      add_mesh!(ms, new_mesh)
+    end
+  end
 end
 
 # filters any correspondence that cannot be triangulated
@@ -579,122 +563,24 @@ function parse_meshset_filename(name::AbstractString)
     return indexA, indexB
 end
 
-function get_filename(meshset::MeshSet)
-  if get_src_index(meshset.matches[1]) == get_dst_index(meshset.matches[1])
-    firstindex = get_index(meshset.meshes[1])
-    return get_filename(firstindex, firstindex)
-  else
-    firstindex = get_index(meshset.meshes[1])
-    lastindex = get_index(meshset.meshes[end])
-    return get_filename(firstindex, lastindex)
+function make_stack()
+	ms = MeshSet();
+  for i in get_z_range()
+    add_mesh!(ms, Mesh(i))
   end
+  return ms
 end
 
-function get_filename(firstindex::FourTupleIndex, lastindex::FourTupleIndex)
-  filename = string(get_name(firstindex, lastindex), ".jls")
-  if (((is_montaged(firstindex) || is_prealigned(firstindex) || is_aligned(firstindex)) && is_montaged(lastindex)) ||
-  ((is_montaged(lastindex) || is_prealigned(lastindex) || is_aligned(lastindex)) && is_montaged(firstindex))) && (firstindex != lastindex)
-    filepath = PREALIGNED_DIR
-  elseif (is_prealigned(firstindex) || is_aligned(firstindex)) &&
-          (is_prealigned(lastindex) || is_aligned(lastindex))
-    filepath = ALIGNED_DIR
-  elseif is_premontaged(firstindex) && is_premontaged(lastindex) && (firstindex == lastindex)
-    filepath = PREMONTAGED_DIR
-  else 
-    filepath = MONTAGED_DIR
+function save_stack(ms::MeshSet)
+  for m in ms.meshes
+    save(get_name(m), m)
+  end
+  for m in ms.matches
+    save(get_name(m), m)
   end
 
-  return joinpath(filepath, filename)
 end
 
-#### ONLY AS PARENT!!!!
-function get_parent_name(meshset::MeshSet)
-  if has_parent(meshset)
-    return get_split_index(meshset);
-  elseif get_src_index(meshset.matches[1]) == get_dst_index(meshset.matches[1])
-    firstindex = get_index(meshset.meshes[1])
-    return get_name(firstindex, firstindex)
-  else
-    firstindex = get_index(meshset.meshes[1])
-    lastindex = get_index(meshset.meshes[end])
-    return get_name(firstindex, lastindex)
-  end
-end
-
-
-function get_meshset_name(firstindex, lastindex)
-  name = ""
-  if (((is_montaged(firstindex) || is_prealigned(firstindex) || is_aligned(firstindex)) && is_montaged(lastindex))) && (firstindex != lastindex)
-    name = string(join(firstindex[1:2], ","), "-", join(lastindex[1:2], ","), "_prealigned")
-  elseif (is_prealigned(firstindex) || is_aligned(firstindex)) &&
-          (is_prealigned(lastindex) || is_aligned(lastindex)) 
-    name = string(join(firstindex[1:2], ","),  "-", join(lastindex[1:2], ","),"_aligned")
-  elseif is_premontaged(firstindex) && is_premontaged(lastindex) && (firstindex == lastindex)
-    name = string(join(firstindex[1:2], ","), "_premontaged")
-  else 
-    name = string(join(firstindex[1:2], ","), "_montaged")
-  end
-	return name
-end
-
-function load_split(parent_name, split_index)
-    filename = joinpath(ALIGNED_DIR, parent_name, join(split_index, ".jls"))
-    println("Loading meshset for ", parent_name, ": child ", split_index, " / ", count_children(parent_name));
-    return load(filename);
-end
-
-function has_parent(meshset::MeshSet)
-	if !haskey(meshset.properties, :meta) || !haskey(meshset.properties[:meta], :parent) || meshset.properties[:meta][:parent] == nothing return false end
-	return true
-end
-
-function get_split_index(meshset::MeshSet)
-	if !haskey(meshset.properties, :meta) || !haskey(meshset.properties[:meta], :parent) || meshset.properties[:meta][:parent] == nothing return 0 end
-	return meshset.properties[:meta][:split_index];
-end
-#=
-function load(firstindex, lastindex)
-  filename = get_filename(firstindex, lastindex)
-  println("Loading meshset from ", filename)
-  return load(filename)
-end=#
-
-function count_children(parent_name)
-    dirname = joinpath(ALIGNED_DIR, parent_name)
-    if !isdir(dirname) return 0 end
-    dircontents = readdir(dirname);
-    return length(find(i -> contains(dircontents[i], ".jls"), 1:length(dircontents)))
-end
-
-function load_split(parent_name, split_index)
-    filename = joinpath(ALIGNED_DIR, parent_name, "$split_index.jls")
-    println("Loading meshset for ", parent_name, ": child ", split_index, " / ", count_children(parent_name));
-    return load(filename);
-end
-
-function make_stack(first_index, last_index)
-	registry = get_registry(first_index); params = get_params(first_index); indices = get_range_in_registry(first_index, last_index);
-
-	Ms = MeshSet(params);
-	dy = 0; dx = 0;
-
-  for i in indices
-    name = registry[i, 1]
-    index = registry[i, 2]
-    if params[:global_offsets] == true
-    	dy = registry[i, 3]
-    	dx = registry[i, 4]
-    elseif i == maximum(indices)
-    	dy += registry[i, 3]
-    	dx += registry[i, 4]
-    end
-    size_i = registry[i, 5]
-    size_j = registry[i, 6]
-    add_mesh(Mesh(name, size_i, size_j, index, dy, dx, false, params), Ms)
-  end
-  optimize_all_cores(Ms.params)
-  return Ms;
-end
 
 function load_stack(offsets, wafer_num, section_range)
   indices = find(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] in section_range, 1:size(offsets, 1))
