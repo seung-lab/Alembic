@@ -901,6 +901,12 @@ function get_matches{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T})
                                     dst_image_sub))
         end
     end
+    @everywhere src_image_sub = 0
+    @everywhere src_image_sub = 0
+    @everywhere dst_image_sub = 0
+    @everywhere dst_image_sub = 0
+    @everywhere gc();
+    @everywhere gc();
     return matches
 end
 
