@@ -520,7 +520,7 @@ end
 
 # if from_disk src_image / dst_image are indices
 # function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma; from_disk = false)
-function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, bandpass_sigmas; me = get_matchenv(src_range, dst_range_full, bandpass = bandpass_sigmas), meanpad = true)
+function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, bandpass_sigmas; me = get_matchenv(src_range, dst_range_full, bandpass = bandpass_sigmas), meanpad = true)
     clean!(me)
     indices_within_range = findin(dst_range_full[1], dst_range[1]), findin(dst_range_full[2], dst_range[2])
     @fastmath @inbounds me.src_patch_full[:] = view(src_image, src_range...)
