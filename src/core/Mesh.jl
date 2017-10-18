@@ -194,11 +194,70 @@ function Mesh(index, fixed=false; T=Float64)
 
 	n = maximum([get_mesh_index(dims, dims[1], dims[2]); get_mesh_index(dims, dims[1], dims[2]-1)]);
 	m = 0;
-	m_upperbound = 3 * n;
+	m_upperbound = 6 * n;
 
 	src_nodes = Points{T}(2, n);
 	edges = spzeros(T, n, m_upperbound);
+	
+	edges_meshinds = Array{Int64}(m_upperbound)
+	edges_edgeinds = Array{Int64}(m_upperbound)
+	edges_vals = Array{Float64}(m_upperbound)
 
+	meshindex = fill(0, dims[1], dims[2])
+	@fastmath @inbounds for i in 1:dims[1], j in 1:dims[2]
+		k = get_mesh_index(dims, i, j); if k == 0 continue; end
+		meshindex[i,j] = k
+		view(src_nodes,:,k)[:] = get_mesh_coord(dims, topleft_offset, dists, i, j);
+		end
+
+	function addedge(m, cur, k, i, j, meshindex, edges_meshinds, edges_edgeinds, edges_vals)
+		  edges_meshinds[cur] = k
+		  edges_edgeinds[cur] = m
+		  edges_vals[cur] = -1.0
+
+		  cur += 1;
+		  edges_meshinds[cur] = meshindex[i, j]
+		  edges_edgeinds[cur] = m
+		  edges_vals[cur] = +1.0
+	end
+
+	cur = -1
+	@fastmath @inbounds for i in 1:dims[1], j in 1:dims[2]
+	  	k = meshindex[i, j]; if k== 0 continue; end
+		if (j != 1)
+		  	m += 1;
+			cur += 2;
+			addedge(m, cur, k, i, j-1, meshindex, edges_meshinds, edges_edgeinds, edges_vals);
+		end
+
+		if (i != 1)
+			if iseven(i) || j != dims[2]
+		  	m += 1;
+			cur += 2;
+			addedge(m, cur, k, i-1, j, meshindex, edges_meshinds, edges_edgeinds, edges_vals);
+			end
+			if iseven(i) && (j != dims[2]) 			
+		  	m += 1;
+			cur += 2;
+			addedge(m, cur, k, i-1, j+1, meshindex, edges_meshinds, edges_edgeinds, edges_vals);
+			end
+			if isodd(i) && (j != 1)
+		  	m += 1;
+			cur += 2;
+			addedge(m, cur, k, i-1, j-1, meshindex, edges_meshinds, edges_edgeinds, edges_vals);
+			end
+			if isodd(i) && ((j == 1) || (j == dims[2]))
+		  	m += 1;
+			cur += 2;
+			addedge(m, cur, k, i-2, j, meshindex, edges_meshinds, edges_edgeinds, edges_vals);
+			end
+		end
+	end
+	cur += 1;
+	edges = sparse(edges_meshinds[1:cur], edges_edgeinds[1:cur], edges_vals[1:cur], n, m);
+
+	#= legacy code
+      @time begin
 	@fastmath @inbounds for i in 1:dims[1], j in 1:dims[2]
 		k = get_mesh_index(dims, i, j); if k == 0 continue; end
 		view(src_nodes,:,k)[:] = get_mesh_coord(dims, topleft_offset, dists, i, j);
@@ -220,9 +279,14 @@ function Mesh(index, fixed=false; T=Float64)
 				m += 1; edges[k, m] = -1; edges[get_mesh_index(dims, i-2, j), m] = 1;
 			end
 		end
+		
 	end
 
+      end
+
+
 	@inbounds edges = edges[:, 1:m];
+	=#
 	dst_nodes = deepcopy(src_nodes);
 
 	properties = Dict{Symbol, Any}(
