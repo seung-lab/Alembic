@@ -31,7 +31,7 @@ def receive_messages(queue_name):
 			preprocessing.main(message)
 			q.delete_message(m)
 		else:
-			time.sleep(5)
+			return True
 
 if __name__ == "__main__":
     receive_messages(sys.argv[1])
