@@ -5,13 +5,13 @@ type MeshSet
 end
 
 ### IO.jl
-function get_index(meshset::MeshSet) 	
-  return get_index(meshset.meshes[1]), get_index(meshset.meshes[end]) 
+function get_index(ms::MeshSet) 	
+  return get_index(ms.meshes[1]), get_index(ms.meshes[end]) 
 end
 
-function get_images(meshset::MeshSet, dtype = UInt8)	return map(get_image, meshset.meshes, repeated(dtype));	end
-function get_correspondence_patches(meshset::MeshSet, match_ind, corr_ind) return get_correspondence_patches(meshset.matches[match_ind], corr_ind)	end
-function get_params(meshset::MeshSet)			return meshset.properties[:params];		end
+function get_images(ms::MeshSet, dtype = UInt8)	return map(get_image, ms.meshes, repeated(dtype));	end
+function get_correspondence_patches(ms::MeshSet, match_ind, corr_ind) return get_correspondence_patches(ms.matches[match_ind], corr_ind)	end
+function get_params(ms::MeshSet)			return ms.properties[:params];		end
 
 function Base.string(ms::MeshSet)
   s = Dict()
@@ -21,231 +21,223 @@ function Base.string(ms::MeshSet)
   return JSON.dump(s)
 end
 
-#function get_fixed(meshset::MeshSet)			return meshset.properties["fixed"];		end
+#function get_fixed(ms::MeshSet)			return ms.properties["fixed"];		end
 
 ### counting
-function count_meshes(meshset::MeshSet)			return length(meshset.meshes);		end
-function count_matches(meshset::MeshSet)		return length(meshset.matches);		end
-function count_nodes(meshset::MeshSet)			return sum(map(count_nodes, meshset.meshes));		end
-function count_edges(meshset::MeshSet)			return sum(map(count_edges, meshset.meshes));		end
-function count_correspondences(meshset::MeshSet)	return sum(map(count_correspondences, meshset.matches));		end
-function count_filtered_correspondences(meshset::MeshSet)	return sum(map(count_filtered_correspondences, meshset.matches));		end
-
-function get_mesh(meshset::MeshSet, index)
-  return meshset.meshes[find_mesh_index(meshset, index)]
-end
-
-function get_matches(meshset::MeshSet, index)
-  k = find(i -> (index == get_src_index(i)) || (index == get_dst_index(i)), meshset.matches)
-  return meshset.matches[k]
-end
+function count_meshes(ms::MeshSet)			return length(ms.meshes);		end
+function count_matches(ms::MeshSet)		return length(ms.matches);		end
+function count_nodes(ms::MeshSet)			return sum(map(count_nodes, ms.meshes));		end
+function count_edges(ms::MeshSet)			return sum(map(count_edges, ms.meshes));		end
+function count_correspondences(ms::MeshSet)	return sum(map(count_correspondences, ms.matches));		end
+function count_filtered_correspondences(ms::MeshSet)	return sum(map(count_filtered_correspondences, ms.matches));		end
 
 ### finding
-function find_mesh_index(meshset::MeshSet, index)  	return findfirst(this -> index == get_index(this), meshset.meshes)	end
-function find_mesh_index(meshset::MeshSet, mesh::Mesh)	return find_mesh_index(meshset, get_index(mesh))			end
-function contains_mesh(meshset::MeshSet, index)		return !(find_mesh_index(meshset, index) == 0)				end
-function contains_mesh(meshset::MeshSet, mesh::Mesh)	return contains_mesh(meshset, get_index(mesh))				end
-function find_match_index(meshset::MeshSet, src_index, dst_index)
-  	return findfirst(this -> (src_index == get_src_index(this)) && (dst_index == get_dst_index(this)), meshset.matches)
+function find_mesh_index(ms::MeshSet, index)  	return findfirst(this -> index == get_index(this), ms.meshes)	end
+function find_mesh_index(ms::MeshSet, mesh::Mesh)	return find_mesh_index(ms, get_index(mesh))			end
+function find_match_index(ms::MeshSet, src_index, dst_index)
+    return findfirst(this -> (src_index == get_src_index(this)) && (dst_index == get_dst_index(this)), ms.matches)
 end
-function find_match_index(meshset::MeshSet, match::Match)
-	return find_match_index(meshset, get_src_and_dst_indices(match)...);
+function find_match_index(ms::MeshSet, match::Match)
+  return find_match_index(ms, get_src_and_dst_indices(match)...);
 end
-function find_match_indices(meshset::MeshSet, index)
+function find_match_indices(ms::MeshSet, index)
   indices = []
-  indices = [indices, find(this->index==get_src_index(this), meshset.matches)]
-  indices = [indices, find(this->index==get_dst_index(this), meshset.matches)]
+  indices = [indices, find(this->index==get_src_index(this), ms.matches)]
+  indices = [indices, find(this->index==get_dst_index(this), ms.matches)]
   return indices
 end
 
-### finding subs for purposes of making submeshsets
-function find_matches_subarray(meshset::MeshSet, meshes::Array{Mesh, 1})
-	matches_sub = Array{Match, 1}(0);
-	meshes_inds = [get_index(mesh) for mesh in meshes]
-	for match in meshset.matches
-	  if issubset(get_src_and_dst_indices(match), meshes_inds)
-	    push!(matches_sub, match);
-	  end
-	end
-	return matches_sub;
+### getting
+function collect_z(ms::MeshSet)
+  return unique(map(get_z, ms.meshes))
 end
 
-function find_meshes_subarrays(meshset::MeshSet)
-  meshes_subs = Array{Array{Mesh, 1}, 1}(0);
-  current_sub = Array{Mesh, 1}(0)
-  for (index, mesh) in enumerate(meshset.meshes)
-      push!(current_sub, mesh);
-      if (is_fixed(mesh) && index != 1) || index == count_meshes(meshset)
-	if !is_fixed(current_sub[end-1])
-		push!(meshes_subs, current_sub);
-        end
-  	current_sub = Array{Mesh, 1}(0)
-        push!(current_sub, mesh);
-      end
-  end
-  return meshes_subs;
+function collect_mesh_indices(ms::MeshSet)
+  return map(get_index, ms.meshes)
 end
 
-function make_submeshsets(meshset::MeshSet)
-   meshes_subs = find_meshes_subarrays(meshset);
-   matches_subs = [find_matches_subarray(meshset, meshes) for meshes in meshes_subs];
-   meshsets = Array{MeshSet, 1}(map(MeshSet, meshes_subs, matches_subs, repeated(meshset.properties)));
-   return meshsets;
+function Base.in(index, ms::MeshSet)
+  return index in collect_mesh_indices(ms)
+end
+
+function Base.in(mesh::Mesh, ms::MeshSet)
+  return get_index(mesh) in collect_mesh_indices(ms)
+end
+
+function get_subsections(ms::MeshSet, index)
+  return ms.meshes[collect_z(ms) .== get_z(index)]
+end
+
+function get_subsections(ms::MeshSet, mesh::Mesh)
+  return ms.meshes[collect_z(ms) .== get_z(mesh)]
+end
+
+function get_mesh(ms::MeshSet, index)
+  return ms.meshes[find_mesh_index(ms, index)]
+end
+
+function get_meshes(ms::MeshSet)
+  return ms.meshes
+end
+
+function get_match(ms::MeshSet, index)
+  k = find(i -> (index == get_src_index(i)) || (index == get_dst_index(i)), ms.matches)
+  return ms.matches[k]
 end
 
 # Mesh.jl extensions
-function fix!(meshset::MeshSet, mesh_ind::Int64) 	
-  fix!(meshset.meshes[mesh_ind]); 	
+function fix!(ms::MeshSet, mesh_index::Int64) 	
+  fix!(ms.meshes[mesh_index]); 	
 end
 
-function fix!(meshset::MeshSet, mesh_ind_first::Int64, mesh_ind_last::Int64)
-	for mesh_ind in mesh_ind_first:mesh_ind_last	
-    fix!(meshset.meshes[mesh_ind]);		
+function fix!(ms::MeshSet, mesh_indices)
+	for i in mesh_indices	
+    fix!(ms.meshes[i]);		
   end
 end
 
-function fix!(meshset::MeshSet)
-	for mesh in meshset.meshes			
+function fix!(ms::MeshSet)
+	for mesh in ms.meshes			
     fix!(mesh);			 	
   end
 end
 
-function fix_ends!(meshset::MeshSet)
-   unfix!(meshset); fix!(meshset, 1); fix!(meshset, length(meshset.meshes));
+function fix_ends!(ms::MeshSet)
+   unfix!(ms); fix!(ms, 1); fix!(ms, length(ms.meshes));
 end
 
-function unfix!(meshset::MeshSet, mesh_ind::Int64)	
-  unfix!(meshset.meshes[mesh_ind]);	
+function unfix!(ms::MeshSet, mesh_index::Int64)	
+  unfix!(ms.meshes[mesh_index]);	
 end
 
-function unfix!(meshset::MeshSet, mesh_ind_first::Int64, mesh_ind_last::Int64)
-	for mesh_ind in mesh_ind_first:mesh_ind_last
-  	unfix!(meshset.meshes[mesh_ind]);
+function unfix!(ms::MeshSet, mesh_indices)
+	for mesh_index in mesh_indices
+  	unfix!(ms.meshes[mesh_index]);
   end
 end
 
-function unfix!(meshset::MeshSet)
-  for mesh in meshset.meshes
+function unfix!(ms::MeshSet)
+  for mesh in ms.meshes
   	unfix!(mesh);
   end
 end
 
 ### adding
-function add_mesh!(meshset::MeshSet, mesh::Mesh)
-  push!(meshset.meshes, mesh);
-  sort!(meshset.meshes; by=get_index)
+function add_mesh!(ms::MeshSet, mesh::Mesh)
+  push!(ms.meshes, mesh);
+  sort!(ms.meshes; by=get_index)
 end
 
-function add_match!(meshset::MeshSet, match::Match)
-  push!(meshset.matches, match);
-  sort!(meshset.matches; by=get_src_and_dst_indices)
+function add_match!(ms::MeshSet, match::Match)
+  push!(ms.matches, match);
+  sort!(ms.matches; by=get_src_and_dst_indices)
 end
 
-function add_matches!(meshset::MeshSet, matches::Array{Match,1})
-  append!(meshset.matches, matches);
-  sort!(meshset.matches; by=get_src_and_dst_indices)
+function add_matches!(ms::MeshSet, matches::Array{Match,1})
+  append!(ms.matches, matches);
+  sort!(ms.matches; by=get_src_and_dst_indices)
 end
 
-function remove_match!(meshset::MeshSet, src_index, dst_index)
-  i = find_match_index(meshset, src_index, dst_index)
-  deleteat!(meshset.matches, i)
+function remove_match!(ms::MeshSet, src_index, dst_index)
+  i = find_match_index(ms, src_index, dst_index)
+  deleteat!(ms.matches, i)
 end
 
-function remove_mesh!(meshset::MeshSet, index)
-  i = find_mesh_index(meshset, index)
+function remove_mesh!(ms::MeshSet, index)
+  i = find_mesh_index(ms, index)
   if i != 0
-    deleteat!(meshset.meshes, i)
-    match_indices = find_match_indices(meshset, index)
-    mask = collect(setdiff(Set(1:length(meshset.matches)), match_indices))
-    meshset.matches = meshset.matches[mask]
+    deleteat!(ms.meshes, i)
+    match_indices = find_match_indices(ms, index)
+    mask = collect(setdiff(Set(1:length(ms.matches)), match_indices))
+    ms.matches = ms.matches[mask]
   end
 end
 
 ### reviewing
-function set_reviewed!(meshset::MeshSet, match_ind, flag = false)
-	set_reviewed!(meshset.matches[match_ind], flag);
+function set_reviewed!(ms::MeshSet, match_ind, flag = false)
+	set_reviewed!(ms.matches[match_ind], flag);
 end
 
-function is_reviewed(meshset::MeshSet, match_ind)
-  return is_reviewed(meshset.matches[match_ind])
+function is_reviewed(ms::MeshSet, match_ind)
+  return is_reviewed(ms.matches[match_ind])
 end
 
-function is_reviewed(meshset::MeshSet)
-  return (&)(map(is_reviewed, meshset.matches)...)
+function is_reviewed(ms::MeshSet)
+  return (&)(map(is_reviewed, ms.matches)...)
 end
 
-function count_flags(meshset::MeshSet)
-  return sum(map(is_flagged, meshset.matches))
+function count_flags(ms::MeshSet)
+  return sum(map(is_flagged, ms.matches))
 end
 
-function flag!(meshset::MeshSet, match_ind)
-  flag!(meshset.matches[match_ind])
+function flag!(ms::MeshSet, match_ind)
+  flag!(ms.matches[match_ind])
 end
 
-function unflag!(meshset::MeshSet, match_ind)
-  unflag!(meshset.matches[match_ind])
+function unflag!(ms::MeshSet, match_ind)
+  unflag!(ms.matches[match_ind])
 end
 
-function unflag!(meshset::MeshSet)
-  map(unflag!, meshset.matches)
+function unflag!(ms::MeshSet)
+  map(unflag!, ms.matches)
 end
 
-function is_flagged(meshset::MeshSet, match_ind)
-  return is_flagged(meshset.matches[match_ind])
+function is_flagged(ms::MeshSet, match_ind)
+  return is_flagged(ms.matches[match_ind])
 end
 
-function is_flagged(meshset::MeshSet)
-  return |(map(is_flagged, meshset.matches)...)
+function is_flagged(ms::MeshSet)
+  return |(map(is_flagged, ms.matches)...)
 end
 
-function check!(meshset::MeshSet, crits=meshset.properties[:params][:review])
-  unflag!(meshset)
-  meshset.properties[:params][:review] = crits
-  return |(map(check!, meshset.matches, repeated(Base.values(crits)))...)
+function check!(ms::MeshSet, crits=ms.properties[:params][:review])
+  unflag!(ms)
+  ms.properties[:params][:review] = crits
+  return |(map(check!, ms.matches, repeated(Base.values(crits)))...)
 end
 
-function filter!(meshset::MeshSet, filters::Dict=meshset.properties[:params][:filter])
+function filter!(ms::MeshSet, filters::Dict=ms.properties[:params][:filter])
   filters = collect(Base.values(filters))
   filters = filters[sortperm(map(getindex, filters, repeated(1)))]
   for filter in filters
-    filter!(meshset, filter)
+    filter!(ms, filter)
   end
-  passed = !check!(meshset)
+  passed = !check!(ms)
   passed ? println("check passed") : println("check failed")
 end
 
-function filter!(meshset::MeshSet, filter::Tuple)
-  total = sum(map(filter!, meshset.matches, repeated(filter)))
-  println("$total / $(count_correspondences(meshset)) correspondences filtered on $filter")
+function filter!(ms::MeshSet, filter::Tuple)
+  total = sum(map(filter!, ms.matches, repeated(filter)))
+  println("$total / $(count_correspondences(ms)) correspondences filtered on $filter")
 end
 
-function clear_filters!(meshset::MeshSet)
-  for match in meshset.matches
+function clear_filters!(ms::MeshSet)
+  for match in ms.matches
     clear_filters!(match)
   end
 end
 
-function refilter!(meshset::MeshSet, filters=meshset.properties[:params][:filter])
-  clear_filters!(meshset)
-  filter!(meshset, filters)
+function refilter!(ms::MeshSet, filters=ms.properties[:params][:filter])
+  clear_filters!(ms)
+  filter!(ms, filters)
 end
 
-function check_and_fix!(meshset::MeshSet, 
-                  crits = Base.values(meshset.properties[:params][:review]), 
-                  filters = Base.values(meshset.properties[:params][:filter])) 
-  if check!(meshset, crits)
-    for match in meshset.matches
+function check_and_fix!(ms::MeshSet, 
+                  crits = Base.values(ms.properties[:params][:review]), 
+                  filters = Base.values(ms.properties[:params][:filter])) 
+  if check!(ms, crits)
+    for match in ms.matches
       if is_flagged(match)
       	clear_filters!(match);
       	map(filter!, repeated(match), filters)
       end
     end
-    fixed = !check!(meshset, crits);
+    fixed = !check!(ms, crits);
     if fixed
       println("fixed successfully");
     else 
-      println("failed to fix meshset")
-      for match in meshset.matches
+      println("failed to fix ms")
+      for match in ms.matches
         if is_flagged(match)
         	# clear_filters!(match);
           flag!(match)
@@ -255,27 +247,27 @@ function check_and_fix!(meshset::MeshSet,
   end
 end
 
-function get_parent(meshset::MeshSet)
+function get_parent(ms::MeshSet)
   parent = nothing
-  if haskey(meshset.properties, :meta)
-    if haskey(meshset.properties[:meta], :parent)
-      parent = meshset.properties[:meta][:parent]
+  if haskey(ms.properties, :meta)
+    if haskey(ms.properties[:meta], :parent)
+      parent = ms.properties[:meta][:parent]
     end
   end
   return parent
 end
 
-function split_meshset(meshset::MeshSet)
-	for mesh in meshset.meshes
+function split_ms(ms::MeshSet)
+	for mesh in ms.meshes
 	  save(mesh);
 	end
-	for match in meshset.matches
+	for match in ms.matches
 	  save(match)
 	end
-	return (vcat(map(get_path, meshset.meshes), map(get_path, meshset.matches)));
+	return (vcat(map(get_path, ms.meshes), map(get_path, ms.matches)));
 end
 
-function compile_meshset(first_index, last_index)
+function compile_ms(first_index, last_index)
   inds = get_index_range(first_index, last_index);
   println("Compiling MeshSet between $first_index and $last_index - $(length(inds)) meshes expected")
   mesh_inds = Array{Index, 1}();
@@ -326,7 +318,7 @@ function compile_meshset(first_index, last_index)
   return ms;
 end
 
-function concat_meshset(parent_name)
+function concat_ms(parent_name)
 	ms = MeshSet();
 	for i in 1:count_children(parent_name)
 		cms = load_split(parent_name, i)
@@ -348,9 +340,9 @@ function concat_meshset(parent_name)
 end
 
 """
-Create partial meshset of a meshset split into children
+Create partial ms of a ms split into children
 """
-function compile_partial_meshset(parent_name, firstindex, lastindex)
+function compile_partial_ms(parent_name, firstindex, lastindex)
   ms = MeshSet()
   indices = get_index_range(prealigned(firstindex), prealigned(lastindex))
   ind = []
@@ -375,14 +367,14 @@ function find_mesh_indices(firstindex, lastindex, index)
   ind = []
   for i in 1:count_children(parent_name)
     ms = load_split(parent_name, i)
-    if contains_mesh(ms, index)
+    if index in ms
       push!(ind, i)
     end
   end
   return ind
 end
 
-function concat_meshsets(filenames::Array)
+function concat_mss(filenames::Array)
   println(filenames[1])
   ms = load(filenames[1])
   for fn in filenames[2:end]
@@ -409,21 +401,21 @@ function merge_meshes!(meshesA, meshesB)
 end
 
 """
-Combine unique matches and meshes from meshset_two into meshset_one
+Combine unique matches and meshes from ms_two into ms_one
 """
-function concat!(meshset_one::MeshSet, meshset_two::MeshSet)
-  for match in meshset_two.matches
+function concat!(ms_one::MeshSet, ms_two::MeshSet)
+  for match in ms_two.matches
     src_index = get_src_index(match)
     dst_index = get_dst_index(match)
-    ind = find_match_index(meshset_one, src_index, dst_index)
+    ind = find_match_index(ms_one, src_index, dst_index)
     if ind == 0
-      push!(meshset_one.matches, match)
+      push!(ms_one.matches, match)
     end
   end
-  merge_meshes!(meshset_two.meshes, meshset_one.meshes)
-  sort!(meshset_one.matches; by=get_dst_index)
-  sort!(meshset_one.matches; by=get_src_index)
-	return meshset_one;
+  merge_meshes!(ms_two.meshes, ms_one.meshes)
+  sort!(ms_one.matches; by=get_dst_index)
+  sort!(ms_one.matches; by=get_src_index)
+	return ms_one;
 end
 
 ### initialise
@@ -449,39 +441,39 @@ function MeshSet(indices::Array; solve=true, solve_method=:elastic)
           :parent => nothing,
           :split_index => 0)
           )
-  meshset = MeshSet(meshes, matches, properties);
-  match!(meshset, PARAMS[:match][:depth]; reflexive = PARAMS[:match][:reflexive]);
+  ms = MeshSet(meshes, matches, properties);
+  match!(ms, PARAMS[:match][:depth]; reflexive = PARAMS[:match][:reflexive]);
 
-  # save(meshset)
-  filter!(meshset);
-  check!(meshset);
-  # save(meshset);
+  # save(ms)
+  filter!(ms);
+  check!(ms);
+  # save(ms);
 
   if solve == true
-    solve!(meshset, method=solve_method);
-    # save(meshset);
+    solve!(ms, method=solve_method);
+    # save(ms);
   end
 
-  return meshset;
+  return ms;
 end
 
-function mark_solved!(meshset::MeshSet)
-  meshset.properties[:meta]["solved"] = author()
+function mark_solved!(ms::MeshSet)
+  ms.properties[:meta][:solved] = author()
 end
 
-function reset!(meshset::MeshSet)
-  m = string("Are you sure you want to reset all the meshes in ", get_name(meshset), "?")
+function reset!(ms::MeshSet)
+  m = string("Are you sure you want to reset all the meshes in ", get_name(ms), "?")
   if user_approves(m)
-    for mesh in meshset.meshes
+    for mesh in ms.meshes
       reset!(mesh)
     end
-    meshset.properties[:meta]["reset"] = author()
+    ms.properties[:meta][:reset] = author()
   end
 end
 
 ### match
-function get_all_overlaps(meshset::MeshSet, within = 1; reflexive = reflexive)	
-  return get_all_overlaps(meshset.meshes, within; reflexive = reflexive);	
+function get_all_overlaps(ms::MeshSet, within = 1; reflexive = reflexive)	
+  return get_all_overlaps(ms.meshes, within; reflexive = reflexive);	
 end
 
 function get_all_overlaps(meshes::Array{Mesh, 1}, within = 1; reflexive = true)
@@ -511,48 +503,49 @@ Generate matches between all meshes (& components) that overlap
   Uses `get_matches` which matches taking crack & fold masks into account.
     Meshes will be duplicated so that each mask component has its own mesh.
 """
-function match!(ms::MeshSet, within=1; reflexive=true)
+function match!(ms::MeshSet, within=1; reflexive=PARAMS[:match][:reflexive])
 	pairs = get_all_overlaps(ms, within; reflexive=reflexive);
 	for pair in pairs
 		add_matches!(ms, get_matches(ms.meshes[pair[1]], ms.meshes[pair[2]]));
 	end
+
   # add meshes for sections with multiple mask components
+  function add_subsection!(ms, index)
+    if !(index in ms) & is_subsection(index) & (get_z(index) in ms)
+      mesh = ms.meshes[find_mesh_index(ms, get_z(index))]
+      new_mesh = deepcopy(mesh, index=index)
+      add_mesh!(ms, new_mesh)
+    end
+  end
+
   for m in ms.matches
-    if is_subsection(m.src_index) & contains_mesh(ms, m.src_index)
-      mesh = ms.meshes[find_mesh_index(ms, get_z(m.src_index))]
-      new_mesh = deepcopy(mesh, index=m.src_index)
-      add_mesh!(ms, new_mesh)
-    end
-    if is_subsection(m.dst_index) & contains_mesh(ms, m.dst_index)
-      mesh = ms.meshes[find_mesh_index(ms, get_z(m.dst_index))]
-      new_mesh = deepcopy(mesh, index=m.dst_index)
-      add_mesh!(ms, new_mesh)
-    end
+    add_subsection!(ms, m.src_index)
+    add_subsection!(ms, m.dst_index)
   end
 end
 
 # filters any correspondence that cannot be triangulated
-function sanitize!(meshset::MeshSet)
+function sanitize!(ms::MeshSet)
   meshes = Dict{Any, Any}();
-  for mesh in meshset.meshes
+  for mesh in ms.meshes
   	meshes[get_index(mesh)] = mesh;
   end
 
-  for match in meshset.matches
-    	src_mesh = meshes[match.src_index];
-    	dst_mesh = meshes[match.dst_index];
-	src_pts, dst_pts = get_correspondences(match);
-	src_pt_triangles = map(find_mesh_triangle, repeated(src_mesh), columnviews(src_pts));
-	dst_pt_triangles = map(find_mesh_triangle, repeated(dst_mesh), columnviews(dst_pts));
-	invalids = union(find(ind -> src_pt_triangles[ind] == NO_TRIANGLE, 1:count_correspondences(match)), find(ind -> dst_pt_triangles[ind] == NO_TRIANGLE, 1:count_correspondences(match)))
-	if length(invalids) !=0
-	clear_filters!(match; filtertype = :sanitization);
-	filter_manual!(match, invalids; filtertype = :sanitization);
-	end
+  for match in ms.matches
+  	src_mesh = meshes[match.src_index];
+  	dst_mesh = meshes[match.dst_index];
+  	src_pts, dst_pts = get_correspondences(match);
+  	src_pt_triangles = map(find_mesh_triangle, repeated(src_mesh), columnviews(src_pts));
+  	dst_pt_triangles = map(find_mesh_triangle, repeated(dst_mesh), columnviews(dst_pts));
+  	invalids = union(find(ind -> src_pt_triangles[ind] == NO_TRIANGLE, 1:count_correspondences(match)), find(ind -> dst_pt_triangles[ind] == NO_TRIANGLE, 1:count_correspondences(match)))
+  	if length(invalids) !=0
+    	clear_filters!(match; filtertype = :sanitization);
+    	# filter_manual!(match, invalids; filtertype = :sanitization);
+  	end
   end
 end
 
-function parse_meshset_filename(name::AbstractString)
+function parse_ms_filename(name::AbstractString)
     indexA, indexB = NO_INDEX, NO_INDEX
     # aligned-section
     m = Base.match(r"(\d*),(\d*)-(\d*),(\d*)_aligned", name)
@@ -584,7 +577,7 @@ end
 
 function load_stack(offsets, wafer_num, section_range)
   indices = find(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] in section_range, 1:size(offsets, 1))
-  Ms = MeshSet(PARAMS_ALIGNMENT)
+  ms = MeshSet(PARAMS_ALIGNMENT)
   images = Array{SharedArray{UInt8, 2}, 1}(0)
 
   for i in indices
@@ -593,20 +586,20 @@ function load_stack(offsets, wafer_num, section_range)
   dx = offsets[i, 4]
   dy = offsets[i, 3]
   image = get_image(get_path(name))
-  add_mesh(Mesh(name, image, index, dy, dx, false, PARAMS_ALIGNMENT), Ms)
+  add_mesh(Mesh(name, image, index, dy, dx, false, PARAMS_ALIGNMENT), ms)
   
   image_shared = SharedArray{UInt8}(size(image, 1), size(image, 2))
   image_shared[:, :] = image[:, :]
   push!(images, image_shared)
   end
 
-  optimize_all_cores(Ms.params)
+  optimize_all_cores(ms.params)
 
-  return Ms, images
+  return ms, images
 end
 
-function get_correspondence_properties(meshset::MeshSet, key)
-  return map(get_correspondence_properties, meshset.matches, repeated(key))
+function get_correspondence_properties(ms::MeshSet, key)
+  return map(get_correspondence_properties, ms.matches, repeated(key))
 end
 
 function get_correspondence_stats(ms::MeshSet, key)

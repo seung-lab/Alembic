@@ -136,7 +136,7 @@ struct Match{T} <: AbstractMatch
   dst_points::Points{T}        # destination point coordinate in image
   correspondence_properties    # in the same array order as points, contains properties of correspondences
 
-  filters    # Array of filters 
+  filters                       # Array of filters 
   properties::Dict{Symbol, Any}
 end
 
@@ -810,7 +810,7 @@ function get_residual_norms_post(match, ms)
 end
 
 function check(match::Match, function_name, compare, threshold, vars...)
-     return compare(eval(function_name)(match, vars...), threshold)
+     return eval(compare)(eval(function_name)(match, vars...), threshold)
 end
 
 function check!(match::Match, crits) 
@@ -824,19 +824,20 @@ function check!(match::Match, crits)
 end
 
 ### ADD MANUAL FILTER
-function filter_manual!(match::Match, inds_to_filter; filtertype="manual")
-	push!(match.filters, Dict{Symbol, Any}(
-				:author	  => author(),
-				:type	  => filtertype,
-				:rejected  => inds_to_filter
-			      ));
-	return;
-end
+# function filter_manual!(match::Match, inds_to_filter; filtertype="manual")
+# 	push!(match.filters, Dict{Symbol, Any}(
+# 				:author	  => author(),
+# 				:type	  => filtertype,
+# 				:rejected  => inds_to_filter
+# 			      ));
+# 	return;
+# end
 
 function clear_filters!(match::Match; filtertype=nothing)
-	match.filters = match.filters[setdiff(1:length(match.filters), find(filter -> filter[:type] == filtertype, match.filters))]
-	if filtertype == nothing	match.filters = DataFrame(); end
-
+	# match.filters = match.filters[setdiff(1:length(match.filters), find(filter -> filter==filtertype, MeshSet(match.filters)))]
+	if filtertype == nothing	
+        match.filters = DataFrame(); 
+    end
 end
 
 function undo_filter!(match::Match)
@@ -863,8 +864,8 @@ Description:
 function get_matches{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T})
     src_index = get_index(src_mesh); 
     dst_index = get_index(dst_mesh);
-    src_image = get_image(src_index, "src_image");  
-    dst_image = get_image(dst_index, "src_image");
+    src_image = get_image(src_index, "match_image");  
+    dst_image = get_image(dst_index, "match_image");
     src_image_sub = deepcopy(src_image)
     dst_image_sub = deepcopy(dst_image)
     println("Getting masks for $(src_index) & $(dst_index):")
@@ -952,7 +953,7 @@ function Match{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T},
 
     filters = DataFrame();
     properties = Dict{Symbol, Any}(
-        :params => params,
+        :params => PARAMS,
         :review => Dict{Symbol, Any}(
                 :flagged => false,
                 :flags => Dict{Symbol, Any}(),

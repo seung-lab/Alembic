@@ -43,6 +43,13 @@ function get_image(mesh::Mesh)				return get_image(mesh.index, "src_image");	end
 function get_index(mesh::Mesh)				
 	return mesh.index;	
 end
+function is_subsection(mesh::Mesh)				
+	return is_subsection(mesh.index);	
+end
+
+function get_z(mesh::Mesh)
+	return get_z(mesh.index)
+end
 
 function get_nodes(mesh::Mesh; globalized::Bool = false, use_post::Bool=false)
 	nodes = use_post ? deepcopy(mesh.dst_nodes) : deepcopy(mesh.src_nodes);

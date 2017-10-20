@@ -6,6 +6,7 @@ global const WORKER_PROCS = setdiff(procs(), [1]);
 else
 global const WORKER_PROCS = [1];
 end
+global const STORAGE_OBJECTS = ["mesh", "match", "meshset"]
 
 # generates Janelia-type tilespec from the registry
 function generate_tilespec_from_registry(index; dataset = "", stack = "", stack_type = "", parent_stack = "")
@@ -71,15 +72,15 @@ function get_scale()
   return 1/(2^get_mip())
 end
 
-function get_z(index)
+function get_z(index::Number)
   return Int(floor(index))
 end
 
-function is_subsection(index)
+function is_subsection(index::Number)
   return get_subsection(index) != 0
 end
 
-function get_subsection(index)
+function get_subsection(index::Number)
   return Int(round((index % get_z(index)) * SPLIT_MESH_BASIS))
 end
 
@@ -91,15 +92,19 @@ function get_name(obj)
   return string(get_index(obj))
 end
 
-function get_preceding(index, n=1)
+function get_preceding(index::Number, n=1)
   return get_z(index)-n
+end
+
+function get_succeeding(index::Number, n=1)
+  return get_z(index)+n
 end
 
 function use_cache()
   return PARAMS[:dirs][:cache]
 end
 
-function is_preceding(indexA, indexB, within=1)
+function is_preceding(indexA::Number, indexB::Number, within=1)
   for i in 1:within 
     if indexA == get_preceding(indexB, i)
       return true
@@ -110,10 +115,9 @@ end
 
 ## Non-image related (Storage)
 
-function load(fn, obj_name)
+function load(fn, obj_name::AbstractString)
   println("Loading $obj_name for $fn")
-  storage_objects = ["mesh", "match"]
-  if obj_name in storage_objects
+  if obj_name in STORAGE_OBJECTS
     s = StorageWrapper(get_path(obj_name))
     return s[fn]
   else
@@ -123,7 +127,7 @@ end
 
 function save(fn, obj)
   obj_name = lowercase(string(typeof(obj)))
-  if obj_name in ["mesh", "match"]
+  if obj_name in STORAGE_OBJECTS
     s = StorageWrapper(get_path(obj_name))
     s[fn] = obj
   else
@@ -133,34 +137,43 @@ end
 
 ## Image related (CloudVolume)
 
-function get_cloudvolume(obj_name)
+function get_cloudvolume(obj_name::AbstractString)
   path = get_path(obj_name)
   mip = get_mip()
   cache = use_cache()
-  return CloudVolumeWrapper(path, mip=mip, cache=cache)
+  return CloudVolumeWrapper(path, mip=mip, cache=cache, 
+                                  bounded=false, fill_missing=true)
 end
 
-function get_image_size(obj_name)
+function get_image_size(obj_name::AbstractString)
   cv = get_cloudvolume(obj_name)
   return size(cv)[1:2]
 end
 
-function get_offset(obj_name)
+function get_offset(obj_name::AbstractString)
   cv = get_cloudvolume(obj_name)
   return offset(cv)[1:2]
 end
 
-function get_image(index, obj_name::AbstractString)
+"""
+Get 3-tuple of ranges representing index in cloudvolume
+"""
+function get_image_slice(index::Number, obj_name)
   cv = get_cloudvolume(obj_name)
   o = get_offset(obj_name)
   s = get_image_size(obj_name)
   z = get_z(index)
   xy_slice = map(range, (o, s)...)
-  slice = tuple(xy_slice..., z)
+  return tuple(xy_slice..., z:z)
+end
+
+function get_image(index::Number, obj_name::AbstractString)
+  cv = get_cloudvolume(obj_name)
+  slice = get_image_slice(index, obj_name)
   return get_image(cv, slice)
 end
 
-function get_image(index, obj_name::AbstractString, slice)
+function get_image(index::Number, obj_name::AbstractString, slice)
   cv = get_cloudvolume(obj_name)
   return get_image(cv, slice)
 end
@@ -173,16 +186,47 @@ function get_image(cv::CloudVolumeWrapper, slice)
   return shared_img
 end
 
-function save_image(index, obj_name::AbstractString, img)
-  cv = get_cloudvolume(obj_name)
-  o = get_offset(obj_name)
-  s = get_image_size(obj_name)
-  z = get_z(index)
-  xy_slice = map(range, (o, s)...)
-  slice = tuple(xy_slice..., z)
-  return get_image(cv, slice, img)
+"""
+Snap to interval-aligned value, given start & interval values (using method)
+"""
+function snap(x, x_start, x_inter, method=floor)
+   return method(Int, (x-x_start)/x_inter)*x_inter+x_start
 end
 
+"""
+Snap slice to be chunk-aligned
+"""
+function chunk_align(obj_name::AbstractString, slice)
+  cv = get_cloudvolume(obj_name)
+  o = offset(cv)
+  c = chunks(cv)
+  x_start = snap(slice[1][1], o[1], c[1], floor)
+  x_stop = snap(slice[1][end], o[1], c[1], ceil)-1
+  y_start = snap(slice[2][1], o[2], c[2], floor)
+  y_stop = snap(slice[2][end], o[2], c[2], ceil)-1
+  z_start = snap(slice[3][1], o[3], c[3], floor)
+  z_stop = snap(slice[3][end], o[3], c[3], ceil)
+  return x_start:x_stop, y_start:y_stop, z_start:z_stop
+end
+
+"""
+Rescope image to be chunk-aligned with cloudvolume data
+"""
+function chunk_align(obj_name::AbstractString, img, src_slice)
+  dst_slice = chunk_align(obj_name, src_slice)
+  return rescope(img, src_slice, dst_slice), dst_slice
+end
+
+function save_image(index::Number, obj_name::AbstractString, src_img, src_slice)
+  cv = get_cloudvolume(obj_name)
+  dst_slice = chunk_align(obj_name, src_slice)
+  dst_img = rescope(src_img, src_slice, dst_slice)
+  return save_image(cv, dst_slice, dst_img)
+end
+
+"""
+Save 2D image to slice in CloudVolume
+"""
 function save_image(cv::CloudVolumeWrapper, slice, img)
-  cv[slice...] = img
+  cv[slice...] = reshape(img, (size(img)..., 1, 1))
 end

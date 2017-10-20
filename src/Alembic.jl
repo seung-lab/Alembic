@@ -73,14 +73,6 @@ global const NO_TRIANGLE = (0, 0, 0);
 global const NO_WEIGHTS = (0.0, 0.0, 0.0);
 global const NO_POINT = [typemin(Int64), typemin(Int64)];
 global const NO_RANGE = (0:0, 0:0);
-global const NO_INDEX = (0, 0, 0, 0);
-
-global const OVERVIEW_INDEX = 0;
-global const PREMONTAGED_INDEX = 1;
-global const MONTAGED_INDEX = -2;
-global const PREALIGNED_INDEX = -3;
-global const ALIGNED_INDEX = -4;
-global const FINISHED_INDEX = -5;
 
 global const eps = 1e-12;
 global const eps_large = 1e-4;
@@ -90,13 +82,10 @@ global const SPLIT_MESH_BASIS = 1000
 
 # blas_set_num_threads(4); #
 
-include("params/load.jl")
 include("core/include.jl")
 include("math/include.jl")
 include("utilities/author.jl")
 include("utilities/utilities.jl")
-include("render/render.jl")
-include("render/imageprocessing.jl")
 
 for s in filter(x->string(x)[1]!='#' && x!=:eval, names(Alembic,true))
   # println("Exporting $s")

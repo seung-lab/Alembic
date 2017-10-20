@@ -6,6 +6,7 @@ function load_params(fn)
 	params_dict = JSON.parsefile(fn)
 	d = params_dict["dirs"]
 	p = params_dict["params"]
+	f = p["filters"]
 	global BUCKET = d["bucket"]
 	global DATASET = d["dataset"]
 	root = joinpath(BUCKET, DATASET)
@@ -22,6 +23,7 @@ function load_params(fn)
 		 	:mask => joinpath(root, d["mask"]),
 		 	:mesh => joinpath(root, d["mesh"]),
 		 	:match => joinpath(root, d["match"]),
+		 	:meshset => joinpath(root, d["meshset"]),
 		 	:cache => d["cache"]
 		  ),
 	     :mesh => Dict(
@@ -34,8 +36,8 @@ function load_params(fn)
 			:block_r => p["block_r"], 
 			:search_r => p["search_r"],
 			:bandpass_sigmas => p["bandpass_sigmas"],
-			:depth => 1,
-			:reflexive => false),
+			:depth => p["depth"],
+			:reflexive => p["reflexive"]),
 	     :solve => Dict(
 			:mesh_spring_coeff => p["mesh_spring_coeff"],
 			:match_spring_coeff => p["match_spring_coeff"],
@@ -48,14 +50,14 @@ function load_params(fn)
 	     	:ftol_newton => 0,
 	     	:method => p["method"]),
 	     :filter => Dict(
-	     		:sigma_filter_high => (1,:get_correspondence_properties, Symbol(>), 6.5, Symbol("xcorr_sigma_0.95")),
-	     		:sigma_filter_mid => (2,:get_correspondence_properties, Symbol(>), 20, Symbol("xcorr_sigma_0.75")),
-	     		:sigma_filter_low => (3,:get_correspondence_properties, Symbol(>), 40, Symbol("xcorr_sigma_0.5")),
-	     		:dyn_range_filter => (4,:get_correspondence_properties, Symbol(<), 0.50, :patches_src_normalized_dyn_range),
-	     		:r_filter => (5,:get_correspondence_properties, Symbol(<), 0.0275, :xcorr_r_max),
-	     		:kurtosis_filter => (6,:get_correspondence_properties, Symbol(>), 25, :patches_src_kurtosis),
-	     		:kurtosis_filter_dst => (7,:get_correspondence_properties, Symbol(>), 50, "dst_kurtosis"),
-	     		:kurtosis_filter_edge => (8,:get_correspondence_properties, Symbol(<), -1.60, :patches_src_kurtosis),
+	     		:sigma_filter_high => (1,:get_correspondence_properties, Symbol(>), f["sigma_filter_high"], Symbol("xcorr_sigma_0.95")),
+	     		:sigma_filter_mid => (2,:get_correspondence_properties, Symbol(>), f["sigma_filter_mid"], Symbol("xcorr_sigma_0.75")),
+	     		:sigma_filter_low => (3,:get_correspondence_properties, Symbol(>), f["sigma_filter_low"], Symbol("xcorr_sigma_0.5")),
+	     		:dyn_range_filter => (4,:get_correspondence_properties, Symbol(<), f["dyn_range_filter"], :patches_src_normalized_dyn_range),
+	     		:r_filter => (5,:get_correspondence_properties, Symbol(<), f["r_filter"], :xcorr_r_max),
+	     		:kurtosis_filter => (6,:get_correspondence_properties, Symbol(>), f["kurtosis_filter"], :patches_src_kurtosis),
+	     		:kurtosis_filter_dst => (7,:get_correspondence_properties, Symbol(>), f["kurtosis_filter_dst"], :patches_dst_kurtosis),
+	     		:kurtosis_filter_edge => (8,:get_correspondence_properties, Symbol(<), f["kurtosis_filter_edge"], :patches_src_kurtosis),
 			      ),
 	     :render => Dict(
 			      ),

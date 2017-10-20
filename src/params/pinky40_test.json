@@ -5,25 +5,38 @@
 		"dataset":"pinky40_alignment",
 		"src_image":"test_prealigned",
 		"dst_image":"test_aligned",
-		"match_image":"test_ncc",
+		"match_image":"test_prealigned",
 		"match":"test_match",
 		"mask":"test_mask",
 		"mesh":"test_mesh",
+		"meshset":"test_meshset",
 		"cache":true
 	},
 	"params":{
 		"method": "elastic",
-		"z_start": 781,
-		"z_stop": 782,
-		"mesh_length": 500,
+		"z_start": 776,
+		"z_stop": 778,
+		"mesh_length": 200,
 		"mip": 0,
-		"block_r": 100,
-		"search_r": 200,
+		"block_r": 200,
+		"search_r": 600,
+		"reflexive":false,
+		"depth": 1,
 		"mesh_spring_coeff": 1.0,
 		"match_spring_coeff": 1.0,
 		"bandpass_sigmas": [2,10],
 		"ftol_cg": 1e-6,
 		"max_iters": 2000,
-		"use_cg": true
+		"use_cg": true,
+		"filters":{
+			"sigma_filter_high": 6.5,
+			"sigma_filter_mid": 20,
+			"sigma_filter_low": 150,
+			"dyn_range_filter": 0.5,
+			"r_filter": 0.0275,
+			"kurtosis_filter": 25,
+			"kurtosis_filter_dst": 50,
+			"kurtosis_filter_edge": -1.60
+		}
 	}
 }
