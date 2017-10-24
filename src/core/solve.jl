@@ -462,7 +462,7 @@ function rectify_drift(meshset::MeshSet, start_ind = 1, final_ind = count_meshes
 	avg_drift = mean(residuals_match);
       end
 
-      if get_params(meshset)[:match][:reflexive]
+      if get_params(meshset)[:match][:symmetric]
 	if is_preceding(get_index(src_mesh), get_index(dst_mesh), 5)
 	  drifts[find_mesh_index(meshset, get_dst_index(match))] -= avg_drift/2;
 	else

@@ -311,32 +311,11 @@ function compile_ms(first_index, last_index)
   ms = MeshSet();
   ms.meshes = meshes;
   ms.matches = matches;
-  ms.properties = Dict{Symbol, Any}(:author => author(), :meta => Dict{Symbol, Any}(:parent => nothing, :split_index => 0), :params => deepcopy(meshes[1].properties[:params]))
+  ms.properties = Dict{Symbol, Any}(:author => author(), :meta => Dict{Symbol, Any}(), :params => deepcopy(meshes[1].properties[:params]))
   
   @everywhere gc();
 
   return ms;
-end
-
-function concat_ms(parent_name)
-	ms = MeshSet();
-	for i in 1:count_children(parent_name)
-		cms = load_split(parent_name, i)
-		append!(ms.matches, cms.matches)
-		for cmesh in cms.meshes
-			ind = find_mesh_index(ms,get_index(cmesh))
-			if ind == 0 push!(ms.meshes, cmesh) end
-		end
-
-		if i == 1
-			ms.properties = deepcopy(cms.properties);
-			ms.properties[:meta][:parent] = nothing;
-			ms.properties[:meta][:split_index] = 0;
-		end
-		println("Child ", i, " / ", count_children(parent_name), " concatanated");
-	end
-  sort!(ms.meshes; by=get_index)
-	return ms;
 end
 
 """
@@ -438,11 +417,10 @@ function MeshSet(indices::Array; solve=true, solve_method=:elastic)
   	  :params  => PARAMS,
           :author => author(),
           :meta => Dict{Symbol, Any}(
-          :parent => nothing,
-          :split_index => 0)
           )
+	  )
   ms = MeshSet(meshes, matches, properties);
-  match!(ms, PARAMS[:match][:depth]; reflexive = PARAMS[:match][:reflexive]);
+  match!(ms, PARAMS[:match][:depth]; symmetric = PARAMS[:match][:symmetric]);
 
   # save(ms)
   filter!(ms);
@@ -472,18 +450,18 @@ function reset!(ms::MeshSet)
 end
 
 ### match
-function get_all_overlaps(ms::MeshSet, within = 1; reflexive = reflexive)	
-  return get_all_overlaps(ms.meshes, within; reflexive = reflexive);	
+function get_all_overlaps(ms::MeshSet, within = 1; symmetric = symmetric)	
+  return get_all_overlaps(ms.meshes, within; symmetric = symmetric);	
 end
 
-function get_all_overlaps(meshes::Array{Mesh, 1}, within = 1; reflexive = true)
+function get_all_overlaps(meshes::Array{Mesh, 1}, within = 1; symmetric = true)
   preceding_pairs = Pairings(0)
   succeeding_pairs = Pairings(0)
 
   for i in 1:length(meshes), j in 1:length(meshes)
     if is_preceding(get_index(meshes[i]), get_index(meshes[j]), within) 
     	push!(preceding_pairs, (i, j)); 
-    	if reflexive 
+    	if symmetric 
         push!(succeeding_pairs, (j, i)); 
       end
     end
@@ -503,8 +481,8 @@ Generate matches between all meshes (& components) that overlap
   Uses `get_matches` which matches taking crack & fold masks into account.
     Meshes will be duplicated so that each mask component has its own mesh.
 """
-function match!(ms::MeshSet, within=1; reflexive=PARAMS[:match][:reflexive])
-	pairs = get_all_overlaps(ms, within; reflexive=reflexive);
+function match!(ms::MeshSet, within=1; symmetric=PARAMS[:match][:symmetric])
+	pairs = get_all_overlaps(ms, within; symmetric=symmetric);
 	for pair in pairs
 		add_matches!(ms, get_matches(ms.meshes[pair[1]], ms.meshes[pair[2]]));
 	end
@@ -556,9 +534,13 @@ function parse_ms_filename(name::AbstractString)
     return indexA, indexB
 end
 
-function make_stack()
+function make_stack(start_index, end_index)
+	return make_stack(intersect(start_index:end_index, get_z_range()))
+end
+
+function make_stack(indices = get_z_range())
 	ms = MeshSet();
-  for i in get_z_range()
+  for i in indices
     add_mesh!(ms, Mesh(i))
   end
   return ms
