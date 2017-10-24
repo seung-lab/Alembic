@@ -1,6 +1,6 @@
 function author()
 	return Dict{Any, Any}(
-					"by"	  => ENV["USER"],
+#					"by"	  => ENV["USER"],
 					"machine" => gethostname(),
 					"timestamp" => string(now())
 		)
