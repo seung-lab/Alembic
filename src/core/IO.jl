@@ -7,6 +7,38 @@ else
 global const WORKER_PROCS = [1];
 end
 global const STORAGE_OBJECTS = ["mesh", "match", "meshset"]
+global const IMG_CACHE_SIZE = 20 * 2^30
+global const IMG_ELTYPE = UInt8
+
+if myid() == 1
+  # Image Cache indexed by index, obj_name, miplevel
+  global const IMG_CACHE_DICT = Dict{Tuple{Number, AbstractString, Int64}, SharedArray}()
+  global const IMG_CACHE_LIST = Array{Any, 1}()
+end
+
+
+  
+function reset_cache()
+  IMG_CACHE_DICT = Dict{Tuple{AbstractString, Float64}, SharedArray}()
+  IMG_CACHE_LIST = Array{Any, 1}()
+  @time @everywhere gc();
+end
+
+function clean_cache()
+	if sum(map(Int64, map(length, values(IMG_CACHE_DICT)))) > IMG_CACHE_SIZE && !(length(IMG_CACHE_DICT) < 2)
+	while sum(map(Int64, map(length, values(IMG_CACHE_DICT)))) > IMG_CACHE_SIZE * 0.50 && !(length(IMG_CACHE_DICT) < 2)
+		todelete = shift!(IMG_CACHE_LIST);
+		IMG_CACHE_DICT[todelete] = zeros(IMG_ELTYPE,0,0)
+		delete!(IMG_CACHE_DICT, todelete)
+	end
+	print("cache garbage collection:")
+	@time gc();
+      end
+
+	cur_cache_size = sum(map(Int64, map(length, values(IMG_CACHE_DICT))));
+	println("current cache usage: $cur_cache_size / $IMG_CACHE_SIZE (bytes), $(round(Int64, cur_cache_size/IMG_CACHE_SIZE * 100))%")
+end
+
 
 # generates Janelia-type tilespec from the registry
 function generate_tilespec_from_registry(index; dataset = "", stack = "", stack_type = "", parent_stack = "")
@@ -137,53 +169,66 @@ end
 
 ## Image related (CloudVolume)
 
-function get_cloudvolume(obj_name::AbstractString)
+function get_cloudvolume(obj_name::AbstractString, mip::Int64 = get_mip())
   path = get_path(obj_name)
-  mip = get_mip()
   cache = use_cache()
   return CloudVolumeWrapper(path, mip=mip, cache=cache, 
                                   bounded=false, fill_missing=true)
 end
 
-function get_image_size(obj_name::AbstractString)
-  cv = get_cloudvolume(obj_name)
+function get_image_size(obj_name::AbstractString, mip::Int64 = get_mip())
+  cv = get_cloudvolume(obj_name, mip)
   return size(cv)[1:2]
 end
 
-function get_offset(obj_name::AbstractString)
-  cv = get_cloudvolume(obj_name)
+function get_offset(obj_name::AbstractString, mip::Int64 = get_mip())
+  cv = get_cloudvolume(obj_name, mip)
   return offset(cv)[1:2]
 end
 
 """
 Get 3-tuple of ranges representing index in cloudvolume
 """
-function get_image_slice(index::Number, obj_name)
-  cv = get_cloudvolume(obj_name)
-  o = get_offset(obj_name)
-  s = get_image_size(obj_name)
+function get_image_slice(index::Number, obj_name, mip::Int64 = get_mip())
+  cv = get_cloudvolume(obj_name, mip)
+  o = get_offset(obj_name, mip)
+  s = get_image_size(obj_name, mip)
   z = get_z(index)
   xy_slice = map(range, (o, s)...)
   return tuple(xy_slice..., z:z)
 end
 
-function get_image(index::Number, obj_name::AbstractString)
-  cv = get_cloudvolume(obj_name)
-  slice = get_image_slice(index, obj_name)
-  return get_image(cv, slice)
+function get_image(index::Number, obj_name::AbstractString, mip::Int64 = get_mip())
+  if haskey(IMG_CACHE_DICT, (index, obj_name, mip))
+    println("$index, $obj_name, at miplevel $mip is in the image cache.")
+  else
+    println("$index, $obj_name, at miplevel $mip is not in the image cache. Downloading...")
+    @time begin
+    push!(IMG_CACHE_LIST, (index, obj_name, mip))
+
+    cv = get_cloudvolume(obj_name, mip)
+    slice = get_image_slice(index, obj_name, mip)
+
+    IMG_CACHE_DICT[(index, obj_name, mip)] = SharedArray(get_image(cv, slice))
+    end
+  end
+    return IMG_CACHE_DICT[(index, obj_name, mip)]
 end
 
-function get_image(index::Number, obj_name::AbstractString, slice)
-  cv = get_cloudvolume(obj_name)
+function get_image(index::Number, obj_name::AbstractString, slice, mip::Int64 = get_mip())
+  cv = get_cloudvolume(obj_name, mip)
   return get_image(cv, slice)
 end
 
 function get_image(cv::CloudVolumeWrapper, slice)
   # return OffsetArray(cv[slice...], slice[1:2])
   img = cv[slice...]
+  return img
+  #=
   shared_img = SharedArray{UInt8}(size(img))
   shared_img[:] = img[:]
   return shared_img
+  =#
 end
 
 """
