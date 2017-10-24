@@ -15,15 +15,16 @@ function load_params(fn)
 		 	:bucket => root,
 		 	:src_image => joinpath(root, d["src_image"]),
 		 	:dst_image => joinpath(root, d["dst_image"]),
-		 	# :match_image => joinpath(root, d["src_image"], d["match_image"]),
-		 	# :mask => joinpath(root, d["src_image"], d["mask"]),
-		 	# :mesh => joinpath(root, d["src_image"], d["mesh"]),
-		 	# :match => joinpath(root, d["src_image"], d["match"])
-		 	:match_image => joinpath(root, d["match_image"]),
-		 	:mask => joinpath(root, d["mask"]),
-		 	:mesh => joinpath(root, d["mesh"]),
-		 	:match => joinpath(root, d["match"]),
+		 	:match_image => joinpath(root, d["src_image"], d["match_image"]),
+		 	:mask => joinpath(root, d["src_image"], d["mask"]),
+		 	:mesh => joinpath(root, d["dst_image"], d["mesh"]),
+		 	:match => joinpath(root, d["dst_image"], d["match"]),
 		 	:meshset => joinpath(root, d["meshset"]),
+		 	#:match_image => joinpath(root, d["match_image"]),
+		 	#:mask => joinpath(root, d["mask"]),
+		 	#:mesh => joinpath(root, d["mesh"]),
+		 	#:match => joinpath(root, d["match"]),
+		 	#:meshset => joinpath(root, d["meshset"]),
 		 	:cache => d["cache"]
 		  ),
 	     :mesh => Dict(
@@ -37,7 +38,7 @@ function load_params(fn)
 			:search_r => p["search_r"],
 			:bandpass_sigmas => p["bandpass_sigmas"],
 			:depth => p["depth"],
-			:reflexive => p["reflexive"]),
+			:symmetric => p["symmetric"]),
 	     :solve => Dict(
 			:mesh_spring_coeff => p["mesh_spring_coeff"],
 			:match_spring_coeff => p["match_spring_coeff"],
