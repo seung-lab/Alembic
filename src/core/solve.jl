@@ -234,7 +234,7 @@ function elastic_collate(meshset; from_current = true, write = false)
   # initialize the local sparse matrix on all processes
   @sync begin
     @async for proc in setdiff(procs(), myid())
-      remotecall_wait(proc, make_local_sparse, count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset)); 
+      remotecall_wait(make_local_sparse, proc, count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset)); 
     end 
     make_local_sparse(count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset))
   end
