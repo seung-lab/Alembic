@@ -583,7 +583,6 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 	if cent_sum == 0 return nothing end
 	
 
-
 #	if sum(dst_image[dst_range[1], round(Int64,linspace(dst_range[2][1], dst_range[2][end], 5)[2])]) == 0 return nothing end
 #	if sum(dst_image[dst_range[1], round(Int64,linspace(dst_range[2][1], dst_range[2][end], 5)[4])]) == 0 return nothing end
 #	if sum(dst_image[round(Int64,linspace(dst_range[1][1], dst_range[1][end], 5)[2]), dst_range[2]]) == 0 return nothing end
@@ -622,10 +621,9 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 	=#
 	#tic()
     src_patch, dst_patch = prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, bandpass_sigmas; meanpad = meanpad)
-
     #if (pp == nothing) return nothing end;
     #	prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma)
-    xc = normxcorr2_preallocated(src_patch, dst_patch; shape = full ? "full" : "valid");
+  xc = normxcorr2_preallocated(src_patch, dst_patch; shape = full ? "full" : "valid");
 	#t = toc()
 	#to = ELAPSED_TIME
 	#global ELAPSED_TIME = t + to
@@ -729,7 +727,9 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 	dj = Float64(j_max - 1 + src_pt_loc[2] - dst_pt_loc_full[2])
       end
 
-    end #fmib
+    
+  end
+  #fmib
 
 	#= # version that treats each value as a bin and sends it to the centre
 	xc_i_locs = linspace(1, xc_i_len, size(xc, 1) + 1)

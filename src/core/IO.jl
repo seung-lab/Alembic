@@ -195,7 +195,7 @@ function get_image_slice(index::Number, obj_name, mip::Int64 = get_mip())
   s = get_image_size(obj_name, mip)
   z = get_z(index)
   xy_slice = map(range, (o, s)...)
-  return tuple(xy_slice..., z:z)
+  return tuple(xy_slice..., z)
 end
 
 function get_image(index::Number, obj_name::AbstractString, mip::Int64 = get_mip())
