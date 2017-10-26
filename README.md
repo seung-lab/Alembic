@@ -8,13 +8,11 @@ A set of tools for elastic image registration in Julia.
 Register coarsely-aligned sections to each other, and k-nearest neighboring sections, by blockmatching. Filter matches automatically and manually. Cover each section image in a triangle mesh, and globally deform all the meshes elastically to accommodate the correspondences. Render with a piecewise affine transform.
 
 ## Requirements  
-```
-julia v0.6
-[cloud-volume](https://github.com/seung-lab/cloud-volume)
-```
+* julia v0.6
+* [cloud-volume](https://github.com/seung-lab/cloud-volume)
 
 ## Getting started  
-Setup the Julia wrapper for CloudVolume by following the documentation [here](https://github.com/seung-lab/CloudVolume.jl).
+Setup the Julia wrapper for [CloudVolume](https://github.com/seung-lab/CloudVolume.jl).
 
 Here's a simple startup script:
 ```
