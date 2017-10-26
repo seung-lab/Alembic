@@ -23,6 +23,16 @@ Register prealigned sections to each other, and N+k neighboring sections, by blo
 
 
 # Getting started  
-Alembic.jl requires Julia v0.6, and depends on a chunked-volume storage system that can be interfaced with through (CloudVolume)[https://github.com/seung-lab/cloud-volume].  
+Alembic.jl requires Julia v0.6, and depends on a chunked-volume storage system that can be interfaced with through [CloudVolume](https://github.com/seung-lab/cloud-volume).  
 
-Setup the Julia wrapper for CloudVolume by following the documentation (here)[https://github.com/seung-lab/CloudVolume.jl].
+Setup the Julia wrapper for CloudVolume by following the documentation [here](https://github.com/seung-lab/CloudVolume.jl).
+
+Here's a simple startup script:
+```
+using Alembic
+load_params(joinpath(homedir), ".julia/v0.6/Alembic/src/params/pinky40_test.json"); # specifies CloudVolume dirs and params
+ms = make_stack(); # make meshset given the params specified in the JSON file
+match!(ms); # blockmatch between the meshes in the meshset, per the params
+elastic_solve!(ms); # relax the spring system
+render(ms); # render the images and save to CloudVolume
+```
