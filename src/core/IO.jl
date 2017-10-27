@@ -73,7 +73,7 @@ function get_scale()
 end
 
 function get_z(index::Number)
-  return Int(floor(index))
+  return Int(floor(abs(index)))*sign(index)
 end
 
 function is_subsection(index::Number)
@@ -81,7 +81,7 @@ function is_subsection(index::Number)
 end
 
 function get_subsection(index::Number)
-  return Int(round((index % get_z(index)) * SPLIT_MESH_BASIS))
+  return Int(round((index - get_z(index)) * SPLIT_MESH_BASIS))
 end
 
 function get_z_range()

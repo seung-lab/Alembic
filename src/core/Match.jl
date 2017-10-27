@@ -877,25 +877,24 @@ function get_matches{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T})
     matches = Array{Match,1}()
     for ss in src_subsections
         for ds in dst_subsections
-            src_id = src_index + (ss-1)/SPLIT_MESH_BASIS
-            dst_id = dst_index + (ds-1)/SPLIT_MESH_BASIS
-	    @simd for i in 1:length(src_image)
-	      @inbounds src_image_sub[i] = src_image[i]
-	    end
-	    @simd for i in 1:length(dst_image)
-	      @inbounds dst_image_sub[i] = dst_image[i]
-	    end
-	    for i in 1:length(src_image)
-		@inbounds if src_mask[i] != ss
-		  src_image_sub[i] = 0
-		end
-	    end
-	    for i in 1:length(dst_image)
-		@inbounds if dst_mask[i] != ds
-		  dst_image_sub[i] = 0
-		end
-	    end
-	    
+            src_id = src_index + ss/SPLIT_MESH_BASIS
+            dst_id = dst_index + ds/SPLIT_MESH_BASIS
+    	    @simd for i in 1:length(src_image)
+    	      @inbounds src_image_sub[i] = src_image[i]
+    	    end
+    	    @simd for i in 1:length(dst_image)
+    	      @inbounds dst_image_sub[i] = dst_image[i]
+    	    end
+    	    for i in 1:length(src_image)
+        		@inbounds if src_mask[i] != ss
+        		  src_image_sub[i] = 0
+        		end
+    	    end
+    	    for i in 1:length(dst_image)
+        		@inbounds if dst_mask[i] != ds
+        		  dst_image_sub[i] = 0
+        		end
+    	    end
             push!(matches, Match(src_mesh, dst_mesh, 
                                     src_id, dst_id, 
                                     src_image_sub, 

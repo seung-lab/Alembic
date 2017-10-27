@@ -26,7 +26,8 @@ class PointsController:
 
     def set(self, points):
         global current_state
-        current_state['layers']['points'] = {'type':'point', 'points':points.tolist()}
+        pts = [points.tolist()]
+        current_state['layers']['points'] = {'type':'point', 'points':pts}
         broadcast()
 
 # websockets connections
@@ -38,13 +39,14 @@ class Connection(SockJSConnection):
         # When new client comes in, will add it to the clients list
         clients.add(self)
 
-    def on_message(self, json_current_state):
+    def on_message(self, json_state):
         """
         This will call initialize_current_state or on_current_state_change depening on if it is
         the first message recieved.
         """
         global current_state
-        current_state = json.JSONDecoder(object_pairs_hook=OrderedDict).decode(json_current_state)
+        print(json_state)
+        current_state = json.JSONDecoder(object_pairs_hook=OrderedDict).decode(json_state)
         global n_messages
         if not n_messages:
             print('current_state initialized')

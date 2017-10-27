@@ -28,6 +28,7 @@ using Images
 # using SimpleTasks # Need to make SimpleTasks pass its tests
 using CloudVolume
 using Primes
+using PyCall
 if haskey(ENV, "MKLROOT")
   using MKLSparse
 end
