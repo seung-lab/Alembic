@@ -220,8 +220,10 @@ end
 function save_image(index::Number, obj_name::AbstractString, src_img, src_slice)
   cv = get_cloudvolume(obj_name)
   dst_slice = chunk_align(obj_name, src_slice)
-  dst_img = rescope(src_img, src_slice, dst_slice)
-  return save_image(cv, dst_slice, dst_img)
+  if dst_slice != src_slice
+    src_img = rescope(src_img, src_slice, dst_slice)
+  end
+  return save_image(cv, dst_slice, src_img)
 end
 
 """
