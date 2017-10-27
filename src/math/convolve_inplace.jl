@@ -19,14 +19,35 @@ immutable ConvolveEnv
   result::Array{Float64, 2}
 end
 
+immutable Normxcorr2Env
+  size_A::NTuple{2, Int64}
+  size_B::NTuple{2, Int64}
+
+  conv_dt::Array{Float64, 2}
+  conv_imgpad::Array{Float64, 2}
+
+  conv_sum::Array{Float64, 2}
+  conv_sum2::Array{Float64, 2}
+
+  local_sum::Array{Float64, 2}
+  local_sum2::Array{Float64, 2}
+end
+
 global CONVOLVE_ENVS = Dict{Symbol, ConvolveEnv}()
+global NORMXCORR2_ENVS = Dict{Symbol, Normxcorr2Env}()
 
 function clear_convolveenvs()
 	global CONVOLVE_ENVS = Dict{Symbol, ConvolveEnv}()
 end
+function clear_normxcorr2envs()
+	global CONVOLVE_ENVS = Dict{Symbol, Normxcorr2Env}()
+end
 
 function register_convolveenv(ce::ConvolveEnv)
 	CONVOLVE_ENVS[Symbol(ce.size_A, ce.size_B, ce.crop, ce.padding)] = ce
+end
+function register_normxcorr2env(ne::Normxcorr2Env)
+	NORMXCORR2_ENVS[Symbol(ne.size_A, ne.size_B)] = ne
 end
 
 function get_convolveenv(A, B; crop = :valid, padding = :none)
@@ -36,6 +57,14 @@ function get_convolveenv(A, B; crop = :valid, padding = :none)
   register_convolveenv(ce)
 
   return ce
+end
+function get_normxcorr2env(A, B)
+  if haskey(NORMXCORR2_ENVS, Symbol(size(A), size(B))) return NORMXCORR2_ENVS[Symbol(size(A), size(B))] end
+
+  ne = Normxcorr2Env(A, B)
+  register_normxcorr2env(ne)
+
+  return ne
 end
 
 function ConvolveEnv(A, B; factorable = Primes.primes(10), crop = :valid, padding = :none)
@@ -87,6 +116,28 @@ function ConvolveEnv(A, B; factorable = Primes.primes(10), crop = :valid, paddin
     )
 end
 
+function Normxcorr2Env(A, B)
+    (n1,n2)=size(A);
+    (m1,m2)=size(B);
+    conv_dt = zeros(Float64, n1, n2)
+    conv_imgpad = zeros(Float64, m1 + 1, m2 + 1)
+    conv_sum = zeros(Float64, m1 + 1, m2 + 1)
+    conv_sum2 = zeros(Float64, m1 + 1, m2 + 1)
+    local_sum = zeros(Float64, m1 - n1 + 1, m2 - n2 + 1)
+    local_sum2 = zeros(Float64, m1 - n1 + 1, m2 - n2 + 1)
+
+    return Normxcorr2Env(
+    	(n1,n2),
+    	(m1,m2),
+	conv_dt,
+	conv_imgpad,
+	conv_sum,
+	conv_sum2,
+	local_sum,
+	local_sum2
+    )
+end
+
 function clean!(ce::ConvolveEnv)
   @inbounds begin
 	ce.intermediate_A[:] = Float64(0)
@@ -125,7 +176,7 @@ LOCAL_SUM2 = Array{Float64, 2}(0,0);
 
 end
 =#
-
+#=
 function init_Convolve()
 
 global CONV_RESULT = zeros(Float64, 10,10);
@@ -155,6 +206,7 @@ global LOCAL_SUM2 = Array{Float64, 2}(0,0);
 end
 
 init_Convolve();
+=#
 
 function convolve{T, n}(A::SubArray{T, n},B::Array{T, n},dims)
     common_size=tuple(map(max,size(A),size(B))...)
@@ -373,7 +425,7 @@ function optimize_all_cores(img_d::Int64)
     return Void;
 end
 
-function cumsum12!(A::Array{Float64,2})
+function cumsum12!(A::Array{Float64,2}, conv_sum::Array{Float64,2}, conv_sum2::Array{Float64,2})
 function calculate_cumsums!(sum, A)
     (m,n)=size(A);
     if m>1 && n>1
@@ -386,22 +438,16 @@ function calculate_cumsums!(sum, A)
 end
 
     # cumulative sum in two dimensions
-    if size(CONV_SUM) != size(A)
-      global CONV_SUM = similar(A);
-    end
-    if size(CONV_SUM2) != size(A)
-      global CONV_SUM2 = similar(A);
-    end
     # first row and column are 1D cumulative sums
-    CONV_SUM[:,1]=cumsum(A[:,1],1);
-    CONV_SUM[1,:]=cumsum(A[1,:],2);      # B[1,1] is redundantly computed twice
+    conv_sum[:,1]=cumsum(A[:,1],1);
+    conv_sum[1,:]=cumsum(A[1,:],2);      # B[1,1] is redundantly computed twice
     # compute rest of matrix from recursion
-    calculate_cumsums!(CONV_SUM, A);
+    calculate_cumsums!(conv_sum, A);
 	elwise_mul!(A, A)
-    CONV_SUM2[:,1]=cumsum(A[:,1],1);
-    CONV_SUM2[1,:]=cumsum(A[1,:],2);      # CONV_SUM[1,1] is redundantly computed twice
+    conv_sum2[:,1]=cumsum(A[:,1],1);
+    conv_sum2[1,:]=cumsum(A[1,:],2);      # conv_sum[1,1] is redundantly computed twice
     # compute rest of matrix from recursion
-    calculate_cumsums!(CONV_SUM2, A);
+    calculate_cumsums!(conv_sum2, A);
 end
 
 
@@ -452,7 +498,7 @@ function normxcorr2_preallocated(template,img; shape = "valid", highpass_sigma =
     # e.g. sizes of template should be less than those of img
     # this works for arrays.  extend to Image defined in Holy's package?
 
-    factors = primes(10)
+    (n1,n2)=size(template);
 
     if shape == "full"
     (n1,n2)=size(template);
@@ -464,26 +510,21 @@ function normxcorr2_preallocated(template,img; shape = "valid", highpass_sigma =
     img_new[n1:k1-n1+1, n2:k2-n2+1] = img;
     img = img_new;
     end
-    # sufficient to subtract mean from just one variable
-    if size(CONV_DT) != size(template)
-      global CONV_DT = Array{Float64}(size(template)...);
-    end
-    @inbounds CONV_DT[:] = template
-    @fastmath @inbounds calculate_dt!(CONV_DT)
-    @fastmath @inbounds numerator=valid_convolve(img,CONV_DT; flip = true)
-    @fastmath @inbounds templatevariance=sum(elwise_mul!(CONV_DT, CONV_DT))
 
-    
+    ne = get_normxcorr2env(template, img);
+    @inbounds ne.conv_dt[:] = template
+    @fastmath @inbounds calculate_dt!(ne.conv_dt)
+    @fastmath @inbounds numerator::Array{Float64} = valid_convolve(img, ne.conv_dt; flip = true)
+    @fastmath @inbounds templatevariance::Float64 = sum(elwise_mul!(ne.conv_dt, ne.conv_dt))
+
     ##### local statistics of img
     # zero pad image in first row and column
     # so that cumulative sums will have zeros in the same place
     (m1,m2)=size(img);
-    if size(CONV_IMGPAD) != (m1 + 1, m2 + 1)
-      global CONV_IMGPAD = zeros(Float64, m1+1, m2+1)
-    end
-    @fastmath @inbounds CONV_IMGPAD[2:end,2:end]=img;
+    @inbounds ne.conv_imgpad[1, 1:end] = 0
+    @inbounds ne.conv_imgpad[1:end, 1] = 0
+    @fastmath @inbounds ne.conv_imgpad[2:end,2:end]=img;
     # define four combinations of Small and Large ranges
-    (n1,n2)=size(template);
     if templatevariance==0
         return zeros(m1-n1+1,m2-n2+1)*NaN
     end
@@ -491,25 +532,21 @@ function normxcorr2_preallocated(template,img; shape = "valid", highpass_sigma =
 #    @fastmath @inbounds SL=LL-[n1;0]; LS=LL-[0;n2]
 #    @fastmath @inbounds SS=LL-[n1;n2]
     # sum of img and its square in template-sized neighborhoods
-    @fastmath @inbounds cumsum12!(CONV_IMGPAD)
-#    @fastmath @inbounds s=CONV_SUM
-    if size(LOCAL_SUM) != (m1-n1+1, m2-n2+1)
-      global LOCAL_SUM = Array{Float64}(m1-n1+1, m2-n2+1);
-      global LOCAL_SUM2 = Array{Float64}(m1-n1+1, m2-n2+1);
-    end
+    @fastmath @inbounds cumsum12!(ne.conv_imgpad, ne.conv_sum, ne.conv_sum2)
 
-	@fastmath @inbounds calculate_local_sums(LOCAL_SUM, CONV_SUM, LOCAL_SUM2, CONV_SUM2, LL[1], LL[2], n1, n2);
+
+	@fastmath @inbounds calculate_local_sums(ne.local_sum, ne.conv_sum, ne.local_sum2, ne.conv_sum2, LL[1], LL[2], n1, n2);
 	# not actually local variance, but local variance * prod(size(img))
-	@fastmath @inbounds localvariance = calculate_local_variance!(LOCAL_SUM2, LOCAL_SUM, template)
+	@fastmath @inbounds localvariance = calculate_local_variance!(ne.local_sum2, ne.local_sum, template)
 
     # localvariance is zero for image patches that are constant
     # leading to undefined Pearson correlation coefficient
     # should only be negative due to roundoff error
-    eps_scaled = eps_large * prod(size(template))
-    @simd for i in 1:length(localvariance) 
+    eps_scaled = Float64(eps_large * prod(size(template)))
+    for i in 1:length(localvariance) 
     	@inbounds if localvariance[i] <= eps_scaled
-      	@fastmath @inbounds localvariance[i] = eps 
-	@inbounds numerator[i] = 0 
+	@fastmath @inbounds localvariance[i] = Alembic.eps 
+        @fastmath @inbounds numerator[i] = 0.0
       end
     end
     @fastmath @inbounds denominator=calculate_denominator!(localvariance, templatevariance)
@@ -521,6 +558,7 @@ function normxcorr2_preallocated(template,img; shape = "valid", highpass_sigma =
     #@fastmath @inbounds denominator[denominator.<=0] = eps
 
     @fastmath @inbounds xc = elwise_div!(numerator, denominator);
+
 #    @fastmath @inbounds xcd = Images.imfilter_gaussian(xc, sigma)
 	return xc
 end
