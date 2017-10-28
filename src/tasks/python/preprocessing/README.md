@@ -1,5 +1,5 @@
 # Preprocess Chunk Task  
-Use (cloud-volume)[https://github.com/seung-lab/cloud-volume] to run the 
+Use [cloud-volume](https://github.com/seung-lab/cloud-volume) to run the 
 following preprocessing tasks on Precomputed chunks:
 * Contrast stretching
 * Edge masking
@@ -13,7 +13,7 @@ Most recent Docker image created @ `macrintr/alembic-preprocessing`.
 Create cluster in gcloud. Suggested parameters:   
 * 1 vCPU
 * >5GB RAM
-* <32GB boot disk
+* ~32GB boot disk
 Attach secrets to the cluster:
 `kubectl create secret generic secrets --from-file=<HOME>/.cloudvolume/secrets/aws-secret.json --from-file=<HOME>/.cloudvolume/secrets/google-secret.json`
 Run `job.yaml`  

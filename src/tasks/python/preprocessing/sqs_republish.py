@@ -23,7 +23,12 @@ def main(queue_name, fn):
 	with open(fn, 'r') as f:
 		for ln in f.readlines():
 			# Data must be a bytestring
-			data = ln.encode('utf-8')
+			data = ln
+			# prev = json.loads(ln)
+			# prev_z = prev['z_slice']
+			# prev['z_slice'] = [prev_z[0]+64, prev_z[1]+64]
+			# data = json.dumps(prev)
+			data = data.encode('utf-8')
 			m = Message()
 			m.set_body(data)
 			q.write(m)
