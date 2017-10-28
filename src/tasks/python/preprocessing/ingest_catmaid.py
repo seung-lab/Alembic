@@ -13,7 +13,7 @@ class IngestCATMAID():
 		self.tile_x = tile_x
 		self.tile_y = tile_y
 		self.z_offset = z_offset
-		self.vol = CloudVolume(inlayer)
+		self.vol = CloudVolume(inlayer, fill_missing=True)
 		self.out = CloudVolume(outlayer)
 
 	def floor_chunk(self, x, origin_x, chunk_x):

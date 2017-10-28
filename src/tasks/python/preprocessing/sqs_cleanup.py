@@ -1,6 +1,5 @@
 import boto.sqs
 from boto.sqs.message import Message
-import preprocessing
 import time
 import json
 import os
@@ -20,18 +19,16 @@ def get_queue(queue_name):
 	conn = get_connection()
 	return conn.get_queue(queue_name)
 
-def receive_messages(queue_name):
-	"""Receives messages from a pull subscription."""
+def main(queue_name, fn):
 	q = get_queue(queue_name)
-	while True:
-		messages = q.get_messages(1)
-		if len(messages) > 0:
-			m = messages[0]
-			message = m.get_body().encode('latin-1')
-			preprocessing.main(message)
-			q.delete_message(m)
-		else:
-			time.sleep(5)
+	rs = q.get_messages(10)
+	while len(rs) > 0:
+		with open(fn, 'a') as f:
+			for r in rs:
+				m = r.get_body().encode('latin-1')
+				f.write(m + '\n')
+				q.delete_message(r)
+		rs = q.get_messages(10)
 
 if __name__ == "__main__":
-    receive_messages(sys.argv[1])
+    main(sys.argv[1], sys.argv[2])

@@ -30,7 +30,7 @@ class PreprocessChunkTask():
 		global order
 		global out
 		if vol is None:
-			vol = CloudVolume(inlayer)
+			vol = CloudVolume(inlayer, fill_missing=True)
 		if mask is None:
 			mask = Storage(masklayer)
 		if contrast is None:

@@ -35,11 +35,11 @@ def publish_messages(queue_name):
 	q = get_queue(queue_name)
 	chunk_dims = [1024,1024,64]
 	x_start = 35840
-	x_stop = 35840+2048 #35840+100352 - chunk_dims[0]
+	x_stop = 35840+100352 - chunk_dims[0]
 	y_start = 26624
-	y_stop = 26624+2048 #26624+62464 - chunk_dims[1]
+	y_stop = 26624+62464 - chunk_dims[1]
 	z_start = 1
-	z_stop = 129#1+2240 - chunk_dims[2]
+	z_stop = 1+2240 - chunk_dims[2]
 
 	n = 0
 	for x in range(x_start, x_stop, chunk_dims[0]):
