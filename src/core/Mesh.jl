@@ -22,13 +22,7 @@ function is_preceding(Am::Mesh, Bm::Mesh, within = 1)	return is_preceding(Am.ind
 
 function globalize!{T}(pts::Points{T}, mesh::Mesh{T})
   offset = get_offset(mesh)
-  @inbounds o1 = offset[1];
-  @inbounds o2 = offset[2];
-
-  @simd for i in 1:size(pts, 2)
-    @fastmath @inbounds pts[1,i] += o1;
-    @fastmath @inbounds pts[2,i] += o2;
-  end 
+  globalize!(pts, offset)
 end
     
 ### META.jl EXTENSIONS

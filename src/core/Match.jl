@@ -184,7 +184,7 @@ function (match::Match)
 end
 =#
 
-function get_correspondences(match::Match; globalized::Bool=false, global_offsets::Bool=true, filtered::Bool=false, use_post::Bool=false, src_mesh = nothing, dst_mesh = nothing)
+function get_correspondences(match::Match; globalized::Bool=false, filtered::Bool=false, use_post::Bool=false, src_mesh = nothing, dst_mesh = nothing)
   	if filtered
 	  src_pts = match.src_points[:, get_filtered_indices(match)]; dst_pts = match.dst_points[:, get_filtered_indices(match)];
 	else
@@ -195,8 +195,8 @@ function get_correspondences(match::Match; globalized::Bool=false, global_offset
 	  dst_pts = deform(dst_pts, dst_mesh);
 	end
 	if globalized
-	  globalize!(src_pts, get_offset(match.src_index)); 
-	  global_offsets ? globalize!(dst_pts, get_offset(match.dst_index)) : nothing
+	  globalize!(src_pts, get_offset("src_image")); 
+	  globalize!(dst_pts, get_offset("src_image"));
 	end
 	filtered ? ret = (src_pts, dst_pts) : ret = (src_pts, dst_pts, get_filtered_indices(match));
 	return ret;
@@ -875,30 +875,33 @@ function get_matches{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T})
     src_subsections = unique(src_mask)
     dst_subsections = unique(dst_mask)
     matches = Array{Match,1}()
+    ignore = PARAMS[:match][:ignore_value]
     for ss in src_subsections
         for ds in dst_subsections
-            src_id = src_index + ss/SPLIT_MESH_BASIS
-            dst_id = dst_index + ds/SPLIT_MESH_BASIS
-    	    @simd for i in 1:length(src_image)
-    	      @inbounds src_image_sub[i] = src_image[i]
-    	    end
-    	    @simd for i in 1:length(dst_image)
-    	      @inbounds dst_image_sub[i] = dst_image[i]
-    	    end
-    	    for i in 1:length(src_image)
-        		@inbounds if src_mask[i] != ss
-        		  src_image_sub[i] = 0
-        		end
-    	    end
-    	    for i in 1:length(dst_image)
-        		@inbounds if dst_mask[i] != ds
-        		  dst_image_sub[i] = 0
-        		end
-    	    end
-            push!(matches, Match(src_mesh, dst_mesh, 
-                                    src_id, dst_id, 
-                                    src_image_sub, 
-                                    dst_image_sub))
+            if (ss != ignore) & (ds != ignore)
+                src_id = src_index + ss/SPLIT_MESH_BASIS
+                dst_id = dst_index + ds/SPLIT_MESH_BASIS
+        	    @simd for i in 1:length(src_image)
+        	      @inbounds src_image_sub[i] = src_image[i]
+        	    end
+        	    @simd for i in 1:length(dst_image)
+        	      @inbounds dst_image_sub[i] = dst_image[i]
+        	    end
+        	    for i in 1:length(src_image)
+            		@inbounds if src_mask[i] != ss
+            		  src_image_sub[i] = 0
+            		end
+        	    end
+        	    for i in 1:length(dst_image)
+            		@inbounds if dst_mask[i] != ds
+            		  dst_image_sub[i] = 0
+            		end
+        	    end
+                push!(matches, Match(src_mesh, dst_mesh, 
+                                        src_id, dst_id, 
+                                        src_image_sub, 
+                                        dst_image_sub))
+            end
         end
     end
     @everywhere src_image_sub = 0

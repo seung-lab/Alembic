@@ -6,7 +6,12 @@ global const WORKER_PROCS = setdiff(procs(), [1]);
 else
 global const WORKER_PROCS = [1];
 end
-global const STORAGE_OBJECTS = ["mesh", "match", "meshset"]
+global const STORAGE_OBJECTS = ["alembic.mesh", 
+                                "alembic.match", 
+                                "alembic.meshset", 
+                                "mesh", 
+                                "match", 
+                                "meshset"]
 global const IMG_CACHE_SIZE = 20 * 2^30
 global const IMG_ELTYPE = UInt8
 
@@ -134,6 +139,16 @@ end
 
 function use_cache()
   return PARAMS[:dirs][:cache]
+end
+
+function globalize!{T}(pts::Points{T}, offset::Array{Int,1})
+  @inbounds o1 = offset[1];
+  @inbounds o2 = offset[2];
+
+  @simd for i in 1:size(pts, 2)
+    @fastmath @inbounds pts[1,i] += o1;
+    @fastmath @inbounds pts[2,i] += o2;
+  end 
 end
 
 function is_preceding(indexA::Number, indexB::Number, within=1)

@@ -34,6 +34,7 @@ function load_params(fn)
 	     	:z_stop => p["z_stop"],
 			:prematch => false,
 			:mip => p["mip"],
+			:ignore_val => p["ignore_value"],
 			:block_r => p["block_r"], 
 			:search_r => p["search_r"],
 			:bandpass_sigmas => p["bandpass_sigmas"],
