@@ -107,23 +107,20 @@ function rescope{T}(img::Array{T}, src_slice, dst_slice)
 end
 
 
-@fastmath @inbounds function render(ms::MeshSet, mesh_indices=collect_z(ms))
-  sort!(ms.meshes; by=get_index)
-  for z in collect_z(ms)
-    if z in mesh_indices
-      meshes = get_subsections(ms, z)
-      subsection_imgs = Array{Array{UInt8,2},1}()
-      subsection_offsets = []
-      for mesh in meshes
-        index = get_index(mesh)
-        println("Warping ", index)
-        @time (img, offset), _ = meshwarp_mesh(mesh)
-        push!(subsection_imgs, img)
-        push!(subsection_offsets, offset)
-      end
-      img, slice = merge_images(subsection_imgs, subsection_offsets)
-      slice = tuple(slice..., z:z)
-      save_image(z, "dst_image", img, slice)
+@fastmath @inbounds function render(ms::MeshSet, mesh_indices=unique(collect_z(ms)))
+  for z in mesh_indices
+    meshes = get_subsections(ms, z)
+    subsection_imgs = Array{Array{UInt8,2},1}()
+    subsection_offsets = []
+    for mesh in meshes
+      index = get_index(mesh)
+      println("Warping ", index)
+      @time (img, offset), _ = meshwarp_mesh(mesh)
+      push!(subsection_imgs, img)
+      push!(subsection_offsets, offset)
     end
+    img, slice = merge_images(subsection_imgs, subsection_offsets)
+    slice = tuple(slice..., z:z)
+    save_image(z, "dst_image", img, slice)
   end
 end

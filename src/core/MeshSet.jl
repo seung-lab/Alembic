@@ -49,7 +49,7 @@ end
 
 ### getting
 function collect_z(ms::MeshSet)
-  return unique(map(get_z, ms.meshes))
+  return map(get_z, ms.meshes)
 end
 
 function collect_mesh_indices(ms::MeshSet)
