@@ -864,13 +864,13 @@ Description:
 function get_matches{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T})
     src_index = get_index(src_mesh); 
     dst_index = get_index(dst_mesh);
-    src_image = get_image(src_index, "match_image");  
-    dst_image = get_image(dst_index, "match_image");
+    src_image = get_image(src_index, "match_image", mip=get_mip(:match));  
+    dst_image = get_image(dst_index, "match_image", mip=get_mip(:match));
     src_image_sub = deepcopy(src_image)
     dst_image_sub = deepcopy(dst_image)
     println("Getting masks for $(src_index) & $(dst_index):")
-    src_mask = get_image(src_index, "mask");
-    dst_mask = get_image(dst_index, "mask");
+    src_mask = get_image(src_index, "mask", mip=get_mip(:match));
+    dst_mask = get_image(dst_index, "mask", mip=get_mip(:match));
     println("Compiling mask components")
     src_subsections = unique(src_mask)
     dst_subsections = unique(dst_mask)

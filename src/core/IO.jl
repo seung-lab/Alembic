@@ -101,12 +101,15 @@ function get_path(obj_name::AbstractString)
   return PARAMS[:dirs][Symbol(obj_name)]
 end
 
-function get_mip()
-  return PARAMS[:match][:mip]
+"""
+Get mip level specified in params
+"""
+function get_mip(k)
+  return PARAMS[k][:mip]
 end
 
-function get_scale()
-  return 1/(2^get_mip())
+function get_scale(k)
+  return 1/(2^get_mip(k))
 end
 
 function get_z(index::Number)

@@ -45,9 +45,12 @@ function get_z(mesh::Mesh)
 	return get_z(mesh.index)
 end
 
-function get_nodes(mesh::Mesh; globalized::Bool = false, use_post::Bool=false)
+function get_nodes(mesh::Mesh; globalized::Bool = false, use_post::Bool=false, scale=1.0)
 	nodes = use_post ? deepcopy(mesh.dst_nodes) : deepcopy(mesh.src_nodes);
 	globalized ? globalize!(nodes, mesh) : nothing
+	if scale != 1.0
+		nodes *= scale
+	end
 	return nodes
 end
 
