@@ -187,19 +187,19 @@ end
 
 ## Image related (CloudVolume)
 
-function get_cloudvolume(obj_name::AbstractString, mip::Int64 = get_mip())
+function get_cloudvolume(obj_name::AbstractString, mip::Int64 = get_mip(:match))
   path = get_path(obj_name)
   cache = use_cache()
   return CloudVolumeWrapper(path, mip=mip, cache=cache, 
                                   bounded=false, fill_missing=true)
 end
 
-function get_image_size(obj_name::AbstractString, mip::Int64 = get_mip())
+function get_image_size(obj_name::AbstractString, mip::Int64 = get_mip(:match))
   cv = get_cloudvolume(obj_name, mip)
   return size(cv)[1:2]
 end
 
-function get_offset(obj_name::AbstractString, mip::Int64 = get_mip())
+function get_offset(obj_name::AbstractString, mip::Int64 = get_mip(:match))
   cv = get_cloudvolume(obj_name, mip)
   return offset(cv)[1:2]
 end
@@ -207,7 +207,7 @@ end
 """
 Get 3-tuple of ranges representing index in cloudvolume
 """
-function get_image_slice(index::Number, obj_name, mip::Int64 = get_mip())
+function get_image_slice(index::Number, obj_name, mip::Int64 = get_mip(:match))
   cv = get_cloudvolume(obj_name, mip)
   o = get_offset(obj_name, mip)
   s = get_image_size(obj_name, mip)
@@ -216,7 +216,7 @@ function get_image_slice(index::Number, obj_name, mip::Int64 = get_mip())
   return tuple(xy_slice..., z)
 end
 
-function get_image(index::Number, obj_name::AbstractString, mip::Int64 = get_mip())
+function get_image(index::Number, obj_name::AbstractString, mip::Int64 = get_mip(:match))
   if haskey(IMG_CACHE_DICT, (index, obj_name, mip))
     println("$index, $obj_name, at miplevel $mip is in the image cache.")
   else
@@ -233,7 +233,7 @@ function get_image(index::Number, obj_name::AbstractString, mip::Int64 = get_mip
     return IMG_CACHE_DICT[(index, obj_name, mip)]
 end
 
-function get_image(index::Number, obj_name::AbstractString, slice, mip::Int64 = get_mip())
+function get_image(index::Number, obj_name::AbstractString, slice, mip::Int64 = get_mip(:match))
   cv = get_cloudvolume(obj_name, mip)
   return get_image(cv, slice)
 end
@@ -295,3 +295,28 @@ Save 2D image to slice in CloudVolume
 function save_image(cv::CloudVolumeWrapper, slice, img)
   cv[slice...] = reshape(img, (size(img)..., 1, 1))
 end
+
+function get_local_root()
+  return homedir()
+end
+
+function get_local_dir(dir=:match)
+  return joinpath(".alembic", PARAMS[:dirs][dir][6:end]) # hardcoded for gs:// header
+end
+
+function get_local_path(dir=:match)
+  return joinpath(get_local_root(), get_local_dir(dir))
+end
+
+function check_local_dir(dir=:match)
+  root = get_local_root()
+  path = get_local_dir(dir)
+  folders = split(path, '/')
+  for i in 1:length(folders)
+    temp_path = joinpath(root, folders[1:i]...)
+    if !isdir(temp_path)
+      mkdir(temp_path)
+    end
+  end
+end
+

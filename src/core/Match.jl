@@ -140,6 +140,26 @@ struct Match{T} <: AbstractMatch
   properties::Dict{Symbol, Any}
 end
 
+## IO
+function get_correspondences_df(match::Match; globalized=true)
+    pre, post, filter = get_correspondences(match, globalized=globalized)
+    pre_z, post_z = get_index(match)
+    n = length(filter)
+    df = DataFrame(vcat(pre, ones(n)*pre_z, post, ones(n)*post_z, filter')')
+    names!(df, [:pre_x, :pre_y, :pre_z, :post_x, :post_y, :post_z, :filter])
+    return df
+end
+
+function to_dataframe(match::Match)
+    return get_correspondences_df(match)
+end
+
+function to_csv(match::Match)
+    fn = joinpath(get_local_path(:match), get_name(match))
+    println("Writing correspondences to $fn")
+    writetable(fn, to_dataframe(match), separator=',')
+end
+
 ### index related
 function get_src_index(match::Match)
   return match.src_index
@@ -763,7 +783,7 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 	return vcat(pt + rel_offset + [di, dj], correspondence_properties);
 end
 
-function filter!(match::Match, priority, function_name, compare, threshold, vars...)
+function Base.filter!(match::Match, priority, function_name, compare, threshold, vars...)
 	# attributes = get_correspondence_properties(match, property_name)
 	attributes = eval(function_name)(match, vars...)
 	compare = eval(compare)
@@ -792,7 +812,7 @@ function filter!(match::Match, priority, function_name, compare, threshold, vars
 	=#
 end
 
-function filter!(match::Match, filter::Tuple)
+function Base.filter!(match::Match, filter::Tuple)
 	return filter!(match, filter...)
 end
 

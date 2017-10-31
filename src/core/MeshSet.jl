@@ -21,7 +21,12 @@ function Base.string(ms::MeshSet)
   return JSON.dump(s)
 end
 
-#function get_fixed(ms::MeshSet)			return ms.properties["fixed"];		end
+# IO
+function to_csv(ms::MeshSet)
+  for match in ms.matches
+    to_csv(match)
+  end
+end
 
 ### counting
 function count_meshes(ms::MeshSet)			return length(ms.meshes);		end
@@ -196,7 +201,7 @@ function check!(ms::MeshSet, crits=ms.properties[:params][:review])
   return |(map(check!, ms.matches, repeated(Base.values(crits)))...)
 end
 
-function filter!(ms::MeshSet, filters::Dict=ms.properties[:params][:filter])
+function Base.filter!(ms::MeshSet, filters::Dict=ms.properties[:params][:filter])
   filters = collect(Base.values(filters))
   filters = filters[sortperm(map(getindex, filters, repeated(1)))]
   for filter in filters
@@ -206,7 +211,7 @@ function filter!(ms::MeshSet, filters::Dict=ms.properties[:params][:filter])
   passed ? println("check passed") : println("check failed")
 end
 
-function filter!(ms::MeshSet, filter::Tuple)
+function Base.filter!(ms::MeshSet, filter::Tuple)
   total = sum(map(filter!, ms.matches, repeated(filter)))
   println("$total / $(count_correspondences(ms)) correspondences filtered on $filter")
 end
