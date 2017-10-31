@@ -125,7 +125,7 @@ function get_subsection(index::Number)
 end
 
 function get_z_range()
-  return PARAMS[:match][:z_start]:PARAMS[:match][:z_stop]
+  return PARAMS[:mesh][:z_start]:PARAMS[:mesh][:z_stop]
 end
 
 function get_name(obj)
