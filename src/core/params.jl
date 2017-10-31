@@ -34,7 +34,7 @@ function load_params(fn)
 	     :match => Dict(
 			:prematch => false,
 			:mip => match["mip"],
-			:ignore_val => match["ignore_value"],
+			:ignore_value => match["ignore_value"],
 			:block_r => match["block_r"], 
 			:search_r => match["search_r"],
 			:bandpass_sigmas => match["bandpass_sigmas"],
