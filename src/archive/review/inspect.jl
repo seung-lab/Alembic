@@ -190,7 +190,7 @@ function view_match(meshset::MeshSet, match_ind)
   img = zeros(UInt32, size(img_orig,1)+pad*2, size(img_orig,2)+pad*2)
   img[pad:end-pad-1, pad:end-pad-1] = img_orig
 
-  params = deepcopy(meshset.properties["params"]["match"])
+  params = deepcopy(meshset.properties[:params][:match])
   params["offset"] = offset - pad
   params["scale"] = scale
   params["match_index"] = match_ind
@@ -527,7 +527,7 @@ Preliminary method to test filters in the GUI
 function compare_filter(imgc, img2, match, params)
   filter = (0.5, >, 5)
   inds_to_filter = Array{Any, 1}()
-  attributes = get_properties(match, filter[1])
+  attributes = get_correspondence_properties(match, filter[1])
   push!(inds_to_filter, find(i -> filter[2](i, filter[3]), attributes))
   inds_to_filter = union(inds_to_filter...)
   rejected_inds = get_rejected_indices(match)
@@ -663,12 +663,12 @@ function filter_match_distance(imgc, img2, matches, params)
   # hack to test if a match_distance filter was just implemented
   dist = params["dist"]
   if length(matches.filters) > 0
-    if matches.filters[end]["type"] == "norm"
+    if matches.filters[end]["type"] == :norm
       undo_filter!(matches)
     end
   end
   println("Distance filter @ ", dist)
-  filter = (0,:get_properties, >, dist, "norm")
+  filter = (0,:get_correspondence_properties, >, dist, :norm)
   filter!(matches, filter...)
   update_annotations(imgc, img2, matches, params)
 end
@@ -699,7 +699,7 @@ function filter_match_sigma(imgc, img2, matches, params)
     end
   end
   println("Sigma filter @ ", sigma)
-  filter = (0, :get_properties, >, sigma, 0.8)
+  filter = (0, :get_correspondence_properties, >, sigma, 0.8)
   filter!(matches, filter...)
   update_annotations(imgc, img2, matches, params)
 end
@@ -737,9 +737,9 @@ function view_dv_dispersion(index::Index)
   meshset = load("MeshSet"(index))
   fig = figure("dv $index", figsize=(20,20))
   for (i, match) in enumerate(meshset.matches)
-    dv_all = hcat(get_properties(match, "dv")...)
+    dv_all = hcat(get_correspondence_properties(match, :vects_dv)...)
     dv_all_ind = ones(size(dv_all, 2))*i
-    dv = hcat(get_filtered_properties(match, "dv")...)
+    dv = hcat(get_filtered_properties(match, :vects_dv)...)
     dv_ind = ones(size(dv, 2))*i
     # println(i, " ", size(dv_all, 2), " ", size(dv, 2)) 
     if size(dv_all, 2) > 1
@@ -765,7 +765,7 @@ function view_property_histogram(firstindex::Index, lastindex::Index, property_n
   for index in indrange
     meshset = load("MeshSet", index)
     for match in meshset.matches
-      attr = vcat(attr, get_properties(match, property_name))
+      attr = vcat(attr, get_correspondence_properties(match, property_name))
     end
   end
   masknan = map(!, map(isnan, attr))
@@ -780,7 +780,7 @@ end
 function view_property_histogram(meshset::MeshSet, property_name, nbins=20)
   attr = []
   for match in meshset.matches
-    attr = vcat(attr, get_properties(match, property_name))
+    attr = vcat(attr, get_correspondence_properties(match, property_name))
   end
   fig = figure("histogram")
   p = plt[:hist](attr, nbins)
@@ -791,7 +791,7 @@ end
 
 
 function view_property_scatter(match, property_name)
-  attr = get_properties(match, property_name)
+  attr = get_correspondence_properties(match, property_name)
   xy = Array{Int, 2}()
   if length(attr[1]) == 2
     xy = hcat(attr...)
@@ -807,7 +807,7 @@ end
 
 function view_property_histogram(match::Match, property_name; filtered=true, nbins=20)
   color="#990000"
-  attr = get_properties(match, property_name)
+  attr = get_correspondence_properties(match, property_name)
   attr_filtered = get_filtered_properties(match, property_name)
   if length(attr) > 1
     max_bin = min(maximum(attr), 50)
@@ -826,7 +826,7 @@ function view_property_histogram(match::Match, property_name; filtered=true, nbi
   end
 end
 
-function view_dv_dispersion(match, sr; filtered=true, property_name="dv")
+function view_dv_dispersion(match, sr; filtered=true, property_name=:vects_dv)
   color="#990000"
   properties_func = get_properties
   if filtered
@@ -889,19 +889,19 @@ end
 function view_inspection_statistics(meshset::MeshSet, match_ind::Int64)
   calculate_post_statistics!(meshset, match_ind)
   match = meshset.matches[match_ind]
-  sr = get_dfs(meshset.properties, "search_r")
+  sr = get_dfs(meshset.properties, :search_r)
   mesh = get_mesh(meshset, get_src_index(match))
 
   fig = figure("image pair statistics", figsize=(20,20))
   PyPlot.clf()
   subplot(231)
-   view_property_histogram(match, "r_max"; filtered=false, nbins=20)
-   view_property_histogram(match, "r_max"; filtered=true, nbins=20)
-#   view_property_spatial_scatter(match, "r_max"; filtered=false, factor=15)
-#   view_property_spatial_scatter(match, "r_max"; filtered=true, factor=15)
-  #view_property_histogram(match, "norm"; filtered=true, nbins=20)
+   view_property_histogram(match, :xcorr_r_max; filtered=false, nbins=20)
+   view_property_histogram(match, :xcorr_r_max; filtered=true, nbins=20)
+#   view_property_spatial_scatter(match, :xcorr_r_max; filtered=false, factor=15)
+#   view_property_spatial_scatter(match, :xcorr_r_max; filtered=true, factor=15)
+  #view_property_histogram(match, :norm; filtered=true, nbins=20)
   subplot(232)
-  view_property_spatial_scatter(match, "norm"; filtered=true, factor=1)
+  view_property_spatial_scatter(match, :norm; filtered=true, factor=1)
   subplot(233)
   # view_property_spatial_scatter(match, 0.5; filtered=false, factor=1)
   # view_property_spatial_scatter(match, 0.5; filtered=true, factor=1)
@@ -930,7 +930,7 @@ function view_inspection_statistics(meshset::MeshSet, match_ind::Int64)
     ha="right",
     va="top",
     fontsize=16)
-  annotate(string("Flags:\n", join(Base.keys(match.properties["review"]["flags"]), "\n")),
+  annotate(string("Flags:\n", join(Base.keys(match.properties[:review][:flags]), "\n")),
     xy=[0;1],
     xycoords="figure fraction",
     xytext=[10,-10],

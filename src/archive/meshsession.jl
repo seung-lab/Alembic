@@ -21,8 +21,8 @@ function fix_montages(firstindex::Index, lastindex::Index)
   for index in ind_range
     params = get_params(premontaged(index))
     ms = load(index)
-    ms.properties["params"]["filter"] = params["filter"]
-    ms.properties["params"]["review"] = params["review"]
+    ms.properties[:params][:filter] = params[:filter]
+    ms.properties[:params][:review] = params[:review]
     refilter!(ms);
     save(ms);
     if is_flagged(ms)
@@ -48,7 +48,7 @@ function render_montage_and_prealign(firstindex::Index, lastindex::Index)
   params = get_params(premontaged(firstindex))
   for index in get_index_range(montaged(firstindex), montaged(lastindex))
     ms = load(index)
-    ms.properties["params"]["solve"] = params["solve"]
+    ms.properties[:params][:solve] = params[:solve]
     solve!(ms)
     save(ms)
     render_montaged(ms; render_full=true, render_review=false)
@@ -105,7 +105,7 @@ end
 function align_over_missing_tiles(index_depth_list)
   for (firstindex, lastindex, depth) in index_depth_list
     params = get_params(firstindex);
-    params["match"]["depth"] = depth;
+    params["match"][:depth] = depth;
     ms = MeshSet(firstindex, lastindex; solve=false, params=params);
     render_aligned_review(ms)
   end
@@ -130,8 +130,8 @@ end
 function refilter!(firstindex::Index, lastindex::Index, ind::Int64, params=get_params(firstindex))
   parent_name = get_name(firstindex, lastindex)
   ms = load_split(parent_name, ind)
-  ms.properties["params"]["filter"] = params["filter"]
-  ms.properties["params"]["review"] = params["review"]
+  ms.properties[:params][:filter] = params[:filter]
+  ms.properties[:params][:review] = params[:review]
   refilter!(ms)
   save(ms)
 end
@@ -160,7 +160,7 @@ end
 
 function check_and_view_flags!(firstindex::Index, lastindex::Index)
   params = get_params(firstindex)
-  review_params = params["review"]
+  review_params = params[:review]
 
   flagged_indices = []
 
@@ -173,7 +173,7 @@ function check_and_view_flags!(firstindex::Index, lastindex::Index)
     for index in get_index_range(montaged(firstindex), montaged(lastindex))
       index = func(index)
       ms = load(index)
-      ms.properties["params"]["review"] = get_params(get_index(ms.meshes[1]))["review"]
+      ms.properties[:params][:review] = get_params(get_index(ms.meshes[1]))[:review]
       check!(ms)
       save(ms)
       if is_flagged(ms)
@@ -184,7 +184,7 @@ function check_and_view_flags!(firstindex::Index, lastindex::Index)
     parent_name = get_name(prealigned(firstindex), prealigned(lastindex))
     for k in 1:count_children(parent_name)
       ms = load_split(parent_name, k)
-      ms.properties["params"]["review"] = review_params
+      ms.properties[:params][:review] = review_params
       check!(ms)
       save(ms)
       if is_flagged(ms)

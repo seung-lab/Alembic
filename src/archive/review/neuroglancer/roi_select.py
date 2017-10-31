@@ -54,13 +54,11 @@ class Connection(SockJSConnection):
         This will call initialize_state or on_state_change depening on if it is
         the first message recieved.
         """
-        state = json.JSONDecoder(object_pairs_hook=OrderedDict).decode(json_state)
+        global current_state
+        current_state = json.JSONDecoder(object_pairs_hook=OrderedDict).decode(json_state)
         global n_messages
-
         if not n_messages: #first message ever
-            self.initialize_state(state)
-        else:
-            self.on_state_change(state)
+            print('state initialized')
         n_messages += 1
 
 
@@ -72,10 +70,7 @@ class Connection(SockJSConnection):
         """
         This is called once the connection is stablished
         """
-        current_z = get_z(state)
-        filename = get_filename(current_z)
-        points = read_points(filename)
-        set_points(state, points)
+        return state
 
     def on_state_change(self, state):
         """
@@ -83,17 +78,7 @@ class Connection(SockJSConnection):
         (except the very first time).
         """
         # store position
-        global current_z
-        points = get_points(state)
-        z = get_z(state)
-        if (current_z != 0) & (z != current_z):
-            print str(current_z) + ' -> ' + str(z)
-            filename = get_filename(current_z)
-            write_points(filename, points)
-            filename = get_filename(z)
-            points = read_points(filename)
-            set_points(state, points)
-        current_z = z
+        return state
 
 # In order for the webbrowser to connect to this server
 # add to the url 'stateURL':'http://localhost:9999'

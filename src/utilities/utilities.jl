@@ -19,14 +19,14 @@ function count_outliers(vectors, k)
   return sum((d.-d_mean)./d_std .> k)
 end
 
-"""
-Transform Nx3 pts by 3x3 tform matrix
-"""
-function warp_pts(tform, pts)
-    pts = hcat(pts, ones(size(pts,1)))
-    tpts = pts * tform
-    return tpts[:,1:2]
-end
+# """
+# Transform Nx3 pts by 3x3 tform matrix
+# """
+# function warp_pts(tform, pts)
+#     pts = hcat(pts, ones(size(pts,1)))
+#     tpts = pts * tform
+#     return tpts[:,1:2]
+# end
 
 """
 Make N array of 1x2 points into Nx3 homogenous points
@@ -71,7 +71,7 @@ function imrotate(img, angle; kwargs...)
   return imwarp(img, tform; kwargs...)[1];
 end
 
-function make_rotation_matrix_from_index(index::Index)
+function make_rotation_matrix_from_index(index::FourTupleIndex)
 	rotation = get_rotation(index);
 	image_size = get_image_size(index);
 	return make_rotation_matrix(rotation, image_size);

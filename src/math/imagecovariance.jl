@@ -1,14 +1,87 @@
+immutable SigmaEnv
+  	img::Array{Float64, 2}
+	II::Array{Int64, 2}
+	JJ::Array{Int64, 2}
+	IIx::Array{Float64, 2}
+	JJx::Array{Float64, 2}
+end
+
+global SIGMA_ENVS = Dict{NTuple{2, Int64}, SigmaEnv}()
+
+function get_sigmaenv(img)
+  if haskey(SIGMA_ENVS, size(img)) return SIGMA_ENVS[size(img)] end
+
+  SIGMA_ENVS[size(img)] = SigmaEnv(
+  		similar(img), 
+		[i for i=1:size(img,1), j=1:size(img,2)], 
+		[j for i=1:size(img,1), j=1:size(img,2)],
+		similar(img),
+		similar(img))
+  return SIGMA_ENVS[size(img)]
+end
+
 function subtract_beta(img, beta = 0.5)
-	return max(img - beta * maximum(img), 0)
+	return max.(img - beta * maximum(img), 0)
+end
+
+function subtract_beta!(x, img, beta = 0.5)
+        d = beta * maximum(img)
+	@simd for i in 1:length(img)
+	   @fastmath @inbounds x[i] = img[i] - d
+	 end
+	 for i in 1:length(img)
+	   @inbounds if x[i] < 0 x[i] = 0 end
+	 end
 end
 
 function sigma(img, beta = 0.5)
-	x = subtract_beta(img, beta)
-    if sum(x) == 0
+        se::SigmaEnv = get_sigmaenv(img)
+	subtract_beta!(se.img, img, beta)
+#	x = subtract_beta(img, beta)
+    if sum(se.img) == 0
         return Inf
     else
-        return sqrt(sum(diag(ImageCovariance(x/sum(x)))))
+      sum_img = sum(se.img)
+      @simd for i in 1:length(img)
+	@fastmath @inbounds se.img[i] = se.img[i] / sum_img
+        end
+        return sqrt(sum(diag(ImageCovariance(se))))
 	end
+end
+
+function ImageCovariance(se::SigmaEnv)
+ 	s1 = 0.0
+  	s2 = 0.0
+	@simd for i in 1:length(se.img)
+	  @inbounds t1 = se.II[i]
+	  @inbounds t2 = se.JJ[i]
+	  @inbounds v = se.img[i]
+	  @fastmath s1 += v * t1
+	  @fastmath s2 += v * t2
+	end
+	@simd for i in 1:length(se.img)
+	  @inbounds t1 = se.II[i]
+	  @inbounds t2 = se.JJ[i]
+	  @fastmath @inbounds se.IIx[i] = t1 - s1
+	  @fastmath @inbounds se.JJx[i] = t2 - s2
+	end
+    	C=zeros(2,2)
+	c11 = 0.0
+	c22 = 0.0
+	c12 = 0.0
+	@simd for i in 1:length(se.img)
+	  @inbounds t1 = se.IIx[i]
+	  @inbounds t2 = se.JJx[i]
+	  @inbounds v = se.img[i]
+	  c11 += v * t1 * t1
+	  c22 += v * t2 * t2
+	  c12 += v * t1 * t2
+	end
+    	C[1,1]=c11
+    	C[2,2]=c22
+    	C[1,2]=c12
+    	C[2,1]=c12
+    	C
 end
 
 function ImageCovariance(img)

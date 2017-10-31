@@ -109,12 +109,12 @@ function DaemonTask.execute(task::SolveTaskDetails,
     #=
     #temporary
     Main.clear_filters!(ms);
-    ms.properties["params"] = Main.PARAMS_ALIGNMENT
+    ms.properties[:params] = Main.PARAMS_ALIGNMENT
     for match in ms.matches
-    match.properties["params"] = Main.PARAMS_ALIGNMENT
+    match.properties[:params] = Main.PARAMS_ALIGNMENT
   end
     for mesh in ms.meshes
-    mesh.properties["params"] = Main.PARAMS_ALIGNMENT
+    mesh.properties[:params] = Main.PARAMS_ALIGNMENT
   end
   Main.filter!(ms);
   =#

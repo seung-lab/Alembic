@@ -1,14 +1,7 @@
-julia 0.4.0-pre+7340
-Images
+julia 0.6
 JLD
-Cairo
-HDF5
-JLD
-Colors
 FixedPointNumbers
-Cairo
 IterativeSolvers
-ImageRegistration
 Optim
 Distributions
 Compat
@@ -18,7 +11,7 @@ JSON
 SimpleTasks
 Primes
 PyPlot
-Tk
 ImageView
 PyCall
 MKLSparse
+DataFrames
