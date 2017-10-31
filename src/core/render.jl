@@ -6,11 +6,7 @@ function meshwarp_mesh(mesh::Mesh)
   scale = get_scale(:match)/get_scale(:render)
   src_nodes = get_nodes(mesh; globalized=true, use_post=false, scale=scale)
   dst_nodes = get_nodes(mesh; globalized=true, use_post=true, scale=scale)
-  offset = get_offset(mesh);
-  #=print("incidence_to_dict: ")
-  @time node_dict = incidence_to_dict(mesh.edges') #'
-  print("dict_to_triangles: ")
-  @time triangles = dict_to_triangles(node_dict)=#
+  offset = get_offset(mesh)*scale;
   return @time meshwarp(img, src_nodes, dst_nodes, incidence_to_triangles(mesh.edges), offset), get_index(mesh)
 end
 
@@ -74,7 +70,8 @@ end
 Render will compile all the subsections into one complete section & write it to
 the dst_image directory specified in params at the render mip level.
 """
-@fastmath @inbounds function render!(ms::MeshSet, z_range=unique(collect_z(ms)))
+function render!(ms::MeshSet, z_range=unique(collect_z(ms)))
+# @fastmath @inbounds function render!(ms::MeshSet, z_range=unique(collect_z(ms)))
   for z in z_range
     meshes = get_subsections(ms, z)
     subsection_imgs = Array{Array{UInt8,2},1}()
