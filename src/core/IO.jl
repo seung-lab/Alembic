@@ -104,11 +104,11 @@ end
 """
 Get mip level specified in params
 """
-function get_mip(k)
+function get_mip(k = :match)
   return PARAMS[k][:mip]
 end
 
-function get_scale(k)
+function get_scale(k = :match)
   return 1/(2^get_mip(k))
 end
 
