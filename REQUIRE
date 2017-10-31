@@ -1,17 +1,12 @@
 julia 0.6
-JLD
 FixedPointNumbers
 IterativeSolvers
 Optim
 Distributions
 Compat
-Graphics
+Images
 StatsBase
 JSON
-SimpleTasks
 Primes
-PyPlot
-ImageView
-PyCall
 MKLSparse
 DataFrames
