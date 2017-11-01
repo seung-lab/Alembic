@@ -37,10 +37,18 @@ global CONVOLVE_ENVS = Dict{Symbol, ConvolveEnv}()
 global NORMXCORR2_ENVS = Dict{Symbol, Normxcorr2Env}()
 
 function clear_convolveenvs()
+  	for key in keys(CONVOLVE_ENVS)
+		CONVOLVE_ENVS[key] = ConvolveEnv(rand(0,0), rand(0,0))
+	end
+	gc();
 	global CONVOLVE_ENVS = Dict{Symbol, ConvolveEnv}()
 end
 function clear_normxcorr2envs()
-	global CONVOLVE_ENVS = Dict{Symbol, Normxcorr2Env}()
+  	for key in keys(NORMXCORR2_ENVS)
+		NORMXCORR2_ENVS[key] = Normxcorr2Env(rand(0,0), rand(0,0))
+	end
+	gc();
+	global NORMXCORR2_ENVS = Dict{Symbol, Normxcorr2Env}()
 end
 
 function register_convolveenv(ce::ConvolveEnv)
