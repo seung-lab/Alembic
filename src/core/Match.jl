@@ -28,6 +28,10 @@ end
 global MATCH_ENVS = Dict{Symbol, MatchEnv}()
 
 function clear_matchenvs()
+  	for key in keys(MATCH_ENVS)
+		MATCH_ENVS[key] = MatchEnv(0:0,0:0)
+	end
+	gc();
 	global MATCH_ENVS = Dict{Symbol, MatchEnv}()
 end
 
@@ -128,7 +132,7 @@ end
 
 init_Match();
 
-struct Match{T} <: AbstractMatch
+type Match{T} <: AbstractMatch
   src_index          # source mesh index
   dst_index          # destination mesh index
 
