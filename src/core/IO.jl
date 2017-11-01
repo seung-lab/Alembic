@@ -187,36 +187,36 @@ end
 
 ## Image related (CloudVolume)
 
-function get_cloudvolume(obj_name::AbstractString, mip::Int64 = get_mip(:match))
+function get_cloudvolume(obj_name::AbstractString; mip::Int64 = get_mip(:match))
   path = get_path(obj_name)
   cache = use_cache()
   return CloudVolumeWrapper(path, mip=mip, cache=cache, 
                                   bounded=false, fill_missing=true)
 end
 
-function get_image_size(obj_name::AbstractString, mip::Int64 = get_mip(:match))
-  cv = get_cloudvolume(obj_name, mip)
+function get_image_size(obj_name::AbstractString; mip::Int64 = get_mip(:match))
+  cv = get_cloudvolume(obj_name, mip=mip)
   return size(cv)[1:2]
 end
 
-function get_offset(obj_name::AbstractString, mip::Int64 = get_mip(:match))
-  cv = get_cloudvolume(obj_name, mip)
+function get_offset(obj_name::AbstractString; mip::Int64 = get_mip(:match))
+  cv = get_cloudvolume(obj_name, mip=mip)
   return offset(cv)[1:2]
 end
 
 """
 Get 3-tuple of ranges representing index in cloudvolume
 """
-function get_image_slice(index::Number, obj_name, mip::Int64 = get_mip(:match))
-  cv = get_cloudvolume(obj_name, mip)
-  o = get_offset(obj_name, mip)
-  s = get_image_size(obj_name, mip)
+function get_image_slice(index::Number, obj_name; mip::Int64 = get_mip(:match))
+  cv = get_cloudvolume(obj_name, mip=mip)
+  o = get_offset(obj_name, mip=mip)
+  s = get_image_size(obj_name, mip=mip)
   z = get_z(index)
   xy_slice = map(range, (o, s)...)
   return tuple(xy_slice..., z)
 end
 
-function get_image(index::Number, obj_name::AbstractString, mip::Int64 = get_mip(:match))
+function get_image(index::Number, obj_name::AbstractString; mip::Int64 = get_mip(:match))
   if haskey(IMG_CACHE_DICT, (index, obj_name, mip))
     println("$index, $obj_name, at miplevel $mip is in the image cache.")
   else
@@ -224,8 +224,8 @@ function get_image(index::Number, obj_name::AbstractString, mip::Int64 = get_mip
     @time begin
     push!(IMG_CACHE_LIST, (index, obj_name, mip))
 
-    cv = get_cloudvolume(obj_name, mip)
-    slice = get_image_slice(index, obj_name, mip)
+    cv = get_cloudvolume(obj_name, mip=mip)
+    slice = get_image_slice(index, obj_name, mip=mip)
 
     IMG_CACHE_DICT[(index, obj_name, mip)] = SharedArray(get_image(cv, slice))
     end
@@ -233,8 +233,8 @@ function get_image(index::Number, obj_name::AbstractString, mip::Int64 = get_mip
     return IMG_CACHE_DICT[(index, obj_name, mip)]
 end
 
-function get_image(index::Number, obj_name::AbstractString, slice, mip::Int64 = get_mip(:match))
-  cv = get_cloudvolume(obj_name, mip)
+function get_image(index::Number, obj_name::AbstractString, slice; mip::Int64 = get_mip(:match))
+  cv = get_cloudvolume(obj_name, mip=mip)
   return get_image(cv, slice)
 end
 
@@ -259,8 +259,8 @@ end
 """
 Snap slice to be chunk-aligned
 """
-function chunk_align(obj_name::AbstractString, slice)
-  cv = get_cloudvolume(obj_name)
+function chunk_align(obj_name::AbstractString, slice; mip::Int64=get_mip(:render))
+  cv = get_cloudvolume(obj_name, mip=get_mip(:render))
   o = offset(cv)
   c = chunks(cv)
   x_start = snap(slice[1][1], o[1], c[1], floor)
@@ -275,13 +275,13 @@ end
 """
 Rescope image to be chunk-aligned with cloudvolume data
 """
-function chunk_align(obj_name::AbstractString, img, src_slice)
-  dst_slice = chunk_align(obj_name, src_slice)
+function chunk_align(obj_name::AbstractString, img, src_slice; mip::Int64=get_mip(:render))
+  dst_slice = chunk_align(obj_name, src_slice, mip=get_mip(:render))
   return rescope(img, src_slice, dst_slice), dst_slice
 end
 
-function save_image(index::Number, obj_name::AbstractString, src_img, src_slice)
-  cv = get_cloudvolume(obj_name)
+function save_image(index::Number, obj_name::AbstractString, src_img, src_slice; mip::Int64=get_mip(:render))
+  cv = get_cloudvolume(obj_name, mip=get_mip(:render))
   dst_slice = chunk_align(obj_name, src_slice)
   if dst_slice != src_slice
     src_img = rescope(src_img, src_slice, dst_slice)

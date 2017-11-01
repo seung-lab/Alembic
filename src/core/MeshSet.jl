@@ -28,6 +28,12 @@ function to_csv(ms::MeshSet)
   end
 end
 
+function load_manual_filters!(ms::MeshSet)
+  for match in ms.matches
+    load_manual_filters!(match)
+  end
+end
+
 ### counting
 function count_meshes(ms::MeshSet)			return length(ms.meshes);		end
 function count_matches(ms::MeshSet)		return length(ms.matches);		end

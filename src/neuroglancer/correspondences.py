@@ -9,7 +9,7 @@ import numpy as np
 import os
 
 class Controller:
-    """Simple class to set & get points from neuroglancer
+    """Simple class to set & get synapses (point-pairs) from neuroglancer
     """
     state = {}
     clients = set()
@@ -18,15 +18,15 @@ class Controller:
         self.router = router
 
     def get(self):
-        if 'points' in self.state['layers']:
-            if 'points' in self.state['layers']['points']:
-                return map(tuple, self.state['layers']['points']['points'])
+        if 'synapses' in self.state['layers']:
+            if 'points' in self.state['layers']['synapses']:
+                return map(tuple, self.state['layers']['synapses']['points'])
         else:
             self.set()
         return []
 
-    def set(self, points=[]):
-        self.state['layers']['points'] = {'type':'point', 'points':points}
+    def set(self, synapses=[]):
+        self.state['layers']['synapses'] = {'type':'synapse', 'points':synapses}
         self.router.broadcast(self.clients.copy(), json.dumps(self.state))
 
     # websockets connections

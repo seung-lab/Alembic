@@ -4,7 +4,7 @@
 		"bucket":"gs://neuroglancer",
 		"dataset":"pinky40_alignment",
 		"src_image":"fold_prealigned",
-		"dst_image":"fold_aligned_father",
+		"dst_image":"fold_aligned_father_manual3",
 		"match_image":"",
 		"match":"match",
 		"mask":"mask",
@@ -40,7 +40,7 @@
 		"solve":{
 			"method": "elastic",
 			"mesh_spring_coeff": 1.0,
-			"match_spring_coeff": 1.0,
+			"match_spring_coeff": 100.0,
 			"ftol_cg": 1e-6,
 			"max_iters": 2000,
 			"use_cg": true,

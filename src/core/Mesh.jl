@@ -31,7 +31,9 @@ function get_image_size(mesh::Mesh)			return get_image_size("src_image");			end
 function get_metadata(mesh::Mesh)			return get_metadata(mesh.index);			end
 
 ### IO.jl EXTENSIONS
-function get_image(mesh::Mesh)				return get_image(mesh.index, "src_image");	end
+function get_image(mesh::Mesh, obj_name="src_image"; mip=get_mip(:match))
+	return get_image(get_index(mesh), obj_name, mip=mip);	
+end
 
 ### retrieval
 function get_index(mesh::Mesh)				

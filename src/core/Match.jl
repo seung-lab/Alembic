@@ -129,15 +129,15 @@ end
 init_Match();
 
 struct Match{T} <: AbstractMatch
-  src_index          # source mesh index
-  dst_index          # destination mesh index
+    src_index          # source mesh index
+    dst_index          # destination mesh index
 
-  src_points::Points{T}	    # source point coordinate in image
-  dst_points::Points{T}        # destination point coordinate in image
-  correspondence_properties    # in the same array order as points, contains properties of correspondences
+    src_points::Points{T}	    # source point coordinate in image
+    dst_points::Points{T}        # destination point coordinate in image
+    correspondence_properties    # in the same array order as points, contains properties of correspondences
 
-  filters                       # Array of filters 
-  properties::Dict{Symbol, Any}
+    filters                       # Array of filters 
+    properties::Dict{Symbol, Any}
 end
 
 ## IO
@@ -145,7 +145,7 @@ function get_correspondences_df(match::Match; globalized=true)
     pre, post, filter = get_correspondences(match, globalized=globalized)
     pre_z, post_z = get_index(match)
     n = length(filter)
-    df = DataFrame(vcat(pre, ones(n)*pre_z, post, ones(n)*post_z, filter')')
+    df = DataFrame(vcat(pre, ones(n)'*pre_z, post, ones(n)'*post_z, filter')')
     names!(df, [:pre_x, :pre_y, :pre_z, :post_x, :post_y, :post_z, :filter])
     return df
 end
@@ -158,6 +158,13 @@ function to_csv(match::Match)
     fn = joinpath(get_local_path(:match), get_name(match))
     println("Writing correspondences to $fn")
     writetable(fn, to_dataframe(match), separator=',')
+end
+
+function load_manual_filters!(match::Match)
+    fn = joinpath(get_local_path(:match), get_name(match))
+    println("Loading manual inspection filters from $fn")
+    df = readtable(fn)
+    match.filters[:manual] = .~convert(Array{Bool,1}, df[:filter])
 end
 
 ### index related
@@ -181,7 +188,7 @@ function count_rejected_correspondences(match::Match) return sum(get_rejected_in
 
 function count_filters(match::Match) return size(match.filters, 2); end
 function count_filtered_properties(match::Match, property_name, compare, threshold)
- return sum(compare(get_correspondence_properties(match::Match, property_name; filtered = true), threshold))
+    return sum(compare(get_correspondence_properties(match::Match, property_name; filtered = true), threshold))
 end
 
 ### correspondences related
@@ -901,6 +908,8 @@ function get_matches{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T})
             if (ss != ignore) & (ds != ignore)
                 src_id = src_index + ss/SPLIT_MESH_BASIS
                 dst_id = dst_index + ds/SPLIT_MESH_BASIS
+                unsafe_mask_image!(src_image, src_mask, ss, src_image_sub)
+                unsafe_mask_image!(dst_image, dst_mask, ds, dst_image_sub)
         	    @simd for i in 1:length(src_image)
         	      @inbounds src_image_sub[i] = src_image[i]
         	    end
