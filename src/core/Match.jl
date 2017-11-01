@@ -624,30 +624,6 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
     #if (pp == nothing) return nothing end;
     #	prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma)
     xc::Array{Float64,2} = normxcorr2_preallocated(src_patch, dst_patch; shape = full ? "full" : "valid");
-	#t = toc()
-	#to = ELAPSED_TIME
-	#global ELAPSED_TIME = t + to
-#=
-	if dst_range != dst_range_full
-		indices_within_range = findin(dst_range_full[1], dst_range[1]), findin(dst_range_full[2], dst_range[2])
-		intersect_img = dst_image[dst_range...];
-		avg = mean(intersect_img);
-		if isnan(avg) return nothing; end
-		avg = round(eltype(dst_image), avg);
-		padded_img = fill(avg, length(dst_range_full[1]), length(dst_range_full[2]));
-		padded_img[indices_within_range...] = intersect_img;
-		if scale == 1.0 
-		xc = normxcorr2_preallocated(src_image[src_range[1], src_range[2]], padded_img);
-	      else
-		xc = normxcorr2_preallocated(imscale_register_a!(src_image[src_range[1], src_range[2]], scale)[1], imscale_register_b!(padded_img, scale)[1])
-	      end
-	else
-		if scale == 1.0 
-		xc = normxcorr2_preallocated(src_image[src_range[1], src_range[2]], dst_image[dst_range[1], dst_range[2]]);
-	      else
-		xc = normxcorr2_preallocated(imscale_register_a!(src_image[src_range[1], src_range[2]], scale)[1], imscale_register_b!(dst_image[dst_range[1], dst_range[2]], scale)[1])
-	      end
-	end=#
 
 	r_max = maximum(xc)
 	if isnan(r_max) return nothing end;
@@ -661,19 +637,6 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 	i_max_int = i_max
 	j_max_int = j_max
 
-	#=if i_max != 1 && j_max != 1 && i_max != size(xc, 1) && j_max != size(xc, 2)
-		xc_w = sum(xc[i_max-1:i_max+1, j_max-1:j_max+1])
-		xc_i = sum(xc[i_max+1, j_max-1:j_max+1]) - sum(xc[i_max-1, j_max-1:j_max+1])
-		xc_j = sum(xc[i_max-1:i_max+1, j_max+1]) - sum(xc[i_max-1:i_max+1, j_max-1])
-		i_max += xc_i / xc_w 
-		j_max += xc_j / xc_w 
-		if isnan(i_max) || isnan(j_max) 
-		  println(xc_i)
-		  println(xc_j)
-		  println(xc_w)
-		  return nothing
-		end
-	end=#
 	if 2 < i_max < size(xc, 1) - 1 && 2 < j_max < size(xc, 2) - 1
 		xc_w = sum(xc[i_max-2:i_max+2, j_max-2:j_max+2])
 		xc_i = sum(xc[i_max+2, j_max-2:j_max+2]) * 2 + sum(xc[i_max+1, j_max-2:j_max+2]) - sum(xc[i_max-1, j_max-2:j_max+2]) - sum(xc[i_max-2, j_max-2:j_max+2]) * 2
@@ -687,6 +650,7 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 		  return nothing
 		end
 	end
+
 
 	@fastmath @inbounds begin
 	if scale != 1.0
@@ -729,29 +693,10 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 
     
   end
-  #fmib
 
-	#= # version that treats each value as a bin and sends it to the centre
-	xc_i_locs = linspace(1, xc_i_len, size(xc, 1) + 1)
-	xc_j_locs = linspace(1, xc_j_len, size(xc, 2) + 1)
-
-	i_max = (i_max - 0.5) * step(xc_i_locs) + 1
-	j_max = (j_max - 0.5) * step(xc_j_locs) + 1
-      end
-	di = Float64(i_max - (dst_pt_loc_full[1] - src_pt_loc[1] + 1))
-	dj = Float64(j_max - (dst_pt_loc_full[2] - src_pt_loc[2] + 1))
-	=#
-
-
-
-	#println("src_range: $src_range, dst_range: $dst_range")
-	#println("i_max, j_max: $i_max, $j_max, src_pt_loc: $src_pt_loc, dst_pt_loc: $dst_pt_loc, dst_pt_loc_full = $dst_pt_loc_full")
-	#println("di: $di, dj: $dj, scale = $scale")
-
-
-	correspondence_properties[:patches_src_normalized_dyn_range] = (maximum(src_image[src_range...]) - minimum(src_image[src_range...])) / typemax(eltype(src_image));
-	correspondence_properties[:patches_src_kurtosis] = kurtosis(src_image[src_range...]);
-	correspondence_properties[:patches_dst_kurtosis] = kurtosis(dst_image[dst_range...]);
+	correspondence_properties[:patches_src_normalized_dyn_range] = (maximum(view(src_image, src_range...)) - minimum(view(src_image, src_range...))) / typemax(eltype(src_image));
+	correspondence_properties[:patches_src_kurtosis] = kurtosis(view(src_image, src_range...));
+	correspondence_properties[:patches_dst_kurtosis] = kurtosis(view(dst_image, dst_range...));
 	correspondence_properties[:xcorr_r_max] = r_max;
 	for beta in [0.5, 0.75, 0.95]
 	correspondence_properties[Symbol(string("xcorr_sigma_", beta))] = sigma(xc, beta) / scale;
@@ -895,18 +840,18 @@ function get_matches{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T})
 		    end
 		    fillsub!(src_image_sub, src_image, src_mask, ss)
 		    fillsub!(dst_image_sub, dst_image, dst_mask, ds)
-		    
-                push!(matches, Match(src_mesh, dst_mesh, 
+                
+		    push!(matches, Match(src_mesh, dst_mesh, 
                                         src_id, dst_id, 
                                         src_image_sub, 
                                         dst_image_sub))
             end
         end
     end
-    @everywhere src_image_sub = 0
-    @everywhere src_image_sub = 0
-    @everywhere dst_image_sub = 0
-    @everywhere dst_image_sub = 0
+    src_image_sub = 0
+    src_image_sub = 0
+    dst_image_sub = 0
+    dst_image_sub = 0
     @everywhere gc();
     @everywhere gc();
     return matches
@@ -934,7 +879,7 @@ function Match{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T},
 
     print("computing matches:")
     print("    ")
-        @time dst_allpoints = map(get_match, columnviews(src_mesh.src_nodes[:,ranged_inds]), ranges, repeated(src_image), repeated(dst_image), repeated(get_scale()), repeated(PARAMS[:match][:bandpass_sigmas])) 
+        @time dst_allpoints = pmap(get_match, columnviews(src_mesh.src_nodes[:,ranged_inds]), ranges, repeated(src_image), repeated(dst_image), repeated(get_scale()), repeated(PARAMS[:match][:bandpass_sigmas])) 
 
     matched_inds = find(i -> i != nothing, dst_allpoints);
 
