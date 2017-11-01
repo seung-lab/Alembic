@@ -623,7 +623,7 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
     src_patch, dst_patch = prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, bandpass_sigmas; meanpad = meanpad)
     #if (pp == nothing) return nothing end;
     #	prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma)
-  xc = normxcorr2_preallocated(src_patch, dst_patch; shape = full ? "full" : "valid");
+    xc::Array{Float64,2} = normxcorr2_preallocated(src_patch, dst_patch; shape = full ? "full" : "valid");
 	#t = toc()
 	#to = ELAPSED_TIME
 	#global ELAPSED_TIME = t + to
@@ -872,8 +872,8 @@ function get_matches{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T})
     src_mask = get_image(src_index, "mask", get_mip(:match));
     dst_mask = get_image(dst_index, "mask", get_mip(:match));
     println("Compiling mask components")
-    src_subsections = unique(src_mask)
-    dst_subsections = unique(dst_mask)
+    src_subsections = Array{IMG_ELTYPE, 1}(unique(src_mask))
+    dst_subsections = Array{IMG_ELTYPE,1}(unique(dst_mask))
     matches = Array{Match,1}()
     ignore = PARAMS[:match][:ignore_value]
     for ss in src_subsections
@@ -881,22 +881,21 @@ function get_matches{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T})
             if (ss != ignore) & (ds != ignore)
                 src_id = src_index + ss/SPLIT_MESH_BASIS
                 dst_id = dst_index + ds/SPLIT_MESH_BASIS
-        	    @simd for i in 1:length(src_image)
-        	      @inbounds src_image_sub[i] = src_image[i]
+		    function fillsub!(img_sub, img, mask, sub_val)
+
+        	    @simd for i in 1:length(img)
+        	      @inbounds img_sub[i] = img[i]
         	    end
-        	    @simd for i in 1:length(dst_image)
-        	      @inbounds dst_image_sub[i] = dst_image[i]
-        	    end
-        	    for i in 1:length(src_image)
-            		@inbounds if src_mask[i] != ss
-            		  src_image_sub[i] = 0
+        	    for i in 1:length(img)
+            		@inbounds if mask[i] != sub_val
+            		@inbounds img_sub[i] = 0
             		end
         	    end
-        	    for i in 1:length(dst_image)
-            		@inbounds if dst_mask[i] != ds
-            		  dst_image_sub[i] = 0
-            		end
-        	    end
+
+		    end
+		    fillsub!(src_image_sub, src_image, src_mask, ss)
+		    fillsub!(dst_image_sub, dst_image, dst_mask, ds)
+		    
                 push!(matches, Match(src_mesh, dst_mesh, 
                                         src_id, dst_id, 
                                         src_image_sub, 
@@ -935,7 +934,7 @@ function Match{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T},
 
     print("computing matches:")
     print("    ")
-        @time dst_allpoints = pmap(get_match, columnviews(src_mesh.src_nodes[:,ranged_inds]), ranges, repeated(src_image), repeated(dst_image), repeated(get_scale()), repeated(PARAMS[:match][:bandpass_sigmas])) 
+        @time dst_allpoints = map(get_match, columnviews(src_mesh.src_nodes[:,ranged_inds]), ranges, repeated(src_image), repeated(dst_image), repeated(get_scale()), repeated(PARAMS[:match][:bandpass_sigmas])) 
 
     matched_inds = find(i -> i != nothing, dst_allpoints);
 
