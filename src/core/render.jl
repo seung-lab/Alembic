@@ -2,7 +2,7 @@
 Multiple dispatch for meshwarp on Mesh object
 """
 function meshwarp_mesh(mesh::Mesh)
-  img = get_image(mesh, get_mip(:render))
+  img = get_image(mesh, "src_image", get_mip(:render))
   scale = get_scale(:match)/get_scale(:render)
   src_nodes = get_nodes(mesh; globalized=true, use_post=false, scale=scale)
   dst_nodes = get_nodes(mesh; globalized=true, use_post=true, scale=scale)
