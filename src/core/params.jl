@@ -24,6 +24,9 @@ function load_params(fn)
 		 	:mesh => joinpath(root, dirs["dst_image"], dirs["mesh"]),
 		 	:match => joinpath(root, dirs["dst_image"], dirs["match"]),
 		 	:meshset => joinpath(root, dirs["dst_image"], dirs["meshset"]),
+		 	:alembic.mesh => joinpath(root, dirs["dst_image"], dirs["mesh"]),
+		 	:alembic.match => joinpath(root, dirs["dst_image"], dirs["match"]),
+		 	:alembic.meshset => joinpath(root, dirs["dst_image"], dirs["meshset"]),
 		 	:cache => dirs["cache"]
 			),
 	     :mesh => Dict(
