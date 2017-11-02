@@ -4,7 +4,7 @@
 		"bucket":"gs://neuroglancer",
 		"dataset":"pinky40_alignment",
 		"src_image":"fold_prealigned",
-		"dst_image":"fold_aligned_father_manual3",
+		"dst_image":"fold_aligned_father_manual5",
 		"match_image":"",
 		"match":"match",
 		"mask":"mask",

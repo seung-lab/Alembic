@@ -56,6 +56,11 @@ function get_nodes(mesh::Mesh; globalized::Bool = false, use_post::Bool=false, s
 	return nodes
 end
 
+function get_bbox(mesh::Mesh; globalized::Bool = false, use_post::Bool=false, scale=1.0)
+	nodes = get_nodes(mesh, globalized=globalized, use_post=use_post, scale=scale)
+	return ImageRegistration.find_mesh_bb(nodes)
+end
+
 ### counting
 function count_nodes(mesh::Mesh)			return size(mesh.src_nodes, 2);				end
 function count_edges(mesh::Mesh)			return size(mesh.edges, 2);				end

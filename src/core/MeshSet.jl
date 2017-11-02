@@ -96,6 +96,10 @@ function get_match(ms::MeshSet, index)
   return ms.matches[k]
 end
 
+function get_bbox(ms::MeshSet; globalized::Bool = false, use_post::Bool=false, scale=1.0)
+  sum(map(x -> get_bbox(x, globalized=globalized, use_post=use_post, scale=scale), ms.meshes))
+end
+
 # Mesh.jl extensions
 function fix!(ms::MeshSet, mesh_index::Int64) 	
   fix!(ms.meshes[mesh_index]); 	
