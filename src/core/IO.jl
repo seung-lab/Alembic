@@ -6,12 +6,6 @@ global const WORKER_PROCS = setdiff(procs(), [1]);
 else
 global const WORKER_PROCS = [1];
 end
-global const STORAGE_OBJECTS = ["alembic.mesh", 
-                                "alembic.match", 
-                                "alembic.meshset", 
-                                "mesh", 
-                                "match", 
-                                "meshset"]
 global const IMG_CACHE_SIZE = 20 * 2^30
 global const IMG_ELTYPE = UInt8
 
@@ -165,24 +159,19 @@ end
 
 ## Non-image related (Storage)
 
-function load(fn, obj_name::AbstractString)
+function load(obj_name::AbstractString, fn::AbstractString)
   println("Loading $obj_name for $fn")
-  if obj_name in STORAGE_OBJECTS
-    s = StorageWrapper(get_path(obj_name))
-    return s[fn]
-  else
-    println("Not a Storage object, use `get_image`")
-  end
+  s = StorageWrapper(get_path(obj_name))
+  return s[fn]
 end
 
-function save(fn, obj)
+function save(obj, fn::AbstractString=get_name(obj))
   obj_name = lowercase(string(typeof(obj)))
-  if obj_name in STORAGE_OBJECTS
-    s = StorageWrapper(get_path(obj_name))
-    s[fn] = obj
-  else
-    println("Not a Storage object")
+  if startswith(obj_name, "alembic.")
+    obj_name = obj_name[9:end]
   end
+  s = StorageWrapper(get_path(obj_name))
+  s[fn] = obj;
 end
 
 ## Image related (CloudVolume)
