@@ -1,4 +1,4 @@
-type Mesh{T} <: AbstractMesh
+struct Mesh{T} <: AbstractMesh
 	index							# any sort of index associated with the mesh - by default a 4-tuple
 
 	# all coordinates are taken with the image associated with the mesh having its left top corner at (0, 0) 
@@ -27,7 +27,7 @@ end
     
 ### META.jl EXTENSIONS
 function get_offset(mesh::Mesh)				return get_offset("src_image");				end
-function get_image_size(mesh::Mesh)			return get_image_size("src_image");			end
+function get_image_size(mesh::Mesh)		return get_image_size("src_image");			end
 function get_metadata(mesh::Mesh)			return get_metadata(mesh.index);			end
 
 ### IO.jl EXTENSIONS

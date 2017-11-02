@@ -132,7 +132,7 @@ end
 
 init_Match();
 
-type Match{T} <: AbstractMatch
+struct Match{T} <: AbstractMatch
   src_index          # source mesh index
   dst_index          # destination mesh index
   src_points::Points{T}	    # source point coordinate in image
@@ -158,6 +158,7 @@ function to_dataframe(match::Match)
 end
 
 function to_csv(match::Match)
+    check_local_dir()
     fn = joinpath(get_local_path(:match), get_name(match))
     println("Writing correspondences to $fn")
     writetable(fn, to_dataframe(match), separator=',')
