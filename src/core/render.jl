@@ -94,7 +94,7 @@ end
 Render will compile all the subsections into one complete section & write it to
 the dst_image directory specified in params at the render mip level.
 """
-function render!(ms::MeshSet, z_range=unique(collect_z(ms)))
+function render(ms::MeshSet, z_range=unique(collect_z(ms)))
   for z in z_range
     meshes = get_subsections(ms, z)
     subsection_images = Array{Array{UInt8,2},1}()
