@@ -375,7 +375,9 @@ Elastic solve
 function elastic_solve!(meshset; from_current = true)
 	sanitize!(meshset);
 	collation, noderanges, edgeranges = elastic_collate(meshset; from_current = from_current)
+	BLAS.set_num_threads(Sys.CPU_CORES);
   @time SolveMeshConjugateGradient!(collation...)
+  	setblas();
   for mesh in meshset.meshes
     dst_nodes = collation[1][:, noderanges[get_index(mesh)]]
   	broadcast!(-, mesh.dst_nodes, dst_nodes, get_offset(mesh));

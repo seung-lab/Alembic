@@ -1,4 +1,4 @@
-struct Mesh{T} <: AbstractMesh
+type Mesh{T} <: AbstractMesh
 	index							# any sort of index associated with the mesh - by default a 4-tuple
 
 	# all coordinates are taken with the image associated with the mesh having its left top corner at (0, 0) 

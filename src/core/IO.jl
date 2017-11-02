@@ -11,14 +11,14 @@ global const IMG_ELTYPE = UInt8
 
 if myid() == 1
   # Image Cache indexed by index, obj_name, miplevel
-  global const IMG_CACHE_DICT = Dict{Tuple{Number, AbstractString, Int64}, SharedArray}()
+  global const IMG_CACHE_DICT = Dict{Tuple{Number, AbstractString, Int64}, SharedArray{IMG_ELTYPE, 2}}()
   global const IMG_CACHE_LIST = Array{Any, 1}()
 end
 
 
   
 function reset_cache()
-  IMG_CACHE_DICT = Dict{Tuple{AbstractString, Float64}, SharedArray}()
+  IMG_CACHE_DICT = Dict{Tuple{AbstractString, Float64}, SharedArray{IMG_ELTYPE, 2}}()
   IMG_CACHE_LIST = Array{Any, 1}()
   @time @everywhere gc();
 end
@@ -98,11 +98,11 @@ end
 """
 Get mip level specified in params
 """
-function get_mip(k)
+function get_mip(k = :match)
   return PARAMS[k][:mip]
 end
 
-function get_scale(k)
+function get_scale(k = :match)
   return 1/(2^get_mip(k))
 end
 
@@ -219,7 +219,7 @@ function get_image(index::Number, obj_name::AbstractString; mip::Int64 = get_mip
     IMG_CACHE_DICT[(index, obj_name, mip)] = SharedArray(get_image(cv, slice))
     end
   end
-    return IMG_CACHE_DICT[(index, obj_name, mip)]
+    return IMG_CACHE_DICT[(index, obj_name, mip)]::SharedArray{IMG_ELTYPE, 2}
 end
 
 function get_image(index::Number, obj_name::AbstractString, slice; mip::Int64 = get_mip(:match))

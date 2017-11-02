@@ -1,5 +1,9 @@
 module Alembic
 
+    function setblas()
+	BLAS.set_num_threads(round(Int64, Sys.CPU_CORES / nprocs()))
+    end
+    setblas()
     # using OffsetArrays
     using DataFrames
     using FixedPointNumbers

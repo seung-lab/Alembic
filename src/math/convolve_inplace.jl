@@ -37,10 +37,18 @@ global CONVOLVE_ENVS = Dict{Symbol, ConvolveEnv}()
 global NORMXCORR2_ENVS = Dict{Symbol, Normxcorr2Env}()
 
 function clear_convolveenvs()
+  	for key in keys(CONVOLVE_ENVS)
+		CONVOLVE_ENVS[key] = ConvolveEnv(rand(0,0), rand(0,0))
+	end
+	gc();
 	global CONVOLVE_ENVS = Dict{Symbol, ConvolveEnv}()
 end
 function clear_normxcorr2envs()
-	global CONVOLVE_ENVS = Dict{Symbol, Normxcorr2Env}()
+  	for key in keys(NORMXCORR2_ENVS)
+		NORMXCORR2_ENVS[key] = Normxcorr2Env(rand(0,0), rand(0,0))
+	end
+	gc();
+	global NORMXCORR2_ENVS = Dict{Symbol, Normxcorr2Env}()
 end
 
 function register_convolveenv(ce::ConvolveEnv)
@@ -426,6 +434,7 @@ function optimize_all_cores(img_d::Int64)
 end
 
 function cumsum12!(A::Array{Float64,2}, conv_sum::Array{Float64,2}, conv_sum2::Array{Float64,2})
+
 function calculate_cumsums!(sum, A)
     (m,n)=size(A);
     if m>1 && n>1
@@ -439,13 +448,37 @@ end
 
     # cumulative sum in two dimensions
     # first row and column are 1D cumulative sums
-    conv_sum[:,1]=cumsum(A[:,1],1);
-    conv_sum[1,:]=cumsum(A[1,:],2);      # B[1,1] is redundantly computed twice
+    sum = 0.0
+    @simd for i in 1:size(A, 1)
+        @fastmath @inbounds sum += A[i, 1]
+	@fastmath @inbounds conv_sum[i, 1] = sum
+    end
+    sum = 0.0
+    @simd for i in 1:size(A, 2)
+        @fastmath @inbounds sum += A[1, i]
+	@fastmath @inbounds conv_sum[1, i] = sum
+    end
+    #=
+    conv_sum[:,1]=cumsum(A[:,1:1],1);
+    conv_sum[1,:]=cumsum(A[1:1,:],2);      # B[1,1] is redundantly computed twice
+    =#
     # compute rest of matrix from recursion
     calculate_cumsums!(conv_sum, A);
 	elwise_mul!(A, A)
-    conv_sum2[:,1]=cumsum(A[:,1],1);
-    conv_sum2[1,:]=cumsum(A[1,:],2);      # conv_sum[1,1] is redundantly computed twice
+	#=
+    conv_sum2[:,1]=cumsum(A[:,1:1],1);
+    conv_sum2[1,:]=cumsum(A[1:1,:],2);      # conv_sum[1,1] is redundantly computed twice
+    =#
+    sum = 0.0
+    @simd for i in 1:size(A, 1)
+        @fastmath @inbounds sum += A[i, 1]
+	@fastmath @inbounds conv_sum2[i, 1] = sum
+    end
+    sum = 0.0
+    @simd for i in 1:size(A, 2)
+        @fastmath @inbounds sum += A[1, i]
+	@fastmath @inbounds conv_sum2[1, i] = sum
+    end
     # compute rest of matrix from recursion
     calculate_cumsums!(conv_sum2, A);
 end

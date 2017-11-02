@@ -8,17 +8,31 @@ end
 
 global SIGMA_ENVS = Dict{NTuple{2, Int64}, SigmaEnv}()
 
+function clear_sigmaenvs()
+  	for key in keys(SIGMA_ENVS)
+		SIGMA_ENVS[key] = SigmaEnv(rand(0,0))
+	end
+	gc();
+	global SIGMA_ENVS = Dict{Symbol, SigmaEnv}()
+end
+
 function get_sigmaenv(img)
   if haskey(SIGMA_ENVS, size(img)) return SIGMA_ENVS[size(img)] end
 
-  SIGMA_ENVS[size(img)] = SigmaEnv(
+  SIGMA_ENVS[size(img)] = SigmaEnv(img)
+  return SIGMA_ENVS[size(img)]
+end
+
+function SigmaEnv(img)
+
+  return SigmaEnv(
   		similar(img), 
 		[i for i=1:size(img,1), j=1:size(img,2)], 
 		[j for i=1:size(img,1), j=1:size(img,2)],
 		similar(img),
 		similar(img))
-  return SIGMA_ENVS[size(img)]
-end
+	      end
+
 
 function subtract_beta(img, beta = 0.5)
 	return max.(img - beta * maximum(img), 0)
