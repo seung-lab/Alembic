@@ -342,7 +342,7 @@ function find_mesh_triangle{T}(mesh::Mesh{T}, point::Union{Point{T}, SubArray{T,
 		return NO_TRIANGLE;
 	end
 
-	node0 = mesh.src_nodes[ind0];
+	node0 = mesh.src_nodes[:, ind0];
 	res = point - node0;
 
 	theta = abs(atan(res[1] / res[2]));
