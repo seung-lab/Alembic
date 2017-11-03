@@ -4,7 +4,7 @@
 		"bucket":"gs://neuroglancer",
 		"dataset":"pinky40_alignment",
 		"src_image":"fold_prealigned",
-		"dst_image":"fold_aligned_father",
+		"dst_image":"fold_aligned_fine_fix",
 		"match_image":"",
 		"match":"match",
 		"mask":"mask",
@@ -16,14 +16,14 @@
 		"mesh":{
 			"z_start": 779,
 			"z_stop": 785,
-			"mesh_length": 1000
+			"mesh_length": 200
 		},
 		"match":{
 			"mip": 0,
 			"ignore_value": 255,
-			"block_r": 500,
-			"search_r": 1000,
-			"bandpass_sigmas": [2,10],
+			"block_r": 200,
+			"search_r": 500,
+			"bandpass_sigmas": [5,50],
 			"symmetric":false,
 			"depth": 1
 		},
