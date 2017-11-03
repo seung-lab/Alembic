@@ -170,6 +170,7 @@ function save(obj, fn::AbstractString=get_name(obj))
   if startswith(obj_name, "alembic.")
     obj_name = obj_name[9:end]
   end
+  println("Saving $fn to $(get_path(obj_name))")
   s = StorageWrapper(get_path(obj_name))
   s[fn] = obj;
 end
