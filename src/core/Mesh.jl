@@ -11,7 +11,7 @@ end
 
 function Base.deepcopy(m::Mesh; index=m.index, src_nodes=m.src_nodes, 
 				dst_nodes=m.dst_nodes, edges=m.edges, properties=m.properties)
-	return Mesh(index, src_nodes, dst_nodes, edges, properties)
+	return Mesh(index, deepcopy(src_nodes), deepcopy(dst_nodes), deepcopy(edges), deepcopy(properties))
 end
 
 

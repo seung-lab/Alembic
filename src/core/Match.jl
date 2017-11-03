@@ -148,8 +148,9 @@ function Base.deepcopy(m::Match; src_index=m.src_index, dst_index=m.dst_index,
                         src_points=m.src_points, dst_points=m.dst_points,
                         correspondence_properties=m.correspondence_properties,
                         filters=m.filters, properties=m.properties)
-  return Match(src_index, dst_index, src_points, dst_points, 
-                            correspondence_properties, filters, properties)
+  return Match(src_index, dst_index, deepcopy(src_points), deepcopy(dst_points), 
+                        deepcopy(correspondence_properties), deepcopy(filters), 
+                        deepcopy(properties))
 end
 
 ## IO
