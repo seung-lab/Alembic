@@ -8,7 +8,9 @@ MAINTAINER macrintr
 
 # Download git & other packages
 RUN apt-get update
+RUN apt-get install -y curl
 RUN apt-get install -y libblas-dev liblapack-dev liblapacke-dev gfortran git
+RUN apt-get install -y vim
 
 # Install cloud-volume
 RUN pip install pip --upgrade
@@ -29,6 +31,7 @@ RUN julia -e 'Pkg.clone("https://github.com/seung-lab/Alembic.git")'
 RUN julia /root/.julia/v0.6/Alembic/UNREGISTERED_REQUIRE.jl
 RUN julia -e 'using Alembic'
 
+RUN ln -s /root/.julia/v0.6/Alembic/src/clients /
 # Create secrets
 # COPY aws-secret.json /root/.cloudvolume/secrets/aws-secret.json
 # COPY google-secret.json /root/.cloudvolume/secrets/google-secret.json
