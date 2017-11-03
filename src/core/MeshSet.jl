@@ -575,7 +575,7 @@ end
 function load_stack(offsets, wafer_num, section_range)
   indices = find(i -> offsets[i, 2][1] == wafer_num && offsets[i,2][2] in section_range, 1:size(offsets, 1))
   ms = MeshSet(PARAMS_ALIGNMENT)
-  images = Array{SharedArray{UInt8, 2}, 1}(0)
+  images = Array{Array{UInt8, 2}, 1}(0)
 
   for i in indices
   name = offsets[i, 1]
@@ -585,7 +585,7 @@ function load_stack(offsets, wafer_num, section_range)
   image = get_image(get_path(name))
   add_mesh(Mesh(name, image, index, dy, dx, false, PARAMS_ALIGNMENT), ms)
   
-  image_shared = SharedArray{UInt8}(size(image, 1), size(image, 2))
+  image_shared = Array{UInt8}(size(image, 1), size(image, 2))
   image_shared[:, :] = image[:, :]
   push!(images, image_shared)
   end

@@ -11,14 +11,14 @@ global const IMG_ELTYPE = UInt8
 
 if myid() == 1
   # Image Cache indexed by index, obj_name, miplevel
-  global const IMG_CACHE_DICT = Dict{Tuple{Number, AbstractString, Int64}, SharedArray{IMG_ELTYPE, 2}}()
+  global const IMG_CACHE_DICT = Dict{Tuple{Number, AbstractString, Int64}, Array{IMG_ELTYPE, 2}}()
   global const IMG_CACHE_LIST = Array{Any, 1}()
 end
 
 
   
 function reset_cache()
-  IMG_CACHE_DICT = Dict{Tuple{AbstractString, Float64}, SharedArray{IMG_ELTYPE, 2}}()
+  IMG_CACHE_DICT = Dict{Tuple{AbstractString, Float64}, Array{IMG_ELTYPE, 2}}()
   IMG_CACHE_LIST = Array{Any, 1}()
   @time @everywhere gc();
 end
@@ -216,10 +216,10 @@ function get_image(index::Number, obj_name::AbstractString; mip::Int64 = get_mip
     cv = get_cloudvolume(obj_name, mip=mip)
     slice = get_image_slice(index, obj_name, mip=mip)
 
-    IMG_CACHE_DICT[(index, obj_name, mip)] = SharedArray(get_image(cv, slice))
+    IMG_CACHE_DICT[(index, obj_name, mip)] = Array(get_image(cv, slice))
     end
   end
-    return IMG_CACHE_DICT[(index, obj_name, mip)]::SharedArray{IMG_ELTYPE, 2}
+    return IMG_CACHE_DICT[(index, obj_name, mip)]::Array{IMG_ELTYPE, 2}
 end
 
 function get_image(index::Number, obj_name::AbstractString, slice; mip::Int64 = get_mip(:match))
@@ -232,7 +232,7 @@ function get_image(cv::CloudVolumeWrapper, slice)
   img = cv[slice...]
   return img
   #=
-  shared_img = SharedArray{UInt8}(size(img))
+  shared_img = Array{UInt8}(size(img))
   shared_img[:] = img[:]
   return shared_img
   =#
