@@ -138,6 +138,10 @@ function use_cache()
   return PARAMS[:dirs][:cache]
 end
 
+function use_mask()
+  return PARAMS[:dirs][:mask] != ""
+end
+
 function globalize!{T}(pts::Points{T}, offset::Array{Int,1})
   @inbounds o1 = offset[1];
   @inbounds o2 = offset[2];
