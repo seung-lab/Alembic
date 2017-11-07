@@ -1,16 +1,18 @@
 # Use an official Python runtime as a parent image
 # Working from Python base instead of Julia base, because we had conflicts
 # with cloudvolume and some of the already installed python packages.
-FROM python:2.7
+FROM rscohn2/julia-mkl 
 
 # Attach author
 MAINTAINER macrintr
 
 # Download git & other packages
-RUN apt-get update
-RUN apt-get install -y curl
-RUN apt-get install -y libblas-dev liblapack-dev liblapacke-dev gfortran git
-RUN apt-get install -y vim
+RUN yum update -y
+RUN yum install -y curl
+RUN yum install -y libblas-dev liblapack-dev liblapacke-dev gfortran git
+RUN yum install -y vim
+RUN yum install -y python-dev
+RUN yum install -y python-pip 
 
 # Install cloud-volume
 RUN pip install pip --upgrade
@@ -25,6 +27,10 @@ RUN mkdir "$JULIA_PATH"
 RUN tar -xzf julia.tar.gz -C "$JULIA_PATH" --strip-components 1;
 RUN rm julia.tar.gz
 ENV PATH $JULIA_PATH/bin:$PATH
+
+# Fix requests to make Alembic work
+RUN pip uninstall -y requests
+RUN pip install requests
 
 # Install Alembic
 RUN julia -e 'Pkg.clone("https://github.com/seung-lab/Alembic.git")'
