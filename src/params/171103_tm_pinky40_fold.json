@@ -1,0 +1,56 @@
+{
+	"operation_name":"alignment",
+	"dirs":{
+		"bucket":"gs://neuroglancer",
+		"dataset":"pinky40_alignment",
+		"src_image":"fold_prealigned",
+		"dst_image":"fold_aligned_fine_fix",
+		"match_image":"",
+		"match":"match",
+		"mask":"mask",
+		"mesh":"mesh",
+		"meshset":"meshset",
+		"cache":false
+	},
+	"params":{
+		"mesh":{
+			"z_start": 779,
+			"z_stop": 785,
+			"mesh_length": 200
+		},
+		"match":{
+			"mip": 0,
+			"ignore_value": 255,
+			"block_r": 200,
+			"search_r": 500,
+			"bandpass_sigmas": [5,50],
+			"symmetric":false,
+			"depth": 1
+		},
+		"filter":{
+			"sigma_filter_high": 50,
+			"sigma_filter_mid": 250,
+			"sigma_filter_low": 400,
+			"dyn_range_filter": 1.0,
+			"r_filter": 0.02,
+			"kurtosis_filter": 25,
+			"kurtosis_filter_dst": 50,
+			"kurtosis_filter_edge": -1.60
+		},
+		"solve":{
+			"method": "elastic",
+			"mesh_spring_coeff": 1.0,
+			"match_spring_coeff": 100.0,
+			"ftol_cg": 1e-6,
+			"max_iters": 2000,
+			"use_cg": true,
+	     	"eta_gd": 0,
+	     	"ftol_gd": 0,
+	     	"eta_newton": 0,
+	     	"ftol_newton": 0
+		},
+		"render":{
+			"mip":0
+		}
+	}
+}

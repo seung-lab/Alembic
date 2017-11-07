@@ -1,4 +1,4 @@
-type Mesh{T} <: AbstractMesh
+struct Mesh{T} <: AbstractMesh
 	index							# any sort of index associated with the mesh - by default a 4-tuple
 
 	# all coordinates are taken with the image associated with the mesh having its left top corner at (0, 0) 
@@ -11,7 +11,7 @@ end
 
 function Base.deepcopy(m::Mesh; index=m.index, src_nodes=m.src_nodes, 
 				dst_nodes=m.dst_nodes, edges=m.edges, properties=m.properties)
-	return Mesh(index, src_nodes, dst_nodes, edges, properties)
+	return Mesh(index, deepcopy(src_nodes), deepcopy(dst_nodes), deepcopy(edges), deepcopy(properties))
 end
 
 
@@ -27,7 +27,7 @@ end
     
 ### META.jl EXTENSIONS
 function get_offset(mesh::Mesh)				return get_offset("src_image");				end
-function get_image_size(mesh::Mesh)			return get_image_size("src_image");			end
+function get_image_size(mesh::Mesh)		return get_image_size("src_image");			end
 function get_metadata(mesh::Mesh)			return get_metadata(mesh.index);			end
 
 ### IO.jl EXTENSIONS
@@ -342,7 +342,7 @@ function find_mesh_triangle{T}(mesh::Mesh{T}, point::Union{Point{T}, SubArray{T,
 		return NO_TRIANGLE;
 	end
 
-	node0 = mesh.src_nodes[ind0];
+	node0 = mesh.src_nodes[:, ind0];
 	res = point - node0;
 
 	theta = abs(atan(res[1] / res[2]));

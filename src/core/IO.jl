@@ -138,6 +138,10 @@ function use_cache()
   return PARAMS[:dirs][:cache]
 end
 
+function use_mask()
+  return PARAMS[:dirs][:mask] != ""
+end
+
 function globalize!{T}(pts::Points{T}, offset::Array{Int,1})
   @inbounds o1 = offset[1];
   @inbounds o2 = offset[2];
@@ -170,6 +174,7 @@ function save(obj, fn::AbstractString=get_name(obj))
   if startswith(obj_name, "alembic.")
     obj_name = obj_name[9:end]
   end
+  println("Saving $fn to $(get_path(obj_name))")
   s = StorageWrapper(get_path(obj_name))
   s[fn] = obj;
 end

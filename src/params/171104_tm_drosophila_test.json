@@ -2,37 +2,37 @@
 	"operation_name":"alignment",
 	"dirs":{
 		"bucket":"gs://neuroglancer",
-		"dataset":"pinky40_alignment",
-		"src_image":"fold_prealigned",
-		"dst_image":"fold_aligned_father",
-		"match_image":"",
+		"dataset":"drosophila_sergiy",
+		"src_image":"image",
+		"dst_image":"aligned",
+		"match_image":"ncc_out",
 		"match":"match",
-		"mask":"mask",
+		"mask":"",
 		"mesh":"mesh",
 		"meshset":"meshset",
-		"cache":false
+		"cache": false
 	},
 	"params":{
 		"mesh":{
-			"z_start": 779,
-			"z_stop": 785,
-			"mesh_length": 1000
+			"z_start": 0,
+			"z_stop": 99,
+			"mesh_length": 200
 		},
 		"match":{
-			"mip": 0,
+			"mip": 1,
 			"ignore_value": 255,
-			"block_r": 500,
-			"search_r": 1000,
-			"bandpass_sigmas": [2,10],
-			"symmetric":false,
+			"block_r": 200,
+			"search_r": 300,
+			"bandpass_sigmas": [0,0],
+			"symmetric": false,
 			"depth": 1
 		},
 		"filter":{
-			"sigma_filter_high": 50,
-			"sigma_filter_mid": 250,
-			"sigma_filter_low": 400,
-			"dyn_range_filter": 1.0,
-			"r_filter": 0.02,
+			"sigma_filter_high": 6.5,
+			"sigma_filter_mid": 20,
+			"sigma_filter_low": 150,
+			"dyn_range_filter": 0.5,
+			"r_filter": 0.0275,
 			"kurtosis_filter": 25,
 			"kurtosis_filter_dst": 50,
 			"kurtosis_filter_edge": -1.60
@@ -40,7 +40,7 @@
 		"solve":{
 			"method": "elastic",
 			"mesh_spring_coeff": 1.0,
-			"match_spring_coeff": 100.0,
+			"match_spring_coeff": 10.0,
 			"ftol_cg": 1e-6,
 			"max_iters": 2000,
 			"use_cg": true,
@@ -50,7 +50,7 @@
 	     	"ftol_newton": 0
 		},
 		"render":{
-			"mip":0
+			"mip": 0
 		}
 	}
 }

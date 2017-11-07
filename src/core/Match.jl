@@ -132,7 +132,7 @@ end
 
 init_Match();
 
-type Match{T} <: AbstractMatch
+struct Match{T} <: AbstractMatch
   src_index          # source mesh index
   dst_index          # destination mesh index
   src_points::Points{T}	    # source point coordinate in image
@@ -141,6 +141,16 @@ type Match{T} <: AbstractMatch
 
   filters                       # Array of filters 
   properties::Dict{Symbol, Any}
+end
+
+
+function Base.deepcopy(m::Match; src_index=m.src_index, dst_index=m.dst_index,
+                        src_points=m.src_points, dst_points=m.dst_points,
+                        correspondence_properties=m.correspondence_properties,
+                        filters=m.filters, properties=m.properties)
+  return Match(src_index, dst_index, deepcopy(src_points), deepcopy(dst_points), 
+                        deepcopy(correspondence_properties), deepcopy(filters), 
+                        deepcopy(properties))
 end
 
 ## IO
@@ -158,6 +168,7 @@ function to_dataframe(match::Match)
 end
 
 function to_csv(match::Match)
+    check_local_dir()
     fn = joinpath(get_local_path(:match), get_name(match))
     println("Writing correspondences to $fn")
     writetable(fn, to_dataframe(match), separator=',')
@@ -561,7 +572,7 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
         zeropad_to_meanpad!(me.dst_patch_full)
     end
 
-    if bandpass_sigmas != (0,0)
+    if (bandpass_sigmas != (0,0)) & (bandpass_sigmas != [0,0])
         @inbounds me.src_patch_full[:] = convolve_Float64_planned(me.src_patch_full, me.kernel; crop = :same, padding = :mean)
         @inbounds me.dst_patch_full[:] = convolve_Float64_planned(me.dst_patch_full, me.kernel; crop = :same, padding = :mean)
     end
@@ -841,34 +852,39 @@ function get_matches{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T})
     dst_index = get_index(dst_mesh);
     src_image = get_image(src_index, "match_image", mip=get_mip(:match));  
     dst_image = get_image(dst_index, "match_image", mip=get_mip(:match));
-    src_image_sub = deepcopy(src_image)
-    dst_image_sub = deepcopy(dst_image)
-    println("Getting masks for $(src_index) & $(dst_index):")
-    src_mask = get_image(src_index, "mask", mip=get_mip(:match));
-    dst_mask = get_image(dst_index, "mask", mip=get_mip(:match));
-    println("Compiling mask components")
-    src_subsections = Array{IMG_ELTYPE, 1}(unique(src_mask))
-    dst_subsections = Array{IMG_ELTYPE,1}(unique(dst_mask))
     matches = Array{Match,1}()
-    ignore = PARAMS[:match][:ignore_value]
-    for ss in src_subsections
-        for ds in dst_subsections
-            if (ss != ignore) & (ds != ignore)
-                src_id = src_index + ss/SPLIT_MESH_BASIS
-                dst_id = dst_index + ds/SPLIT_MESH_BASIS
-                unsafe_mask_image!(src_image, src_mask, ss, src_image_sub)
-                unsafe_mask_image!(dst_image, dst_mask, ds, dst_image_sub)
-                push!(matches, Match(src_mesh, dst_mesh, 
-                                                src_id, dst_id, 
-                                                src_image_sub, 
-                                                dst_image_sub))
-            end
-        end
+    if use_mask()
+      src_image_sub = deepcopy(src_image)
+      dst_image_sub = deepcopy(dst_image)
+      println("Getting masks for $(src_index) & $(dst_index):")
+      src_mask = get_image(src_index, "mask", mip=get_mip(:match));
+      dst_mask = get_image(dst_index, "mask", mip=get_mip(:match));
+      println("Compiling mask components")
+      src_subsections = Array{IMG_ELTYPE, 1}(unique(src_mask))
+      dst_subsections = Array{IMG_ELTYPE,1}(unique(dst_mask))
+      ignore = PARAMS[:match][:ignore_value]
+      for ss in src_subsections
+          for ds in dst_subsections
+              if (ss != ignore) & (ds != ignore)
+                  src_id = src_index + ss/SPLIT_MESH_BASIS
+                  dst_id = dst_index + ds/SPLIT_MESH_BASIS
+                  unsafe_mask_image!(src_image, src_mask, ss, src_image_sub)
+                  unsafe_mask_image!(dst_image, dst_mask, ds, dst_image_sub)
+                  push!(matches, Match(src_mesh, dst_mesh, 
+                                                  src_id, dst_id, 
+                                                  src_image_sub, 
+                                                  dst_image_sub))
+              end
+          end
+      end
+      src_image_sub = 0
+      src_image_sub = 0
+      dst_image_sub = 0
+      dst_image_sub = 0
+    else
+      push!(matches, Match(src_mesh, dst_mesh, src_index, dst_index, 
+                                                  src_image, dst_image))
     end
-    src_image_sub = 0
-    src_image_sub = 0
-    dst_image_sub = 0
-    dst_image_sub = 0
     @everywhere gc();
     @everywhere gc();
     return matches
@@ -896,7 +912,7 @@ function Match{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T},
 
     print("computing matches:")
     print("    ")
-        @time dst_allpoints = pmap(get_match, columnviews(src_mesh.src_nodes[:,ranged_inds]), ranges, repeated(src_image), repeated(dst_image), repeated(get_scale()), repeated(PARAMS[:match][:bandpass_sigmas])) 
+    @time dst_allpoints = pmap(get_match, columnviews(src_mesh.src_nodes[:,ranged_inds]), ranges, repeated(src_image), repeated(dst_image), repeated(get_scale()), repeated(PARAMS[:match][:bandpass_sigmas])) 
 
     matched_inds = find(i -> i != nothing, dst_allpoints);
 

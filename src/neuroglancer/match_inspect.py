@@ -102,7 +102,7 @@ class MeshSetInspect():
 	def save(self):
 		df = self.match_obj.get_df()
 		df['filter'] = df['filter'].astype('float')
-		df.to_csv(self.get_path())
+		df.to_csv(self.get_path(), index=False)
 
 	def save_next(self):
 		self.save()

@@ -20,7 +20,7 @@ function load_params(fn)
 		 	:src_image => joinpath(root, dirs["src_image"]),
 		 	:dst_image => joinpath(root, dirs["dst_image"]),
 		 	:match_image => joinpath(root, dirs["src_image"], dirs["match_image"]),
-		 	:mask => joinpath(root, dirs["src_image"], dirs["mask"]),
+		 	:mask => dirs["mask"] != "" ? joinpath(root, dirs["src_image"], dirs["mask"]) : "",
 		 	:mesh => joinpath(root, dirs["dst_image"], dirs["mesh"]),
 		 	:match => joinpath(root, dirs["dst_image"], dirs["match"]),
 		 	:meshset => joinpath(root, dirs["dst_image"], dirs["meshset"]),
