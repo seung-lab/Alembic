@@ -37,7 +37,7 @@ class MatchInspect():
 	                    map(int,arr[:,2])))
 
 	def get_synapses(self, use_filter=True):
-		sub_df = copy(self.df)
+		sub_df = self.df.copy()
 		if use_filter:
 			sub_df = sub_df[sub_df['filter'] == True]
 		post = sub_df[['post_x','post_y','post_z']].as_matrix()
@@ -73,7 +73,7 @@ class MatchInspect():
 
 	def save(self):
 		self.update_df_from_ng()
-		df = copy(self.df)
+		df = self.df.copy()
 		df['filter'] = df['filter'].astype('float')
 		df.to_csv(self.path, index=False)
 
