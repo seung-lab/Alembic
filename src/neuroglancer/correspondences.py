@@ -29,6 +29,10 @@ class Controller:
         self.state['layers']['correspondences'] = {'type':'synapse', 'points':points}
         self.router.broadcast(self.clients.copy(), json.dumps(self.state))
 
+    def set_z(self, z):
+        self.state['navigation']['pose']['position']['voxelCoordinates'][2] = z
+        self.router.broadcast(self.clients.copy(), json.dumps(self.state))
+
     # websockets connections
     class Connection(SockJSConnection):
         n_messages = 0

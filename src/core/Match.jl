@@ -164,7 +164,7 @@ function get_correspondences_df(match::Match; globalized=true)
 end
 
 function to_dataframe(match::Match)
-    return get_correspondences_df(match)
+    return hcat(get_correspondences_df(match), match.correspondence_properties)
 end
 
 function to_csv(match::Match)
@@ -661,19 +661,21 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 	end
 	=#
 	#tic()
-    src_patch, dst_patch = prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, bandpass_sigmas; meanpad = meanpad)
-    #if (pp == nothing) return nothing end;
-    #	prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma)
-    xc::Array{Float64,2} = normxcorr2_preallocated(src_patch, dst_patch; shape = full ? "full" : "valid");
+  src_patch, dst_patch = prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, bandpass_sigmas; meanpad = meanpad)
+  #if (pp == nothing) return nothing end;
+  #	prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma)
+  xc::Array{Float64,2} = normxcorr2_preallocated(src_patch, dst_patch; shape = full ? "full" : "valid");
 
 	r_max = maximum(xc)
-	if isnan(r_max) return nothing end;
-#	if r_max > 1.0 println("rounding error") end
-  	ind = findfirst(r_max .== xc)
-	i_max, j_max = ind2sub(xc, ind)
-  	if i_max == 0 
-    		i_max = size(xc, 1)
-  	end
+	if isnan(r_max) 
+    return nothing 
+  end;
+  #	if r_max > 1.0 println("rounding error") end
+  ind = findfirst(r_max .== xc)
+  i_max, j_max = ind2sub(xc, ind)
+  if i_max == 0 
+    i_max = size(xc, 1)
+  end
 
 	i_max_int = i_max
 	j_max_int = j_max
@@ -694,54 +696,57 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
 
 
 	@fastmath @inbounds begin
-	if scale != 1.0
-	#length of the dst_range_full is always odd, so only need to care about the oddity / evenness of the source to decide the size of the xc in full
-	if full
-	  xc_i_len = length(dst_range_full[1]) + length(src_range[1]) - 1
-	  xc_j_len = length(dst_range_full[2]) + length(src_range[2]) - 1
-	else
-	if isodd(length(src_range[1])) 
-	  xc_i_len = length(dst_range_full[1]) - length(src_range[1]) + 1
-          else
-	  xc_i_len = length(dst_range_full[1]) - length(src_range[1]) 
-	end
-	if isodd(length(src_range[2])) 
-	  xc_j_len = length(dst_range_full[2]) - length(src_range[2]) + 1
-          else
-	  xc_j_len = length(dst_range_full[2]) - length(src_range[2]) 
-	end
+    if scale != 1.0
+    	#length of the dst_range_full is always odd, so only need to care about the oddity / evenness of the source to decide the size of the xc in full
+    	if full
+    	  xc_i_len = length(dst_range_full[1]) + length(src_range[1]) - 1
+    	  xc_j_len = length(dst_range_full[2]) + length(src_range[2]) - 1
+    	else
+      	if isodd(length(src_range[1])) 
+      	  xc_i_len = length(dst_range_full[1]) - length(src_range[1]) + 1
+        else
+      	  xc_i_len = length(dst_range_full[1]) - length(src_range[1]) 
+      	end
+      	if isodd(length(src_range[2])) 
+      	  xc_j_len = length(dst_range_full[2]) - length(src_range[2]) + 1
+        else
+      	  xc_j_len = length(dst_range_full[2]) - length(src_range[2]) 
+      	end
       end
-	xc_i_locs = linspace(1, xc_i_len, size(xc, 1))
-	xc_j_locs = linspace(1, xc_j_len, size(xc, 2))
-#=	if myid() == 2
-	println(xc_i_len)
-	println(size(xc, 1))
-	println(step(xc_i_locs))
-	println(i_max)
-      end=#
-
-	i_max = (i_max - 1) * step(xc_i_locs) + 1
-	j_max = (j_max - 1) * step(xc_j_locs) + 1
-      end
-
-      if full
-	di = Float64(i_max + src_pt_loc[1] - dst_pt_loc_full[1] - length(src_range[1]))
-	dj = Float64(j_max + src_pt_loc[2] - dst_pt_loc_full[2] - length(src_range[2]))
-      else
-	di = Float64(i_max - 1 + src_pt_loc[1] - dst_pt_loc_full[1])
-	dj = Float64(j_max - 1 + src_pt_loc[2] - dst_pt_loc_full[2])
-      end
-
-    
+    	xc_i_locs = linspace(1, xc_i_len, size(xc, 1))
+    	xc_j_locs = linspace(1, xc_j_len, size(xc, 2))
+    	i_max = (i_max - 1) * step(xc_i_locs) + 1
+    	j_max = (j_max - 1) * step(xc_j_locs) + 1
+    end
+    if full
+    	di = Float64(i_max + src_pt_loc[1] - dst_pt_loc_full[1] - length(src_range[1]))
+    	dj = Float64(j_max + src_pt_loc[2] - dst_pt_loc_full[2] - length(src_range[2]))
+    else
+    	di = Float64(i_max - 1 + src_pt_loc[1] - dst_pt_loc_full[1])
+    	dj = Float64(j_max - 1 + src_pt_loc[2] - dst_pt_loc_full[2])
+    end
   end
 
 	correspondence_properties[:patches_src_normalized_dyn_range] = (maximum(view(src_image, src_range...)) - minimum(view(src_image, src_range...))) / typemax(eltype(src_image));
 	correspondence_properties[:patches_src_kurtosis] = kurtosis(view(src_image, src_range...));
 	correspondence_properties[:patches_dst_kurtosis] = kurtosis(view(dst_image, dst_range...));
 	correspondence_properties[:xcorr_r_max] = r_max;
+
+  function compute_r_diff(xc, rad, r_max_original, i_max, j_max)
+    xc = copy(xc)
+    range_i = intersect(1:size(xc, 1), (-rad:rad) + i_max)
+    range_j = intersect(1:size(xc, 2), (-rad:rad) + j_max)
+    @inbounds xc[range_i, range_j] = -Inf
+    r_max_new = maximum(xc)
+    return r_max_original - r_max_new
+  end
+
+  for rad in [5, 10, 15]
+    correspondence_properties[Symbol(string("xcorr_delta_", rad))] = compute_r_diff(xc, rad, r_max, i_max_int, j_max_int)
+  end
 	for beta in [0.5, 0.75, 0.95]
-	correspondence_properties[Symbol(string("xcorr_sigma_", beta))] = sigma(xc, beta) / scale;
-        end
+    correspondence_properties[Symbol(string("xcorr_sigma_", beta))] = sigma(xc, beta) / scale;
+  end
 	correspondence_properties[:vects_dv] = [[di, dj]];
 	correspondence_properties[:vects_norm] = norm([di, dj]);
 	#correspondence_properties[:posts] = Dict{Any, Any}();
