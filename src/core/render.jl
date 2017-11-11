@@ -2,7 +2,7 @@
 Multiple dispatch for meshwarp on Mesh object
 """
 function meshwarp_mesh(image, mesh::Mesh)
-  scale = get_scale(:match)/get_scale(:render)
+  scale = get_scale(:render)/get_scale(:match)
   src_nodes = get_nodes(mesh; globalized=true, use_post=false, scale=scale)
   dst_nodes = get_nodes(mesh; globalized=true, use_post=true, scale=scale)
   offset = get_offset(mesh)*scale;
@@ -118,7 +118,6 @@ function render(ms::MeshSet, z_range=unique(collect_z(ms)))
       save_image(z, "dst_image", image, slice, mip=get_mip(:render))
     else
       mesh = get_mesh(ms, z)
-      println("Masking ", z)
       println("Warping ", z)
       @time (dst_image, offset), _ = meshwarp_mesh(src_image, mesh)
       bbox = ImageRegistration.BoundingBox(offset..., size(dst_image)...)
