@@ -74,6 +74,7 @@ module Alembic
 
     include("core/include.jl")
     include("math/include.jl")
+    include("tasks/include.jl")
     include("utilities/author.jl")
     include("utilities/utilities.jl")
 

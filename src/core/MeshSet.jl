@@ -465,23 +465,26 @@ function reset!(ms::MeshSet)
 end
 
 ### match
-function get_all_overlaps(ms::MeshSet, within = 1; symmetric = symmetric)	
+function get_all_overlaps(ms::MeshSet, within = 1; symmetric = true)	
   return get_all_overlaps(ms.meshes, within; symmetric = symmetric);	
 end
 
 function get_all_overlaps(meshes::Array{Mesh, 1}, within = 1; symmetric = true)
+  return get_all_overlaps(1:length(meshes), within=within; symmetric=symmetric)
+end
+
+function get_all_overlaps(z_range, within = 1; symmetric = true)
   preceding_pairs = Pairings(0)
   succeeding_pairs = Pairings(0)
 
-  for i in 1:length(meshes), j in 1:length(meshes)
-    if is_preceding(get_index(meshes[i]), get_index(meshes[j]), within) 
-    	push!(preceding_pairs, (i, j)); 
-    	if symmetric 
+  for i in z_range, j in z_range
+    if is_preceding(i, j, within) 
+      push!(preceding_pairs, (i, j)); 
+      if symmetric 
         push!(succeeding_pairs, (j, i)); 
       end
     end
   end
-
   pairs = vcat(preceding_pairs, succeeding_pairs)
   sort!(pairs)
   pairs = unique(pairs)

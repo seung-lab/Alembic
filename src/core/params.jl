@@ -1,32 +1,31 @@
 global PARAMS = Dict()
-global BUCKET = ""
-global DATASET = ""
 
-function load_params(fn)
-	params_dict = JSON.parsefile(fn)
-	dirs = params_dict["dirs"]
-	params = params_dict["params"]
+function load_params_file(fn::AbstractString)
+	params = JSON.parsefile(fn)
+	return load_params(params)
+end
+
+function load_params(params::Dict)
+	dirs = params["dirs"]
 	mesh = params["mesh"]
 	match = params["match"]
 	filter = params["filter"]
 	solve = params["solve"]
 	render = params["render"]
-	global BUCKET = dirs["bucket"]
-	global DATASET = dirs["dataset"]
-	root = joinpath(BUCKET, DATASET)
+	root = joinpath(dirs["bucket"], dirs["dataset"])
 	global PARAMS = Dict(
+		 :name => params["name"],
+		 :task_method => params["task_method"],
 		 :dirs => Dict(
-		 	:bucket => root,
-		 	:src_image => joinpath(root, dirs["src_image"]),
-		 	:dst_image => joinpath(root, dirs["dst_image"]),
-		 	:match_image => joinpath(root, dirs["src_image"], dirs["match_image"]),
-		 	:mask => dirs["mask"] != "" ? joinpath(root, dirs["src_image"], dirs["mask"]) : "",
-		 	:mesh => joinpath(root, dirs["dst_image"], dirs["mesh"]),
-		 	:match => joinpath(root, dirs["dst_image"], dirs["match"]),
-		 	:meshset => joinpath(root, dirs["dst_image"], dirs["meshset"]),
-		 	Symbol("alembic.mesh") => joinpath(root, dirs["dst_image"], dirs["mesh"]),
-		 	Symbol("alembic.match") => joinpath(root, dirs["dst_image"], dirs["match"]),
-		 	Symbol("alembic.meshset") => joinpath(root, dirs["dst_image"], dirs["meshset"]),
+		 	:dataset => dirs["dataset"],
+		 	:bucket => dirs["bucket"],
+		 	:src_image => dirs["src_image"],
+		 	:dst_image => dirs["dst_image"],
+		 	:match_image => dirs["match_image"],
+		 	:mask => dirs["mask"] != "" ? dirs["mask"] : "",
+		 	:mesh => dirs["mesh"],
+		 	:match => dirs["match"],
+		 	:meshset => dirs["meshset"],
 		 	:cache => dirs["cache"]
 			),
 	     :mesh => Dict(
@@ -49,7 +48,7 @@ function load_params(fn)
 			:match_spring_coeff => solve["match_spring_coeff"],
 			:ftol_cg => solve["ftol_cg"],
 			:max_iters => solve["max_iters"],
-	     	:use_conjugate_gradient => solve["use_cg"],
+	     	:use_cg => solve["use_cg"],
 	     	:eta_gd => solve["eta_gd"],
 	     	:ftol_gd => solve["ftol_gd"],
 	     	:eta_newton => solve["eta_newton"],

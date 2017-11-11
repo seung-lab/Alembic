@@ -38,61 +38,9 @@ function clean_cache()
 	println("current cache usage: $cur_cache_size / $IMG_CACHE_SIZE (bytes), $(round(Int64, cur_cache_size/IMG_CACHE_SIZE * 100))%")
 end
 
-
-# generates Janelia-type tilespec from the registry
-function generate_tilespec_from_registry(index; dataset = "", stack = "", stack_type = "", parent_stack = "")
-  tileid = "$(index[1]),$(index[2])_$stack"
-  tilespec = Dict{Symbol, Any}()
-  tilespec[:tileId] = tileid
-  tilespec[:z] = find_in_registry(index)
-  tilespec[:width] = get_image_size(index)[2]
-  tilespec[:height] = get_image_size(index)[1]
-  tilespec[:minX] = get_offset(index)[2]
-  tilespec[:minY] = get_offset(index)[1]
-  # we need the meta field w
-  tilespec[:meta] = Dict{Symbol, Any}()
-  tilespec[:meta][:dataset] = dataset
-  tilespec[:meta][:stack] = stack
-  tilespec[:meta][:stack_type] = stack_type
-  tilespec[:meta][:parent_stack] = parent_stack
-  tilespec[:meta][:resolution] = (30,30,40)
-  tilespec[:channels] = Dict{Symbol, Any}()
-  tilespec[:channels][:nccnet] = Dict{Symbol, Any}()
-  tilespec[:channels][:nccnet][:imageUrl] = "file://$(get_path(bucket = BUCKET, dataset = dataset, stack = stack, obj_name = "nccnet", tileid = tileid))"
-  #tilespec[:render] = Dict{Symbol, Any}()
-  #tilespec[:render][:transform] = "file://$(get_path(bucket = BUCKET, dataset = dataset, stack = stack, obj_name = "cumulative_tform", tileid = tileid))"
-  tilespec[:mipmapLevels] = Dict{Symbol, Any}()
-  tilespec[:mipmapLevels][Symbol(0)] = Dict{Symbol, Any}()
-  tilespec[:mipmapLevels][Symbol(0)][:imageUrl] = "file://$(get_path(bucket = BUCKET, dataset = dataset, stack = stack, obj_name = "image", tileid = tileid))"
-  #tilespec[:mipmapLevels][:0][:imageUrl] = "file://$BUCKET/$(get_path(dataset = dataset, stack = stack, tileid = tileid))"
-  return tilespec
-end
-
-function generate_stackspec(dataset = "", stack = "")
-  stackspec = Dict{Symbol, Any}()
-  tileid = "$(index[1]),$(index[2])_$stack"
-  tilespec = Dict{Symbol, Any}()
-  tilespec[:tileId] = tileid
-  tilespec[:z] = find_in_registry(index)
-  tilespec[:width] = get_image_size(index)[2]
-  tilespec[:height] = get_image_size(index)[1]
-  tilespec[:minX] = get_offset(index)[2]
-  tilespec[:minY] = get_offset(index)[1]
-  # we need the meta field w
-  tilespec[:meta] = Dict{Symbol, Any}()
-  tilespec[:meta][:dataset] = dataset
-  tilespec[:meta][:stack] = stack
-  tilespec[:meta][:parent_stack] = parent_stack
-  tilespec[:meta][:resolution] = (30,30,40)
-  tilespec[:mipmapLevels] = Dict{Symbol, Any}()
-  tilespec[:mipmapLevels][Symbol(0)] = Dict{Symbol, Any}()
-  tilespec[:mipmapLevels][Symbol(0)][:imageUrl] = "file://$(get_path(bucket = BUCKET, dataset = dataset, stack = stack, tileid = tileid))"
-  #tilespec[:mipmapLevels][:0][:imageUrl] = "file://$BUCKET/$(get_path(dataset = dataset, stack = stack, tileid = tileid))"
-  return tilespec
-end
-
 function get_path(obj_name::AbstractString)
-  return PARAMS[:dirs][Symbol(obj_name)]
+  return joinpath(PARAMS[:dirs][:bucket], PARAMS[:dirs][:dataset], 
+                                            PARAMS[:dirs][Symbol(obj_name)])
 end
 
 """
@@ -120,6 +68,11 @@ end
 
 function get_z_range()
   return PARAMS[:mesh][:z_start]:PARAMS[:mesh][:z_stop]
+end
+
+function get_name()
+  z_range = get_z_range()
+  return string("($(z_range[1]), $(z_range[end]))")
 end
 
 function get_name(obj)
@@ -295,7 +248,7 @@ function get_local_root()
 end
 
 function get_local_dir(dir=:match)
-  return joinpath(".alembic", PARAMS[:dirs][dir][6:end]) # hardcoded for gs:// header
+  return joinpath(".alembic", get_path(dir)[6:end]) # hardcoded for gs:// header
 end
 
 function get_local_path(dir=:match)
