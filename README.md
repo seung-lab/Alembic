@@ -83,3 +83,15 @@ And now you're running on a cluster! If you want to adjust the number of pods th
 ```
 kubectl scale deployment alembic-tasks --replicas=[NO. OF PODS]
 ```
+
+You can investigate the different Kubernete resources with the following commands:
+
+```
+kubectl describe deployment
+kubectl describe pods
+kubectl get deployment
+kubectl get pods
+kubectl logs [POD NAME]  # 
+```
+
+For more commands, see the [kubectl Cheat Sheet](https://kubernetes.io/docs/user-guide/kubectl-cheatsheet/).

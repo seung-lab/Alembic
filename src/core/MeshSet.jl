@@ -470,10 +470,10 @@ function get_all_overlaps(ms::MeshSet, within = 1; symmetric = true)
 end
 
 function get_all_overlaps(meshes::Array{Mesh, 1}, within = 1; symmetric = true)
-  return get_all_overlaps(1:length(meshes), within=within; symmetric=symmetric)
+  return get_all_overlaps(1:length(meshes), within; symmetric=symmetric)
 end
 
-function get_all_overlaps(z_range, within = 1; symmetric = true)
+function get_all_overlaps(z_range, within=1; symmetric=true)
   preceding_pairs = Pairings(0)
   succeeding_pairs = Pairings(0)
 

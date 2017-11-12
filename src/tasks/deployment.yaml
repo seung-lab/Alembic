@@ -14,7 +14,7 @@ spec:
           image: macrintr/alembic:julia-mkl-gce
           imagePullPolicy: Always
           command: ["/bin/sh"]
-          args: ["-c", "julia sqs_subscriber.jl alembic"]
+          args: ["-c", "julia /tasks/sqs_subscriber.jl alembic 7"]
           volumeMounts:
           - name: secrets
             mountPath: "/root/.cloudvolume/secrets"
