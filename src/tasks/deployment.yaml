@@ -1,0 +1,28 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: alembic-tasks
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: tasks
+    spec:
+      containers:
+        - name: alembic-tasks
+          image: macrintr/alembic:julia_mkl_gce
+          imagePullPolicy: Always
+          command: ["/bin/sh"]
+          args: ["-c", "julia sqs_subscriber.jl alembic"]
+          volumeMounts:
+          - name: secrets
+            mountPath: "/root/.cloudvolume/secrets"
+            readOnly: true
+          resources:
+            requests:
+              memory: 3Gi
+      volumes:
+      - name: secrets
+        secret:
+          secretName: secrets

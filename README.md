@@ -23,3 +23,57 @@ match!(ms); # blockmatch between the meshes in the meshset, per the params
 elastic_solve!(ms); # relax the spring system
 render(ms); # render the images and save to CloudVolume
 ```
+
+## Task Scheduling  
+You can schedule and run blockmatching and render tasks in parallel across a cluster. We recommend you use one of the following Docker containers & Kubernetes.
+* [Alembic with Julia-MKL precompiled on a Google Compute Engine instance](sergiypopo/alembic:julia_mkl_n1)
+* [Generic Alembic](sergiypopo/alembic:julia_mkl_n1)
+
+
+### Publishing/Subsribing to Tasks
+We've included blockmatch and render tasks in `src/tasks/tasks.jl`, along with task publisher/subscriber scripts based on AWS SQS. We assume that you've setup CloudVolume to include the file `~/.cloudvolume/secrets/aws-secret.json`. You can publish tasks in the following manner:
+
+```
+julia ~/.julia/v0.6/Alembic/src/tasks/sqs_publisher.jl [PARAMS JSON PATH] [QUEUE NAME]
+```
+
+You can view your scheduled tasks in the [AWS SQS console](https://console.aws.amazon.com/sqs/).
+
+You can setup a queue subscriber in a similar fashion:
+
+```
+julia ~/.julia/v0.6/Alembic/src/tasks/sqs_subscriber.jl [QUEUE NAME] [NO. OF PROCS TO USE]
+```
+
+### Setting up Kubernetes
+Once you have tasks scheduled in the queue, you can set up a cluster that can be managed with Kubernetes. Here's how to do it using Google Container Engine.
+
+First, make sure you have [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) installed on your local workstation.
+
+Now, create a cluster in Google Cloud (use the console or CLI). We recommend using the following parameters:
+```
+Zone: us-east1-b
+Cluster Version: 1.7.8-gke.0 (default)
+Machine type: 8 vCPU, 30 GB memory
+Boot disk size in GB (per node): 32
+```
+
+It's important that you make sure the zone is set to match your storage zone. Size your machine type & boot disk according to the size of your data. Boot disk is not used beyond container installation, but it can become a constraining resource for your entire project, so set it accordingly.
+
+Once your cluster has been created, within the console, select the `Connect` button to access the `kubectl` commands to connect your local workstation to your cluster. Now you can mount your secrets to your cluster nodes:
+
+```
+kubectl create secret generic secrets --from-file=[HOMEDIR FULL PATH]/.cloudvolume/secrets/aws-secret.json --from-file=[HOMEDIR FULL PATH]/.cloudvolume/secrets/google-secret.json
+```
+
+Now you can intialize the container+commands to be run on each node (we recommend a kube deployment, rather than a job). See `deployment.yaml` for an example deployment definition. We can run that deployment with the following command:
+
+```
+kubectl create -f [HOMEDIR FULL PATH]/.julia/v0.6/Alembic/src/tasks/deployment.yaml
+```
+
+And now you're running on a cluster! If you want to adjust the number of pods that are supporting the deployment, you can use this following command:
+
+```
+kubectl scale deployment alembic-tasks --replicas=[NO. OF PODS]
+```

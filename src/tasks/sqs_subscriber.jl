@@ -1,10 +1,10 @@
-# n = 1
-# if length(ARGS) > 1
-#     n = ARGS[2]
-# end
-# addprocs(n);
-# @everywhere using Alembic
-using Alembic
+n = 1
+if length(ARGS) > 1
+    n = parse(ARGS[2])
+end
+addprocs(n);
+@everywhere using Alembic
+# using Alembic
 
 using AWSCore
 using AWSSQS
