@@ -11,7 +11,7 @@ spec:
     spec:
       containers:
         - name: alembic-tasks
-          image: macrintr/alembic:julia_mkl_gce
+          image: macrintr/alembic:julia-mkl-gce
           imagePullPolicy: Always
           command: ["/bin/sh"]
           args: ["-c", "julia sqs_subscriber.jl alembic"]

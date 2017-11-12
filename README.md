@@ -26,8 +26,14 @@ render(ms); # render the images and save to CloudVolume
 
 ## Task Scheduling  
 You can schedule and run blockmatching and render tasks in parallel across a cluster. We recommend you use one of the following Docker containers & Kubernetes.
-* [Alembic with Julia-MKL precompiled on a Google Compute Engine instance](sergiypopo/alembic:julia_mkl_n1)
-* [Generic Alembic](sergiypopo/alembic:julia_mkl_n1)
+* [Alembic with Julia-MKL precompiled on a Google Compute Engine instance](https://hub.docker.com/u/macrintr/alembic:julia-mkl-gce)
+* [Generic Alembic](https://hub.docker.com/u/sergiypopo/alembic:generic)
+
+If you'd like to create a container for precompiled Julia+MKL on a different instance type, do the following:
+* On the instance type, install Docker.
+* Clone this repository: `git clone https://github.com/seung-lab/Alembic.git`
+* `cd Alembic`
+* `docker build -t [TAG NAME] .`
 
 
 ### Publishing/Subsribing to Tasks

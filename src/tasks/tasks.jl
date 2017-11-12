@@ -1,10 +1,10 @@
 function match_task(params::Dict)
-    # @everywhere load_params(params)
-    load_params(params)
+    @everywhere load_params(params)
+    # load_params(params)
     ms = make_stack()
     println("Match Task $(get_name(ms))")
-    # match!(ms)
-    # save(ms)
+    match!(ms)
+    save(ms)
 end
 
 function render_task(params::Dict)
