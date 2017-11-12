@@ -51,6 +51,8 @@ You can setup a queue subscriber in a similar fashion:
 julia ~/.julia/v0.6/Alembic/src/tasks/sqs_subscriber.jl [QUEUE NAME] [NO. OF PROCS TO USE]
 ```
 
+Pay attention to the `Default Visibility Timeout` attribute of your SQS queue. You'll want to set it to be longer than the time your task is expected to take. That way, you won't have workers working on the same task simultaneously.
+
 ### Setting up Kubernetes
 Once you have tasks scheduled in the queue, you can set up a cluster that can be managed with Kubernetes. Here's how to do it using Google Container Engine.
 
@@ -95,3 +97,10 @@ kubectl logs [POD NAME]  #
 ```
 
 For more commands, see the [kubectl Cheat Sheet](https://kubernetes.io/docs/user-guide/kubectl-cheatsheet/).
+
+If you ever need to replace the deployment (e.g. you updated the docker container or you want to change the command you pass to the container), just delete the deployment and create a new one.
+
+```
+kubectl delete deployment alembic-tasks
+kubectl create -f [HOMEDIR FULL PATH]/.julia/v0.6/Alembic/src/tasks/deployment.yaml
+```
