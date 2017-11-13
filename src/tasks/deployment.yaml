@@ -14,11 +14,13 @@ spec:
           image: macrintr/alembic:julia-mkl-gce
           imagePullPolicy: Always
           command: ["/bin/sh"]
-          args: ["-c", "julia /tasks/sqs_subscriber.jl alembic 6"]
+          args: ["-c", "julia /tasks/sqs_subscriber.jl alembic 7"]
           volumeMounts:
           - name: secrets
-            mountPath: "/root/.cloudvolume/secrets"
+            mountPath: /root/.cloudvolume/secrets
             readOnly: true
+          - name: dshm
+            mountPath: /dev/shm
           resources:
             requests:
               memory: 3Gi
@@ -26,3 +28,6 @@ spec:
       - name: secrets
         secret:
           secretName: secrets
+      - name: dshm
+        emptyDir:
+          medium: Memory

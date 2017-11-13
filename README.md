@@ -74,7 +74,11 @@ Once your cluster has been created, within the console, select the `Connect` but
 kubectl create secret generic secrets --from-file=[HOMEDIR FULL PATH]/.cloudvolume/secrets/aws-secret.json --from-file=[HOMEDIR FULL PATH]/.cloudvolume/secrets/google-secret.json
 ```
 
-Now you can intialize the container+commands to be run on each node (we recommend a kube deployment, rather than a job). See `deployment.yaml` for an example deployment definition. We can run that deployment with the following command:
+Now you can intialize the container+commands to be run on each node (we recommend a kube deployment, rather than a job). See `deployment.yaml` for an example deployment definition.
+
+**Note: Alembic uses shared memory (SharedArrays in Julia), which requires some workarounds with containers & deployment services. For Kubernetes, one workaround is to mount a drive to `/dev/shm`, as described in this [post](https://stackoverflow.com/questions/46085748/define-size-for-dev-shm-on-container-engine?noredirect=1&lq=1). See `deployment.yaml` as an example, again.**
+
+We can run that deployment with the following command:
 
 ```
 kubectl create -f [HOMEDIR FULL PATH]/.julia/v0.6/Alembic/src/tasks/deployment.yaml
