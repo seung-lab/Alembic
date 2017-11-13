@@ -68,10 +68,10 @@ Boot disk size in GB (per node): 32
 
 Creating cluster through gcloud CLI:
 ```
-gcloud container clusters create sergiy-test-alembic --zone=us-east1-b --machine-type=n1-standard-8 --disk-size=32
+gcloud container clusters create your-cluster-name --zone=us-east1-b --machine-type=n1-standard-8 --disk-size=32
 ```
 
-Connecting to cluster through glcoud CLI:
+Connecting kubectl to cluster through glcoud CLI:
 ```
 gcloud container clusters get-credentials your-cluster-name 
 ```
@@ -115,5 +115,5 @@ If you ever need to replace the deployment (e.g. you updated the docker containe
 
 ```
 kubectl delete deployment alembic-tasks
-kubectl create -f [HOMEDIR FULL PATH]/.julia/v0.6/Alembic/src/tasks/deployment.yaml
+kubectl create -f $HOME/.julia/v0.6/Alembic/src/tasks/deployment.yaml
 ```
