@@ -22,6 +22,8 @@ spec:
           resources:
             requests:
               memory: 3Gi
+          args:
+              - "--shm-size=30000000000"
       volumes:
       - name: secrets
         secret:
