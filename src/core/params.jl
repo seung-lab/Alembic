@@ -63,7 +63,8 @@ function load_params(params::Dict)
      		:r_filter => (5,:get_correspondence_properties, Symbol(<), filter["r_filter"], :xcorr_r_max),
      		:kurtosis_filter => (6,:get_correspondence_properties, Symbol(>), filter["kurtosis_filter"], :patches_src_kurtosis),
      		:kurtosis_filter_dst => (7,:get_correspondence_properties, Symbol(>), filter["kurtosis_filter_dst"], :patches_dst_kurtosis),
-     		:kurtosis_filter_edge => (8,:get_correspondence_properties, Symbol(<), filter["kurtosis_filter_edge"], :patches_src_kurtosis)
+     		:kurtosis_filter_edge => (8,:get_correspondence_properties, Symbol(<), filter["kurtosis_filter_edge"], :patches_src_kurtosis),
+     		:r_delta_low => (9,:get_correspondence_properties, Symbol(<), filter["r_delta_low"], Symbol("xcorr_delta_5"))
 			),
 	     :render => Dict(
      		:mip => render["mip"]

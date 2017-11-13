@@ -247,15 +247,15 @@ function get_local_root()
   return homedir()
 end
 
-function get_local_dir(dir=:match)
+function get_local_dir(dir="match")
   return joinpath(".alembic", get_path(dir)[6:end]) # hardcoded for gs:// header
 end
 
-function get_local_path(dir=:match)
+function get_local_path(dir="match")
   return joinpath(get_local_root(), get_local_dir(dir))
 end
 
-function check_local_dir(dir=:match)
+function check_local_dir(dir="match")
   root = get_local_root()
   path = get_local_dir(dir)
   folders = split(path, '/')

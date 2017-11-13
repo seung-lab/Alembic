@@ -169,7 +169,7 @@ end
 
 function to_csv(match::Match)
     check_local_dir()
-    fn = joinpath(get_local_path(:match), get_name(match))
+    fn = joinpath(get_local_path("match"), get_name(match))
     println("Writing correspondences to $fn")
     writetable(fn, to_dataframe(match), separator=',')
 end
@@ -827,7 +827,7 @@ end
 function clear_filters!(match::Match; filtertype=nothing)
 	# match.filters = match.filters[setdiff(1:length(match.filters), find(filter -> filter==filtertype, MeshSet(match.filters)))]
 	if filtertype == nothing	
-        match.filters = DataFrame(); 
+        delete!(match.filters, 1:size(match.filters,2))
     end
 end
 

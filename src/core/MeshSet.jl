@@ -380,36 +380,49 @@ function concat_mss(filenames::Array)
   return ms
 end
 
+function compile_ms()
+  pairs = get_all_overlaps(get_z_range(), PARAMS[:match][:depth], 
+                                        symmetric=PARAMS[:match][:symmetric])
+  ms = MeshSet()
+  for p in pairs
+    try
+      sub_ms = load("meshset", string(p))
+      concat!(ms, sub_ms)
+    end
+  end
+  return ms
+end
+
 """
 Merge meshes from list A into list B if they don't already exist
 """
 function merge_meshes!(meshesA, meshesB)
-  indices = map(get_index, meshesB)
-  for mesh in meshesA
+  indices = map(get_index, meshesA)
+  for mesh in meshesB
     index = get_index(mesh)
     if !(index in indices)
-      push!(meshesB, mesh) 
+      push!(meshesA, mesh) 
     end
   end
-  sort!(meshesB; by=get_index)
+  # sort!(meshesB; by=get_index)
 end
 
 """
 Combine unique matches and meshes from ms_two into ms_one
 """
-function concat!(ms_one::MeshSet, ms_two::MeshSet)
-  for match in ms_two.matches
+function concat!(msA::MeshSet, msB::MeshSet)
+  for match in msB.matches
     src_index = get_src_index(match)
     dst_index = get_dst_index(match)
-    ind = find_match_index(ms_one, src_index, dst_index)
+    ind = find_match_index(msA, src_index, dst_index)
     if ind == 0
-      push!(ms_one.matches, match)
+      push!(msA.matches, match)
     end
   end
-  merge_meshes!(ms_two.meshes, ms_one.meshes)
-  sort!(ms_one.matches; by=get_dst_index)
-  sort!(ms_one.matches; by=get_src_index)
-	return ms_one;
+  merge_meshes!(msA.meshes, msB.meshes)
+  # sort!(ms_one.matches; by=get_dst_index)
+  # sort!(ms_one.matches; by=get_src_index)
+	return msA;
 end
 
 ### initialise
