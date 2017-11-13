@@ -3,8 +3,13 @@ if length(ARGS) > 1
     n = parse(ARGS[2])
 end
 addprocs(n);
+
+
+@time begin
 @everywhere using Alembic
-# using Alembic
+#using Alembic
+end
+
 
 using AWSCore
 using AWSSQS
