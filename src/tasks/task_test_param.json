@@ -14,9 +14,9 @@
 		"cache": false
 	},
 	"mesh":{
-		"z_start": 10,
-		"z_stop": 12,
-		"mesh_length": 200
+		"z_start": 0,
+		"z_stop": 2,
+		"mesh_length": 100
 	},
 	"match":{
 		"mip": 2,

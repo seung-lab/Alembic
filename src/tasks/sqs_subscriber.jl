@@ -5,10 +5,10 @@ end
 
 
 @time begin
-    if n > 1:
+    if n > 1
         addprocs(n);
         @everywhere using Alembic
-    else:
+    else
         using Alembic
     end
 end
