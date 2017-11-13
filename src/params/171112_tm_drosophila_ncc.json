@@ -35,7 +35,8 @@
 		"r_filter": 0.0275,
 		"kurtosis_filter": 25,
 		"kurtosis_filter_dst": 50,
-		"kurtosis_filter_edge": -1.60
+		"kurtosis_filter_edge": -1.60,
+		"r_delta_low": 0.07
 	},
 	"solve":{
 		"method": "elastic",
