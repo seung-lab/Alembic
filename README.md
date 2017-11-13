@@ -66,22 +66,35 @@ Machine type: 8 vCPU, 30 GB memory
 Boot disk size in GB (per node): 32
 ```
 
+Creating cluster through gcloud CLI:
+```
+gcloud container clusters create your-cluster-name --zone=us-east1-b --machine-type=n1-standard-8 --disk-size=32
+```
+
+Connecting kubectl to cluster through glcoud CLI:
+```
+gcloud container clusters get-credentials your-cluster-name 
+```
+
+
+
+
 It's important that you make sure the zone is set to match your storage zone. Size your machine type & boot disk according to the size of your data. Boot disk is not used beyond container installation, but it can become a constraining resource for your entire project, so set it accordingly.
 
 Once your cluster has been created, within the console, select the `Connect` button to access the `kubectl` commands to connect your local workstation to your cluster. Now you can mount your secrets to your cluster nodes:
 
 ```
-kubectl create secret generic secrets --from-file=[HOMEDIR FULL PATH]/.cloudvolume/secrets/aws-secret.json --from-file=[HOMEDIR FULL PATH]/.cloudvolume/secrets/google-secret.json
+kubectl create secret generic secrets --from-file=$HOME/.cloudvolume/secrets/aws-secret.json --from-file=$HOME/.cloudvolume/secrets/google-secret.json
 ```
 
 Now you can intialize the container+commands to be run on each node (we recommend a kube deployment, rather than a job). See `deployment.yaml` for an example deployment definition.
 
-**Note: Alembic uses shared memory (SharedArrays in Julia), which requires some workarounds with containers & deployment services. For Kubernetes, one workaround is to mount a drive to `/dev/shm`, as described in this [post](https://stackoverflow.com/questions/46085748/define-size-for-dev-shm-on-container-engine?noredirect=1&lq=1). See `deployment.yaml` as an example, again.**
+*Note: Alembic uses shared memory (SharedArrays in Julia), which requires some workarounds with containers & deployment services. For Kubernetes, one workaround is to mount a drive to `/dev/shm`, as described in this [post](https://stackoverflow.com/questions/46085748/define-size-for-dev-shm-on-container-engine?noredirect=1&lq=1). See `deployment.yaml` as an example, again.*
 
 We can run that deployment with the following command:
 
 ```
-kubectl create -f [HOMEDIR FULL PATH]/.julia/v0.6/Alembic/src/tasks/deployment.yaml
+kubectl create -f $HOME/.julia/v0.6/Alembic/src/tasks/deployment.yaml
 ```
 
 And now you're running on a cluster! If you want to adjust the number of pods that are supporting the deployment, you can use this following command:
@@ -106,5 +119,5 @@ If you ever need to replace the deployment (e.g. you updated the docker containe
 
 ```
 kubectl delete deployment alembic-tasks
-kubectl create -f [HOMEDIR FULL PATH]/.julia/v0.6/Alembic/src/tasks/deployment.yaml
+kubectl create -f $HOME/.julia/v0.6/Alembic/src/tasks/deployment.yaml
 ```
