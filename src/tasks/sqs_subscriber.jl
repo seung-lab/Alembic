@@ -2,12 +2,15 @@ n = 1
 if length(ARGS) > 1
     n = parse(ARGS[2])
 end
-addprocs(n);
 
 
 @time begin
-@everywhere using Alembic
-#using Alembic
+    if n > 1:
+        addprocs(n);
+        @everywhere using Alembic
+    else:
+        using Alembic
+    end
 end
 
 
