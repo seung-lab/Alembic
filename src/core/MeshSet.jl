@@ -512,7 +512,8 @@ Generate matches between all meshes (& components) that overlap
   Uses `get_matches` which matches taking crack & fold masks into account.
     Meshes will be duplicated so that each mask component has its own mesh.
 """
-function match!(ms::MeshSet, within=1; symmetric=PARAMS[:match][:symmetric])
+function match!(ms::MeshSet, within=PARAMS[:match][:depth]; 
+                                          symmetric=PARAMS[:match][:symmetric])
 	pairs = get_all_overlaps(ms, within; symmetric=symmetric);
 	for pair in pairs
 		add_matches!(ms, get_matches(ms.meshes[pair[1]], ms.meshes[pair[2]]));
