@@ -321,10 +321,34 @@ function elastic_collate(meshset; from_current = true)
 	  end
 	end
 
+	noderange_src_start = noderange_src[1] - 1
+	noderange_dst_start = noderange_dst[1] - 1
+	edgerange_start = edgerange[1] - 1
+				
+	for i in 1:length(i_inds_src)
+		@fastmath @inbounds i_inds_src[i] -= noderange_src_start
+	end
+	for i in 1:length(i_inds_dst)
+		@fastmath @inbounds i_inds_dst[i] -= noderange_dst_start
+	end	
+	for i in 1:length(j_inds_src)
+		@fastmath @inbounds j_inds_src[i] -= edgerange_start
+	end
+	for i in 1:length(j_inds_dst)
+		@fastmath @inbounds j_inds_dst[i] -= edgerange_start
+	end
+				
+	i_inds = vcat(i_inds_src, i_inds_dst)
+	j_inds = vcat(j_inds_src, j_inds_dst)
+	vals = vcat(vals_src, vals_dst)
+	
+	return i_inds, j_inds, vals
+		#=
+				
 	  src_sparse = sparse(i_inds_src, j_inds_src, vals_src, length(noderange_src), length(edgerange))
 	  dst_sparse = sparse(i_inds_dst, j_inds_dst, vals_dst, length(noderange_dst), length(edgerange))
     	@inbounds (LOCAL_SPM::SparseMatrixCSC{Float64, Int64})[noderange_src, edgerange] = src_sparse;
-    	@inbounds (LOCAL_SPM::SparseMatrixCSC{Float64, Int64})[noderange_dst, edgerange] = dst_sparse;
+    	@inbounds (LOCAL_SPM::SparseMatrixCSC{Float64, Int64})[noderange_dst, edgerange] = dst_sparse;=#
 	end 
       end #inbounds
 
@@ -336,10 +360,17 @@ function elastic_collate(meshset; from_current = true)
   
   edgerange_list = Array{UnitRange, 1}(map(getindex, repeated(edgeranges), map(get_src_and_dst_indices,meshset.matches)))
 
-  pmap(compute_sparse_matrix, matches_ref, meshes_ref[map(getindex, repeated(meshes_order), src_indices)], meshes_ref[map(getindex, repeated(meshes_order), dst_indices)], noderange_src_list, noderange_dst_list, edgerange_list);
-
+  res = pmap(compute_sparse_matrix, matches_ref, meshes_ref[map(getindex, repeated(meshes_order), src_indices)], meshes_ref[map(getindex, repeated(meshes_order), dst_indices)], noderange_src_list, noderange_dst_list, edgerange_list);
   println("matches collated: $(count_matches(meshset)) matches. populating sparse matrix....")
 
+	i_inds = vcat([r[1] for r in res]...)
+	j_inds = vcat([r[2] for r in res]...)
+	vals = vcat([r[3] for r in res]...)
+
+	
+	edges = sparse(i_inds, j_inds, vals, num_nodes, num_edges)
+	
+	#=
   function get_local_sparse()
 	return LOCAL_SPM;
   end
@@ -363,7 +394,7 @@ function elastic_collate(meshset; from_current = true)
   end
 
   edges = edges_subarrays[1];
-
+=#
   collation = nodes, nodes_fixed, edges, edge_spring_coeffs, edge_lengths, max_iters, ftol_cg
   collation_with_ranges = collation, noderanges, edgeranges
 
