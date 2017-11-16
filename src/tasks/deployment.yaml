@@ -14,7 +14,7 @@ spec:
           image: seunglab/alembic:julia-mkl-gce
           imagePullPolicy: Always
           command: ["/bin/sh"]
-          args: ["-c", "julia /tasks/sqs_subscriber.jl alembic 7"]
+          args: ["-c", "julia /tasks/sqs_subscriber.jl alembic 1"]
           volumeMounts:
           - name: secrets
             mountPath: /root/.cloudvolume/secrets
