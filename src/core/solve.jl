@@ -190,6 +190,8 @@ function elastic_collate(meshset; from_current = true)
       put!(mesh_ref, mesh); push!(meshes_ref, mesh_ref);
     end
 
+    println("meshes referenced")
+
     @fastmath @inbounds for match in meshset.matches
     	edgeranges[get_src_and_dst_indices(match)] = cum_edges + (1:count_filtered_correspondences(match));
     	cum_edges = cum_edges + count_filtered_correspondences(match);
@@ -198,6 +200,8 @@ function elastic_collate(meshset; from_current = true)
     	push!(src_indices, get_src_index(match))
     	push!(dst_indices, get_dst_index(match))
     end
+
+    println("matches referenced")
 
     for mesh in meshset.meshes
       if from_current
@@ -221,9 +225,9 @@ function elastic_collate(meshset; from_current = true)
 
   end # @fm @ib 
 
-  @fastmath noderange_list = Array{UnitRange, 1}([getindex(noderanges, get_index(mesh)) for mesh in meshset.meshes]);
-  @fastmath edgerange_list = Array{UnitRange, 1}([getindex(edgeranges, get_index(mesh)) for mesh in meshset.meshes]);
-
+  @fastmath noderange_mesh_list = Array{UnitRange, 1}([getindex(noderanges, get_index(mesh)) for mesh in meshset.meshes]);
+  @fastmath edgerange_mesh_list = Array{UnitRange, 1}([getindex(edgeranges, get_index(mesh)) for mesh in meshset.meshes]);
+#=
   # initializes a local copy of the whole sparse matrix for the system
   @inbounds @fastmath function make_local_sparse(num_nodes, num_edges)
 	global LOCAL_SPM = spzeros(num_nodes, num_edges)
@@ -247,9 +251,9 @@ function elastic_collate(meshset; from_current = true)
 
   # do so in parallel for all meshes
   pmap(copy_sparse_matrix, meshes_ref, noderange_list, edgerange_list);
-
+=#
   # all mesh edges are now represented in local sparse matrices somewhere
-  println("meshes collated: $(count_meshes(meshset)) meshes")
+  println("mesh nodes collated: $(count_meshes(meshset)) meshes")
 
   # initialize the arrays for edge lengths and the spring coeffs
   for match in meshset.matches
@@ -326,22 +330,25 @@ function elastic_collate(meshset; from_current = true)
 	edgerange_start = edgerange[1] - 1
 				
 	for i in 1:length(i_inds_src)
-		@fastmath @inbounds i_inds_src[i] -= noderange_src_start
+		@fastmath @inbounds i_inds_src[i] += noderange_src_start
 	end
 	for i in 1:length(i_inds_dst)
-		@fastmath @inbounds i_inds_dst[i] -= noderange_dst_start
+		@fastmath @inbounds i_inds_dst[i] += noderange_dst_start
 	end	
 	for i in 1:length(j_inds_src)
-		@fastmath @inbounds j_inds_src[i] -= edgerange_start
+		@fastmath @inbounds j_inds_src[i] += edgerange_start
 	end
 	for i in 1:length(j_inds_dst)
-		@fastmath @inbounds j_inds_dst[i] -= edgerange_start
+		@fastmath @inbounds j_inds_dst[i] += edgerange_start
 	end
 				
 	i_inds = vcat(i_inds_src, i_inds_dst)
 	j_inds = vcat(j_inds_src, j_inds_dst)
 	vals = vcat(vals_src, vals_dst)
 	
+  end 
+      end #inbounds
+
 	return i_inds, j_inds, vals
 		#=
 				
@@ -349,8 +356,7 @@ function elastic_collate(meshset; from_current = true)
 	  dst_sparse = sparse(i_inds_dst, j_inds_dst, vals_dst, length(noderange_dst), length(edgerange))
     	@inbounds (LOCAL_SPM::SparseMatrixCSC{Float64, Int64})[noderange_src, edgerange] = src_sparse;
     	@inbounds (LOCAL_SPM::SparseMatrixCSC{Float64, Int64})[noderange_dst, edgerange] = dst_sparse;=#
-	end 
-      end #inbounds
+	
 
   end
 
@@ -367,9 +373,17 @@ function elastic_collate(meshset; from_current = true)
 	j_inds = vcat([r[2] for r in res]...)
 	vals = vcat([r[3] for r in res]...)
 
-	
-	edges = sparse(i_inds, j_inds, vals, num_nodes, num_edges)
-	
+	println("sanitycheck: $(maximum(i_inds)), $(count_nodes(meshset))")
+    println("sanitycheck: $(maximum(j_inds)), $(count_edges(meshset) + count_filtered_correspondences(meshset))")
+
+	print("generating sparse matrix for edges:"); 
+  @time edges = sparse(i_inds, j_inds, vals, count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset))
+
+	print("populating sparse matrix with edges from meshes:"); 
+  @time for i in 1:count_meshes(ms)
+    mesh = ms.meshes[i]
+    @inbounds edges[noderange_mesh_list[i], edgerange_match_list[i]] = mesh.edges
+  end
 	#=
   function get_local_sparse()
 	return LOCAL_SPM;
