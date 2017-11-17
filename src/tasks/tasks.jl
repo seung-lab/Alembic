@@ -14,7 +14,7 @@ Fix the center section, solve in halves, then resolve in range around center
 
 function render_task(params::Dict)
     load_params(params)
-    ms = load("meshset", get_name())
+    ms = load("mesh", get_name())
     println("Render Task $(get_name(ms))")
     render(ms)
 end

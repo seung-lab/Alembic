@@ -272,16 +272,24 @@ function get_parent(ms::MeshSet)
   return parent
 end
 
-function split_meshset(ms::MeshSet)
+function save_meshes(ms::MeshSet)
   for z in unique(collect_z(ms))
     meshes = get_subsections(ms, z)
     meshset = MeshSet();
     append!(meshset.meshes, meshes)
     save(meshset, "mesh", string(z))
   end
-	for match in ms.matches
-	  save(match, "match")
-	end
+end
+
+function save_matches(ms::MeshSet)
+  for match in ms.matches
+    save(match, "match")
+  end
+end
+
+function split_meshset(ms::MeshSet)
+  save_meshes(ms)
+  save_matches(ms)
 end
 
 function compile_meshset()
