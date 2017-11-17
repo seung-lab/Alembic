@@ -272,123 +272,33 @@ function get_parent(ms::MeshSet)
   return parent
 end
 
-function split_ms(ms::MeshSet)
-	for mesh in ms.meshes
-	  save(mesh);
-	end
+function split_meshset(ms::MeshSet)
+  for z in unique(collect_z(ms))
+    meshes = get_subsections(ms, z)
+    meshset = MeshSet();
+    append!(meshset.meshes, meshes)
+    save(meshset, "mesh", string(z))
+  end
 	for match in ms.matches
-	  save(match)
+	  save(match, "match")
 	end
-	return (vcat(map(get_path, ms.meshes), map(get_path, ms.matches)));
 end
 
-function compile_ms(first_index, last_index)
-  inds = get_index_range(first_index, last_index);
-  println("Compiling MeshSet between $first_index and $last_index - $(length(inds)) meshes expected")
-  mesh_inds = Array{Index, 1}();
-  match_inds = Array{Tuple{Index, Index}, 1}();
-
-  for ind in inds
-    if isfile(get_path(Mesh, ind)) push!(mesh_inds, ind) end
-  end
-  for ind in inds
-    for dst_ind in inds
-    if isfile(get_path(Match, (ind, dst_ind))) push!(match_inds, (ind, dst_ind)) end
-  end
-  end
-
-  meshes = pmap(load, repeated(Mesh), mesh_inds);
-  matches = pmap(load, repeated(Match), match_inds);
-  #=
-#  @sync begin
-  for ind in inds
-    if isfile(get_path(Mesh, ind)) @async push!(meshes, remotecall_fetch(WORKER_PROCS[ind[2]%length(WORKER_PROCS) + 1], load, Mesh, ind)); end
-  end
-  for ind in inds
-    for dst_ind in inds
-      if isfile(get_path(Match, (ind, dst_ind))) @async push!(matches, remotecall_fetch(WORKER_PROCS[ind[2]%length(WORKER_PROCS) + 1], load, Match, (ind, dst_ind))) end
-    end
-  end
-#end #sync=#
-
-  println("$(length(meshes)) meshes found...")
-  if length(meshes) == 0 println("no meshes exist between the requested indices - aborting...."); return nothing end
-  if length(meshes) != length(inds) println("not all meshes exist between requested indices - continuing anyway...") end
-  if |(map(is_fixed, meshes)...) println("there are fixed meshes among the requested meshes - continuing anyway...") end
-  println("$(length(matches)) matches found...")
-
-  if length(matches) == 0 println("no matches exist between requested indices - continuing anyway...") end
-
-  sort!(meshes; by=get_index)
-  sort!(matches; by=get_dst_index)
-  sort!(matches; by=get_src_index)
-
-  ms = MeshSet();
-  ms.meshes = meshes;
-  ms.matches = matches;
-  ms.properties = Dict{Symbol, Any}(:author => author(), :meta => Dict{Symbol, Any}(), :params => deepcopy(meshes[1].properties[:params]))
-  
-  @everywhere gc();
-
-  return ms;
-end
-
-"""
-Create partial ms of a ms split into children
-"""
-function compile_partial_ms(parent_name, firstindex, lastindex)
-  ms = MeshSet()
-  indices = get_index_range(prealigned(firstindex), prealigned(lastindex))
-  ind = []
-  ms.properties = deepcopy(load_split(parent_name, 1).properties)
-  delete!(ms.properties, :meta)
-  for i = 1:count_children(parent_name)
-    child_ms = load_split(parent_name, i)
-    if length(intersect(map(get_index, child_ms.meshes), indices)) > 0
-      concat!(ms, child_ms)
-    end
-  end
-  return ms
-end
-
-function find_mesh_indices(firstindex, lastindex, i::Int64)
-  indices = get_index_range(firstindex, lastindex)
-  return find_mesh_indices(firstindex, lastindex, indices[i])
-end
-
-function find_mesh_indices(firstindex, lastindex, index)
-  parent_name = get_name(firstindex, lastindex)
-  ind = []
-  for i in 1:count_children(parent_name)
-    ms = load_split(parent_name, i)
-    if index in ms
-      push!(ind, i)
-    end
-  end
-  return ind
-end
-
-function concat_mss(filenames::Array)
-  println(filenames[1])
-  ms = load(filenames[1])
-  for fn in filenames[2:end]
-    println(fn)
-    ms2 = load(fn)
-    concat!(ms, ms2)
-  end
-  save(ms)
-  return ms
-end
-
-function compile_ms()
+function compile_meshset()
   pairs = get_all_overlaps(get_z_range(), PARAMS[:match][:depth], 
                                         symmetric=PARAMS[:match][:symmetric])
+  return compile_meshset(get_z_range(), pairs)
+end
+
+function compile_meshset(z_range, pairs)
   ms = MeshSet()
+  for z in z_range
+    m = load("mesh", z)
+    append!(ms.meshes, m.meshes)
+  end
   for p in pairs
-    try
-      sub_ms = load("meshset", string(p))
-      concat!(ms, sub_ms)
-    end
+    m = load("match", string(p))
+    push!(ms.matches, m)
   end
   return ms
 end

@@ -122,11 +122,7 @@ function load(obj_name::AbstractString, fn::AbstractString)
   return s[fn]
 end
 
-function save(obj, fn::AbstractString=get_name(obj))
-  obj_name = lowercase(string(typeof(obj)))
-  if startswith(obj_name, "alembic.")
-    obj_name = obj_name[9:end]
-  end
+function save(obj, obj_name::AbstractString, fn::AbstractString=get_name(obj))
   println("Saving $fn to $(get_path(obj_name))")
   s = StorageWrapper(get_path(obj_name))
   s[fn] = obj;

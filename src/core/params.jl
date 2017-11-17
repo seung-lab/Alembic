@@ -1,6 +1,6 @@
 global PARAMS = Dict()
 
-function load_params_file(fn::AbstractString)
+function load_params(fn::AbstractString)
 	params = JSON.parsefile(fn)
 	return load_params(params)
 end

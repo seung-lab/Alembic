@@ -44,4 +44,4 @@ function publish_messages(params_fn, queue_name, pairs_fn)
     end
 end
 
-publish_messages_from_file(ARGS...)
+publish_messages(ARGS...)

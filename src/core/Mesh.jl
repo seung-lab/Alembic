@@ -5,13 +5,18 @@ struct Mesh{T} <: AbstractMesh
 	src_nodes::Points{T}					# nodes as array of [i, j] coordinates, sorted in i, j order
 	dst_nodes::Points{T}		 			# in the same order as src_nodes, after some transformation
 
-	edges::Edges{T}				                # n-by-m sparse incidence matrix, each column is zero except at two elements with value -1 and 1
+	# n-by-m sparse incidence matrix, each column is zero except at two elements with value -1 and 1
+	# represented by three arrays - use sparse(edges_I, edges_J, edges_V)
+	edges_I::Array{Int64, 1}
+	edges_J::Array{Int64, 1}
+	edges_V::Array{T, 1}
+
 	properties::Dict{Symbol, Any}				# properties field
 end
 
 function Base.deepcopy(m::Mesh; index=m.index, src_nodes=m.src_nodes, 
-				dst_nodes=m.dst_nodes, edges=m.edges, properties=m.properties)
-	return Mesh(index, deepcopy(src_nodes), deepcopy(dst_nodes), deepcopy(edges), deepcopy(properties))
+				dst_nodes=m.dst_nodes, edges_I=m.edges_I, edges_J=m.edges_J, edges_V=m.edges_V, properties=m.properties)
+	return Mesh(index, deepcopy(src_nodes), deepcopy(dst_nodes), deepcopy(edges_I), deepcopy(edges_J), deepcopy(edges_V), deepcopy(properties))
 end
 
 
@@ -63,7 +68,7 @@ end
 
 ### counting
 function count_nodes(mesh::Mesh)			return size(mesh.src_nodes, 2);				end
-function count_edges(mesh::Mesh)			return size(mesh.edges, 2);				end
+function count_edges(mesh::Mesh)			return div(length(mesh.edges_V), 2);				end
 
 ### internal
 function get_topleft_offset(mesh::Mesh)			return mesh.src_nodes[:, 1];				end
@@ -114,7 +119,8 @@ function get_edge_endpoints{T}(mesh::Mesh{T}; globalized::Bool = false, use_post
 	endpoints_b = Points{T}(2, num_edges);
 
   	for ind in 1:num_edges
-	@inbounds node_inds = findnz(mesh.edges[:, ind])[1];
+	@fastmath node_loc = ind * 2 - 1
+	@inbounds node_inds = view(mesh.edges_I, node_loc : node_loc+1);
 	@inbounds endpoints_a[:, ind] = use_post ? mesh.dst_nodes[:, node_inds[1]] : mesh.src_nodes[:, node_inds[1]]
 	@inbounds endpoints_b[:, ind] = use_post ? mesh.dst_nodes[:, node_inds[2]] : mesh.src_nodes[:, node_inds[2]]      	
         end
@@ -265,7 +271,10 @@ function Mesh(index, fixed=false; T=Float64)
 		end
 	end
 	cur += 1;
-	edges = sparse(edges_meshinds[1:cur], edges_edgeinds[1:cur], edges_vals[1:cur], n, m);
+	edges_I = edges_meshinds[1:cur];
+	edges_J = edges_edgeinds[1:cur];
+	edges_V = edges_vals[1:cur];
+	#edges = sparse(edges_meshinds[1:cur], edges_edgeinds[1:cur], edges_vals[1:cur], n, m);
 
 	#= legacy code
       @time begin
@@ -301,17 +310,19 @@ function Mesh(index, fixed=false; T=Float64)
 	dst_nodes = deepcopy(src_nodes);
 
 	properties = Dict{Symbol, Any}(
-				    :params => params,
+				    :params => PARAMS,
 				    :fixed => fixed);
 
-	return Mesh(index, src_nodes, dst_nodes, edges, properties);
+	return Mesh(index, src_nodes, dst_nodes, edges_I, edges_J, edges_V, properties);
 end
 
 function remesh!(mesh::Mesh)
 	newmesh = Mesh(mesh.index, mesh.properties[:params], mesh.properties[:fixed]; rotated = true);
 	mesh.src_nodes = deepcopy(newmesh.src_nodes);
 	mesh.dst_nodes = deepcopy(newmesh.dst_nodes);
-	mesh.edges = deepcopy(newmesh.edges);
+	mesh.edges_I = deepcopy(newmesh.edges_I);
+	mesh.edges_J = deepcopy(newmesh.edges_J);
+	mesh.edges_V = deepcopy(newmesh.edges_V);
 	newmesh = 0;
 	return mesh
 end
@@ -510,6 +521,12 @@ function reset!(mesh::Mesh)
 	mesh.dst_nodes = deepcopy(mesh.src_nodes)
 end
 
+function get_edges(mesh::Mesh)
+  return sparse(edges_I, edges_J, edges_V)
+end
+
+# broken
+#= 
 function get_edges(mesh::Mesh, node_index)
 	return findnz(mesh.edges[node_index, :])
 end
@@ -521,3 +538,4 @@ function get_edges(mesh::Mesh, triangle::Triangle)
 	end
 	return edges
 end
+=#
