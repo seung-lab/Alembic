@@ -101,7 +101,10 @@ function render(ms::MeshSet, z_range=unique(collect_z(ms)))
     subsection_images = Array{Array{UInt8,2},1}()
     subsection_offsets = []
     src_image = get_image(z, "src_image", mip=get_mip(:render))
-    if use_mask()
+    # if use_roi_mask()
+    #   roi_mask = get_image()
+    # end
+    if use_defect_mask()
       src_image_sub = deepcopy(src_image)
       src_mask = get_image(z, "mask", mip=get_mip(:render))
       for mesh in meshes

@@ -91,8 +91,12 @@ function use_cache()
   return PARAMS[:dirs][:cache]
 end
 
-function use_mask()
+function use_defect_mask()
   return PARAMS[:dirs][:mask] != ""
+end
+
+function use_roi_mask()
+  return PARAMS[:dirs][:roi] != ""
 end
 
 function globalize!{T}(pts::Points{T}, offset::Array{Int,1})
@@ -263,3 +267,4 @@ function check_local_dir(dir="match")
   end
 end
 
+# function make_roi_mask(dir,)

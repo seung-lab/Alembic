@@ -858,7 +858,7 @@ function get_matches{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T})
     src_image = get_image(src_index, "match_image", mip=get_mip(:match));  
     dst_image = get_image(dst_index, "match_image", mip=get_mip(:match));
     matches = Array{Match,1}()
-    if use_mask()
+    if use_defect_mask()
       src_image_sub = deepcopy(src_image)
       dst_image_sub = deepcopy(dst_image)
       println("Getting masks for $(src_index) & $(dst_index):")
