@@ -238,7 +238,7 @@ function elastic_collate(meshset; from_current = true)
 	  j_inds = copy(mesh.edges_J)
 	  vals = copy(mesh.edges_V)
 
-	noderange_start = noderange_src[1] - 1
+	noderange_start = noderange[1] - 1
 	edgerange_start = edgerange[1] - 1
 				
 	for i in 1:length(i_inds)
