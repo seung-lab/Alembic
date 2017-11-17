@@ -6,8 +6,9 @@ function meshwarp_mesh(image, mesh::Mesh)
   src_nodes = get_nodes(mesh; globalized=true, use_post=false, scale=scale)
   dst_nodes = get_nodes(mesh; globalized=true, use_post=true, scale=scale)
   offset = get_offset(mesh)*scale;
+  edges = get_edges(mesh)
   return @time meshwarp(image, src_nodes, dst_nodes, 
-                    incidence_to_triangles(mesh.edges), offset), get_index(mesh)
+                    incidence_to_triangles(edges), offset), get_index(mesh)
 end
 
 """
