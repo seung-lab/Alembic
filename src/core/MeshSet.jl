@@ -262,16 +262,6 @@ function check_and_fix!(ms::MeshSet,
   end
 end
 
-function get_parent(ms::MeshSet)
-  parent = nothing
-  if haskey(ms.properties, :meta)
-    if haskey(ms.properties[:meta], :parent)
-      parent = ms.properties[:meta][:parent]
-    end
-  end
-  return parent
-end
-
 function save_meshes(ms::MeshSet)
   for z in unique(collect_z(ms))
     meshes = get_subsections(ms, z)
