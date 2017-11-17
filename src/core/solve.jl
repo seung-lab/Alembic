@@ -225,35 +225,39 @@ function elastic_collate(meshset; from_current = true)
 
   end # @fm @ib 
 
+  println("mesh nodes collated: $(count_meshes(meshset)) meshes.")
+
   @fastmath noderange_mesh_list = Array{UnitRange, 1}([getindex(noderanges, get_index(mesh)) for mesh in meshset.meshes]);
   @fastmath edgerange_mesh_list = Array{UnitRange, 1}([getindex(edgeranges, get_index(mesh)) for mesh in meshset.meshes]);
-#=
-  # initializes a local copy of the whole sparse matrix for the system
-  @inbounds @fastmath function make_local_sparse(num_nodes, num_edges)
-	global LOCAL_SPM = spzeros(num_nodes, num_edges)
+
+
+  function compute_sparse_matrix_meshes(mesh_ref, noderange, edgerange)
+	@inbounds begin
+	  mesh = fetch(mesh_ref)
+	  i_inds = copy(mesh.edges_I)
+	  j_inds = copy(mesh.edges_J)
+	  vals = copy(mesh.edges_V)
+
+	noderange_start = noderange_src[1] - 1
+	edgerange_start = edgerange[1] - 1
+				
+	for i in 1:length(i_inds)
+		@fastmath @inbounds i_inds[i] += noderange_start
+	end
+	for i in 1:length(j_inds)
+		@fastmath @inbounds j_inds[i] += edgerange_start
+	end
+	end #ib
+	return i_inds, j_inds, vals
   end
 
-  # initialize the local sparse matrix on all processes
-  @sync begin
-    @async for proc in setdiff(procs(), myid())
-      remotecall_wait(make_local_sparse, proc, count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset)); 
-    end 
-    make_local_sparse(count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset))
-  end
+  res_meshes = pmap(compute_sparse_matrix_meshes, meshes_ref, noderange_mesh_list, edgerange_mesh_list)
 
-  gc();
+  i_inds_mesh = vcat([r[1] for r in res_meshes]...)
+  j_inds_mesh = vcat([r[2] for r in res_meshes]...)
+  vals_mesh = vcat([r[3] for r in res_meshes]...)
 
-  # copies the edges of a given mesh(by remote reference) into the specific range of the local sparse matrix
-  function copy_sparse_matrix(mesh_ref, noderange, edgerange)
-    mesh = fetch(mesh_ref)
-    @inbounds (LOCAL_SPM::SparseMatrixCSC{Float64, Int64})[noderange, edgerange] = mesh.edges;
-  end
-
-  # do so in parallel for all meshes
-  pmap(copy_sparse_matrix, meshes_ref, noderange_list, edgerange_list);
-=#
-  # all mesh edges are now represented in local sparse matrices somewhere
-  println("mesh nodes collated: $(count_meshes(meshset)) meshes")
+  println("mesh edges collated: $(count_meshes(meshset)) meshes.")
 
   # initialize the arrays for edge lengths and the spring coeffs
   for match in meshset.matches
@@ -261,7 +265,7 @@ function elastic_collate(meshset; from_current = true)
     	@inbounds edge_spring_coeffs[edgeranges[get_src_and_dst_indices(match)]] = fill(match_spring_coeff, count_filtered_correspondences(match));
   end
 
-  function compute_sparse_matrix(match_ref, src_mesh_ref, dst_mesh_ref, noderange_src, noderange_dst, edgerange)
+  function compute_sparse_matrix_matches(match_ref, src_mesh_ref, dst_mesh_ref, noderange_src, noderange_dst, edgerange)
 	@inbounds begin
 	@time begin
   	match = fetch(match_ref)
@@ -350,65 +354,31 @@ function elastic_collate(meshset; from_current = true)
       end #inbounds
 
 	return i_inds, j_inds, vals
-		#=
-				
-	  src_sparse = sparse(i_inds_src, j_inds_src, vals_src, length(noderange_src), length(edgerange))
-	  dst_sparse = sparse(i_inds_dst, j_inds_dst, vals_dst, length(noderange_dst), length(edgerange))
-    	@inbounds (LOCAL_SPM::SparseMatrixCSC{Float64, Int64})[noderange_src, edgerange] = src_sparse;
-    	@inbounds (LOCAL_SPM::SparseMatrixCSC{Float64, Int64})[noderange_dst, edgerange] = dst_sparse;=#
-	
-
   end
 
 
   noderange_src_list = Array{UnitRange, 1}(map(getindex, repeated(noderanges), src_indices))
   noderange_dst_list = Array{UnitRange, 1}(map(getindex, repeated(noderanges), dst_indices))
-  
   edgerange_list = Array{UnitRange, 1}(map(getindex, repeated(edgeranges), map(get_src_and_dst_indices,meshset.matches)))
 
-  res = pmap(compute_sparse_matrix, matches_ref, meshes_ref[map(getindex, repeated(meshes_order), src_indices)], meshes_ref[map(getindex, repeated(meshes_order), dst_indices)], noderange_src_list, noderange_dst_list, edgerange_list);
-  println("matches collated: $(count_matches(meshset)) matches. populating sparse matrix....")
+  res = pmap(compute_sparse_matrix_matches, matches_ref, 
+  	meshes_ref[map(getindex, repeated(meshes_order), src_indices)], meshes_ref[map(getindex, repeated(meshes_order), dst_indices)], 
+	noderange_src_list, noderange_dst_list, edgerange_list);
 
-	i_inds = vcat([r[1] for r in res]...)
-	j_inds = vcat([r[2] for r in res]...)
-	vals = vcat([r[3] for r in res]...)
+	i_inds_match = vcat([r[1] for r in res]...)
+	j_inds_match = vcat([r[2] for r in res]...)
+	vals_match = vcat([r[3] for r in res]...)
 
-	println("sanitycheck: $(maximum(i_inds)), $(count_nodes(meshset))")
-    println("sanitycheck: $(maximum(j_inds)), $(count_edges(meshset) + count_filtered_correspondences(meshset))")
+  println("matches collated: $(count_matches(meshset)) matches.")
 
-	print("generating sparse matrix for edges:"); 
+	i_inds = vcat(i_inds_mesh, i_inds_match)
+	j_inds = vcat(j_inds_mesh, j_inds_match)
+	vals = vcat(vals_mesh, vals_match)
+
+
+	print("populating sparse matrix:"); 
   @time edges = sparse(i_inds, j_inds, vals, count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset))
 
-	print("populating sparse matrix with edges from meshes:"); 
-  @time for i in 1:count_meshes(ms)
-    mesh = ms.meshes[i]
-    @inbounds edges[noderange_mesh_list[i], edgerange_match_list[i]] = mesh.edges
-  end
-	#=
-  function get_local_sparse()
-	return LOCAL_SPM;
-  end
-  
-  edges_subarrays = Array{SparseMatrixCSC{Float64, Int64}, 1}(length(procs()))
-
-  @sync for proc in procs() @async @inbounds edges_subarrays[proc] = remotecall_fetch(get_local_sparse, proc); end 
-
-  function add_local_sparse(sp_a, sp_b)
-    global LOCAL_SPM = 0;
-    global LOCAL_SPM = 0;
-    gc();
-    @fastmath global LOCAL_SPM = sp_a + sp_b
-	return LOCAL_SPM;
-  end
-
-  @time @inbounds @fastmath while length(edges_subarrays) != 1
-    #println(length(edges_subarrays));
-    if isodd(length(edges_subarrays)) push!(edges_subarrays, spzeros(count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset))) end
-    edges_subarrays = Array{SparseMatrixCSC{Float64, Int64}, 1}(pmap(add_local_sparse, edges_subarrays[1:div(length(edges_subarrays), 2)], edges_subarrays[div(length(edges_subarrays),2)+1:end]))
-  end
-
-  edges = edges_subarrays[1];
-=#
   collation = nodes, nodes_fixed, edges, edge_spring_coeffs, edge_lengths, max_iters, ftol_cg
   collation_with_ranges = collation, noderanges, edgeranges
 
