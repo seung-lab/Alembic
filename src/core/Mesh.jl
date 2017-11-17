@@ -522,7 +522,7 @@ function reset!(mesh::Mesh)
 end
 
 function get_edges(mesh::Mesh)
-  return sparse(edges_I, edges_J, edges_V)
+  return sparse(mesh.edges_I, mesh.edges_J, mesh.edges_V)
 end
 
 # broken
