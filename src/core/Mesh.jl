@@ -310,10 +310,10 @@ function Mesh(index, fixed=false; T=Float64)
 	dst_nodes = deepcopy(src_nodes);
 
 	properties = Dict{Symbol, Any}(
-				    :params => params,
+				    :params => PARAMS,
 				    :fixed => fixed);
 
-	return Mesh(index, src_nodes, dst_nodes, edges/I, edges_J, edges_V, properties);
+	return Mesh(index, src_nodes, dst_nodes, edges_I, edges_J, edges_V, properties);
 end
 
 function remesh!(mesh::Mesh)
