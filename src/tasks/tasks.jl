@@ -19,5 +19,6 @@ function render_task(params::Dict)
         println("Render Task $(get_name(ms))")
         render(ms)
     end
+    flush_cv_cache("src_image")
 end
 

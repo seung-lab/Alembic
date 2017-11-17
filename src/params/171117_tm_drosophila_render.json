@@ -12,7 +12,7 @@
 		"roi":"cutoutE/roi",
 		"mesh":"aligned_ncc/mesh",
 		"meshset":"aligned_ncc/meshset",
-		"cache": false
+		"cache": true
 	},
 	"mesh":{
 		"z_start": 11,

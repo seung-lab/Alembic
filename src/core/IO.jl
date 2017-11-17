@@ -267,4 +267,9 @@ function check_local_dir(dir="match")
   end
 end
 
+function flush_cv_cache(obj_name; mip::Int64=get_mip(:render))
+  cv = get_cloudvolume(obj_name, mip=mip)
+  flush(cv)
+end
+
 # function make_roi_mask(dir,)
