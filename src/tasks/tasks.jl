@@ -18,6 +18,7 @@ function render_task(params::Dict)
         ms = load("mesh", string(z))
         println("Render Task $(get_name(ms))")
         render(ms)
+        reset_cache()
     end
     flush_cv_cache("src_image")
 end
