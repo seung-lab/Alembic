@@ -291,12 +291,14 @@ end
 function compile_meshset(z_range, pairs)
   ms = MeshSet()
   for z in z_range
-    m = load("mesh", z)
+    m = load("mesh", string(z))
     append!(ms.meshes, m.meshes)
   end
   for p in pairs
-    m = load("match", string(p))
-    push!(ms.matches, m)
+    try
+      m = load("match", string(p))
+      push!(ms.matches, m)
+    end
   end
   return ms
 end
