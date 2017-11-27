@@ -148,15 +148,14 @@ end
 
 function elastic_collate(meshset; from_current = true)
 	sanitize!(meshset);
-  params = get_params(meshset)
-  match_spring_coeff = params[:solve][:match_spring_coeff]
-  mesh_spring_coeff = params[:solve][:mesh_spring_coeff]
-  max_iters = params[:solve][:max_iters]
-  ftol_cg = params[:solve][:ftol_cg]
-  eta_gd = params[:solve][:eta_gd] 
-  ftol_gd = params[:solve][:ftol_gd]
-  eta_newton = params[:solve][:eta_newton]
-  ftol_newton = params[:solve][:ftol_newton]
+  match_spring_coeff = PARAMS[:solve][:match_spring_coeff]
+  mesh_spring_coeff = PARAMS[:solve][:mesh_spring_coeff]
+  max_iters = PARAMS[:solve][:max_iters]
+  ftol_cg = PARAMS[:solve][:ftol_cg]
+  eta_gd = PARAMS[:solve][:eta_gd] 
+  ftol_gd = PARAMS[:solve][:ftol_gd]
+  eta_newton = PARAMS[:solve][:eta_newton]
+  ftol_newton = PARAMS[:solve][:ftol_newton]
 
   println("Solving meshset: $(count_nodes(meshset)) nodes, $(count_edges(meshset)) edges, $(count_filtered_correspondences(meshset)) correspondences");
 
@@ -453,7 +452,7 @@ function rectify_drift(meshset::MeshSet, start_ind = 1, final_ind = count_meshes
 	avg_drift = mean(residuals_match);
       end
 
-      if get_params(meshset)[:match][:symmetric]
+      if PARAMS[:match][:symmetric]
 	if is_preceding(get_index(src_mesh), get_index(dst_mesh), 5)
 	  drifts[find_mesh_index(meshset, get_dst_index(match))] -= avg_drift/2;
 	else
