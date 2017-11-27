@@ -67,18 +67,18 @@ class TornadoThread(threading.Thread):
         # self._stop = threading.Event()
         threading.Thread.__init__(self)
         self.daemon = True
-
+        self.port = port
         self.router = SockJSRouter(Controller.Connection)
         socketApp = web.Application(self.router.urls)
         self.http_server = httpserver.HTTPServer(socketApp, ssl_options={
-            "certfile": os.path.join(sys.path[0], 'certificate.crt'),
-            "keyfile": os.path.join(sys.path[0], 'privateKey.key')
+            'certfile': os.path.join(sys.path[0], 'certificate.crt'),
+            'keyfile': os.path.join(sys.path[0], 'privateKey.key')
         })
         self.http_server.bind(port) #port
         self.http_server.start(1)
 
     def run(self):
-        print("IOLoop starting")
+        print('IOLoop starting on port {0}'.format(self.port))
         ioloop.IOLoop.instance().start()
 
 def controller(port=9999):
