@@ -3,7 +3,7 @@ function match_task(params::Dict)
     ms = make_stack()
     println("Match Task $(get_name(ms))")
     match!(ms)
-    save(ms, "meshset")
+    split_meshset(ms)
 end
 
 """
@@ -18,8 +18,8 @@ function render_task(params::Dict)
         ms = load("mesh", string(z))
         println("Render Task $(get_name(ms))")
         render(ms)
-        reset_cache()
+        # reset_cache()
     end
-    flush_cv_cache("src_image")
+    # flush_cv_cache("src_image")
 end
 
