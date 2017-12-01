@@ -175,7 +175,7 @@ function to_csv(match::Match)
 end
 
 function load_manual_filters!(match::Match)
-    fn = joinpath(get_local_path(:match), get_name(match))
+    fn = joinpath(get_local_path("match"), get_name(match))
     println("Loading manual inspection filters from $fn")
     df = readtable(fn)
     match.filters[:manual] = .~convert(Array{Bool,1}, df[:filter])
