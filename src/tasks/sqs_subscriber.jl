@@ -1,18 +1,5 @@
-n = 1
-if length(ARGS) > 1
-    n = parse(ARGS[2])
-end
-
-
-@time begin
-    if n > 1
-        addprocs(n);
-        @everywhere using Alembic
-    else
-        using Alembic
-    end
-end
-
+addprocs()
+@time using Alembic
 
 using AWSCore
 using AWSSQS
