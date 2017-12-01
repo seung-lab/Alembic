@@ -9,6 +9,6 @@ StatsBase
 JSON
 Primes
 MKLSparse
-DataFrames 0.10.1-
-AWSCore 0.2.3-
-AWSSQS 0.2.1-
+DataFrames 0.10.1
+AWSCore 0.2.3
+AWSSQS 0.2.1
