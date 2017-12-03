@@ -228,7 +228,8 @@ function chunk_align(obj_name::AbstractString, img, src_slice; mip::Int64=get_mi
 end
 
 function save_image(index::Number, obj_name::AbstractString, src_img, src_slice; mip::Int64=get_mip(:render))
-  cv = get_cloudvolume(obj_name, mip=get_mip(:render))
+  println("Saving $index @ mip=$mip to $(get_path(obj_name))")
+  cv = get_cloudvolume(obj_name, mip=mip)
   dst_slice = chunk_align(obj_name, src_slice)
   if dst_slice != src_slice
     src_img = rescope(src_img, src_slice, dst_slice)
