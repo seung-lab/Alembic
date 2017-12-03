@@ -121,7 +121,7 @@ function render(ms::MeshSet, z_range=unique(collect_z(ms)))
       try
         println("Applying ROI mask to $z")
         pts = intersect_poly_bbox(load("roi", string(z)), offset, image_size)
-        ImageRegistration.fillpoly!(src_image, pts[:,1], pts[:,2], 0, convex=false)
+        ImageRegistration.fillpoly!(src_image, pts[:,1], pts[:,2], UInt8(0), convex=false)
         println("Mask applied")
       end
     end
