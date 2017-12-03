@@ -92,7 +92,7 @@ end
 
 function intersect_poly_bbox(pts::Matrix, offset::Vector, image_size::Vector)
   for j in 1:size(pts,2)
-    pts[:,j] = limit_range(pts[:,j], offset[j], image_size[j]+1)
+    pts[:,j] = limit_range(pts[:,j], offset[j], image_size[j])
   end
   return pts
 end
