@@ -26,6 +26,7 @@ function load_params(params::Dict)
 		 	:mesh => dirs["mesh"],
 		 	:match => dirs["match"],
 		 	:meshset => dirs["meshset"],
+		 	:roi => dirs["roi"],
 		 	:cache => dirs["cache"]
 			),
 	     :mesh => Dict(
