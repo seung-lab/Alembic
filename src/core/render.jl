@@ -83,6 +83,20 @@ function rescope{T}(image::Array{T}, src_slice, dst_slice)
     return dst
 end
 
+function limit_range(pts::Vector, offset::Int64, max_val::Int64)
+  pts = pts-offset
+  pts[pts .<= 0] = 1
+  pts[pts .> max_val] = max_val
+  return pts
+end
+
+function intersect_poly_bbox(pts::Matrix, offset::Vector, image_size::Vector)
+  for j in 1:size(pts,2)
+    pts[:,j] = limit_range(pts[:,j], offset[j], image_size[j])
+  end
+  return pts
+end
+
 """
 `RENDER` - Scale model to resolution & transform images as piecewise affine
 
@@ -101,9 +115,16 @@ function render(ms::MeshSet, z_range=unique(collect_z(ms)))
     subsection_images = Array{Array{UInt8,2},1}()
     subsection_offsets = []
     src_image = get_image(z, "src_image", mip=get_mip(:render))
-    # if use_roi_mask()
-    #   roi_mask = get_image()
-    # end
+    offset = get_offset("src_image", mip=get_mip(:render))
+    image_size = get_image_size("src_image", mip=get_mip(:render)) 
+    if use_roi_mask()
+      try
+        println("Applying ROI mask to $z")
+        pts = intersect_poly_bbox(load("roi", string(z)), offset, image_size)
+        ImageRegistration.fillpoly!(src_image, pts[:,1], pts[:,2], UInt8(0), convex=false, reverse=true)
+        println("Mask applied")
+      end
+    end
     if use_defect_mask()
       src_image_sub = deepcopy(src_image)
       src_mask = get_image(z, "mask", mip=get_mip(:render))
@@ -119,6 +140,7 @@ function render(ms::MeshSet, z_range=unique(collect_z(ms)))
       end
       image, slice = merge_images(subsection_images, subsection_offsets)
       slice = tuple(slice..., z:z)
+      println("Saving")
       save_image(z, "dst_image", image, slice, mip=get_mip(:render))
     else
       mesh = get_mesh(ms, z)
