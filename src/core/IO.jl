@@ -167,7 +167,7 @@ function get_image(index::Number, obj_name::AbstractString; mip::Int64 = get_mip
   if haskey(IMG_CACHE_DICT, (index, obj_name, mip))
     println("$index, $obj_name, at miplevel $mip is in the image cache.")
   else
-    println("$index, $obj_name, at miplevel $mip is not in the image cache. Downloading...")
+    println("$index, $obj_name, at miplevel $mip is not in the image cache. Downloading from $(get_path(obj_name))")
     @time begin
     push!(IMG_CACHE_LIST, (index, obj_name, mip))
 
