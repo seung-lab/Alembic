@@ -500,7 +500,7 @@ function get_tripoint_dst(mesh::Mesh, triangle::Triangle, weight::Weight)
 end
 
 function deform(points::Points, mesh::Mesh)
-  	triangles = find_mesh_triangle(mesh, points);
+  triangles = find_mesh_triangle(mesh, points);
 	weights = get_triangle_weights(mesh, points, triangles);
 	return get_tripoint_dst(mesh, triangles, weights);
 end
