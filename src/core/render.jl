@@ -142,15 +142,12 @@ function render(ms::MeshSet, z_range=unique(collect_z(ms)))
       image, slice = merge_images(subsection_images, subsection_offsets)
       slice = tuple(slice..., z:z)
       println("Saving")
-      save_image(z, "dst_image", image, slice, mip=get_mip(:render))
+      save_image("dst_image", image, slice, mip=get_mip(:render))
     else
       mesh = get_mesh(ms, z)
       println("Warping ", z)
       @time (dst_image, offset), _ = meshwarp_mesh(src_image, mesh)
-      bbox = ImageRegistration.BoundingBox(offset..., size(dst_image)...)
-      slice = ImageRegistration.bb_to_slice(bbox)
-      slice = tuple(slice..., z:z)
-      @time save_image(z, "dst_image", dst_image, slice, mip=get_mip(:render))
+      @time save_image("dst_image", dst_image, offset, mip=get_mip(:render))
     end
   end
 end
