@@ -261,7 +261,7 @@ function elastic_collate(meshset; from_current = true)
   # initialize the arrays for edge lengths and the spring coeffs
   for match in meshset.matches
     	@inbounds edge_lengths[edgeranges[get_src_and_dst_indices(match)]] = fill(0, count_filtered_correspondences(match));
-    	@inbounds edge_spring_coeffs[edgeranges[get_src_and_dst_indices(match)]] = fill(match_spring_coeff, count_filtered_correspondences(match));
+    	@inbounds edge_spring_coeffs[edgeranges[get_src_and_dst_indices(match)]] = fill(match_spring_coeff / abs(match.dst_index - match.src_index), count_filtered_correspondences(match));
   end
 
   function compute_sparse_matrix_matches(match_ref, src_mesh_ref, dst_mesh_ref, noderange_src, noderange_dst, edgerange)
