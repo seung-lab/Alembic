@@ -33,6 +33,9 @@ class Controller:
         self.state['navigation']['pose']['position']['voxelCoordinates'][2] = z
         self.router.broadcast(self.clients.copy(), json.dumps(self.state))
 
+    def get_position(self):
+        return self.state['navigation']['pose']['position']['voxelCoordinates']
+
     # websockets connections
     class Connection(SockJSConnection):
         n_messages = 0

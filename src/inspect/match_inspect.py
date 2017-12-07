@@ -3,6 +3,8 @@ import numpy as np
 import pandas as pd
 import correspondences
 
+from scipy import spatial
+
 class MatchInspect():
 	"""Object to control display of correspondence point pairs with filters so
 	they can be manually inspected and editted.
@@ -70,6 +72,19 @@ class MatchInspect():
 		new_syn = self.ng_to_syn()
 		all_syn = self.get_synapses(use_filter=False)
 		self.set_filter([syn in new_syn for syn in all_syn])
+
+	def get_nearest(self):
+		"""Return the index of the correspondence that's nearest to the position
+			of neuroglancer.
+		"""
+		ctr = np.array(self.c.get_position()[:2])
+		print('Finding match nearest to {0}'.format(ctr))
+		pt =  ctr / (2**self.mip)
+		fpts = self.df[self.df['filter']]
+		dist, i = spatial.KDTree(fpts[['pre_x', 'pre_y']]).query(pt)
+		print('{0}: {1} @ ({2},{3})'.format(self.name, fpts.iloc[i].name, 
+							*fpts.iloc[i][['pre_x', 'pre_y']]*(2**self.mip)))
+		return fpts.iloc[i]
 
 	def save(self):
 		self.update_df_from_ng()

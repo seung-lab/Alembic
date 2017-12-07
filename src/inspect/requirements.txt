@@ -1,4 +1,5 @@
 pandas
 numpy
+scipy
 sockjs-tornado==1.0.3
 tornado==4.4.2

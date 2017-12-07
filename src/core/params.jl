@@ -27,7 +27,11 @@ function load_params(params::Dict)
 		 	:match => dirs["match"],
 		 	:meshset => dirs["meshset"],
 		 	:roi => dirs["roi"],
-		 	:cache => dirs["cache"]
+		 	:src_patch => dirs["src_patch"],
+		 	:dst_patch => dirs["dst_patch"],
+		 	:src_match => dirs["src_match"],
+		 	:dst_match => dirs["dst_match"],
+		 	:xc => dirs["xc"]
 			),
 	     :mesh => Dict(
 	     	:z_start => mesh["z_start"],
