@@ -35,7 +35,7 @@ RUN wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
 RUN yum install -y epel-release-latest-7.noarch.rpm 
 RUN yum install -y python-pip 
 RUN pip install pip --upgrad 
-RUN pip install cloud-volume==0.6.2
+RUN pip install cloud-volume==0.6.3
 RUN mkdir -p /root/.cloudvolume/ 
 RUN echo $GOOGLE_STORAGE_PROJECT > /root/.cloudvolume/project_name 
 RUN pip uninstall -y requests 
