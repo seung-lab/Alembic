@@ -1,5 +1,5 @@
 addprocs()
-@time @everywhere using Alembic
+@time using Alembic
 
 using AWSCore
 using AWSSQS
