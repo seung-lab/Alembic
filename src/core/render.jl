@@ -147,7 +147,7 @@ function render(ms::MeshSet, z_range=unique(collect_z(ms)))
       mesh = get_mesh(ms, z)
       println("Warping ", z)
       @time (dst_image, offset), _ = meshwarp_mesh(src_image, mesh)
-      @time save_image("dst_image", dst_image, offset, mip=get_mip(:render))
+      @time save_image("dst_image", dst_image, offset, z, mip=get_mip(:render))
     end
   end
 end
