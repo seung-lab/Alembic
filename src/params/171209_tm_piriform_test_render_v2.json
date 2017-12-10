@@ -3,30 +3,34 @@
 	"task_method":"render_task",
 	"dirs":{
 		"bucket":"gs://neuroglancer",
-		"dataset":"drosophila_v0",
-		"src_image":"cutoutE_single_slices",
-		"dst_image":"aligned_v5",
-		"match_image":"cutoutE/nccnet",
-		"match":"aligned_v5/match",
+		"dataset":"piriform_v0",
+		"src_image":"image_single_slices",
+		"dst_image":"aligned_test_v2",
+		"match_image":"nccnet",
+		"match":"aligned_test_v2/match",
 		"mask":"",
-		"roi":"cutoutE/roi",
-		"mesh":"aligned_v5/mesh",
-		"meshset":"aligned_v5/meshset",
-		"cache": false
+		"roi":"",
+		"mesh":"aligned_test_v2/mesh",
+		"meshset":"aligned_test_v2/meshset",
+		"src_patch":"aligned_test_v2/match/src_patch",
+		"dst_patch":"aligned_test_v2/match/dst_patch",
+		"src_match":"aligned_test_v2/match/src_match",
+		"dst_match":"aligned_test_v2/match/dst_match",
+		"xc":"aligned_test_v2/match/xc"
 	},
 	"mesh":{
-		"z_start": 1074,
-		"z_stop": 1076,
-		"mesh_length": 100
+		"z_start": 1200,
+		"z_stop": 1209,
+		"mesh_length": 60
 	},
 	"match":{
 		"mip": 2,
 		"ignore_value": 255,
-		"block_r": 100,
-		"search_r": 300,
+		"block_r": 60,
+		"search_r": 80,
 		"bandpass_sigmas": [0,0],
 		"symmetric": false,
-		"depth": 3
+		"depth": 1
 	},
 	"filter":{
 		"sigma_filter_high": 6.5,
@@ -42,7 +46,7 @@
 	"solve":{
 		"method": "elastic",
 		"mesh_spring_coeff": 1.0,
-		"match_spring_coeff": 100.0,
+		"match_spring_coeff": 10000.0,
 		"ftol_cg": 1e-6,
 		"max_iters": 4000,
 		"use_cg": true,

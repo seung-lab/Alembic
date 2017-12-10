@@ -5,7 +5,7 @@
 		"bucket":"gs://neuroglancer",
 		"dataset":"drosophila_v0",
 		"src_image":"cutoutE_single_slices",
-		"dst_image":"aligned_v5",
+		"dst_image":"aligned_roi_test",
 		"match_image":"cutoutE/nccnet",
 		"match":"aligned_v5/match",
 		"mask":"",
@@ -15,8 +15,8 @@
 		"cache": false
 	},
 	"mesh":{
-		"z_start": 1074,
-		"z_stop": 1076,
+		"z_start": 600,
+		"z_stop": 602,
 		"mesh_length": 100
 	},
 	"match":{
