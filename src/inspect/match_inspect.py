@@ -39,16 +39,19 @@ class MatchInspect():
 	                    map(int,arr[:,2])))
 
 	def get_synapses(self, use_filter=True):
+		"""Return point pairs for synapses, scaled accordingly, along w/ indices
+		"""
 		sub_df = self.df.copy()
 		if use_filter:
-			sub_df = sub_df[sub_df['filter'] == True]
+			sub_df = sub_df[sub_df['filter']]
 		post = sub_df[['post_x','post_y','post_z']].as_matrix()
 		pre = sub_df[['pre_x','pre_y','pre_z']].as_matrix()
 		post[:,:2] = pre[:,:2] + self.scale*(post[:,:2]-pre[:,:2])
-		return zip(self.np_to_ng_list(pre), self.np_to_ng_list(post))
+		pts = zip(self.np_to_ng_list(pre), self.np_to_ng_list(post))
+		return pts, sub_df.index
 	
 	def syn_to_ng(self, use_filter=True):
-		syn = self.get_synapses(use_filter=use_filter)
+		syn, _ = self.get_synapses(use_filter=use_filter)
 		# list of interleaved pre & post tuples
 		return [p for s in syn for p in s]
 
@@ -69,9 +72,26 @@ class MatchInspect():
 		self.c.set_z(self.df['pre_z'][0])
 
 	def update_df_from_ng(self):
+		"""Determine which synapses were removed from neuroglancer
+			**depends on neuroglancer maintaining order
+		"""
 		new_syn = self.ng_to_syn()
-		all_syn = self.get_synapses(use_filter=False)
-		self.set_filter([syn in new_syn for syn in all_syn])
+		all_syn, indices = self.get_synapses(use_filter=True)
+		# all_syn = self.get_synapses(use_filter=False)
+		# new_filter = [syn in new_syn for syn in all_syn]
+		removed_indices = []
+		i, j = 0, 0
+		while i < len(all_syn):
+			if i-j >= len(new_syn):
+				# print((indices[i], all_syn[i], "NA"))
+				removed_indices.append(indices[i])
+			else:
+				# print((indices[i], all_syn[i], new_syn[i-j]))
+				if all_syn[i] != new_syn[i-j]:
+					removed_indices.append(indices[i])
+					j += 1
+			i += 1
+		self.df.loc[removed_indices, 'filter'] = False
 
 	def get_nearest(self):
 		"""Return the index of the correspondence that's nearest to the position
