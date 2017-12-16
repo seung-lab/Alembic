@@ -12,10 +12,15 @@ class Controller:
     """Simple class to set & get point-pairs from neuroglancer
     """
     state = {}
+    generation = 0
     clients = set()
 
     def __init__(self, router):
         self.router = router
+
+    def send_state(self):
+        self.generation += 1
+        self.router.broadcast(self.clients.copy(), '{{"g": {}, "t":"setState", "k":"s", "s":{}}}'.format(self.generation, json.dumps(self.state)))
 
     def get(self):
         if 'correspondences' in self.state['layers']:
@@ -27,11 +32,11 @@ class Controller:
 
     def set(self, points=[]):
         self.state['layers']['correspondences'] = {'type':'synapse', 'points':points}
-        self.router.broadcast(self.clients.copy(), json.dumps(self.state))
+        self.send_state()
 
     def set_z(self, z):
         self.state['navigation']['pose']['position']['voxelCoordinates'][2] = z
-        self.router.broadcast(self.clients.copy(), json.dumps(self.state))
+        self.send_state()
 
     def get_position(self):
         return self.state['navigation']['pose']['position']['voxelCoordinates']
@@ -52,18 +57,30 @@ class Controller:
             This will call initialize_current_state or on_current_state_change depening on if it is
             the first message recieved.
             """
+            # print(json_state + ': ' + str(len(Controller.state)) + '\n')
             if not self.n_messages:
                 self.n_messages += 1
                 print('state initialized')
-                print(json_state)
-            Controller.state = json.JSONDecoder(object_pairs_hook=OrderedDict).decode(json_state)
+                # print(json_state)
+
+            message = json.JSONDecoder(object_pairs_hook=OrderedDict).decode(json_state)
+            if "t" in message:
+                if message["t"] == "setState" and message["k"] == "s": # "s" stands for Shared State. There is also "p" for private and "c" for config
+                    Controller.state = message["s"]
+                elif message["t"] == "getState" and message["k"] == "s" and len(Controller.state) > 0:
+                    self.send('{{"g": {}, "t":"setState", "k":"s", "s":{}}}'.format(Controller.generation, json.dumps(Controller.state)))
+                elif message["t"] == "action":
+                    if message["actions"][-1]["action"] == "initState":
+                        Controller.state = message["actions"][-1]["state"]
+                    self.send('{{"t": "ackAction", "id": {0}}}'.format(message["id"]))
+
 
         def on_close(self):
             # If client disconnects, remove him from the clients list
-            self.clients.remove(self)
+            Controller.clients.remove(self)
 
 
-# Tornado & Tk need to run on separate threads
+# Tornado & Tk need to run on separate thresads
 class TornadoThread(threading.Thread):
     def __init__(self, port):
         # super(TornadoThread, self).__init__()
@@ -90,4 +107,5 @@ def controller(port=9999):
     return Controller(thread.router)
 
 if __name__ == '__main__':
-    controller()
+    c = controller()
+
