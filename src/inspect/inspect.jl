@@ -1,5 +1,5 @@
 function get_correspondence_patches(m::Match, ind)
-  src_z, dst_z = get_index(m);
+  src_z, dst_z = map(get_z, get_index(m));
   props = m.correspondence_properties[ind, :]
 
   # scale = props[:ranges_scale][1];
@@ -9,7 +9,7 @@ function get_correspondence_patches(m::Match, ind)
   # dst_range_full = props[:ranges_dst_range_full][1]
 
   function adjust_range(r, offset)
-    return r[1] - offset[1], r[2] - offset[2]
+    return r[1] + offset[1], r[2] + offset[2]
   end
 
   mip = m.properties[:params][:match][:mip]
@@ -56,7 +56,7 @@ function get_correspondence_patches(m::Match, ind)
 end
 
 function get_url()
-  url = "https://neuromancer-seung-import.appspot.com/#!"
+  url = "https://neuromni-dot-neuromancer-seung-import.appspot.com/#!"
   url = string(url, "{'layers':")
   url = string(url, "{'xc':{'type':'image'_'source':")
   url = string(url, "'precomputed://$(get_path("xc"))'}")
@@ -85,6 +85,6 @@ function xc_to_uint8(xc)
   b[b .< 0] = 0
   b = b * 254 + 1
   b[isnan(b)] = 0
-  return round(UInt8, b)
+  return round.(UInt8, b)
 end
 
