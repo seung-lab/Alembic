@@ -258,11 +258,15 @@ function get_dfs(dict::Dict, keytofetch)
 end
 
 function get_correspondence_properties(match::Match, property_name; filtered = false)
-    ret = match.correspondence_properties[property_name];
-    if length(ret) != 0
-        ret = Array{typeof(ret[1])}(ret);
+    if length(match.correspondence_properties) > 0
+        ret = match.correspondence_properties[property_name];
+        if length(ret) != 0
+            ret = Array{typeof(ret[1])}(ret);
+        end
+        return filtered ? ret[get_filtered_indices(match)] : ret
+    else
+        return []
     end
-    return filtered ? ret[get_filtered_indices(match)] : ret
 end
 
 function get_correspondence_properties(match::Match, fn::Function, args...; filtered = false)
@@ -822,6 +826,10 @@ function get_matches{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T})
       println("Compiling mask components")
       src_subsections = Array{IMG_ELTYPE, 1}(unique(src_mask))
       dst_subsections = Array{IMG_ELTYPE,1}(unique(dst_mask))
+      src_mesh.properties[:subsections] = src_subsections / SPLIT_MESH_BASIS
+      dst_mesh.properties[:subsections] = dst_subsections / SPLIT_MESH_BASIS
+      println("src_subsections: $src_subsections")
+      println("dst_subsections: $dst_subsections")
       ignore = PARAMS[:match][:ignore_value]
       for ss in src_subsections
           for ds in dst_subsections
