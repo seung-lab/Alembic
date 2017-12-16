@@ -11,14 +11,14 @@ global const IMG_ELTYPE = UInt8
 
 if myid() == 1
   # Image Cache indexed by index, obj_name, miplevel
-  global const IMG_CACHE_DICT = Dict{Tuple{Number, AbstractString, Int64}, SharedArray{IMG_ELTYPE, 2}}()
+  global const IMG_CACHE_DICT = Dict{Tuple{Number, String, Int64}, SharedArray{IMG_ELTYPE, 2}}()
   global const IMG_CACHE_LIST = Array{Any, 1}()
 end
 
 
   
 function reset_cache()
-  IMG_CACHE_DICT = Dict{Tuple{AbstractString, Float64}, SharedArray{IMG_ELTYPE, 2}}()
+  IMG_CACHE_DICT = Dict{Tuple{String, Float64}, SharedArray{IMG_ELTYPE, 2}}()
   IMG_CACHE_LIST = Array{Any, 1}()
   @time @everywhere gc();
 end
@@ -38,7 +38,7 @@ function clean_cache()
 	println("current cache usage: $cur_cache_size / $IMG_CACHE_SIZE (bytes), $(round(Int64, cur_cache_size/IMG_CACHE_SIZE * 100))%")
 end
 
-function get_path(obj_name::AbstractString)
+function get_path(obj_name::String)
   return joinpath(PARAMS[:dirs][:bucket], PARAMS[:dirs][:dataset], 
                                             PARAMS[:dirs][Symbol(obj_name)])
 end
@@ -55,7 +55,7 @@ function get_scale(k = :match)
 end
 
 function get_z(index::Number)
-  return Int(floor(abs(index)))*sign(index)
+  return Int(floor(abs(index))*sign(index))
 end
 
 function is_subsection(index::Number)
@@ -111,7 +111,7 @@ end
 
 function is_preceding(indexA::Number, indexB::Number, within=1)
   for i in 1:within 
-    if indexA == get_preceding(indexB, i)
+    if get_z(indexA) == get_preceding(get_z(indexB), i)
       return true
     end
   end
@@ -120,13 +120,19 @@ end
 
 ## Non-image related (Storage)
 
-function load(obj_name::AbstractString, fn::AbstractString)
+function load(obj_name::String, fn::String)
   println("Loading $obj_name for $fn")
   s = StorageWrapper(get_path(obj_name))
   return s[fn]
 end
 
-function save(obj, obj_name::AbstractString, fn::AbstractString=get_name(obj))
+function load(obj_name::String, filenames::Array{String,1})
+  println("Loading $obj_name for $(length(filenames)) files")
+  s = StorageWrapper(get_path(obj_name))
+  return s[filenames]
+end
+
+function save(obj, obj_name::String, fn::String=get_name(obj))
   println("Saving $fn to $(get_path(obj_name))")
   s = StorageWrapper(get_path(obj_name))
   s[fn] = obj;
@@ -134,18 +140,18 @@ end
 
 ## Image related (CloudVolume)
 
-function get_cloudvolume(obj_name::AbstractString; mip::Int64 = get_mip(:match), cdn_cache=false)
+function get_cloudvolume(obj_name::String; mip::Int64 = get_mip(:match), cdn_cache=false)
   path = get_path(obj_name)
   return CloudVolumeWrapper(path, mip=mip, bounded=false, fill_missing=true, 
                                   cdn_cache=cdn_cache)
 end
 
-function get_image_size(obj_name::AbstractString; mip::Int64 = get_mip(:match))
+function get_image_size(obj_name::String; mip::Int64 = get_mip(:match))
   cv = get_cloudvolume(obj_name, mip=mip)
   return size(cv)[1:2]
 end
 
-function get_offset(obj_name::AbstractString; mip::Int64 = get_mip(:match))
+function get_offset(obj_name::String; mip::Int64 = get_mip(:match))
   cv = get_cloudvolume(obj_name, mip=mip)
   return offset(cv)[1:2]
 end
@@ -162,7 +168,7 @@ function get_image_slice(index::Number, obj_name; mip::Int64 = get_mip(:match))
   return tuple(xy_slice..., z)
 end
 
-function get_image(index::Number, obj_name::AbstractString; mip::Int64 = get_mip(:match))
+function get_image(index::Number, obj_name::String; mip::Int64 = get_mip(:match))
   if haskey(IMG_CACHE_DICT, (index, obj_name, mip))
     println("$index, $obj_name, at miplevel $mip is in the image cache.")
   else
@@ -179,7 +185,7 @@ function get_image(index::Number, obj_name::AbstractString; mip::Int64 = get_mip
   return IMG_CACHE_DICT[(index, obj_name, mip)]::SharedArray{IMG_ELTYPE, 2}
 end
 
-function get_image(obj_name::AbstractString, slice; mip::Int64 = get_mip(:match))
+function get_image(obj_name::String, slice; mip::Int64 = get_mip(:match))
   cv = get_cloudvolume(obj_name, mip=mip)
   return get_image(cv, slice)
 end
@@ -199,7 +205,7 @@ end
 """
 Snap slice to be chunk-aligned
 """
-function chunk_align(obj_name::AbstractString, slice; mip::Int64=get_mip(:render))
+function chunk_align(obj_name::String, slice; mip::Int64=get_mip(:render))
   cv = get_cloudvolume(obj_name, mip=get_mip(:render))
   o = offset(cv)
   c = chunks(cv)
@@ -215,19 +221,19 @@ end
 """
 Rescope image to be chunk-aligned with cloudvolume data
 """
-function chunk_align(obj_name::AbstractString, img, slice; mip::Int64=get_mip(:render))
+function chunk_align(obj_name::String, img, slice; mip::Int64=get_mip(:render))
   padded_slice = chunk_align(obj_name, slice, mip=get_mip(:render))
   return rescope(img, slice, dst_slice), padded_slice
 end
 
-function save_image(obj_name::AbstractString, img, offset::Array{Int64,1}, z::Int64; mip::Int64=get_mip(:render), cdn_cache=true)
+function save_image(obj_name::String, img, offset::Array{Int64,1}, z::Int64; mip::Int64=get_mip(:render), cdn_cache=true)
   bbox = ImageRegistration.BoundingBox(offset..., size(img)...)
   slice = ImageRegistration.bb_to_slice(bbox)
   slice = tuple(slice..., z:z)
   save_image(obj_name, img, slice, mip=mip, cdn_cache=cdn_cache)
 end
 
-function save_image(obj_name::AbstractString, img, slice; mip::Int64=get_mip(:render), cdn_cache=true)
+function save_image(obj_name::String, img, slice; mip::Int64=get_mip(:render), cdn_cache=true)
   println("Saving $(slice[end][1]) @ mip=$mip to $(get_path(obj_name))")
   cv = get_cloudvolume(obj_name, mip=mip, cdn_cache=cdn_cache)
   padded_slice = chunk_align(obj_name, slice)
@@ -273,4 +279,6 @@ function flush_cv_cache(obj_name; mip::Int64=get_mip(:render))
   flush(cv)
 end
 
-# function make_roi_mask(dir,)
+# function check_dir(obj_name::String; mip::Int64 = get_mip(:match))
+# end
+

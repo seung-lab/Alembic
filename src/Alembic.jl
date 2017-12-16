@@ -51,9 +51,6 @@ module Alembic
     Weight = Tuple{Float64, Float64, Float64};    # weights for respective triangle
     Weights = Array{Weight, 1};       # weights for respective triangle
 
-    Pairing = Tuple{Int64, Int64};        # useful for abstraction
-    Pairings = Array{Pairing, 1};       # useful for abstraction
-
     global const BinaryProperty = Array{Bool, 1};    	  # array of bools
     global const FloatProperty = Array{Float64, 1}   	# array of floats
 

@@ -237,31 +237,6 @@ function refilter!(ms::MeshSet, filters=ms.properties[:params][:filter])
   filter!(ms, filters)
 end
 
-function check_and_fix!(ms::MeshSet, 
-                  crits = Base.values(ms.properties[:params][:review]), 
-                  filters = Base.values(ms.properties[:params][:filter])) 
-  if check!(ms, crits)
-    for match in ms.matches
-      if is_flagged(match)
-      	clear_filters!(match);
-      	map(filter!, repeated(match), filters)
-      end
-    end
-    fixed = !check!(ms, crits);
-    if fixed
-      println("fixed successfully");
-    else 
-      println("failed to fix ms")
-      for match in ms.matches
-        if is_flagged(match)
-        	# clear_filters!(match);
-          flag!(match)
-        end
-      end
-    end
-  end
-end
-
 function save_meshes(ms::MeshSet)
   for z in unique(collect_z(ms))
     meshes = get_subsections(ms, z)
@@ -283,24 +258,57 @@ function split_meshset(ms::MeshSet)
 end
 
 function compile_meshset()
-  pairs = get_all_overlaps(get_z_range(), PARAMS[:match][:depth], 
-                                        symmetric=PARAMS[:match][:symmetric])
-  return compile_meshset(get_z_range(), pairs)
+  ms = compile_meshes()
+  compile_matches!(ms)
+  return ms
+end
+
+function compile_meshset(z_range)
+  ms = compile_meshes(z_range)
+  compile_matches!(ms)
+  return ms
 end
 
 function compile_meshset(z_range, pairs)
+  ms = compile_meshes(z_range)
+  compile_matches!(ms, pairs)
+  return ms
+end
+
+function compile_meshes(z_range=get_z_range())
   ms = MeshSet()
-  for z in z_range
-    m = load("mesh", string(z))
+  files = [string(z) for z in z_range]
+  results, empties, errors = load("mesh", files)
+  for r in results
+    println("Appending mesh $(r["filename"])")
+    m = r["content"]
     append!(ms.meshes, m.meshes)
   end
-  for p in pairs
-    try
-      m = load("match", string(p))
-      push!(ms.matches, m)
+  return ms
+end
+
+function get_pairs(ms::MeshSet)
+  sections = []
+  for m in ms.meshes
+    z = get_z(m)
+    if :subsections in keys(m.properties)
+      append!(sections, m.properties[:subsections] + z)
+    else
+      push!(sections, z)
     end
   end
-  return ms
+  return get_all_overlaps(sections, PARAMS[:match][:depth], 
+                                        symmetric=PARAMS[:match][:symmetric])
+end
+
+function compile_matches!(ms::MeshSet, pairs=get_pairs(ms))
+  files = [string(p) for p in pairs]
+  results, empties, errors = load("match", files)
+  for r in results
+    println("Appending match $(r["filename"])")
+    m = r["content"]
+    push!(ms.matches, m)
+  end
 end
 
 """
@@ -347,32 +355,6 @@ function MeshSet()
 	return MeshSet(meshes, matches, properties)
 end
 
-function MeshSet(indices::Array; solve=true, solve_method=:elastic)
-  meshes = map(Mesh, indices)
-  sort!(meshes; by=get_index)
-  matches = Array{Match, 1}(0)    
-  properties = Dict{Symbol, Any}(  
-  	  :params  => PARAMS,
-          :author => author(),
-          :meta => Dict{Symbol, Any}(
-          )
-	  )
-  ms = MeshSet(meshes, matches, properties);
-  match!(ms, PARAMS[:match][:depth]; symmetric = PARAMS[:match][:symmetric]);
-
-  # save(ms)
-  filter!(ms);
-  check!(ms);
-  # save(ms);
-
-  if solve == true
-    solve!(ms, method=solve_method);
-    # save(ms);
-  end
-
-  return ms;
-end
-
 function mark_solved!(ms::MeshSet)
   ms.properties[:meta][:solved] = author()
 end
@@ -396,9 +378,9 @@ function get_all_overlaps(meshes::Array{Mesh, 1}, within = 1; symmetric = true)
   return get_all_overlaps(1:length(meshes), within; symmetric=symmetric)
 end
 
-function get_all_overlaps(z_range, within=1; symmetric=true)
-  preceding_pairs = Pairings(0)
-  succeeding_pairs = Pairings(0)
+function Alembic.get_all_overlaps(z_range, within=1; symmetric=true)
+  preceding_pairs = Array{Tuple{Number,Number},1}()
+  succeeding_pairs = Array{Tuple{Number,Number},1}()
 
   for i in z_range, j in z_range
     if is_preceding(i, j, within) 
@@ -425,6 +407,10 @@ Generate matches between all meshes (& components) that overlap
 function match!(ms::MeshSet, within=PARAMS[:match][:depth]; 
                                           symmetric=PARAMS[:match][:symmetric])
 	pairs = get_all_overlaps(ms, within; symmetric=symmetric);
+  match!(ms, pairs)
+end
+
+function match!(ms::MeshSet, pairs::Array{Tuple{Int64,Int64},1})
 	for pair in pairs
 		add_matches!(ms, get_matches(ms.meshes[pair[1]], ms.meshes[pair[2]]));
 	end
