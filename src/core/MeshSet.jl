@@ -412,7 +412,12 @@ end
 
 function match!(ms::MeshSet, pairs::Array{Tuple{Int64,Int64},1})
 	for pair in pairs
-		add_matches!(ms, get_matches(ms.meshes[pair[1]], ms.meshes[pair[2]]));
+    matches = get_matches(ms.meshes[pair[1]], ms.meshes[pair[2]])
+    for m in matches
+      if length(m.src_points) > 0
+    		push!(ms.matches, m)
+      end
+    end
 	end
 
   # add meshes for sections with multiple mask components
