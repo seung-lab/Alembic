@@ -125,7 +125,7 @@ function render(ms::MeshSet, z_range=unique(collect_z(ms)))
     end
     if use_defect_mask()
       src_image_sub = deepcopy(src_image)
-      src_mask = get_image(z, "mask", mip=get_mip(:render))
+      src_mask = get_image(z, "mask", mip=get_mip(:render), input_mip=get_mip(:match))
       for mesh in meshes
         index = get_index(mesh)
         println("Applying defect mask to $index")
