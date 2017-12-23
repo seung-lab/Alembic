@@ -1,5 +1,6 @@
 function get_correspondence_patches(m::Match, ind)
-  src_z, dst_z = map(get_z, get_index(m));
+  src_index, dst_index = get_index(m)
+  src_z, dst_z = map(get_z, (src_index, dst_index));
   props = m.correspondence_properties[ind, :]
 
   # scale = props[:ranges_scale][1];
@@ -24,6 +25,24 @@ function get_correspondence_patches(m::Match, ind)
   dst_patch = get_image("src_image", dst_range_global, mip=mip)
   src_match = get_image("match_image", src_range_global, mip=mip)
   dst_match = get_image("match_image", dst_range_global, mip=mip)
+
+  # if use_roi_mask()
+  #     src_roi = get_image(src_index, "roi", mip=get_mip(:match));
+  #     dst_roi = get_image(dst_index, "roi", mip=get_mip(:match));
+  #     unsafe_mask_image!(src_image, src_roi, 1, src_image)
+  #     unsafe_mask_image!(dst_image, dst_roi, 1, dst_image)
+  # end
+
+  if use_defect_mask()
+    src_mask = get_image("mask", src_range_global, mip=mip)
+    dst_mask = get_image("mask", dst_range_global, mip=mip)
+    ss = get_subsection(src_index)
+    ds = get_subsection(dst_index)
+    unsafe_mask_image!(src_patch, src_mask, ss, src_patch)
+    unsafe_mask_image!(dst_patch, dst_mask, ds, dst_patch)
+    unsafe_mask_image!(src_match, src_mask, ss, src_match)
+    unsafe_mask_image!(dst_match, dst_mask, ds, dst_match)
+  end
 
   src_dummy_range = (1:size(src_match,1), 1:size(src_match,2))
   dst_dummy_range = (1:size(dst_match,1), 1:size(dst_match,2))
