@@ -21,13 +21,13 @@
 	"mesh":{
 		"z_start": 201,
 		"z_stop": 202,
-		"mesh_length": 100
+		"mesh_length": 500
 	},
 	"match":{
 		"mip": 2,
 		"ignore_value": 255,
-		"block_r": 100,
-		"search_r": 100,
+		"block_r": 300,
+		"search_r": 200,
 		"bandpass_sigmas": [0,0],
 		"symmetric": false,
 		"depth": 1

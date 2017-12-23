@@ -19,8 +19,8 @@
 		"xc":"aligned_test_v3/match/xc"
 	},
 	"mesh":{
-		"z_start": 5,
-		"z_stop": 50,
+		"z_start": 95,
+		"z_stop": 200,
 		"mesh_length": 60
 	},
 	"match":{

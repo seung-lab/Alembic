@@ -5,13 +5,13 @@
 		"bucket":"gs://neuroglancer",
 		"dataset":"pinky100_v0",
 		"src_image":"image_single_slices",
-		"dst_image":"aligned_test_v2",
+		"dst_image":"aligned_test_v4",
 		"match_image":"image_single_slices/nccnet",
 		"mask":"image_single_slices/cfsplit",
-		"roi":"",
-		"mesh":"aligned_test_v2/mesh",
-		"match":"aligned_test_v2/match",
-		"meshset":"aligned_test_v2/meshset",
+		"roi":"image_single_slices/roicc",
+		"mesh":"aligned_test_v4/mesh",
+		"match":"aligned_test_v4/match",
+		"meshset":"aligned_test_v4/meshset",
 		"src_patch":"aligned_test_v0/match/src_patch",
 		"dst_patch":"aligned_test_v0/match/dst_patch",
 		"src_match":"aligned_test_v0/match/src_match",
@@ -20,17 +20,21 @@
 	},
 	"mesh":{
 		"z_start": 201,
-		"z_stop": 202,
-		"mesh_length": 100
+		"z_stop": 210,
+		"mesh_length": 500
 	},
 	"match":{
 		"mip": 2,
 		"ignore_value": 255,
-		"block_r": 100,
-		"search_r": 100,
+		"block_r": 300,
+		"search_r": 200,
 		"bandpass_sigmas": [0,0],
 		"symmetric": false,
 		"depth": 1
+	},
+	"roi":{
+		"mip":6,
+		"mask_value": 1
 	},
 	"filter":{
 		"sigma_filter_high": 6.5,
