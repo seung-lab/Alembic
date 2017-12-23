@@ -54,7 +54,7 @@ RUN git clone https://github.com/JuliaLang/julia.git \
 
 #install cloudvolume
 RUN wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm \
-    && yum install https://centos7.iuscommunity.org/ius-release.rpm \
+    && yum install -y https://centos7.iuscommunity.org/ius-release.rpm \
     && yum install -y python36u \
     && yum install -y python36u-pip \
     && yum install -y python36u-devel \
