@@ -65,13 +65,13 @@ function MatchEnv(src_range, dst_range; scale = 1.0, bandpass = (0,0))
   else
     tform = [scale 0 0; 0 scale 0; 0 0 1]
 
-    bb_src = ImageRegistration.BoundingBox{Float64}(0,0, size_src...)
+    bb_src = BoundingBox{Float64}(0,0, size_src...)
     wbb_src = tform_bb(bb_src, tform)
     tbb_src = snap_bb(wbb_src)
     src_patch = zeros(Float64, tbb_src.h, tbb_src.w)
     tform_src = [tbb_src.h/size_src[1] - eps 0 0; 0 tbb_src.w/size_src[2] - eps 0; 0 0 1]
 
-    bb_dst = ImageRegistration.BoundingBox{Float64}(0,0, size_dst...)
+    bb_dst = BoundingBox{Float64}(0,0, size_dst...)
     wbb_dst = tform_bb(bb_dst, tform)
     tbb_dst = snap_bb(wbb_dst)
     dst_patch = zeros(Float64, tbb_dst.h, tbb_dst.w)
@@ -371,116 +371,6 @@ function get_ranges(pt, src_index, src_offset, src_image_size, dst_index, dst_of
     return src_index, range_in_src, [src_pt_locs[1], src_pt_locs[2]], dst_index, range_in_dst, dst_range_full, [dst_pt_locs[1], dst_pt_locs[2]], [dst_pt_locs_full[1], dst_pt_locs_full[2]], rel_offset;
 end
 
-"""
-Template match two images & record translation for source image - already scaled
-"""
-function prematch(src_index, dst_index, src_image, dst_image, params=get_params(src_index))
-  println("prematch:")
-    if params[:match][:prematch] == false return; end
-    scale = params[:match][:prematch_scale];
-    radius = params[:match][:prematch_template_radius];
-    bandpass_sigmas = params[:match][:bandpass_sigmas];
-    bandpass_sigmas = (0,0)
-
-    range_in_src = ceil.(Int64, size(src_image, 1) / 2) + (-radius:radius), ceil.(Int64, size(src_image, 2) / 2) + (-radius:radius)
-    src_pt_locs = [radius, radius]
-    dst_pt_locs = [ceil.(Int64, size(src_image, 1) / 2), ceil.(Int64, size(src_image, 2) / 2)]
-
-    #dst_range_full = ceil(Int64, size(src_image, 1) / 2) + (-3 * scaled_rads[1]:3 * scaled_rads[1]), ceil(Int64, size(src_image, 2) / 2) + (-3 * scaled_rads[2]: 3 * scaled_rads[2])
-    #range_in_dst = intersect(dst_range_full[1], 1:size(dst_image, 1)), intersect(dst_range_full[2], 1:size(dst_image, 2));
-    range_in_dst = 1:size(dst_image, 1), 1:size(dst_image, 2);
-    dst_range_full = 1:size(dst_image, 1), 1:size(dst_image, 2);
-    
-    ranges = src_index, range_in_src, src_pt_locs, dst_index, range_in_dst, dst_range_full, dst_pt_locs, dst_pt_locs, [0,0]
-
-    @time match = get_match(src_pt_locs, ranges, src_image, dst_image, scale, bandpass_sigmas; full = true, meanpad = false)
-        
-    if match == nothing return [0, 0] end
-    
-    dv = match[3][:vects_dv]
-    offset = round.(Int64, dv);
-    update_registry(src_index; rotation = get_rotation(src_index), offset = offset);
-    println("Prematch complete... offset: $offset")
-
-    init_Match(); gc();
-
-    return offset;
-
-    # median of the patch from above
-    #src_pt_locs = [round(Int64, length(range_in_src[1]) / 2), round(Int64, length(range_in_src[2]) / 2)]
-    #src_pt_global = range_in_src[1][src_pt_locs[1]], range_in_src[2][src_pt_locs[2]]
-    #src_pt_locs = (1,1)
-    #src_pt_global = range_in_src[1][src_pt_locs[1]], range_in_src[2][src_pt_locs[2]]
-    # the location of the median in global coordinates
-    #src_pt_global = range_in_src[1][src_pt_locs[1]], range_in_src[2][src_pt_locs[2]]
-
-    #src_image_patch = src_image[range_in_src...]
-
-
-    function try_angle(angle, src_image, dst_image, range_in_src, range_in_dst, dst_range_full)
-        print("try angle: $angle deg...")
-        src_image_patch = src_image[range_in_src...]
-        src_image_rotated = imrotate(src_image_patch, angle; parallel = false)
-        range_in_src_rotated = 1:size(src_image_rotated, 1), 1:size(src_image_rotated, 2)
-
-        tform = make_rotation_matrix(angle, size(src_image))
-        tform_patch = make_rotation_matrix(angle, size(src_image_patch))
-
-        # set the top left of the original patch to be the location of the point; the global location is just the first point in the src
-        src_pt_locs = [1,1]
-        src_pt_g = first(range_in_src[1]), first(range_in_src[2])
-
-        # location of the median from above, in patch coordinate
-        src_pt_locs_rotated = floor(Int64, ([src_pt_locs..., 1]' * tform_patch)[1:2])
-        dst_pt = floor(Int64, ([src_pt_g..., 1]' * tform)[1:2])
-
-        # dst_pt_locs is unused in this, so may be set to zeros; dst_pt_locs_full may actually lie outside, so we use direct calculation and not findfirst
-        dst_pt_locs = [0,0];
-        dst_pt_locs_full = [dst_pt[1] - dst_range_full[1][1] + 1, dst_pt[2] - dst_range_full[2][1] + 1];
-
-          #println("src_pt_locs: $src_pt_locs_rotated, dst_pt: $dst_pt, dst_pt_locs: $dst_pt_locs, dst_pt_locs_full: $dst_pt_locs_full")
-        rel_offset = [0,0]
-
-        ranges = src_index, range_in_src_rotated, src_pt_locs_rotated, dst_index, range_in_dst, dst_range_full, dst_pt_locs, dst_pt_locs_full, rel_offset
-        #if angle == 90
-        #   if angle == 0   ImageView.view(dst_image / 255) end
-        #if angle == 0 || angle == 180 || angle == 300
-        # ImageView.view(src_image_rotated[range_in_src...] / 255)
-        #end=#
-
-        #match = get_match(src_pt_locs, ranges, src_image_rotated, dst_image, scale, highpass_sigma; full = true)
-        match = get_match(src_pt_locs, ranges, src_image_rotated, dst_image, scale, bandpass_sigmas; full = true)
-
-        if match == nothing return 0, 0, [0, 0] end
-
-        r = match[3][:xcorr_r_max]
-        dv = match[3][:vects_dv]
-        offset = round(Int64, dv) #/ scale
-
-        println("trying $angle degrees... r: $r, dv: $offset")
-        #    println("trying $angle degrees... r: $r, dv: $dv")
-        #   if params[:registry][:global_offsets]
-        #   offset = get_offset(dst_index) + round(Int64, dv) #/ scale
-
-        return r, angle, offset
-    end
-    prematches = pmap(try_angle, angles_to_try, repeated(src_image), repeated(dst_image), repeated(range_in_src), repeated(range_in_dst), repeated(dst_range_full))
-    prematches = prematches[prematches .!= nothing]
-    cur_max_r = 0.0
-    cur_rot = 0.0
-    cur_offset = 0.0
-    for prematch in prematches
-        if prematch[1] > cur_max_r
-            cur_max_r = prematch[1]
-            cur_rot = prematch[2]
-            cur_offset = prematch[3]
-        end
-    end
-    update_registry(src_index; rotation = cur_rot, offset = cur_offset);
-    print("    ")
-    println("Prematch complete... rotation: $cur_rot, offset: $cur_offset")
-end
-
 function zeropad_to_meanpad!(img)
   @fastmath avg = mean(img)
   @fastmath zero_entries = img .== 0.0
@@ -621,6 +511,8 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
     =#
     #tic()
     src_patch, dst_patch = prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, bandpass_sigmas; meanpad = meanpad)
+    inputs_have_zeros = (0 in src_patch) | (0 in dst_patch)
+
     #if (pp == nothing) return nothing end;
     #   prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma)
     xc::Array{Float64,2} = normxcorr2_preallocated(src_patch, dst_patch; shape = full ? "full" : "valid");
@@ -629,61 +521,89 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
     if isnan(r_max) 
         return nothing 
     end;
-    #   if r_max > 1.0 println("rounding error") end
-    ind = findfirst(r_max .== xc)
-    i_max, j_max = ind2sub(xc, ind)
-    if i_max == 0 
-        i_max = size(xc, 1)
-    end
 
-    i_max_int = i_max
-    j_max_int = j_max
-
-    if 2 < i_max < size(xc, 1) - 1 && 2 < j_max < size(xc, 2) - 1
-        xc_w = sum(xc[i_max-2:i_max+2, j_max-2:j_max+2])
-        xc_i = sum(xc[i_max+2, j_max-2:j_max+2]) * 2 + sum(xc[i_max+1, j_max-2:j_max+2]) - sum(xc[i_max-1, j_max-2:j_max+2]) - sum(xc[i_max-2, j_max-2:j_max+2]) * 2
-        xc_j = sum(xc[i_max-1:i_max+1, j_max+1]) - sum(xc[i_max-1:i_max+1, j_max-1])
-        i_max += xc_i / xc_w 
-        j_max += xc_j / xc_w 
-        if isnan(i_max) || isnan(j_max) 
-          println(xc_i)
-          println(xc_j)
-          println(xc_w)
-          return nothing
+    function compute_dv(xc, r_val)
+        #   if r_max > 1.0 println("rounding error") end
+        ind = findfirst(r_max .== xc)
+        i_max, j_max = ind2sub(xc, ind)
+        if i_max == 0 
+            i_max = size(xc, 1)
         end
-    end
+
+        i_max_int = i_max
+        j_max_int = j_max
+
+        if 2 < i_max < size(xc, 1) - 1 && 2 < j_max < size(xc, 2) - 1
+            xc_w = sum(xc[i_max-2:i_max+2, j_max-2:j_max+2])
+            xc_i = sum(xc[i_max+2, j_max-2:j_max+2]) * 2 + sum(xc[i_max+1, j_max-2:j_max+2]) - sum(xc[i_max-1, j_max-2:j_max+2]) - sum(xc[i_max-2, j_max-2:j_max+2]) * 2
+            xc_j = sum(xc[i_max-1:i_max+1, j_max+1]) - sum(xc[i_max-1:i_max+1, j_max-1])
+            i_max += xc_i / xc_w 
+            j_max += xc_j / xc_w 
+            if isnan(i_max) || isnan(j_max) 
+              println(xc_i)
+              println(xc_j)
+              println(xc_w)
+              return nothing
+            end
+        end
 
 
-    @fastmath @inbounds begin
-    if scale != 1.0
-        #length of the dst_range_full is always odd, so only need to care about the oddity / evenness of the source to decide the size of the xc in full
+        @fastmath @inbounds begin
+        if scale != 1.0
+            #length of the dst_range_full is always odd, so only need to care about the oddity / evenness of the source to decide the size of the xc in full
+            if full
+              xc_i_len = length(dst_range_full[1]) + length(src_range[1]) - 1
+              xc_j_len = length(dst_range_full[2]) + length(src_range[2]) - 1
+            else
+                if isodd(length(src_range[1])) 
+                  xc_i_len = length(dst_range_full[1]) - length(src_range[1]) + 1
+                else
+                  xc_i_len = length(dst_range_full[1]) - length(src_range[1]) 
+                end
+                if isodd(length(src_range[2])) 
+                  xc_j_len = length(dst_range_full[2]) - length(src_range[2]) + 1
+                else
+                  xc_j_len = length(dst_range_full[2]) - length(src_range[2]) 
+                end
+            end
+            xc_i_locs = linspace(1, xc_i_len, size(xc, 1))
+            xc_j_locs = linspace(1, xc_j_len, size(xc, 2))
+            i_max = (i_max - 1) * step(xc_i_locs) + 1
+            j_max = (j_max - 1) * step(xc_j_locs) + 1
+        end
         if full
-          xc_i_len = length(dst_range_full[1]) + length(src_range[1]) - 1
-          xc_j_len = length(dst_range_full[2]) + length(src_range[2]) - 1
+            di = Float64(i_max + src_pt_loc[1] - dst_pt_loc_full[1] - length(src_range[1]))
+            dj = Float64(j_max + src_pt_loc[2] - dst_pt_loc_full[2] - length(src_range[2]))
         else
-            if isodd(length(src_range[1])) 
-              xc_i_len = length(dst_range_full[1]) - length(src_range[1]) + 1
-            else
-              xc_i_len = length(dst_range_full[1]) - length(src_range[1]) 
-            end
-            if isodd(length(src_range[2])) 
-              xc_j_len = length(dst_range_full[2]) - length(src_range[2]) + 1
-            else
-              xc_j_len = length(dst_range_full[2]) - length(src_range[2]) 
-            end
+            di = Float64(i_max - 1 + src_pt_loc[1] - dst_pt_loc_full[1])
+            dj = Float64(j_max - 1 + src_pt_loc[2] - dst_pt_loc_full[2])
         end
-        xc_i_locs = linspace(1, xc_i_len, size(xc, 1))
-        xc_j_locs = linspace(1, xc_j_len, size(xc, 2))
-        i_max = (i_max - 1) * step(xc_i_locs) + 1
-        j_max = (j_max - 1) * step(xc_j_locs) + 1
+        end
+        return di, dj, i_max_int, j_max_int
     end
-    if full
-        di = Float64(i_max + src_pt_loc[1] - dst_pt_loc_full[1] - length(src_range[1]))
-        dj = Float64(j_max + src_pt_loc[2] - dst_pt_loc_full[2] - length(src_range[2]))
-    else
-        di = Float64(i_max - 1 + src_pt_loc[1] - dst_pt_loc_full[1])
-        dj = Float64(j_max - 1 + src_pt_loc[2] - dst_pt_loc_full[2])
+
+    di, dj, i_max, j_max = compute_dv(xc, r_max)
+
+    function recompute_r_without_zeros(src_patch, dst_patch, di, dj)
+        dst_bbox = BoundingBox(1, 1, size(dst_patch)...)
+        src_offset = dst_pt_loc_full[1] - src_pt_loc[1] + di,
+                        dst_pt_loc_full[2] - src_pt_loc[2] + dj
+        src_bbox = BoundingBox(src_offset..., size(src_patch)...)
+        dst_slice = bb_to_slice(dst_bbox - src_bbox)
+        
+        src_bbox = BoundingBox(1, 1, size(src_patch)...)
+        dst_offset = src_pt_loc[1] - dst_pt_loc_full[1] - di,
+                        src_pt_loc[2] - dst_pt_loc_full[2] - dj
+        dst_bbox = BoundingBox(dst_offset..., size(dst_patch)...)
+        src_slice = bb_to_slice(dst_bbox - src_bbox)
+        src_sub = src_patch[src_slice...]
+        dst_sub = dst_patch[dst_slice...]
+        mask = (src_sub .!= 0) & (dst_sub .!= 0)
+        return cor(src_sub[mask], dst_sub[mask])
     end
+
+    if inputs_have_zeros
+        r_max = recompute_r_without_zeros(src_patch, dst_patch, di, dj)
     end
 
     correspondence_properties[:patches_src_normalized_dyn_range] = (maximum(view(src_image, src_range...)) - minimum(view(src_image, src_range...))) / typemax(eltype(src_image));
@@ -697,11 +617,15 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
         range_j = intersect(1:size(xc, 2), (-rad:rad) + j_max)
         @inbounds xc[range_i, range_j] = -Inf
         r_max_new = maximum(xc)
+        if inputs_have_zeros
+            di, dj, i_max, j_max = compute_dv(xc_orig, r_max_new)
+            r_max_new = recompute_r_without_zeros(src_patch, dst_patch, di, dj)
+        end
         return r_max_original - r_max_new
     end
 
     for rad in [5, 10, 15]
-        correspondence_properties[Symbol(string("xcorr_delta_", rad))] = compute_r_diff(xc, rad, r_max, i_max_int, j_max_int)
+        correspondence_properties[Symbol(string("xcorr_delta_", rad))] = compute_r_diff(xc, rad, r_max, i_max, j_max)
     end
     for beta in [0.5, 0.75, 0.95]
         correspondence_properties[Symbol(string("xcorr_sigma_", beta))] = sigma(xc, beta) / scale;
@@ -816,6 +740,13 @@ function get_matches{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T})
     dst_index = get_index(dst_mesh);
     src_image = get_image(src_index, "match_image", mip=get_mip(:match));  
     dst_image = get_image(dst_index, "match_image", mip=get_mip(:match));
+    if use_roi_mask()
+        src_roi = get_image(src_index, "roi", mip=get_mip(:match), input_mip=get_mip(:roi));
+        dst_roi = get_image(dst_index, "roi", mip=get_mip(:match), input_mip=get_mip(:roi));
+        mask_value = PARAMS[:roi][:mask_value]
+        unsafe_mask_image!(src_image, src_roi, mask_value, src_image)
+        unsafe_mask_image!(dst_image, dst_roi, mask_value, dst_image)
+    end
     matches = Array{Match,1}()
     if use_defect_mask()
       src_image_sub = deepcopy(src_image)
