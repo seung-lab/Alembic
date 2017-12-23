@@ -70,6 +70,6 @@ RUN wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm 
 # Install Alembic
 RUN julia -e 'Pkg.clone("https://github.com/seung-lab/Alembic.git")' \
  && julia /root/.julia/v0.6/Alembic/UNREGISTERED_REQUIRE.jl \
- && julia -e 'rm(Pkg.dir("PyCall","deps","PYTHON")); Pkg.build("PyCall")'
+ && julia -e 'rm(Pkg.dir("PyCall","deps","PYTHON")); Pkg.build("PyCall")' \
  && julia -e 'using Alembic' \
  && ln -s /root/.julia/v0.6/Alembic/src/tasks
