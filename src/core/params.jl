@@ -8,6 +8,7 @@ end
 function load_params(params::Dict)
 	dirs = params["dirs"]
 	mesh = params["mesh"]
+	roi = params["roi"]
 	match = params["match"]
 	filter = params["filter"]
 	solve = params["solve"]
@@ -37,6 +38,10 @@ function load_params(params::Dict)
 	     	:z_start => mesh["z_start"],
 	     	:z_stop => mesh["z_stop"],
 			:mesh_length => mesh["mesh_length"]
+			),
+	     :roi => Dict(
+	     	:mip => roi["mip"],
+	     	:mask_value => roi["mask_value"]
 			), 
 	     :match => Dict(
 			:prematch => false,

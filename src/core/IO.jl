@@ -46,12 +46,16 @@ end
 """
 Get mip level specified in params
 """
-function get_mip(k = :match)
+function get_mip(k=:match)
   return PARAMS[k][:mip]
 end
 
-function get_scale(k = :match)
-  return 1/(2^get_mip(k))
+function get_scale(k::Symbol=:match)
+  return get_scale(get_mip(k))
+end
+
+function get_scale(mip::Int64)
+  return 1/(2^mip)
 end
 
 function get_z(index::Number)
@@ -140,18 +144,18 @@ end
 
 ## Image related (CloudVolume)
 
-function get_cloudvolume(obj_name::String; mip::Int64 = get_mip(:match), cdn_cache=false)
+function get_cloudvolume(obj_name::String; mip::Int64=get_mip(:match), cdn_cache=false)
   path = get_path(obj_name)
   return CloudVolumeWrapper(path, mip=mip, bounded=false, fill_missing=true, 
                                   cdn_cache=cdn_cache)
 end
 
-function get_image_size(obj_name::String; mip::Int64 = get_mip(:match))
+function get_image_size(obj_name::String; mip::Int64=get_mip(:match))
   cv = get_cloudvolume(obj_name, mip=mip)
   return size(cv)[1:2]
 end
 
-function get_offset(obj_name::String; mip::Int64 = get_mip(:match))
+function get_offset(obj_name::String; mip::Int64=get_mip(:match))
   cv = get_cloudvolume(obj_name, mip=mip)
   return offset(cv)[1:2]
 end
@@ -159,8 +163,7 @@ end
 """
 Get 3-tuple of ranges representing index in cloudvolume
 """
-function get_image_slice(index::Number, obj_name; mip::Int64 = get_mip(:match))
-  cv = get_cloudvolume(obj_name, mip=mip)
+function get_image_slice(index::Number, obj_name; mip::Int64=get_mip(:match))
   o = get_offset(obj_name, mip=mip)
   s = get_image_size(obj_name, mip=mip)
   z = get_z(index)
@@ -168,24 +171,32 @@ function get_image_slice(index::Number, obj_name; mip::Int64 = get_mip(:match))
   return tuple(xy_slice..., z)
 end
 
-function get_image(index::Number, obj_name::String; mip::Int64 = get_mip(:match))
+function get_image(index::Number, obj_name::String; mip::Int64=get_mip(:match), input_mip::Int64=mip)
   if haskey(IMG_CACHE_DICT, (index, obj_name, mip))
     println("$index, $obj_name, at miplevel $mip is in the image cache.")
   else
     println("$index, $obj_name, at miplevel $mip is not in the image cache. Downloading from $(get_path(obj_name))")
-    @time begin
-      push!(IMG_CACHE_LIST, (index, obj_name, mip))
-
-      cv = get_cloudvolume(obj_name, mip=mip)
-      slice = get_image_slice(index, obj_name, mip=mip)
-
-      IMG_CACHE_DICT[(index, obj_name, mip)] = SharedArray(get_image(cv, slice))
+    k = (index, obj_name, mip)
+    if input_mip == mip
+      @time begin
+        push!(IMG_CACHE_LIST, k)
+        cv = get_cloudvolume(obj_name, mip=mip)
+        slice = get_image_slice(index, obj_name, mip=mip)
+        IMG_CACHE_DICT[k] = SharedArray(get_image(cv, slice))
+      end
+    else
+      # see if input mip image is in cache
+      img = get_image(index, obj_name, mip=input_mip, input_mip=input_mip)
+      scale = get_scale(mip) / get_scale(input_mip)
+      println("Scaling $index, $obj_name by $(scale)x.")
+      push!(IMG_CACHE_LIST, k)
+      @time IMG_CACHE_DICT[k] = SharedArray(imscale(img, scale)[1])
     end
   end
   return IMG_CACHE_DICT[(index, obj_name, mip)]::SharedArray{IMG_ELTYPE, 2}
 end
 
-function get_image(obj_name::String, slice; mip::Int64 = get_mip(:match))
+function get_image(obj_name::String, slice; mip::Int64=get_mip(:match))
   cv = get_cloudvolume(obj_name, mip=mip)
   return get_image(cv, slice)
 end
@@ -227,8 +238,8 @@ function chunk_align(obj_name::String, img, slice; mip::Int64=get_mip(:render))
 end
 
 function save_image(obj_name::String, img, offset::Array{Int64,1}, z::Int64; mip::Int64=get_mip(:render), cdn_cache=true)
-  bbox = ImageRegistration.BoundingBox(offset..., size(img)...)
-  slice = ImageRegistration.bb_to_slice(bbox)
+  bbox = BoundingBox(offset..., size(img)...)
+  slice = bb_to_slice(bbox)
   slice = tuple(slice..., z:z)
   save_image(obj_name, img, slice, mip=mip, cdn_cache=cdn_cache)
 end
@@ -279,6 +290,6 @@ function flush_cv_cache(obj_name; mip::Int64=get_mip(:render))
   flush(cv)
 end
 
-# function check_dir(obj_name::String; mip::Int64 = get_mip(:match))
+# function check_dir(obj_name::String; mip::Int64=get_mip(:match))
 # end
 

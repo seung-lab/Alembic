@@ -20,17 +20,18 @@ end
 * `mask`: Array, identical size and shape to src (unchecked)
 * `mask_id`: Number (should be of at least one element in mask)
 * `dst`: Array, identical size and shape to src (unchecked)
+* `val`: Value to be fill in the dst array when src does not equal mask_id
 
 This method is unsafe, because there is no check that src, mask, & dst are all
 the same size and type. This method will catastrophically fail if they are not.
 """
-function unsafe_mask_image!(src, mask, mask_id, dst)
+function unsafe_mask_image!(src, mask, mask_id, dst, val=0)
   @simd for i in 1:length(src)
     @inbounds dst[i] = src[i]
   end
   for i in 1:length(src)
     @inbounds if mask[i] != mask_id
-      dst[i] = 0
+      dst[i] = val
     end
   end
 end
@@ -118,12 +119,9 @@ function render(ms::MeshSet, z_range=unique(collect_z(ms)))
     src_offset = get_offset("src_image", mip=get_mip(:render))
     src_size = get_image_size("src_image", mip=get_mip(:render)) 
     if use_roi_mask()
-      try
-        println("Applying ROI mask to $z")
-        pts = intersect_poly_bbox(load("roi", string(z)), src_offset, src_size)
-        @time ImageRegistration.fillpoly!(src_image, pts[:,2], pts[:,1], UInt8(0), convex=false, reverse=true)
-        println("ROI mask applied")
-      end
+      src_roi = get_image(z, "roi", mip=get_mip(:render), input_mip=get_mip(:roi));
+      mask_value = PARAMS[:roi][:mask_value]
+      unsafe_mask_image!(src_image, src_roi, mask_value, src_image)
     end
     if use_defect_mask()
       src_image_sub = deepcopy(src_image)
