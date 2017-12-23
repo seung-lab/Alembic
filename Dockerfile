@@ -55,9 +55,13 @@ RUN git clone https://github.com/JuliaLang/julia.git \
 #install cloudvolume
 RUN wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm \
     && yum install -y epel-release-latest-7.noarch.rpm \
-    && yum install -y python-pip \
-    && pip install pip --upgrad \
-    && pip install cloud-volume==0.6.3 \
+    && yum install -y python36u \
+    && yum install -y python36u-pip \
+    && yum install -y python36u-devel \
+    && python3.6 -m venv venv \
+    && . venv/bin/activate \
+    && pip install pip --upgrade \
+    && pip install cloud-volume==0.6.8 \
     && mkdir -p /root/.cloudvolume/ \
     && echo $GOOGLE_STORAGE_PROJECT > /root/.cloudvolume/project_name \
     && pip uninstall -y requests \
@@ -66,5 +70,6 @@ RUN wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm 
 # Install Alembic
 RUN julia -e 'Pkg.clone("https://github.com/seung-lab/Alembic.git")' \
  && julia /root/.julia/v0.6/Alembic/UNREGISTERED_REQUIRE.jl \
+ && julia -e 'rm(Pkg.dir("PyCall","deps","PYTHON")); Pkg.build("PyCall")'
  && julia -e 'using Alembic' \
  && ln -s /root/.julia/v0.6/Alembic/src/tasks
