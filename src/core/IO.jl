@@ -217,7 +217,7 @@ end
 Snap slice to be chunk-aligned
 """
 function chunk_align(obj_name::String, slice; mip::Int64=get_mip(:render))
-  cv = get_cloudvolume(obj_name, mip=get_mip(:render))
+  cv = get_cloudvolume(obj_name, mip=mip)
   o = offset(cv)
   c = chunks(cv)
   x_start = snap(slice[1][1], o[1], c[1], floor)
@@ -233,7 +233,7 @@ end
 Rescope image to be chunk-aligned with cloudvolume data
 """
 function chunk_align(obj_name::String, img, slice; mip::Int64=get_mip(:render))
-  padded_slice = chunk_align(obj_name, slice, mip=get_mip(:render))
+  padded_slice = chunk_align(obj_name, slice, mip=mip)
   return rescope(img, slice, dst_slice), padded_slice
 end
 
@@ -247,7 +247,7 @@ end
 function save_image(obj_name::String, img, slice; mip::Int64=get_mip(:render), cdn_cache=true)
   println("Saving $(slice[end][1]) @ mip=$mip to $(get_path(obj_name))")
   cv = get_cloudvolume(obj_name, mip=mip, cdn_cache=cdn_cache)
-  padded_slice = chunk_align(obj_name, slice)
+  padded_slice = chunk_align(obj_name, slice, mip=mip)
   if padded_slice != slice
     img = rescope(img, slice, padded_slice)
   end
