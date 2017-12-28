@@ -150,3 +150,11 @@ function render(ms::MeshSet, z_range=unique(collect_z(ms)))
     end
   end
 end
+
+function make_mips(z, mips=collect(1:6))
+  for mip in mips
+    img = get_image(z, "dst_image", mip=mip, input_mip=mip-1)
+    offset = get_offset("dst_image", mip=mip)
+    @time save_image("dst_image", Array(img), offset, z, mip=mip)
+  end
+end
