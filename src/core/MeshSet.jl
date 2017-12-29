@@ -378,7 +378,7 @@ function get_all_overlaps(meshes::Array{Mesh, 1}, within = 1; symmetric = true)
   return get_all_overlaps(1:length(meshes), within; symmetric=symmetric)
 end
 
-function Alembic.get_all_overlaps(z_range, within=1; symmetric=true)
+function get_all_overlaps(z_range, within=1; symmetric=true)
   preceding_pairs = Array{Tuple{Number,Number},1}()
   succeeding_pairs = Array{Tuple{Number,Number},1}()
 
@@ -433,6 +433,26 @@ function match!(ms::MeshSet, pairs::Array{Tuple{Int64,Int64},1})
     add_subsection!(ms, m.src_index)
     add_subsection!(ms, m.dst_index)
   end
+end
+
+"""
+Remove unconnected meshes & matches without correspondences
+"""
+function prune!(ms::MeshSet)
+  meshes_dict = Dict(get_index(mesh) => false for mesh in ms.meshes)
+  matches_ret = fill(true, count_matches(ms))
+  for (i, match) in enumerate(ms.matches)
+    if count_filtered_correspondences(match) > 0
+      src_index, dst_index = get_index(match)
+      meshes_dict[src_index] = true
+      meshes_dict[dst_index] = true
+    else
+      matches_ret[i] = false
+    end
+  end
+  meshes_ret = [meshes_dict[get_index(mesh)] for mesh in ms.meshes]
+  ms.meshes = ms.meshes[meshes_ret]
+  ms.matches = ms.matches[matches_ret]
 end
 
 # filters any correspondence that cannot be triangulated
