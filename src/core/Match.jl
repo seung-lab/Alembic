@@ -757,24 +757,24 @@ function get_matches{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T})
       println("Compiling mask components")
       src_subsections = Array{IMG_ELTYPE, 1}(unique(src_mask))
       dst_subsections = Array{IMG_ELTYPE,1}(unique(dst_mask))
+      ignore = PARAMS[:match][:ignore_value]
+      src_subsections = filter!(x -> x != ignore, src_subsections)
+      dst_subsections = filter!(x -> x != ignore, dst_subsections)
       src_mesh.properties[:subsections] = src_subsections / SPLIT_MESH_BASIS
       dst_mesh.properties[:subsections] = dst_subsections / SPLIT_MESH_BASIS
       println("src_subsections: $src_subsections")
       println("dst_subsections: $dst_subsections")
-      ignore = PARAMS[:match][:ignore_value]
       for ss in src_subsections
-          for ds in dst_subsections
-              if (ss != ignore) & (ds != ignore)
-                  src_id = src_index + ss/SPLIT_MESH_BASIS
-                  dst_id = dst_index + ds/SPLIT_MESH_BASIS
-                  unsafe_mask_image!(src_image, src_mask, ss, src_image_sub)
-                  unsafe_mask_image!(dst_image, dst_mask, ds, dst_image_sub)
-                  push!(matches, Match(src_mesh, dst_mesh, 
-                                                  src_id, dst_id, 
-                                                  src_image_sub, 
-                                                  dst_image_sub))
-              end
-          end
+        for ds in dst_subsections
+          src_id = src_index + ss/SPLIT_MESH_BASIS
+          dst_id = dst_index + ds/SPLIT_MESH_BASIS
+          unsafe_mask_image!(src_image, src_mask, ss, src_image_sub)
+          unsafe_mask_image!(dst_image, dst_mask, ds, dst_image_sub)
+          push!(matches, Match(src_mesh, dst_mesh, 
+                                          src_id, dst_id, 
+                                          src_image_sub, 
+                                          dst_image_sub))
+        end
       end
       src_image_sub = 0
       src_image_sub = 0
