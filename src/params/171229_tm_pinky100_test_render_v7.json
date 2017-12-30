@@ -1,17 +1,17 @@
 {
 	"name":"alignment",
-	"task_method":"match_task",
+	"task_method":"render_task",
 	"dirs":{
 		"bucket":"gs://neuroglancer",
 		"dataset":"pinky100_v0",
-		"src_image":"test_image",
-		"dst_image":"aligned_test_v6",
-		"match_image":"test_image/nccnet",
-		"mask":"test_image/cfsplit",
-		"roi":"test_image/roicc",
-		"mesh":"aligned_test_v6/mesh",
-		"match":"aligned_test_v6/match",
-		"meshset":"aligned_test_v6/meshset",
+		"src_image":"image_single_slices",
+		"dst_image":"aligned_test_v7",
+		"match_image":"image_single_slices/nccnet",
+		"mask":"image_single_slices/cfsplit",
+		"roi":"image_single_slices/roicc",
+		"mesh":"aligned_test_v7/mesh",
+		"match":"aligned_test_v7/match",
+		"meshset":"aligned_test_v7/meshset",
 		"src_patch":"aligned_test_v0/match/src_patch",
 		"dst_patch":"aligned_test_v0/match/dst_patch",
 		"src_match":"aligned_test_v0/match/src_match",
@@ -19,8 +19,8 @@
 		"xc":"aligned_test_v0/match/xc"
 	},
 	"mesh":{
-		"z_start": 204,
-		"z_stop": 204,
+		"z_start": 199,
+		"z_stop": 208,
 		"mesh_length": 100
 	},
 	"match":{
