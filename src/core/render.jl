@@ -113,8 +113,6 @@ the dst_image directory specified in params at the render mip level.
 function render(ms::MeshSet, z_range=unique(collect_z(ms)))
   for z in z_range
     meshes = get_subsections(ms, z)
-    subsection_images = Array{Array{UInt8,2},1}()
-    subsection_offsets = []
     src_image = get_image(z, "src_image", mip=get_mip(:render))
     src_offset = get_offset("src_image", mip=get_mip(:render))
     src_size = get_image_size("src_image", mip=get_mip(:render)) 
@@ -127,21 +125,28 @@ function render(ms::MeshSet, z_range=unique(collect_z(ms)))
       println("Creating copy of image for defect masking")
       @time src_image_sub = deepcopy(src_image)
       src_mask = get_image(z, "mask", mip=get_mip(:render), input_mip=get_mip(:match))
-      for mesh in meshes
+      merged_image = zeros(UInt8, 1, 1)
+      merged_offset = copy(src_offset)
+      merged_slice = (1:1, 1:1)
+      println("Rendering $(length(meshes)) subsections")
+      for (k, mesh) in enumerate(meshes)
+        println("Rendering subsection $k")
         index = get_index(mesh)
         println("Applying defect mask to $index")
         mask_id = get_subsection(index)
         unsafe_mask_image!(src_image, src_mask, mask_id, src_image_sub)
         println("Defect mask applied")
         println("Warping ", index)
-        @time (dst_image, offset), _ = meshwarp_mesh(src_image_sub, mesh)
-        push!(subsection_images, dst_image)
-        push!(subsection_offsets, offset)
+        @time (dst_image, dst_offset), _ = meshwarp_mesh(src_image_sub, mesh)
+        merged_image, merged_slice = merge_images([dst_image, merged_image], 
+                                                  [dst_offset, merged_offset])
+        merged_offset = [merged_slice[1].start, merged_slice[2].start]
+        gc(); gc();
       end
-      image, slice = merge_images(subsection_images, subsection_offsets)
-      slice = tuple(slice..., z:z)
+      println("All subsections rendered")
+      merged_slice = tuple(merged_slice..., z:z)
       println("Saving")
-      save_image("dst_image", image, slice, mip=get_mip(:render))
+      save_image("dst_image", merged_image, merged_slice, mip=get_mip(:render))
     else
       mesh = get_mesh(ms, z)
       println("Warping ", z)
