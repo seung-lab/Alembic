@@ -31,12 +31,12 @@ function globalize!{T}(pts::Points{T}, mesh::Mesh{T})
 end
     
 ### META.jl EXTENSIONS
-function get_offset(mesh::Mesh)				return get_offset("src_image");				end
-function get_image_size(mesh::Mesh)		return get_image_size("src_image");			end
+function get_offset(mesh::Mesh)				return get_offset(:src_image, mip=get_mip(:match_image));				end
+function get_image_size(mesh::Mesh)		return get_image_size(:src_image, mip=get_mip(:match_image));			end
 function get_metadata(mesh::Mesh)			return get_metadata(mesh.index);			end
 
 ### IO.jl EXTENSIONS
-function get_image(mesh::Mesh, obj_name="src_image"; mip=get_mip(:match))
+function get_image(mesh::Mesh, obj_name=:src_image; mip=get_mip(:match_image))
 	return get_image(get_index(mesh), obj_name, mip=mip);	
 end
 

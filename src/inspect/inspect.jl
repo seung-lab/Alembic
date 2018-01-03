@@ -14,17 +14,17 @@ function get_correspondence_patches(m::Match, ind)
   end
 
   mip = m.properties[:params][:match][:mip]
-  offset = get_offset("src_image", mip=mip)
+  offset = get_offset(:src_image, mip=mip)
   src_range = props[:ranges_src_range][1]
   dst_range = props[:ranges_dst_range][1]
 
   src_range_global = tuple(adjust_range(src_range, offset)..., src_z)
   dst_range_global = tuple(adjust_range(dst_range, offset)..., dst_z)
 
-  src_patch = get_image("src_image", src_range_global, mip=mip)
-  dst_patch = get_image("src_image", dst_range_global, mip=mip)
-  src_match = get_image("match_image", src_range_global, mip=mip)
-  dst_match = get_image("match_image", dst_range_global, mip=mip)
+  src_patch = get_image(:src_image, src_range_global, mip=mip)
+  dst_patch = get_image(:src_image, dst_range_global, mip=mip)
+  src_match = get_image(:match_image, src_range_global, mip=mip)
+  dst_match = get_image(:match_image, dst_range_global, mip=mip)
 
   # if use_roi_mask()
   #     src_roi = get_image(src_index, "roi", mip=get_mip(:match));
@@ -34,8 +34,8 @@ function get_correspondence_patches(m::Match, ind)
   # end
 
   if use_defect_mask()
-    src_mask = get_image("mask", src_range_global, mip=mip)
-    dst_mask = get_image("mask", dst_range_global, mip=mip)
+    src_mask = get_image(:defect_split, src_range_global, mip=mip)
+    dst_mask = get_image(:defect_split, dst_range_global, mip=mip)
     ss = get_subsection(src_index)
     ds = get_subsection(dst_index)
     unsafe_mask_image!(src_patch, src_mask, ss, src_patch)
@@ -66,11 +66,11 @@ function get_correspondence_patches(m::Match, ind)
   dst_offset = -dst_pt
   xc_offset = -dst_pt+src_pt
 
-  @time save_image("src_patch", src_patch, src_offset, 0, mip=mip, cdn_cache=false)
-  @time save_image("src_match", src_match, src_offset, 0, mip=mip, cdn_cache=false)
-  @time save_image("dst_patch", dst_patch, dst_offset, 0, mip=mip, cdn_cache=false)
-  @time save_image("dst_match", dst_match, dst_offset, 0, mip=mip, cdn_cache=false)
-  @time save_image("xc", xc, xc_offset, 0, mip=mip, cdn_cache=false)
+  @time save_image(:src_patch, src_patch, src_offset, 0, mip=mip, cdn_cache=false)
+  @time save_image(:src_match, src_match, src_offset, 0, mip=mip, cdn_cache=false)
+  @time save_image(:dst_patch, dst_patch, dst_offset, 0, mip=mip, cdn_cache=false)
+  @time save_image(:dst_match, dst_match, dst_offset, 0, mip=mip, cdn_cache=false)
+  @time save_image(:xc, xc, xc_offset, 0, mip=mip, cdn_cache=false)
   return src_patch, dst_patch, src_match, dst_match, xc, src_pt, dst_pt, dv
 end
 

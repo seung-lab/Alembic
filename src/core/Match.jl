@@ -169,13 +169,13 @@ end
 
 function to_csv(match::Match)
     check_local_dir()
-    fn = joinpath(get_local_path("match"), get_name(match))
+    fn = joinpath(get_local_path(:match_image), get_name(match))
     println("Writing correspondences to $fn")
     writetable(fn, to_dataframe(match), separator=',')
 end
 
 function load_manual_filters!(match::Match)
-    fn = joinpath(get_local_path("match"), get_name(match))
+    fn = joinpath(get_local_path(:match_image), get_name(match))
     println("Loading manual inspection filters from $fn")
     df = readtable(fn)
     match.filters[:manual] = .~convert(Array{Bool,1}, df[:filter])
@@ -236,8 +236,8 @@ function get_correspondences(match::Match; globalized::Bool=false, filtered::Boo
       dst_pts = deform(dst_pts, dst_mesh);
     end
     if globalized
-      globalize!(src_pts, get_offset("src_image")); 
-      globalize!(dst_pts, get_offset("src_image"));
+      globalize!(src_pts, get_offset(:src_image)); 
+      globalize!(dst_pts, get_offset(:src_image));
     end
     filtered ? ret = (src_pts, dst_pts) : ret = (src_pts, dst_pts, get_filtered_indices(match));
     return ret;
@@ -371,9 +371,9 @@ function get_ranges(pt, src_index, src_offset, src_image_size, dst_index, dst_of
     return src_index, range_in_src, [src_pt_locs[1], src_pt_locs[2]], dst_index, range_in_dst, dst_range_full, [dst_pt_locs[1], dst_pt_locs[2]], [dst_pt_locs_full[1], dst_pt_locs_full[2]], rel_offset;
 end
 
-function zeropad_to_meanpad!(img)
+function meanpad!(img)
   @fastmath avg = mean(img)
-  @fastmath zero_entries = img .== 0.0
+  @fastmath zero_entries = img .== get_value(:match_image)
   @inbounds img[zero_entries] = avg
   #=
   running_sum = 0.0;
@@ -417,8 +417,8 @@ function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_f
     @fastmath @inbounds me.dst_patch_full[indices_within_range...] = view(dst_image, dst_range...)
 
     if meanpad
-        zeropad_to_meanpad!(me.src_patch_full)
-        zeropad_to_meanpad!(me.dst_patch_full)
+        meanpad!(me.src_patch_full)
+        meanpad!(me.dst_patch_full)
     end
 
     if (bandpass_sigmas != (0,0)) & (bandpass_sigmas != [0,0])
@@ -738,28 +738,28 @@ Description:
 function get_matches{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T})
     src_index = get_index(src_mesh); 
     dst_index = get_index(dst_mesh);
-    src_image = get_image(src_index, "match_image", mip=get_mip(:match));  
-    dst_image = get_image(dst_index, "match_image", mip=get_mip(:match));
+    src_image = get_image(src_index, :match_image, mip=get_mip(:match_image));  
+    dst_image = get_image(dst_index, :match_image, mip=get_mip(:match_image));
     if use_roi_mask()
-        src_roi = get_image(src_index, "roi", mip=get_mip(:match), input_mip=get_mip(:roi));
-        dst_roi = get_image(dst_index, "roi", mip=get_mip(:match), input_mip=get_mip(:roi));
-        mask_value = PARAMS[:roi][:mask_value]
-        unsafe_mask_image!(src_image, src_roi, mask_value, src_image)
-        unsafe_mask_image!(dst_image, dst_roi, mask_value, dst_image)
+        src_roi = get_image(src_index, :roi_mask, mip=get_mip(:match_image), input_mip=get_mip(:roi_mask));
+        dst_roi = get_image(dst_index, :roi_mask, mip=get_mip(:match_image), input_mip=get_mip(:roi_mask));
+        roi_value = get_mask_value(:roi_mask)
+        unsafe_mask_image!(src_image, src_roi, roi_value, src_image)
+        unsafe_mask_image!(dst_image, dst_roi, roi_value, dst_image)
     end
     matches = Array{Match,1}()
     if use_defect_mask()
       src_image_sub = deepcopy(src_image)
       dst_image_sub = deepcopy(dst_image)
       println("Getting masks for $(src_index) & $(dst_index):")
-      src_mask = get_image(src_index, "mask", mip=get_mip(:match));
-      dst_mask = get_image(dst_index, "mask", mip=get_mip(:match));
+      src_mask = get_image(src_index, :defect_split, mip=get_mip(:match_image), input_mip=get_mip(:defect_split));
+      dst_mask = get_image(dst_index, :defect_split, mip=get_mip(:match_image), input_mip=get_mip(:defect_split));
       println("Compiling mask components")
       src_subsections = Array{IMG_ELTYPE, 1}(unique(src_mask))
       dst_subsections = Array{IMG_ELTYPE,1}(unique(dst_mask))
-      ignore = PARAMS[:match][:ignore_value]
-      src_subsections = filter!(x -> x != ignore, src_subsections)
-      dst_subsections = filter!(x -> x != ignore, dst_subsections)
+      ignore_value = get_mask_value(:defect_split)
+      src_subsections = filter!(x -> x != ignore_value, src_subsections)
+      dst_subsections = filter!(x -> x != ignore_value, dst_subsections)
       src_mesh.properties[:subsections] = src_subsections / SPLIT_MESH_BASIS
       dst_mesh.properties[:subsections] = dst_subsections / SPLIT_MESH_BASIS
       println("src_subsections: $src_subsections")

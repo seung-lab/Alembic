@@ -11,7 +11,7 @@ global const IMG_ELTYPE = UInt8
 
 if myid() == 1
   # Image Cache indexed by index, obj_name, miplevel
-  global const IMG_CACHE_DICT = Dict{Tuple{Number, String, Int64}, SharedArray{IMG_ELTYPE, 2}}()
+  global const IMG_CACHE_DICT = Dict{Tuple{Number, Symbol, Int64}, SharedArray{IMG_ELTYPE, 2}}()
   global const IMG_CACHE_LIST = Array{Any, 1}()
 end
 
@@ -38,20 +38,23 @@ function clean_cache()
 	println("current cache usage: $cur_cache_size / $IMG_CACHE_SIZE (bytes), $(round(Int64, cur_cache_size/IMG_CACHE_SIZE * 100))%")
 end
 
-function get_path(obj_name::String)
-  return joinpath(PARAMS[:dirs][:bucket], PARAMS[:dirs][:dataset], 
-                                            PARAMS[:dirs][Symbol(obj_name)])
+function get_path(obj_name::Symbol)
+  return PARAMS[obj_name][:path]
 end
 
 """
 Get mip level specified in params
 """
-function get_mip(k=:match)
-  return PARAMS[k][:mip]
+function get_mip(obj_name::Symbol)
+  return PARAMS[obj_name][:mip]
 end
 
-function get_scale(k::Symbol=:match)
-  return get_scale(get_mip(k))
+function get_mask_value(obj_name::Symbol)
+  return PARAMS[obj_name][:value]
+end
+
+function get_scale(obj_name::Symbol)
+  return get_scale(get_mip(obj_name))
 end
 
 function get_scale(mip::Int64)
@@ -91,16 +94,12 @@ function get_succeeding(index::Number, n=1)
   return get_z(index)+n
 end
 
-function use_cache()
-  return PARAMS[:dirs][:cache]
-end
-
 function use_defect_mask()
-  return PARAMS[:dirs][:mask] != ""
+  return (PARAMS[:defect_mask][:path] != "") & (PARAMS[:defect_split][:path] != "")
 end
 
 function use_roi_mask()
-  return PARAMS[:dirs][:roi] != ""
+  return PARAMS[:roi_mask][:path] != ""
 end
 
 function globalize!{T}(pts::Points{T}, offset::Array{Int,1})
@@ -124,19 +123,19 @@ end
 
 ## Non-image related (Storage)
 
-function load(obj_name::String, fn::String)
+function load(obj_name::Symbol, fn::String)
   println("Loading $obj_name for $fn")
   s = StorageWrapper(get_path(obj_name))
   return s[fn]
 end
 
-function load(obj_name::String, filenames::Array{String,1})
+function load(obj_name::Symbol, filenames::Array{String,1})
   println("Loading $obj_name for $(length(filenames)) files")
   s = StorageWrapper(get_path(obj_name))
   return s[filenames]
 end
 
-function save(obj, obj_name::String, fn::String=get_name(obj))
+function save(obj, obj_name::Symbol, fn::String=get_name(obj))
   println("Saving $fn to $(get_path(obj_name))")
   s = StorageWrapper(get_path(obj_name))
   s[fn] = obj;
@@ -144,18 +143,18 @@ end
 
 ## Image related (CloudVolume)
 
-function get_cloudvolume(obj_name::String; mip::Int64=get_mip(:match), cdn_cache=false)
+function get_cloudvolume(obj_name::Symbol; mip::Int64=get_mip(:match_image), cdn_cache=false)
   path = get_path(obj_name)
   return CloudVolumeWrapper(path, mip=mip, bounded=false, fill_missing=true, 
                                   cdn_cache=cdn_cache)
 end
 
-function get_image_size(obj_name::String; mip::Int64=get_mip(:match))
+function get_image_size(obj_name::Symbol; mip::Int64=get_mip(:match_image))
   cv = get_cloudvolume(obj_name, mip=mip)
   return size(cv)[1:2]
 end
 
-function get_offset(obj_name::String; mip::Int64=get_mip(:match))
+function get_offset(obj_name::Symbol; mip::Int64=get_mip(:match_image))
   cv = get_cloudvolume(obj_name, mip=mip)
   return offset(cv)[1:2]
 end
@@ -163,7 +162,7 @@ end
 """
 Get 3-tuple of ranges representing index in cloudvolume
 """
-function get_image_slice(index::Number, obj_name; mip::Int64=get_mip(:match))
+function get_image_slice(index::Number, obj_name::Symbol; mip::Int64=get_mip(:match_image))
   o = get_offset(obj_name, mip=mip)
   s = get_image_size(obj_name, mip=mip)
   z = get_z(index)
@@ -171,7 +170,7 @@ function get_image_slice(index::Number, obj_name; mip::Int64=get_mip(:match))
   return tuple(xy_slice..., z)
 end
 
-function get_image(index::Number, obj_name::String; mip::Int64=get_mip(:match), input_mip::Int64=mip)
+function get_image(index::Number, obj_name::Symbol; mip::Int64=get_mip(:match_image), input_mip::Int64=mip)
   if haskey(IMG_CACHE_DICT, (index, obj_name, mip))
     println("$index, $obj_name, at miplevel $mip is in the image cache.")
   else
@@ -196,7 +195,7 @@ function get_image(index::Number, obj_name::String; mip::Int64=get_mip(:match), 
   return IMG_CACHE_DICT[(index, obj_name, mip)]::SharedArray{IMG_ELTYPE, 2}
 end
 
-function get_image(obj_name::String, slice; mip::Int64=get_mip(:match))
+function get_image(obj_name::Symbol, slice; mip::Int64=get_mip(:match_image))
   cv = get_cloudvolume(obj_name, mip=mip)
   return get_image(cv, slice)
 end
@@ -216,7 +215,7 @@ end
 """
 Snap slice to be chunk-aligned
 """
-function chunk_align(obj_name::String, slice; mip::Int64=get_mip(:render))
+function chunk_align(obj_name::Symbol, slice; mip::Int64=get_mip(:dst_image))
   cv = get_cloudvolume(obj_name, mip=mip)
   o = offset(cv)
   c = chunks(cv)
@@ -232,19 +231,19 @@ end
 """
 Rescope image to be chunk-aligned with cloudvolume data
 """
-function chunk_align(obj_name::String, img, slice; mip::Int64=get_mip(:render))
+function chunk_align(obj_name::Symbol, img, slice; mip::Int64=get_mip(:dst_image))
   padded_slice = chunk_align(obj_name, slice, mip=mip)
   return rescope(img, slice, dst_slice), padded_slice
 end
 
-function save_image(obj_name::String, img, offset::Array{Int64,1}, z::Int64; mip::Int64=get_mip(:render), cdn_cache=true)
+function save_image(obj_name::Symbol, img, offset::Array{Int64,1}, z::Int64; mip::Int64=get_mip(:dst_image), cdn_cache=true)
   bbox = BoundingBox(offset..., size(img)...)
   slice = bb_to_slice(bbox)
   slice = tuple(slice..., z:z)
   save_image(obj_name, img, slice, mip=mip, cdn_cache=cdn_cache)
 end
 
-function save_image(obj_name::String, img, slice; mip::Int64=get_mip(:render), cdn_cache=true)
+function save_image(obj_name::Symbol, img, slice; mip::Int64=get_mip(:dst_image), cdn_cache=true)
   println("Saving $(slice[end][1]) @ mip=$mip to $(get_path(obj_name))")
   cv = get_cloudvolume(obj_name, mip=mip, cdn_cache=cdn_cache)
   padded_slice = chunk_align(obj_name, slice, mip=mip)
@@ -265,15 +264,15 @@ function get_local_root()
   return homedir()
 end
 
-function get_local_dir(dir="match")
+function get_local_dir(dir::Symbol)
   return joinpath(".alembic", get_path(dir)[6:end]) # hardcoded for gs:// header
 end
 
-function get_local_path(dir="match")
+function get_local_path(dir::Symbol)
   return joinpath(get_local_root(), get_local_dir(dir))
 end
 
-function check_local_dir(dir="match")
+function check_local_dir(dir::Symbol)
   root = get_local_root()
   path = get_local_dir(dir)
   folders = split(path, '/')
@@ -285,11 +284,11 @@ function check_local_dir(dir="match")
   end
 end
 
-function flush_cv_cache(obj_name; mip::Int64=get_mip(:render))
+function flush_cv_cache(obj_name::Symbol; mip::Int64=get_mip(:dst_image))
   cv = get_cloudvolume(obj_name, mip=mip)
   flush(cv)
 end
 
-# function check_dir(obj_name::String; mip::Int64=get_mip(:match))
+# function check_dir(obj_name::String; mip::Int64=get_mip(:match_image))
 # end
 

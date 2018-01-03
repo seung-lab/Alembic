@@ -2,7 +2,7 @@
 Multiple dispatch for meshwarp on Mesh object
 """
 function meshwarp_mesh(image, mesh::Mesh)
-  scale = get_scale(:render)/get_scale(:match)
+  scale = get_scale(:dst_image)/get_scale(:match_image)
   src_nodes = get_nodes(mesh; globalized=true, use_post=false, scale=scale)
   dst_nodes = get_nodes(mesh; globalized=true, use_post=true, scale=scale)
   offset = get_offset(mesh)*scale;
@@ -113,18 +113,21 @@ the dst_image directory specified in params at the render mip level.
 function render(ms::MeshSet, z_range=unique(collect_z(ms)))
   for z in z_range
     meshes = get_subsections(ms, z)
-    src_image = get_image(z, "src_image", mip=get_mip(:render))
-    src_offset = get_offset("src_image", mip=get_mip(:render))
-    src_size = get_image_size("src_image", mip=get_mip(:render)) 
+    src_image = get_image(z, :src_image, mip=get_mip(:dst_image), input_mip=get_mip(:src_image))
+    src_offset = get_offset(:src_image, mip=get_mip(:dst_image))
+    src_size = get_image_size(:src_image, mip=get_mip(:dst_image)) 
     if use_roi_mask()
-      src_roi = get_image(z, "roi", mip=get_mip(:render), input_mip=get_mip(:roi));
-      mask_value = PARAMS[:roi][:mask_value]
-      unsafe_mask_image!(src_image, src_roi, mask_value, src_image)
+      src_roi = get_image(z, :roi_mask, mip=get_mip(:dst_image), input_mip=get_mip(:roi_mask));
+      roi_value = get_mask_value(:roi_mask)
+      unsafe_mask_image!(src_image, src_roi, roi_value, src_image)
     end
     if use_defect_mask()
       println("Creating copy of image for defect masking")
       @time src_image_sub = deepcopy(src_image)
-      src_mask = get_image(z, "mask", mip=get_mip(:render), input_mip=get_mip(:match))
+      src_defect_mask = get_image(z, :defect_mask, mip=get_mip(:dst_image), input_mip=get_mip(:defect_mask))
+      non_defect_value = get_mask_value(:defect_mask)
+      unsafe_mask_image!(src_image, src_defect_mask, non_defect_value, src_image)
+      src_defect_split = get_image(z, :defect_split, mip=get_mip(:dst_image), input_mip=get_mip(:defect_split))
       merged_image = zeros(UInt8, 1, 1)
       merged_offset = copy(src_offset)
       merged_slice = (1:1, 1:1)
@@ -134,7 +137,7 @@ function render(ms::MeshSet, z_range=unique(collect_z(ms)))
         index = get_index(mesh)
         println("Applying defect mask to $index")
         mask_id = get_subsection(index)
-        unsafe_mask_image!(src_image, src_mask, mask_id, src_image_sub)
+        unsafe_mask_image!(src_image, src_defect_split, mask_id, src_image_sub)
         println("Defect mask applied")
         println("Warping ", index)
         @time (dst_image, dst_offset), _ = meshwarp_mesh(src_image_sub, mesh)
@@ -146,20 +149,20 @@ function render(ms::MeshSet, z_range=unique(collect_z(ms)))
       println("All subsections rendered")
       merged_slice = tuple(merged_slice..., z:z)
       println("Saving")
-      save_image("dst_image", merged_image, merged_slice, mip=get_mip(:render))
+      save_image(:dst_image, merged_image, merged_slice, mip=get_mip(:dst_image))
     else
       mesh = get_mesh(ms, z)
       println("Warping ", z)
       @time (dst_image, offset), _ = meshwarp_mesh(src_image, mesh)
-      @time save_image("dst_image", dst_image, offset, z, mip=get_mip(:render))
+      @time save_image(:dst_image, dst_image, offset, z, mip=get_mip(:dst_image))
     end
   end
 end
 
 function make_mips(z, mips=collect(1:6))
   for mip in mips
-    img = get_image(z, "dst_image", mip=mip, input_mip=mip-1)
-    offset = get_offset("dst_image", mip=mip)
-    @time save_image("dst_image", Array(img), offset, z, mip=mip)
+    img = get_image(z, :dst_image, mip=mip, input_mip=mip-1)
+    offset = get_offset(:dst_image, mip=mip)
+    @time save_image(:dst_image, Array(img), offset, z, mip=mip)
   end
 end

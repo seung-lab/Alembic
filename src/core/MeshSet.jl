@@ -242,13 +242,13 @@ function save_meshes(ms::MeshSet)
     meshes = get_subsections(ms, z)
     meshset = MeshSet();
     append!(meshset.meshes, meshes)
-    save(meshset, "mesh", string(z))
+    save(meshset, :mesh, string(z))
   end
 end
 
 function save_matches(ms::MeshSet)
   for match in ms.matches
-    save(match, "match")
+    save(match, :match)
   end
 end
 
@@ -278,7 +278,7 @@ end
 function compile_meshes(z_range=get_z_range())
   ms = MeshSet()
   files = [string(z) for z in z_range]
-  results, empties, errors = load("mesh", files)
+  results, empties, errors = load(:mesh, files)
   for r in results
     println("Appending mesh $(r["filename"])")
     m = r["content"]
@@ -303,7 +303,7 @@ end
 
 function compile_matches!(ms::MeshSet, pairs=get_pairs(ms))
   files = [string(p) for p in pairs]
-  results, empties, errors = load("match", files)
+  results, empties, errors = load(:match, files)
   for r in results
     println("Appending match $(r["filename"])")
     m = r["content"]
@@ -497,16 +497,6 @@ function make_stack(indices = get_z_range())
     add_mesh!(ms, Mesh(i))
   end
   return ms
-end
-
-function save_stack(ms::MeshSet)
-  for m in ms.meshes
-    save(get_name(m), m)
-  end
-  for m in ms.matches
-    save(get_name(m), m)
-  end
-
 end
 
 

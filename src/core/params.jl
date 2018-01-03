@@ -6,53 +6,77 @@ function load_params(fn::AbstractString)
 end
 
 function load_params(params::Dict)
-	dirs = params["dirs"]
+	data = params["data"]
 	mesh = params["mesh"]
-	roi = params["roi"]
 	match = params["match"]
 	filter = params["filter"]
 	solve = params["solve"]
-	render = params["render"]
-	root = joinpath(dirs["bucket"], dirs["dataset"])
 	global PARAMS = Dict(
 		 :name => params["name"],
 		 :task_method => params["task_method"],
-		 :dirs => Dict(
-		 	:dataset => dirs["dataset"],
-		 	:bucket => dirs["bucket"],
-		 	:src_image => dirs["src_image"],
-		 	:dst_image => dirs["dst_image"],
-		 	:match_image => dirs["match_image"],
-		 	:mask => dirs["mask"] != "" ? dirs["mask"] : "",
-		 	:mesh => dirs["mesh"],
-		 	:match => dirs["match"],
-		 	:meshset => dirs["meshset"],
-		 	:roi => dirs["roi"],
-		 	:src_patch => dirs["src_patch"],
-		 	:dst_patch => dirs["dst_patch"],
-		 	:src_match => dirs["src_match"],
-		 	:dst_match => dirs["dst_match"],
-		 	:xc => dirs["xc"]
-			),
-	     :mesh => Dict(
+		 :src_image => Dict(
+		 	:path => data["src_image"]["path"],
+		 	:mip => data["src_image"]["mip"]
+		 	),
+		 :dst_image => Dict(
+		 	:path => data["dst_image"]["path"],
+		 	:mip => data["dst_image"]["mip"]
+		 	),
+		 :match_image => Dict(
+		 	:path => data["match_image"]["path"],
+		 	:mip => data["match_image"]["mip"],
+		 	:value => data["match_image"]["value"]
+		 	),
+		 :defect_mask => Dict(
+		 	:path => data["defect_mask"]["path"],
+		 	:mip => data["defect_mask"]["mip"],
+		 	:value => data["defect_mask"]["value"]
+		 	),
+		 :defect_split => Dict(
+		 	:path => data["defect_split"]["path"],
+		 	:mip => data["defect_split"]["mip"],
+		 	:value => data["defect_split"]["value"]
+		 	),
+		 :roi_mask => Dict(
+		 	:path => data["roi_mask"]["path"],
+		 	:mip => data["roi_mask"]["mip"],
+		 	:value => data["roi_mask"]["value"]
+		 	),
+		 :src_match => Dict(
+		 	:path => data["src_match"]["path"],
+		 	:mip => data["src_match"]["mip"]
+		 	),
+		 :dst_match => Dict(
+		 	:path => data["dst_match"]["path"],
+		 	:mip => data["dst_match"]["mip"]
+		 	),
+		 :src_patch => Dict(
+		 	:path => data["src_patch"]["path"],
+		 	:mip => data["src_patch"]["mip"]
+		 	),
+		 :dst_patch => Dict(
+		 	:path => data["dst_patch"]["path"],
+		 	:mip => data["dst_patch"]["mip"]
+		 	),
+		 :xc => Dict(
+		 	:path => data["xc"]["path"],
+		 	:mip => data["xc"]["mip"]
+		 	),
+		 :mesh => Dict(
+		 	:path => mesh["path"],
 	     	:z_start => mesh["z_start"],
 	     	:z_stop => mesh["z_stop"],
 			:mesh_length => mesh["mesh_length"]
-			),
-	     :roi => Dict(
-	     	:mip => roi["mip"],
-	     	:mask_value => roi["mask_value"]
-			), 
-	     :match => Dict(
+		 	),
+		 :match => Dict(
+		 	:path => match["path"],
 			:prematch => false,
-			:mip => match["mip"],
-			:ignore_value => match["ignore_value"],
 			:block_r => match["block_r"], 
 			:search_r => match["search_r"],
 			:bandpass_sigmas => match["bandpass_sigmas"],
 			:depth => match["depth"],
 			:symmetric => match["symmetric"]
-			),
+		 	),
 	     :solve => Dict(
 			:mesh_spring_coeff => solve["mesh_spring_coeff"],
 			:match_spring_coeff => solve["match_spring_coeff"],
@@ -76,9 +100,6 @@ function load_params(params::Dict)
      		:kurtosis_filter_edge => (8,:get_correspondence_properties, Symbol(<), filter["kurtosis_filter_edge"], :patches_src_kurtosis),
      		:r_delta_low => (9,:get_correspondence_properties, Symbol(<), filter["r_delta_low"], Symbol("xcorr_delta_5"))
 			),
-	     :render => Dict(
-     		:mip => render["mip"]
-		    ),
 	     :review => Dict(
      		:too_few_corresps => (:count_correspondences, Symbol(<), 100),
 			:rejected_ratio => (:get_ratio_rejected, Symbol(>), 0.35),
