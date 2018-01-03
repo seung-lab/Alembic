@@ -9,14 +9,16 @@ roi_mip = 6
 cfsplit_in = 'gs://neuroglancer/pinky100_v0/image_single_slices/cfsplit'
 cfsplit_out = 'gs://neuroglancer/pinky100_v0/test_image/cfsplit'
 cfsplit_mip = 2
+cfmanual_in = 'gs://neuroglancer/pinky100_v0/image_single_slices/cfmanual'
+cfmanual_out = 'gs://neuroglancer/pinky100_v0/test_image/cfmanual'
+cfmanual_mip = 5
 match_in = 'gs://neuroglancer/pinky100_v0/image_single_slices/nccnet'
 match_out = 'gs://neuroglancer/pinky100_v0/test_image/nccnet'
 match_mip = 2
 dst_in = 'gs://neuroglancer/pinky100_v0/aligned_test_v5'
 dst_mip = 0
 
-src_dst = [(cfsplit_in, cfsplit_out, cfsplit_mip),
-			(match_in, match_out, match_mip)]
+src_dst = [(cfmanual_in, cfmanual_out, cfmanual_mip)]
 
 z_slice = slice(199, 208)
 src_mip = 0
