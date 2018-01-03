@@ -27,7 +27,7 @@
 		"mip": 2,
 		"ignore_value": 0,
 		"block_r": 100,
-		"search_r": 240,
+		"search_r": 300,
 		"bandpass_sigmas": [0,0],
 		"symmetric": false,
 		"depth": 2
