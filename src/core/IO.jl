@@ -95,7 +95,11 @@ function get_succeeding(index::Number, n=1)
 end
 
 function use_defect_mask()
-  return (PARAMS[:defect_mask][:path] != "") & (PARAMS[:defect_split][:path] != "")
+  return PARAMS[:defect_mask][:path] != ""
+end
+
+function use_defect_split()
+  return PARAMS[:defect_split][:path] != ""
 end
 
 function use_roi_mask()

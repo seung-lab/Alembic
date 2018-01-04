@@ -12,26 +12,42 @@ function meshwarp_mesh(image, mesh::Mesh)
 end
 
 """
-`UNSAFE_MASK_IMAGE!` - Mask src image when mask != mask_id & write to dst image
+`UNSAFE_COPY_IMAGE` - Copy src to dst, assuming that dimensions & type match
+"""
+function unsafe_copy_image!(src, dst)
+  @simd for i in 1:length(src)
+    @inbounds dst[i] = src[i]
+  end
+end
+
+"""
+`UNSAFE_MASK_IMAGE!` - Mask src when mask != or == mask_id & write to dst
   
     unsafe_mask_image!(src, mask, mask_id, dst)
 
 * `src`: Array
 * `mask`: Array, identical size and shape to src (unchecked)
 * `mask_id`: Number (should be of at least one element in mask)
-* `dst`: Array, identical size and shape to src (unchecked)
+* `dst`: Array, identical size and shape to src (unchecked), & initialized
 * `val`: Value to be fill in the dst array when src does not equal mask_id
+* `keep_id`: Boolean. When true, keep src when mask == mask_id. When false,
+              keep src when mask != mask_id.
 
 This method is unsafe, because there is no check that src, mask, & dst are all
 the same size and type. This method will catastrophically fail if they are not.
 """
-function unsafe_mask_image!(src, mask, mask_id, dst, val=0)
-  @simd for i in 1:length(src)
-    @inbounds dst[i] = src[i]
-  end
-  for i in 1:length(src)
-    @inbounds if mask[i] != mask_id
-      dst[i] = val
+function unsafe_mask_image!(src, mask, mask_id, dst; val=0, keep_id=true)
+  if keep_id
+    for i in 1:length(src)
+      @inbounds if mask[i] != mask_id
+        dst[i] = val
+      end
+    end
+  else
+    for i in 1:length(src)
+      @inbounds if mask[i] == mask_id
+        dst[i] = val
+      end
     end
   end
 end
@@ -119,15 +135,19 @@ function render(ms::MeshSet, z_range=unique(collect_z(ms)))
     if use_roi_mask()
       src_roi = get_image(z, :roi_mask, mip=get_mip(:dst_image), input_mip=get_mip(:roi_mask));
       roi_value = get_mask_value(:roi_mask)
-      unsafe_mask_image!(src_image, src_roi, roi_value, src_image)
+      unsafe_mask_image!(src_image, src_roi, roi_value, src_image, keep_id=true)
     end
-    if use_defect_mask()
+    if use_defect_split()
       println("Creating copy of image for defect masking")
       @time src_image_sub = deepcopy(src_image)
-      src_defect_mask = get_image(z, :defect_mask, mip=get_mip(:dst_image), input_mip=get_mip(:defect_mask))
-      non_defect_value = get_mask_value(:defect_mask)
-      unsafe_mask_image!(src_image, src_defect_mask, non_defect_value, src_image)
+      if use_defect_mask()
+        src_defect_mask = get_image(z, :defect_mask, mip=get_mip(:dst_image), input_mip=get_mip(:defect_mask))
+        non_defect_value = get_mask_value(:defect_mask)
+        unsafe_mask_image!(src_image, src_defect_mask, non_defect_value, src_image, keep_id=true)
+      end
       src_defect_split = get_image(z, :defect_split, mip=get_mip(:dst_image), input_mip=get_mip(:defect_split))
+      defect_value = get_mask_value(:defect_split)
+      unsafe_mask_image!(src_image, src_defect_split, defect_value, src_image, keep_id=false)
       merged_image = zeros(UInt8, 1, 1)
       merged_offset = copy(src_offset)
       merged_slice = (1:1, 1:1)
@@ -137,7 +157,8 @@ function render(ms::MeshSet, z_range=unique(collect_z(ms)))
         index = get_index(mesh)
         println("Applying defect mask to $index")
         mask_id = get_subsection(index)
-        unsafe_mask_image!(src_image, src_defect_split, mask_id, src_image_sub)
+        unsafe_copy_image!(src_image, src_image_sub)
+        unsafe_mask_image!(src_image, src_defect_split, mask_id, src_image_sub, keep_id=true)
         println("Defect mask applied")
         println("Warping ", index)
         @time (dst_image, dst_offset), _ = meshwarp_mesh(src_image_sub, mesh)

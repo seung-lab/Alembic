@@ -744,11 +744,11 @@ function get_matches{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T})
         src_roi = get_image(src_index, :roi_mask, mip=get_mip(:match_image), input_mip=get_mip(:roi_mask));
         dst_roi = get_image(dst_index, :roi_mask, mip=get_mip(:match_image), input_mip=get_mip(:roi_mask));
         roi_value = get_mask_value(:roi_mask)
-        unsafe_mask_image!(src_image, src_roi, roi_value, src_image)
-        unsafe_mask_image!(dst_image, dst_roi, roi_value, dst_image)
+        unsafe_mask_image!(src_image, src_roi, roi_value, src_image, keep_id=true)
+        unsafe_mask_image!(dst_image, dst_roi, roi_value, dst_image, keep_id=true)
     end
     matches = Array{Match,1}()
-    if use_defect_mask()
+    if use_defect_split()
       src_image_sub = deepcopy(src_image)
       dst_image_sub = deepcopy(dst_image)
       println("Getting masks for $(src_index) & $(dst_index):")
@@ -757,9 +757,9 @@ function get_matches{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T})
       println("Compiling mask components")
       src_subsections = Array{IMG_ELTYPE, 1}(unique(src_mask))
       dst_subsections = Array{IMG_ELTYPE,1}(unique(dst_mask))
-      ignore_value = get_mask_value(:defect_split)
-      src_subsections = filter!(x -> x != ignore_value, src_subsections)
-      dst_subsections = filter!(x -> x != ignore_value, dst_subsections)
+      defect_value = get_mask_value(:defect_split)
+      src_subsections = filter!(x -> x != defect_value, src_subsections)
+      dst_subsections = filter!(x -> x != defect_value, dst_subsections)
       src_mesh.properties[:subsections] = src_subsections / SPLIT_MESH_BASIS
       dst_mesh.properties[:subsections] = dst_subsections / SPLIT_MESH_BASIS
       println("src_subsections: $src_subsections")
@@ -768,8 +768,10 @@ function get_matches{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T})
         for ds in dst_subsections
           src_id = src_index + ss/SPLIT_MESH_BASIS
           dst_id = dst_index + ds/SPLIT_MESH_BASIS
-          unsafe_mask_image!(src_image, src_mask, ss, src_image_sub)
-          unsafe_mask_image!(dst_image, dst_mask, ds, dst_image_sub)
+          unsafe_copy_image!(src_image, src_image_sub)
+          unsafe_mask_image!(src_image, src_mask, ss, src_image_sub, keep_id=true)
+          unsafe_copy_image!(dst_image, dst_image_sub)
+          unsafe_mask_image!(dst_image, dst_mask, ds, dst_image_sub, keep_id=true)
           push!(matches, Match(src_mesh, dst_mesh, 
                                           src_id, dst_id, 
                                           src_image_sub, 
