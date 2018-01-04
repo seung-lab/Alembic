@@ -95,15 +95,19 @@ function get_succeeding(index::Number, n=1)
 end
 
 function use_defect_mask()
-  return PARAMS[:defect_mask][:path] != ""
+  return PARAMS[:defect_mask][:apply]
 end
 
 function use_defect_split()
-  return PARAMS[:defect_split][:path] != ""
+  return PARAMS[:defect_split][:apply]
 end
 
 function use_roi_mask()
-  return PARAMS[:roi_mask][:path] != ""
+  return PARAMS[:roi_mask][:apply]
+end
+
+function use_interpolation()
+  return PARAMS[:dst_image][:interpolation]
 end
 
 function globalize!{T}(pts::Points{T}, offset::Array{Int,1})

@@ -8,7 +8,7 @@ function meshwarp_mesh(image, mesh::Mesh)
   offset = get_offset(mesh)*scale;
   edges = get_edges(mesh)
   return @time meshwarp(image, src_nodes, dst_nodes, 
-                    incidence_to_triangles(edges), offset), get_index(mesh)
+                    incidence_to_triangles(edges), offset, use_interpolation()), get_index(mesh)
 end
 
 """

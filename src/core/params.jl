@@ -20,7 +20,8 @@ function load_params(params::Dict)
 		 	),
 		 :dst_image => Dict(
 		 	:path => data["dst_image"]["path"],
-		 	:mip => data["dst_image"]["mip"]
+		 	:mip => data["dst_image"]["mip"],
+		 	:interpolation => data["dst_image"]["interpolation"]
 		 	),
 		 :match_image => Dict(
 		 	:path => data["match_image"]["path"],
@@ -30,17 +31,20 @@ function load_params(params::Dict)
 		 :defect_mask => Dict(
 		 	:path => data["defect_mask"]["path"],
 		 	:mip => data["defect_mask"]["mip"],
-		 	:value => data["defect_mask"]["value"]
+		 	:value => data["defect_mask"]["value"],
+		 	:apply => data["defect_mask"]["apply"]
 		 	),
 		 :defect_split => Dict(
 		 	:path => data["defect_split"]["path"],
 		 	:mip => data["defect_split"]["mip"],
-		 	:value => data["defect_split"]["value"]
+		 	:value => data["defect_split"]["value"],
+		 	:apply => data["defect_split"]["apply"]
 		 	),
 		 :roi_mask => Dict(
 		 	:path => data["roi_mask"]["path"],
 		 	:mip => data["roi_mask"]["mip"],
-		 	:value => data["roi_mask"]["value"]
+		 	:value => data["roi_mask"]["value"],
+		 	:apply => data["roi_mask"]["apply"]
 		 	),
 		 :src_match => Dict(
 		 	:path => data["src_match"]["path"],
