@@ -1,19 +1,19 @@
 from cloudvolume import CloudVolume
 
 image_in = 'gs://neuroglancer/pinky100_v0/image_single_slices'
-image_out = 'gs://neuroglancer/pinky100_v0/test_image'
+image_out = 'gs://neuroglancer/pinky100_v0/aligned_test_v11'
 image_mip = 0
 roi_in = 'gs://neuroglancer/pinky100_v0/image_single_slices/roicc'
-roi_out = 'gs://neuroglancer/pinky100_v0/test_image/roicc'
+roi_out = 'gs://neuroglancer/pinky100_v0/aligned_test_v11/roicc'
 roi_mip = 6
 cfsplit_in = 'gs://neuroglancer/pinky100_v0/image_single_slices/cfsplit'
-cfsplit_out = 'gs://neuroglancer/pinky100_v0/test_image/cfsplit'
+cfsplit_out = 'gs://neuroglancer/pinky100_v0/aligned_test_v11/cfsplit'
 cfsplit_mip = 2
 cfmanual_in = 'gs://neuroglancer/pinky100_v0/image_single_slices/cfmanual'
-cfmanual_out = 'gs://neuroglancer/pinky100_v0/test_image/cfmanual'
+cfmanual_out = 'gs://neuroglancer/pinky100_v0/aligned_test_v11/cfmanual'
 cfmanual_mip = 5
 match_in = 'gs://neuroglancer/pinky100_v0/image_single_slices/nccnet'
-match_out = 'gs://neuroglancer/pinky100_v0/test_image/nccnet'
+match_out = 'gs://neuroglancer/pinky100_v0/aligned_test_v11/nccnet'
 match_mip = 2
 dst_in = 'gs://neuroglancer/pinky100_v0/aligned_test_v5'
 dst_mip = 0
