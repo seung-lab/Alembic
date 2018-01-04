@@ -3,12 +3,12 @@
 	"task_method":"render_task",
 	"data":{
 		"src_image":{
-			"path":"gs://neuroglancer/pinky100_v0/test_image/nccnet",
-			"mip":2
+			"path":"gs://neuroglancer/pinky100_v0/test_image/roicc",
+			"mip":6
 		},
 		"dst_image":{
-			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v5/nccnet",
-			"mip":0
+			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v5/roicc",
+			"mip":6
 		},
 		"match_image":{
 			"path":"gs://neuroglancer/pinky100_v0/test_image/nccnet",
@@ -16,9 +16,9 @@
 			"value":0
 		},
 		"defect_mask":{
-			"path":"gs://neuroglancer/pinky100_v0/test_image/cfmanual",
+			"path":"",
 			"mip":5,
-			"value":6
+			"value":0
 		},
 		"defect_split":{
 			"path":"gs://neuroglancer/pinky100_v0/test_image/cfsplit",
