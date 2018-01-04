@@ -370,15 +370,16 @@ function reset!(ms::MeshSet)
 end
 
 ### match
-function get_all_overlaps(ms::MeshSet, within = 1; symmetric = true)	
-  return get_all_overlaps(ms.meshes, within; symmetric = symmetric);	
+function get_all_overlaps(ms::MeshSet, within=1; symmetric=true)	
+  return get_all_overlaps(ms.meshes, within; symmetric=symmetric);	
 end
 
-function get_all_overlaps(meshes::Array{Mesh, 1}, within = 1; symmetric = true)
+function get_all_overlaps(meshes::Array{Mesh, 1}, within=1; symmetric=true)
   return get_all_overlaps(1:length(meshes), within; symmetric=symmetric)
 end
 
 function get_all_overlaps(z_range, within=1; symmetric=true)
+  println(within)
   preceding_pairs = Array{Tuple{Number,Number},1}()
   succeeding_pairs = Array{Tuple{Number,Number},1}()
 
@@ -404,13 +405,13 @@ Generate matches between all meshes (& components) that overlap
   Uses `get_matches` which matches taking crack & fold masks into account.
     Meshes will be duplicated so that each mask component has its own mesh.
 """
-function match!(ms::MeshSet, within=PARAMS[:match][:depth]; 
+function match!(ms::MeshSet, within::Int64=PARAMS[:match][:depth]; 
                                           symmetric=PARAMS[:match][:symmetric])
 	pairs = get_all_overlaps(ms, within; symmetric=symmetric);
   match!(ms, pairs)
 end
 
-function match!(ms::MeshSet, pairs::Array{Tuple{Int64,Int64},1})
+function match!(ms::MeshSet, pairs::Array)
 	for pair in pairs
     matches = get_matches(ms.meshes[pair[1]], ms.meshes[pair[2]])
     for m in matches

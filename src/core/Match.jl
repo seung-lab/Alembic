@@ -373,7 +373,7 @@ end
 
 function meanpad!(img)
   @fastmath avg = mean(img)
-  @fastmath zero_entries = img .== get_value(:match_image)
+  @fastmath zero_entries = img .== get_mask_value(:match_image)
   @inbounds img[zero_entries] = avg
   #=
   running_sum = 0.0;
@@ -795,8 +795,8 @@ function Match{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T},
                 src_index=get_index(src_mesh), dst_index=get_index(dst_mesh), 
                 src_image=get_image(src_mesh), dst_image=get_image(dst_mesh))
     println("Matching $(src_index) -> $(dst_index):")
-    image_size = get_image_size("src_image");
-    image_offset = get_offset("src_image");
+    image_size = get_image_size(src_mesh);
+    image_offset = get_offset(src_mesh);
 
     print("computing ranges:")
     @time ranges = map(get_ranges, columnviews(src_mesh.src_nodes), repeated(src_index), repeated(image_offset), repeated(image_size), repeated(dst_index), repeated(image_offset), repeated(image_size), repeated(PARAMS[:match][:block_r]), repeated(PARAMS[:match][:search_r]));
@@ -813,7 +813,7 @@ function Match{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T},
 
     print("computing matches:")
     print("    ")
-    @time dst_allpoints = pmap(get_match, columnviews(src_mesh.src_nodes[:,ranged_inds]), ranges, repeated(src_image), repeated(dst_image), repeated(get_scale()), repeated(PARAMS[:match][:bandpass_sigmas])) 
+    @time dst_allpoints = pmap(get_match, columnviews(src_mesh.src_nodes[:,ranged_inds]), ranges, repeated(src_image), repeated(dst_image), repeated(get_scale(:match_image)), repeated(PARAMS[:match][:bandpass_sigmas])) 
 
     matched_inds = find(i -> i != nothing, dst_allpoints);
 
