@@ -9,7 +9,7 @@
 		"dst_image":{
 			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v11",
 			"mip":0,
-			"interpolation":false
+			"interpolation":true
 		},
 		"match_image":{
 			"path":"gs://neuroglancer/pinky100_v0/image_single_slices/nccnet",
