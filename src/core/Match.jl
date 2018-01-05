@@ -813,7 +813,17 @@ function Match{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T},
 
     print("computing matches:")
     print("    ")
-    @time dst_allpoints = pmap(get_match, columnviews(src_mesh.src_nodes[:,ranged_inds]), ranges, repeated(src_image), repeated(dst_image), repeated(get_scale(:match_image)), repeated(PARAMS[:match][:bandpass_sigmas]), repeated(true), repeated(get_mask_value(:match_image))) 
+    use_full_conv = false
+    meanpad = true
+    @time dst_allpoints = pmap(get_match, columnviews(src_mesh.src_nodes[:,ranged_inds]), 
+                                    ranges, 
+                                    repeated(src_image), 
+                                    repeated(dst_image), 
+                                    repeated(get_scale(:match_image)), 
+                                    repeated(PARAMS[:match][:bandpass_sigmas]), 
+                                    repeated(use_full_conv), 
+                                    repeated(meanpad), 
+                                    repeated(get_mask_value(:match_image))) 
 
     matched_inds = find(i -> i != nothing, dst_allpoints);
 
