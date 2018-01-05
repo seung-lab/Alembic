@@ -371,9 +371,9 @@ function get_ranges(pt, src_index, src_offset, src_image_size, dst_index, dst_of
     return src_index, range_in_src, [src_pt_locs[1], src_pt_locs[2]], dst_index, range_in_dst, dst_range_full, [dst_pt_locs[1], dst_pt_locs[2]], [dst_pt_locs_full[1], dst_pt_locs_full[2]], rel_offset;
 end
 
-function meanpad!(img)
+function meanpad!(img, val)
   @fastmath avg = mean(img)
-  @fastmath zero_entries = img .== get_mask_value(:match_image)
+  @fastmath zero_entries = img .== val
   @inbounds img[zero_entries] = avg
   #=
   running_sum = 0.0;
@@ -410,15 +410,15 @@ end
 
 # if from_disk src_image / dst_image are indices
 # function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, scale, highpass_sigma; from_disk = false)
-function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, bandpass_sigmas; me = get_matchenv(src_range, dst_range_full, bandpass = bandpass_sigmas), meanpad = true)
+function prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, bandpass_sigmas; me = get_matchenv(src_range, dst_range_full, bandpass = bandpass_sigmas), meanpad = true, meanpad_val=0)
     clean!(me)
     indices_within_range = findin(dst_range_full[1], dst_range[1]), findin(dst_range_full[2], dst_range[2])
     @fastmath @inbounds me.src_patch_full[:] = view(src_image, src_range...)
     @fastmath @inbounds me.dst_patch_full[indices_within_range...] = view(dst_image, dst_range...)
 
     if meanpad
-        meanpad!(me.src_patch_full)
-        meanpad!(me.dst_patch_full)
+        meanpad!(me.src_patch_full, meanpad_val)
+        meanpad!(me.dst_patch_full, meanpad_val)
     end
 
     if (bandpass_sigmas != (0,0)) & (bandpass_sigmas != [0,0])
@@ -446,7 +446,7 @@ end
 """
 Template match two image patches to produce point pair correspondence
 """
-function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigmas = (0, 0); full = false, meanpad = true)
+function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigmas = (0, 0), full = false, meanpad = true, meanpad_val = 0)
     src_index, src_range, src_pt_loc, dst_index, dst_range, dst_range_full, dst_pt_loc, dst_pt_loc_full, rel_offset = ranges;
 #=  if sum(src_image[src_range[1], first(src_range[2])]) == 0 && sum(src_image[src_range[1], last(src_range[2])]) == 0 &&
             sum(src_image[first(src_range[1]), src_range[2]]) == 0 && sum(src_image[last(src_range[1]), src_range[2]]) == 0 return nothing end
@@ -510,7 +510,7 @@ function get_match(pt, ranges, src_image, dst_image, scale = 1.0, bandpass_sigma
     end
     =#
     #tic()
-    src_patch, dst_patch = prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, bandpass_sigmas; meanpad = meanpad)
+    src_patch, dst_patch = prepare_patches(src_image, dst_image, src_range, dst_range, dst_range_full, bandpass_sigmas, meanpad = meanpad, meanpad_val = meanpad_val)
     inputs_have_zeros = (0 in src_patch) | (0 in dst_patch)
 
     #if (pp == nothing) return nothing end;
@@ -813,7 +813,7 @@ function Match{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T},
 
     print("computing matches:")
     print("    ")
-    @time dst_allpoints = pmap(get_match, columnviews(src_mesh.src_nodes[:,ranged_inds]), ranges, repeated(src_image), repeated(dst_image), repeated(get_scale(:match_image)), repeated(PARAMS[:match][:bandpass_sigmas])) 
+    @time dst_allpoints = pmap(get_match, columnviews(src_mesh.src_nodes[:,ranged_inds]), ranges, repeated(src_image), repeated(dst_image), repeated(get_scale(:match_image)), repeated(PARAMS[:match][:bandpass_sigmas]), repeated(true), repeated(get_mask_value(:match_image))) 
 
     matched_inds = find(i -> i != nothing, dst_allpoints);
 
