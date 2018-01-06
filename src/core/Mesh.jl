@@ -21,9 +21,17 @@ end
 
 
 ### INDEX.jl EXTENSIONS
-function is_adjacent(Am::Mesh, Bm::Mesh)		return is_adjacent(Am.index, Bm.index);			end
-function is_diagonal(Am::Mesh, Bm::Mesh)		return is_diagonal(Am.index, Bm.index);			end
-function is_preceding(Am::Mesh, Bm::Mesh, within = 1)	return is_preceding(Am.index, Bm.index, within);	end
+function is_adjacent(Am::Mesh, Bm::Mesh)		
+	return is_adjacent(Am.index, Bm.index);			
+end
+
+function is_diagonal(Am::Mesh, Bm::Mesh)		
+	return is_diagonal(Am.index, Bm.index);			
+end
+
+function is_preceding(Am::Mesh, Bm::Mesh, within = 1)	
+	return is_preceding(Am.index, Bm.index, within);	
+end
 
 function globalize!{T}(pts::Points{T}, mesh::Mesh{T})
   offset = get_offset(mesh)
@@ -31,9 +39,17 @@ function globalize!{T}(pts::Points{T}, mesh::Mesh{T})
 end
     
 ### META.jl EXTENSIONS
-function get_offset(mesh::Mesh)				return get_offset(:match_image, mip=get_mip(:match_image));				end
-function get_image_size(mesh::Mesh)		return get_image_size(:match_image, mip=get_mip(:match_image));			end
-function get_metadata(mesh::Mesh)			return get_metadata(mesh.index);			end
+function get_offset(mesh::Mesh)				
+	return get_offset(:match_image, mip=get_mip(:match_image));				
+end
+
+function get_image_size(mesh::Mesh)			
+	return get_image_size(:match_image, mip=get_mip(:match_image));			
+end
+
+function get_metadata(mesh::Mesh)			
+	return get_metadata(mesh.index);										
+end
 
 ### IO.jl EXTENSIONS
 function get_image(mesh::Mesh, obj_name=:match_image; mip=get_mip(:match_image))

@@ -168,8 +168,8 @@ function to_dataframe(match::Match)
 end
 
 function to_csv(match::Match)
-    check_local_dir()
-    fn = joinpath(get_local_path(:match_image), get_name(match))
+    check_local_dir(:match)
+    fn = joinpath(get_local_path(:match), get_name(match))
     println("Writing correspondences to $fn")
     writetable(fn, to_dataframe(match), separator=',')
 end
@@ -236,8 +236,8 @@ function get_correspondences(match::Match; globalized::Bool=false, filtered::Boo
       dst_pts = deform(dst_pts, dst_mesh);
     end
     if globalized
-      globalize!(src_pts, get_offset(:src_image)); 
-      globalize!(dst_pts, get_offset(:src_image));
+      globalize!(src_pts, get_offset(:match_image)); 
+      globalize!(dst_pts, get_offset(:match_image));
     end
     filtered ? ret = (src_pts, dst_pts) : ret = (src_pts, dst_pts, get_filtered_indices(match));
     return ret;
