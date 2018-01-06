@@ -21,7 +21,8 @@ function load_params(params::Dict)
 		 :dst_image => Dict(
 		 	:path => data["dst_image"]["path"],
 		 	:mip => data["dst_image"]["mip"],
-		 	:interpolation => data["dst_image"]["interpolation"]
+		 	:interpolation => data["dst_image"]["interpolation"],
+		 	:downsample => data["dst_image"]["downsample"]
 		 	),
 		 :match_image => Dict(
 		 	:path => data["match_image"]["path"],
