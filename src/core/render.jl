@@ -131,7 +131,6 @@ function render(ms::MeshSet, z_range=unique(collect_z(ms)))
     meshes = get_subsections(ms, z)
     src_image = get_image(z, :src_image, mip=get_mip(:dst_image), input_mip=get_mip(:src_image))
     src_offset = get_offset(:src_image, mip=get_mip(:dst_image))
-    src_size = get_image_size(:src_image, mip=get_mip(:dst_image)) 
     if use_roi_mask()
       src_roi = get_image(z, :roi_mask, mip=get_mip(:dst_image), input_mip=get_mip(:roi_mask));
       roi_value = get_mask_value(:roi_mask)
@@ -180,7 +179,12 @@ function render(ms::MeshSet, z_range=unique(collect_z(ms)))
   end
 end
 
-function make_mips(z, mips=collect(1:6))
+function dilate{T}(img::Array{T,2}; val=0, radius=25)
+  f = ones(radius, radius)
+  return convert(Array{T,2}, same_convolve(img .== val, f) .> eps)
+end
+
+function make_mips(z; mips=collect(1:6))
   for mip in mips
     img = get_image(z, :dst_image, mip=mip, input_mip=mip-1)
     offset = get_offset(:dst_image, mip=mip)
