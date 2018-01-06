@@ -18,8 +18,8 @@ end
 
   
 function reset_cache()
-  IMG_CACHE_DICT = Dict{Tuple{String, Float64}, SharedArray{IMG_ELTYPE, 2}}()
-  IMG_CACHE_LIST = Array{Any, 1}()
+  global const IMG_CACHE_DICT = Dict{Tuple{String, Float64}, SharedArray{IMG_ELTYPE, 2}}()
+  global const IMG_CACHE_LIST = Array{Any, 1}()
   @time @everywhere gc();
 end
 
@@ -51,6 +51,10 @@ end
 
 function get_mask_value(obj_name::Symbol)
   return PARAMS[obj_name][:value]
+end
+
+function get_downsample_mips(obj_name::Symbol)
+  return PARAMS[obj_name][:downsample]
 end
 
 function get_scale(obj_name::Symbol)
@@ -179,11 +183,11 @@ function get_image_slice(index::Number, obj_name::Symbol; mip::Int64=get_mip(:ma
 end
 
 function get_image(index::Number, obj_name::Symbol; mip::Int64=get_mip(:match_image), input_mip::Int64=mip)
-  if haskey(IMG_CACHE_DICT, (index, obj_name, mip))
+  k = (index, obj_name, mip)
+  if haskey(IMG_CACHE_DICT, k)
     println("$index, $obj_name, at miplevel $mip is in the image cache.")
   else
     println("$index, $obj_name, at miplevel $mip is not in the image cache. Downloading from $(get_path(obj_name))")
-    k = (index, obj_name, mip)
     if input_mip == mip
       @time begin
         push!(IMG_CACHE_LIST, k)
@@ -258,6 +262,15 @@ function save_image(obj_name::Symbol, img, slice; mip::Int64=get_mip(:dst_image)
   if padded_slice != slice
     img = rescope(img, slice, padded_slice)
   end
+  index = slice[3][1]
+  k = (index, obj_name, mip)
+  if !haskey(IMG_CACHE_DICT, k)
+    println("Adding $index, $obj_name, at miplevel $mip to the image cache.")
+    push!(IMG_CACHE_LIST, k)
+  else
+    println("Overwriting $index, $obj_name, at miplevel $mip in the image cache.")
+  end
+  @time IMG_CACHE_DICT[k] = img
   return save_image(cv, padded_slice, img)
 end
 
