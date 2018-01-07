@@ -15,9 +15,9 @@ function receive_messages(queue_name)
         m = sqs_receive_message(q)
         if m != nothing
             params = JSON.parse(m[:message])
-            name = (params["mesh"]["z_start"], params["mesh"]["z_stop"])
-            println("Received $name")
-            func = getfield(Main, Symbol(params["task_method"]))
+            task = params["task"]
+            println("Received $(task["name"])")
+            func = getfield(Main, Symbol(task["method"]))
             func(params)
             sqs_delete_message(q, m)
         else

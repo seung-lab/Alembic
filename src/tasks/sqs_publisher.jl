@@ -29,12 +29,13 @@ end
 
 function publish_messages(queue_name::AbstractString, params::Dict, pairs::Array)
     q = get_queue(queue_name)
-    for (z_start, z_stop) in pairs
-        println("Publishing $((z_start, z_stop))")
-        p = deepcopy(params)
-        p["mesh"]["z_start"] = z_start
-        p["mesh"]["z_stop"] = z_stop
-        sqs_send_message(q, JSON.json(p))
+    for p in pairs
+        name = string(params["task"]["method"], " for ", p)
+        println("Publishing $name")
+        params_copy = deepcopy(params)
+        params_copy["task"]["name"] = name
+        params_copy["task"]["pairs"] = p
+        sqs_send_message(q, JSON.json(params_copy))
     end
 end
 

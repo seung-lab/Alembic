@@ -1,15 +1,16 @@
 {
 	"name":"alignment",
-	"task_method":"match_task",
+	"task_method":"render_task",
 	"data":{
 		"src_image":{
-			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v11",
-			"mip":0
+			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v11/cfsplit",
+			"mip":5
 		},
 		"dst_image":{
-			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v12",
-			"mip":0,
-			"interpolation":true
+			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v11/dilated_mask",
+			"mip":5,
+			"interpolation":false,
+			"downsample":[]
 		},
 		"match_image":{
 			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v11/nccnet",
@@ -57,8 +58,8 @@
 	},
 	"mesh":{
 		"path":"gs://neuroglancer/pinky100_v0/aligned_test_v12/mesh",
-		"z_start": 199,
-		"z_stop": 208,
+		"z_start": 205,
+		"z_stop": 205,
 		"mesh_length": 100
 	},
 	"match":{

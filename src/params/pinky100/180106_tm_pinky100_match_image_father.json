@@ -1,36 +1,40 @@
 {
-	"name":"alignment",
-	"task_method":"match_task",
+	"task":{
+		"method":"match_task",
+		"name":"",
+		"pairs":[[1,2], [1,3]]
+	},
 	"data":{
 		"src_image":{
-			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v11",
+			"path":"gs://neuroglancer/pinky100_v0/image_single_slices",
 			"mip":0
 		},
 		"dst_image":{
-			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v12",
+			"path":"gs://neuroglancer/pinky100_v0/father_of_alignment",
 			"mip":0,
-			"interpolation":true
+			"interpolation":true,
+			"downsample":[1,2,3,4,5,6]
 		},
 		"match_image":{
-			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v11/nccnet",
+			"path":"gs://neuroglancer/pinky100_v0/image_single_slices/nccnet",
 			"mip":2,
 			"value":0
 		},
 		"defect_mask":{
-			"apply":false,
-			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v11/cfmanual",
+			"apply":true,
+			"path":"gs://neuroglancer/pinky100_v0/image_single_slices/cfmanual",
 			"mip":5,
 			"value":0
 		},
 		"defect_split":{
-			"apply":false,
-			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v11/cfsplit",
+			"apply":true,
+			"path":"gs://neuroglancer/pinky100_v0/image_single_slices/cfsplit",
 			"mip":2,
 			"value":0
 		},
 		"roi_mask":{
-			"apply":false,
-			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v11/roicc",
+			"apply":true,
+			"path":"gs://neuroglancer/pinky100_v0/image_single_slices/roicc",
 			"mip":6,
 			"value":1
 		},
@@ -56,18 +60,18 @@
 		}
 	},
 	"mesh":{
-		"path":"gs://neuroglancer/pinky100_v0/aligned_test_v12/mesh",
-		"z_start": 199,
-		"z_stop": 208,
-		"mesh_length": 100
+		"path":"gs://neuroglancer/pinky100_v0/father_of_alignment/mesh",
+		"z_start": 1,
+		"z_stop": 2,
+		"mesh_length": 200
 	},
 	"match":{
-		"path":"gs://neuroglancer/pinky100_v0/aligned_test_v12/match",
-		"block_r": 60,
-		"search_r": 100,
+		"path":"gs://neuroglancer/pinky100_v0/father_of_alignment/match",
+		"block_r": 100,
+		"search_r": 400,
 		"bandpass_sigmas": [0,0],
 		"symmetric": false,
-		"depth": 2
+		"depth": 4
 	},
 	"filter":{
 		"sigma_filter_high": 6.5,

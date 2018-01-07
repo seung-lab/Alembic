@@ -1,36 +1,37 @@
 {
 	"name":"alignment",
-	"task_method":"match_task",
+	"task_method":"render_task",
 	"data":{
 		"src_image":{
-			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v11",
-			"mip":0
+			"path":"gs://neuroglancer/pinky100_v0/image_single_slices/roicc",
+			"mip":6
 		},
 		"dst_image":{
-			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v12",
-			"mip":0,
-			"interpolation":true
+			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v11/roicc",
+			"mip":5,
+			"interpolation":false,
+			"downsample":[]
 		},
 		"match_image":{
-			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v11/nccnet",
+			"path":"gs://neuroglancer/pinky100_v0/image_single_slices/nccnet",
 			"mip":2,
 			"value":0
 		},
 		"defect_mask":{
 			"apply":false,
-			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v11/cfmanual",
+			"path":"gs://neuroglancer/pinky100_v0/image_single_slices/cfmanual",
 			"mip":5,
 			"value":0
 		},
 		"defect_split":{
-			"apply":false,
-			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v11/cfsplit",
+			"apply":true,
+			"path":"gs://neuroglancer/pinky100_v0/image_single_slices/cfsplit",
 			"mip":2,
 			"value":0
 		},
 		"roi_mask":{
 			"apply":false,
-			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v11/roicc",
+			"path":"gs://neuroglancer/pinky100_v0/image_single_slices/roicc",
 			"mip":6,
 			"value":1
 		},
@@ -56,15 +57,15 @@
 		}
 	},
 	"mesh":{
-		"path":"gs://neuroglancer/pinky100_v0/aligned_test_v12/mesh",
-		"z_start": 199,
-		"z_stop": 208,
-		"mesh_length": 100
+		"path":"gs://neuroglancer/pinky100_v0/aligned_test_v11/mesh",
+		"z_start": 205,
+		"z_stop": 205,
+		"mesh_length": 200
 	},
 	"match":{
-		"path":"gs://neuroglancer/pinky100_v0/aligned_test_v12/match",
-		"block_r": 60,
-		"search_r": 100,
+		"path":"gs://neuroglancer/pinky100_v0/aligned_test_v11/match",
+		"block_r": 100,
+		"search_r": 300,
 		"bandpass_sigmas": [0,0],
 		"symmetric": false,
 		"depth": 2
