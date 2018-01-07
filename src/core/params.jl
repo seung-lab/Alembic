@@ -12,8 +12,6 @@ function load_params(params::Dict)
 	filter = params["filter"]
 	solve = params["solve"]
 	global PARAMS = Dict(
-		 :name => params["name"],
-		 :task_method => params["task_method"],
 		 :src_image => Dict(
 		 	:path => data["src_image"]["path"],
 		 	:mip => data["src_image"]["mip"]
