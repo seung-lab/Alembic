@@ -413,7 +413,7 @@ end
 
 function match!(ms::MeshSet, pairs::Array)
 	for pair in pairs
-    matches = get_matches(ms.meshes[pair[1]], ms.meshes[pair[2]])
+    matches = get_matches(get_mesh(ms, pair[1]), get_mesh(ms, pair[2]))
     for m in matches
       if length(m.src_points) > 0
     		push!(ms.matches, m)
