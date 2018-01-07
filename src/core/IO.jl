@@ -11,15 +11,15 @@ global const IMG_ELTYPE = UInt8
 
 if myid() == 1
   # Image Cache indexed by index, obj_name, miplevel
-  global const IMG_CACHE_DICT = Dict{Tuple{Number, Symbol, Int64}, SharedArray{IMG_ELTYPE, 2}}()
-  global const IMG_CACHE_LIST = Array{Any, 1}()
+  global IMG_CACHE_DICT = Dict{Tuple{Number, Symbol, Int64}, SharedArray{IMG_ELTYPE, 2}}()
+  global IMG_CACHE_LIST = Array{Any, 1}()
 end
 
 
   
 function reset_cache()
-  global const IMG_CACHE_DICT = Dict{Tuple{String, Float64}, SharedArray{IMG_ELTYPE, 2}}()
-  global const IMG_CACHE_LIST = Array{Any, 1}()
+  global IMG_CACHE_DICT = Dict{Tuple{Number, Symbol, Int64}, SharedArray{IMG_ELTYPE, 2}}()
+  global IMG_CACHE_LIST = Array{Any, 1}()
   @time @everywhere gc();
 end
 
