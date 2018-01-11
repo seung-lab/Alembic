@@ -50,7 +50,7 @@ Create scaling transform and apply to image
 """
 function imscale(img, scale_factor; kwargs...)
   tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
-  return imwarp(img, tform);
+  return imwarp(img, tform; parallel=true);
 end
 #=
 function imscale!(result, img, scale_factor)
