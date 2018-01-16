@@ -16,6 +16,7 @@ if myid() == 1
 end
   
 function reset_cache()
+  println("Reseting the image cache.")
   for k in keys(IMG_CACHE_DICT)
     delete!(IMG_CACHE_DICT, k)
   end
