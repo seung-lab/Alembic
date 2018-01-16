@@ -415,6 +415,7 @@ function match!(ms::MeshSet, pairs::Array)
 	for pair in pairs
     matches = get_matches(get_mesh(ms, pair[1]), get_mesh(ms, pair[2]))
     for m in matches
+      println((get_index(m), length(m.src_points)))
       if length(m.src_points) > 0
     		push!(ms.matches, m)
       end
@@ -424,7 +425,7 @@ function match!(ms::MeshSet, pairs::Array)
   # add meshes for sections with multiple mask components
   function add_subsection!(ms, index)
     if !(index in ms) & is_subsection(index) & (get_z(index) in ms)
-      mesh = ms.meshes[find_mesh_index(ms, get_z(index))]
+      mesh = get_mesh(ms, get_z(index))
       new_mesh = deepcopy(mesh, index=index)
       add_mesh!(ms, new_mesh)
     end

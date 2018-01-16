@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: alembic-tasks
 spec:
-  replicas: 500
+  replicas: 1
   template:
     metadata:
       labels:
@@ -11,7 +11,7 @@ spec:
     spec:
       containers:
         - name: alembic-tasks
-          image: seunglab/alembic:python3
+          image: seunglab/alembic:latest
           imagePullPolicy: Always
           command: ["/bin/sh"]
           args: ["-c", "julia /tasks/sqs_subscriber.jl task-queue-pinky"]
@@ -23,7 +23,7 @@ spec:
             mountPath: /dev/shm
           resources:
             requests:
-              memory: 18Gi
+              memory: 24Gi
       volumes:
       - name: secrets
         secret:
