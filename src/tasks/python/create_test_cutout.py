@@ -1,7 +1,7 @@
 from cloudvolume import CloudVolume
 
 image_in = 'gs://neuroglancer/pinky100_v0/image_single_slices'
-image_out = 'gs://neuroglancer/pinky100_v0/aligned_test_v11'
+image_out = 'gs://neuroglancer/pinky100_v0/aligned_test_v12'
 image_mip = 0
 roi_in = 'gs://neuroglancer/pinky100_v0/image_single_slices/roicc'
 roi_out = 'gs://neuroglancer/pinky100_v0/aligned_test_v11/roicc'
