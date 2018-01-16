@@ -10,10 +10,10 @@
 			"mip":0
 		},
 		"dst_image":{
-			"path":"gs://neuroglancer/pinky100_v0/father_of_alignment",
-			"mip":0,
-			"interpolation":true,
-			"downsample":[1,2,3,4,5,6]
+			"path":"gs://neuroglancer/pinky100_v0/image_single_slices/cfsplit",
+			"mip":2,
+			"interpolation":false,
+			"downsample":[5,6]
 		},
 		"match_image":{
 			"path":"gs://neuroglancer/pinky100_v0/image_single_slices/nccnet",
