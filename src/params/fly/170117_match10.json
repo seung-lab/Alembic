@@ -2,7 +2,7 @@
 	"task":{
 		"method":"match_task",
 		"name":"",
-		"pairs":[[2213, 2214]]
+		"pairs":[[2214, 2215]]
 	},
 	"data":{
 		"src_image":{
@@ -21,14 +21,14 @@
 			"value":0
 		},
 		"defect_mask":{
-			"apply":false,
+			"apply":true,
 			"path":"gs://neuroglancer/drosophila_v0/image_v14_single_slices/manual_defect",
 			"mip":5,
 			"value":0
 		},
 		"defect_split":{
-			"apply":false,
-			"path":"gs://neuroglancer/drosophila_v0/image_v14_single_slices/manual_defect_split",
+			"apply":true,
+			"path":"gs://neuroglancer/drosophila_v0/image_v14_single_slices/manual_defect_split_cc",
 			"mip":5,
 			"value":0
 		},
@@ -36,7 +36,7 @@
 			"apply":true,
 			"path":"gs://neuroglancer/drosophila_v0/image_v14_single_slices/manual_roi",
 			"mip":5,
-			"value":255
+			"value":1
 		},
 		"src_match":{
 			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v0/match/src_match",
