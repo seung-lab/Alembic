@@ -31,23 +31,32 @@ RUN yum install -y \
         curl
 
 # install cloudvolume
-RUN    wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm  \
-    && yum install -y epel-release-latest-7.noarch.rpm  \
-    && yum install -y python34-setuptools \
-    && yum install -y python34-devel \
-    && easy_install-3.4 pip
-RUN pip3 install pip --upgrade 
-RUN pip3 install cloud-volume
+RUN pwd
+RUN wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm 
+RUN yum install -y epel-release-latest-7.noarch.rpm 
+RUN yum install -y python-pip 
+RUN pip install pip --upgrad 
+RUN git clone https://github.com/seung-lab/cloud-volume.git --branch gsutil_new \
+    && cd cloud-volume  \
+    && pip install . \
+    && cd .. \
+    && rm -rf cloud-volume \
+    && git clone https://github.com/wongwill86/gsutil.git --branch superhack \
+    && cd gsutil \
+    && git submodule update --init \
+    && pip install . \
+    && cd .. \
+    && rm -rf gsutil
+
 RUN mkdir -p /root/.cloudvolume/ 
 RUN echo $GOOGLE_STORAGE_PROJECT > /root/.cloudvolume/project_name 
-RUN pip3 uninstall -y requests 
-RUN pip3 install requests
-RUN pip3 install protobuf==3.1.0
+RUN pip uninstall -y requests 
+RUN pip install requests
 
 # Install Alembic
-RUN ls 
-ENV PYTHON /usr/bin/python3
 RUN julia -e 'Pkg.clone("https://github.com/seung-lab/Alembic.git")' \
-    && julia /root/.julia/v0.6/Alembic/UNREGISTERED_REQUIRE.jl \
-    && julia -e 'using Alembic' \
-    && ln -s /root/.julia/v0.6/Alembic/src/tasks
+ && julia /root/.julia/v0.6/Alembic/UNREGISTERED_REQUIRE.jl \
+ && julia -e 'using Alembic' \
+ && ln -s /root/.julia/v0.6/Alembic/src/tasks
+RUN cd /root/.julia/v0.6/CloudVolume/ \
+    && git pull && git checkout origin/gsutil

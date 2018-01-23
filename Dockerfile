@@ -64,6 +64,7 @@ RUN wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm 
     && pip install requests
 
 # Install Alembic
+RUN pwd
 RUN julia -e 'Pkg.clone("https://github.com/seung-lab/Alembic.git")' \
  && julia /root/.julia/v0.6/Alembic/UNREGISTERED_REQUIRE.jl \
  && julia -e 'using Alembic' \
