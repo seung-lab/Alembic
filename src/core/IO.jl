@@ -6,40 +6,9 @@ global const WORKER_PROCS = setdiff(procs(), [1]);
 else
 global const WORKER_PROCS = [1];
 end
-global const IMG_CACHE_SIZE = 20 * 2^30
 global const IMG_ELTYPE = UInt8
 
-if myid() == 1
-  # Image Cache indexed by index, obj_name, miplevel
-  global const IMG_CACHE_DICT = Dict{Tuple{Number, Symbol, Int64}, SharedArray{IMG_ELTYPE, 2}}()
-  global const IMG_CACHE_LIST = Array{Any, 1}()
-end
   
-function reset_cache()
-  for k in keys(IMG_CACHE_DICT)
-    delete!(IMG_CACHE_DICT, k)
-  end
-  while length(IMG_CACHE_LIST) > 0
-    pop!(IMG_CACHE_LIST)
-  end
-  @time @everywhere gc();
-end
-
-function clean_cache()
-	if sum(map(Int64, map(length, values(IMG_CACHE_DICT)))) > IMG_CACHE_SIZE && !(length(IMG_CACHE_DICT) < 2)
-	while sum(map(Int64, map(length, values(IMG_CACHE_DICT)))) > IMG_CACHE_SIZE * 0.50 && !(length(IMG_CACHE_DICT) < 2)
-		todelete = shift!(IMG_CACHE_LIST);
-		IMG_CACHE_DICT[todelete] = zeros(IMG_ELTYPE,0,0)
-		delete!(IMG_CACHE_DICT, todelete)
-	end
-	print("cache garbage collection:")
-	@time gc();
-      end
-
-	cur_cache_size = sum(map(Int64, map(length, values(IMG_CACHE_DICT))));
-	println("current cache usage: $cur_cache_size / $IMG_CACHE_SIZE (bytes), $(round(Int64, cur_cache_size/IMG_CACHE_SIZE * 100))%")
-end
-
 function get_path(obj_name::Symbol)
   return PARAMS[obj_name][:path]
 end
@@ -186,27 +155,20 @@ end
 
 function get_image(index::Number, obj_name::Symbol; mip::Int64=get_mip(:match_image), input_mip::Int64=mip)
   k = (index, obj_name, mip)
-  if haskey(IMG_CACHE_DICT, k)
-    println("$index, $obj_name, at miplevel $mip is in the image cache.")
-  else
-    println("$index, $obj_name, at miplevel $mip is not in the image cache. Downloading from $(get_path(obj_name))")
+  @time begin
     if input_mip == mip
-      @time begin
-        push!(IMG_CACHE_LIST, k)
-        cv = get_cloudvolume(obj_name, mip=mip)
-        slice = get_image_slice(index, obj_name, mip=mip)
-        IMG_CACHE_DICT[k] = SharedArray(get_image(cv, slice))
-      end
+      cv = get_cloudvolume(obj_name, mip=mip)
+      slice = get_image_slice(index, obj_name, mip=mip)
+      result = SharedArray(get_image(cv, slice))
     else
       # see if input mip image is in cache
       img = get_image(index, obj_name, mip=input_mip, input_mip=input_mip)
       scale = get_scale(mip) / get_scale(input_mip)
       println("Scaling $index, $obj_name by $(scale)x.")
-      push!(IMG_CACHE_LIST, k)
-      @time IMG_CACHE_DICT[k] = SharedArray(imscale(img, scale)[1])
+      result = SharedArray(imscale(img, scale)[1])
     end
   end
-  return IMG_CACHE_DICT[(index, obj_name, mip)]::SharedArray{IMG_ELTYPE, 2}
+  return result 
 end
 
 function get_image(obj_name::Symbol, slice; mip::Int64=get_mip(:match_image))
@@ -266,13 +228,6 @@ function save_image(obj_name::Symbol, img, slice; mip::Int64=get_mip(:dst_image)
   end
   index = slice[3][1]
   k = (index, obj_name, mip)
-  if !haskey(IMG_CACHE_DICT, k)
-    println("Adding $index, $obj_name, at miplevel $mip to the image cache.")
-    push!(IMG_CACHE_LIST, k)
-  else
-    println("Overwriting $index, $obj_name, at miplevel $mip in the image cache.")
-  end
-  @time IMG_CACHE_DICT[k] = img
   return save_image(cv, padded_slice, img)
 end
 
