@@ -379,7 +379,7 @@ function get_all_overlaps(meshes::Array{Mesh, 1}, within=1; symmetric=true)
 end
 
 function get_all_overlaps(z_range, within=1; symmetric=true)
-  println(within)
+  println("Finding all overlaps within $within")
   preceding_pairs = Array{Tuple{Number,Number},1}()
   succeeding_pairs = Array{Tuple{Number,Number},1}()
 
@@ -411,6 +411,29 @@ function match!(ms::MeshSet, within::Int64=PARAMS[:match][:depth];
   match!(ms, pairs)
 end
 
+"""
+Add meshes for sections with multiple mask components
+"""
+function add_subsection!(ms::MeshSet, index)
+  if !(index in ms) & is_subsection(index) & (get_z(index) in ms)
+    println("Adding subsection $index")
+    mesh = get_mesh(ms, get_z(index))
+    new_mesh = deepcopy(mesh, index=index)
+    add_mesh!(ms, new_mesh)
+  end
+end
+
+"""
+Make sure that all meshes required by matches are present
+"""
+function sync!(ms::MeshSet)
+  for m in ms.matches
+    src_index, dst_index = get_index(m)
+    add_subsection!(ms, src_index)
+    add_subsection!(ms, dst_index)
+  end
+end
+
 function match!(ms::MeshSet, pairs::Array)
 	for pair in pairs
     matches = get_matches(get_mesh(ms, pair[1]), get_mesh(ms, pair[2]))
@@ -421,40 +444,48 @@ function match!(ms::MeshSet, pairs::Array)
       end
     end
 	end
-
-  # add meshes for sections with multiple mask components
-  function add_subsection!(ms, index)
-    if !(index in ms) & is_subsection(index) & (get_z(index) in ms)
-      mesh = get_mesh(ms, get_z(index))
-      new_mesh = deepcopy(mesh, index=index)
-      add_mesh!(ms, new_mesh)
-    end
-  end
-
-  for m in ms.matches
-    add_subsection!(ms, m.src_index)
-    add_subsection!(ms, m.dst_index)
-  end
+  sync!(ms)
 end
 
 """
-Remove unconnected meshes & matches without correspondences
+Remove unconnected meshes & matches below correspondence threshold. 
+Return those meshes & matches in their own meshset.
 """
-function prune!(ms::MeshSet)
-  meshes_dict = Dict(get_index(mesh) => false for mesh in ms.meshes)
+function prune!(ms::MeshSet, min_match_count=3)
+  meshes_match_count = Dict(get_index(mesh) => 0 for mesh in ms.meshes)
+  mesh_indices = keys(meshes_match_count)
   matches_ret = fill(true, count_matches(ms))
   for (i, match) in enumerate(ms.matches)
-    if count_filtered_correspondences(match) > 0
-      src_index, dst_index = get_index(match)
-      meshes_dict[src_index] = true
-      meshes_dict[dst_index] = true
+    src_index, dst_index = get_index(match)
+    if (src_index in mesh_indices) & (dst_index in mesh_indices)
+      match_count = count_filtered_correspondences(match)
+      meshes_match_count[src_index] += match_count
+      meshes_match_count[dst_index] += match_count
+    end
+  end
+
+  for (i, match) in enumerate(ms.matches)
+    src_index, dst_index = get_index(match)
+    if (src_index in mesh_indices) & (dst_index in mesh_indices)
+      src_count = meshes_match_count[src_index]
+      dst_count = meshes_match_count[dst_index]
+      if (src_count < min_match_count) | (dst_count < min_match_count)
+        matches_ret[i] = false
+      end
     else
       matches_ret[i] = false
     end
   end
-  meshes_ret = [meshes_dict[get_index(mesh)] for mesh in ms.meshes]
+
+  meshes_ret = [meshes_match_count[get_index(m)] >= min_match_count for m in ms.meshes]
+  removed_ms = MeshSet()
+  removed_ms.meshes = ms.meshes[.~meshes_ret]
+  removed_ms.matches = ms.matches[.~matches_ret]
+  println("Removed $(length(removed_ms.matches)) / $(length(ms.matches)) matches")
+  println("Removed $(length(removed_ms.meshes)) / $(length(ms.meshes)) meshes")
   ms.meshes = ms.meshes[meshes_ret]
   ms.matches = ms.matches[matches_ret]
+  return removed_ms
 end
 
 # filters any correspondence that cannot be triangulated
