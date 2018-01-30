@@ -146,7 +146,7 @@ function elastic_solve_piecewise!(meshset::MeshSet; from_current = true)
 	return meshset;
 end
 
-function elastic_collate(meshset; from_current = true)
+function elastic_collate(meshset; from_current = true, manual_only=false)
 	sanitize!(meshset);
   match_spring_coeff = PARAMS[:solve][:match_spring_coeff]
   mesh_spring_coeff = PARAMS[:solve][:mesh_spring_coeff]
@@ -157,13 +157,13 @@ function elastic_collate(meshset; from_current = true)
   eta_newton = PARAMS[:solve][:eta_newton]
   ftol_newton = PARAMS[:solve][:ftol_newton]
 
-  println("Solving meshset: $(count_nodes(meshset)) nodes, $(count_edges(meshset)) edges, $(count_filtered_correspondences(meshset)) correspondences");
+  println("Solving meshset: $(count_nodes(meshset)) nodes, $(count_edges(meshset)) edges, $(count_filtered_correspondences(meshset, manual_only=manual_only)) correspondences");
 
   nodes = Array{Float64, 2}(2, count_nodes(meshset));
   nodes_fixed = BinaryProperty(falses(count_nodes(meshset)));
 
-  edge_lengths = FloatProperty(count_edges(meshset) + count_filtered_correspondences(meshset))
-  edge_spring_coeffs = FloatProperty(count_edges(meshset) + count_filtered_correspondences(meshset))
+  edge_lengths = FloatProperty(count_edges(meshset) + count_filtered_correspondences(meshset, manual_only=manual_only))
+  edge_spring_coeffs = FloatProperty(count_edges(meshset) + count_filtered_correspondences(meshset, manual_only=manual_only))
   #edges = spzeros(count_nodes(meshset), 0)
 
   noderanges = Dict{Any, Any}();
@@ -192,8 +192,8 @@ function elastic_collate(meshset; from_current = true)
     println("meshes referenced")
 
     @fastmath @inbounds for match in meshset.matches
-    	edgeranges[get_src_and_dst_indices(match)] = cum_edges + (1:count_filtered_correspondences(match));
-    	cum_edges = cum_edges + count_filtered_correspondences(match);
+    	edgeranges[get_src_and_dst_indices(match)] = cum_edges + (1:count_filtered_correspondences(match, manual_only=manual_only));
+    	cum_edges = cum_edges + count_filtered_correspondences(match, manual_only=manual_only);
     	match_ref = RemoteChannel(); 
     	put!(match_ref, match); push!(matches_ref, match_ref);
     	push!(src_indices, get_src_index(match))
@@ -260,8 +260,8 @@ function elastic_collate(meshset; from_current = true)
 
   # initialize the arrays for edge lengths and the spring coeffs
   for match in meshset.matches
-    	@inbounds edge_lengths[edgeranges[get_src_and_dst_indices(match)]] = fill(0, count_filtered_correspondences(match));
-    	@inbounds edge_spring_coeffs[edgeranges[get_src_and_dst_indices(match)]] = fill(match_spring_coeff / abs(match.dst_index - match.src_index), count_filtered_correspondences(match));
+    	@inbounds edge_lengths[edgeranges[get_src_and_dst_indices(match)]] = fill(0, count_filtered_correspondences(match, manual_only=manual_only));
+    	@inbounds edge_spring_coeffs[edgeranges[get_src_and_dst_indices(match)]] = fill(match_spring_coeff / abs(match.dst_index - match.src_index), count_filtered_correspondences(match, manual_only=manual_only));
   end
 
   function compute_sparse_matrix_matches(match_ref, src_mesh_ref, dst_mesh_ref, noderange_src, noderange_dst, edgerange)
@@ -274,7 +274,7 @@ function elastic_collate(meshset; from_current = true)
       	end;
 	
 	print("triangulation: "); @time begin
-	src_pts, dst_pts = get_correspondences(match; filtered = true);
+	src_pts, dst_pts = get_correspondences(match; filtered = true, manual_only=manual_only);
 	src_pt_triangles = find_mesh_triangle(src_mesh, src_pts);
 	dst_pt_triangles = find_mesh_triangle(dst_mesh, dst_pts);
 	src_pt_weights = get_triangle_weights(src_mesh, src_pts, src_pt_triangles);
@@ -289,7 +289,7 @@ function elastic_collate(meshset; from_current = true)
 	i_inds_dst = Int64[]
 	j_inds_dst = Int64[]
 	vals_dst = Float64[]
-	for ind in 1:count_filtered_correspondences(match)
+	for ind in 1:count_filtered_correspondences(match, manual_only=manual_only)
 	  src_t1, src_t2, src_t3 = src_pt_triangles[ind];
 	  dst_t1, dst_t2, dst_t3 = dst_pt_triangles[ind];
 	  if src_t1 == 0 || dst_t1 == 0 continue; end
@@ -376,7 +376,7 @@ function elastic_collate(meshset; from_current = true)
 
 
 	print("populating sparse matrix:"); 
-  @time edges = sparse(i_inds, j_inds, vals, count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset))
+  @time edges = sparse(i_inds, j_inds, vals, count_nodes(meshset), count_edges(meshset) + count_filtered_correspondences(meshset, manual_only=manual_only))
 
   collation = nodes, nodes_fixed, edges, edge_spring_coeffs, edge_lengths, max_iters, ftol_cg
   collation_with_ranges = collation, noderanges, edgeranges
@@ -386,9 +386,9 @@ end
 """
 Elastic solve
 """
-function elastic_solve!(meshset; from_current = true)
+function elastic_solve!(meshset; from_current=true, manual_only=false)
 	sanitize!(meshset);
-	collation, noderanges, edgeranges = elastic_collate(meshset; from_current = from_current)
+	collation, noderanges, edgeranges = elastic_collate(meshset; from_current=from_current, manual_only=manual_only)
 	BLAS.set_num_threads(Sys.CPU_CORES);
   @time SolveMeshConjugateGradient!(collation...)
   setblas();
@@ -399,13 +399,13 @@ function elastic_solve!(meshset; from_current = true)
 end
 
 # invalids set to NO_POINT
-function get_correspondences(meshset::MeshSet, ind::Int64; filtered=false, globalized::Bool=false, use_post = false)
-  	if use_post
+function get_correspondences(meshset::MeshSet, ind::Int64; filtered=false, globalized::Bool=false, use_post=false, manual_only=false)
+	if use_post
 	  src_mesh = meshset.meshes[find_mesh_index(meshset,get_src_index(meshset.matches[ind]))]
 	  dst_mesh = meshset.meshes[find_mesh_index(meshset,get_dst_index(meshset.matches[ind]))]
-	  return get_correspondences(meshset.matches[ind]; filtered=filtered, globalized=globalized, use_post = use_post, src_mesh=src_mesh, dst_mesh=dst_mesh)
+	  return get_correspondences(meshset.matches[ind]; filtered=filtered, globalized=globalized, use_post = use_post, src_mesh=src_mesh, dst_mesh=dst_mesh, manual_only=manual_only)
 	end
-	return get_correspondences(meshset.matches[ind]; filtered=filtered, globalized=globalized, use_post = use_post)
+	return get_correspondences(meshset.matches[ind]; filtered=filtered, globalized=globalized, use_post = use_post, manual_only=manual_only)
 end
 
 function get_displacements_post(meshset::MeshSet, ind)

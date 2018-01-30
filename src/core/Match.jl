@@ -197,8 +197,8 @@ end
 
 ### counting
 function count_correspondences(match::Match) return size(match.src_points, 2);  end
-function count_filtered_correspondences(match::Match) return sum(get_filtered_indices(match)); end
-function count_rejected_correspondences(match::Match) return sum(get_rejected_indices(match)); end
+function count_filtered_correspondences(match::Match; manual_only=false) return sum(get_filtered_indices(match)); end
+function count_rejected_correspondences(match::Match; manual_only=false) return sum(get_rejected_indices(match)); end
 
 function count_filters(match::Match) return size(match.filters, 2); end
 function count_filtered_properties(match::Match, property_name, compare, threshold)
@@ -206,15 +206,21 @@ function count_filtered_properties(match::Match, property_name, compare, thresho
 end
 
 ### correspondences related
-function get_filtered_indices(match::Match)
-    return map(!, get_rejected_indices(match))
+function get_filtered_indices(match::Match; manual_only=false)
+    return map(!, get_rejected_indices(match; manual_only=manual_only))
 end
-function get_rejected_indices(match::Match)
+function get_rejected_indices(match::Match; manual_only=false)
     ret = fill(false, count_correspondences(match));
-    for j in 1:count_filters(match)
-      dfcol::Array{Bool, 1} = match.filters.columns[j]
-      for i in 1:length(dfcol)
-        @inbounds ret[i] = ret[i] || dfcol[i]
+    if manual_only
+      if :manual in names(match.filters)
+        ret = match.filters[:manual]
+      end
+    else
+      for j in 1:count_filters(match)
+        dfcol::Array{Bool, 1} = match.filters.columns[j]
+        for i in 1:length(dfcol)
+          @inbounds ret[i] = ret[i] || dfcol[i]
+        end
       end
     end
     return ret
@@ -225,9 +231,9 @@ function (match::Match)
 end
 =#
 
-function get_correspondences(match::Match; globalized::Bool=false, filtered::Bool=false, use_post::Bool=false, src_mesh = nothing, dst_mesh = nothing)
+function get_correspondences(match::Match; globalized::Bool=false, filtered::Bool=false, use_post::Bool=false, src_mesh = nothing, dst_mesh = nothing, manual_only=false)
     if filtered
-      src_pts = match.src_points[:, get_filtered_indices(match)]; dst_pts = match.dst_points[:, get_filtered_indices(match)];
+      src_pts = match.src_points[:, get_filtered_indices(match, manual_only=manual_only)]; dst_pts = match.dst_points[:, get_filtered_indices(match, manual_only=manual_only)];
     else
       src_pts = copy(match.src_points); dst_pts = copy(match.dst_points);
     end
@@ -239,7 +245,7 @@ function get_correspondences(match::Match; globalized::Bool=false, filtered::Boo
       globalize!(src_pts, get_offset(:match_image)); 
       globalize!(dst_pts, get_offset(:match_image));
     end
-    filtered ? ret = (src_pts, dst_pts) : ret = (src_pts, dst_pts, get_filtered_indices(match));
+    filtered ? ret = (src_pts, dst_pts) : ret = (src_pts, dst_pts, get_filtered_indices(match, manual_only=manual_only));
     return ret;
 end
 

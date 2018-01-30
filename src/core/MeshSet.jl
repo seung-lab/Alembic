@@ -40,7 +40,7 @@ function count_matches(ms::MeshSet)		return length(ms.matches);		end
 function count_nodes(ms::MeshSet)			return sum(map(count_nodes, ms.meshes));		end
 function count_edges(ms::MeshSet)			return sum(map(count_edges, ms.meshes));		end
 function count_correspondences(ms::MeshSet)	return sum(map(count_correspondences, ms.matches));		end
-function count_filtered_correspondences(ms::MeshSet)	return sum(map(count_filtered_correspondences, ms.matches));		end
+function count_filtered_correspondences(ms::MeshSet; manual_only=false)	return sum(map(x -> count_filtered_correspondences(x, manual_only=manual_only), ms.matches));		end
 
 ### finding
 function find_mesh_index(ms::MeshSet, index)  	return findfirst(this -> index == get_index(this), ms.meshes)	end
@@ -451,25 +451,31 @@ end
 Remove unconnected meshes & matches below correspondence threshold. 
 Return those meshes & matches in their own meshset.
 """
-function prune!(ms::MeshSet, min_match_count=3)
+function prune!(ms::MeshSet, min_match_count=3, manual_only=false)
   meshes_match_count = Dict(get_index(mesh) => 0 for mesh in ms.meshes)
   mesh_indices = keys(meshes_match_count)
   matches_ret = fill(true, count_matches(ms))
   for (i, match) in enumerate(ms.matches)
-    src_index, dst_index = get_index(match)
-    if (src_index in mesh_indices) & (dst_index in mesh_indices)
-      match_count = count_filtered_correspondences(match)
-      meshes_match_count[src_index] += match_count
-      meshes_match_count[dst_index] += match_count
+    if size(match.filters, 1) > 0
+      src_index, dst_index = get_index(match)
+      if (src_index in mesh_indices) & (dst_index in mesh_indices)
+        match_count = count_filtered_correspondences(match, manual_only=manual_only)
+        meshes_match_count[src_index] += match_count
+        meshes_match_count[dst_index] += match_count
+      end
     end
   end
 
   for (i, match) in enumerate(ms.matches)
-    src_index, dst_index = get_index(match)
-    if (src_index in mesh_indices) & (dst_index in mesh_indices)
-      src_count = meshes_match_count[src_index]
-      dst_count = meshes_match_count[dst_index]
-      if (src_count < min_match_count) | (dst_count < min_match_count)
+    if size(match.filters, 1) > 0
+      src_index, dst_index = get_index(match)
+      if (src_index in mesh_indices) & (dst_index in mesh_indices)
+        src_count = meshes_match_count[src_index]
+        dst_count = meshes_match_count[dst_index]
+        if (src_count < min_match_count) | (dst_count < min_match_count)
+          matches_ret[i] = false
+        end
+      else
         matches_ret[i] = false
       end
     else
