@@ -7,7 +7,7 @@ roi = CloudVolume('gs://neuroglancer/pinky100_v0/image_single_slices/roicc', mip
 dst = CloudVolume('gs://neuroglancer/pinky100_v0/image_single_slices/cfsplit_manual_cc', mip=5, cdn_cache=False);
 src_val = 0
 roi_val = 1
-# cc_filter = np.ones((3,3))
+cc_filter = np.ones((3,3))
 
 def get_whole_slice(cv):
 	offset = cv.voxel_offset
@@ -20,7 +20,7 @@ def get_image(cv, z):
 	s = get_whole_slice(cv) + (z, )
 	return cv[s][:,:,0,0]
 
-for z in l: #range(1,2176):
+for z in [221,228,227,243,303,308,318,375,429,447,533,680,880,1016,1125]:
 	print(z)
 	src_img = get_image(src, z)
 	roi_img = get_image(roi, z).repeat(2, axis=0).repeat(2, axis=1)

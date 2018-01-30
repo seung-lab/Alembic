@@ -2,41 +2,41 @@
 	"task":{
 		"method":"match_task",
 		"name":"",
-		"pairs":[[162,163],[162,164]]
+		"pairs":[[2213, 2214]]
 	},
 	"data":{
 		"src_image":{
-			"path":"gs://neuroglancer/pinky100_v0/image_single_slices",
+			"path":"gs://neuroglancer/drosophila_v0/image_v14_single_slices",
 			"mip":0
 		},
 		"dst_image":{
-			"path":"gs://neuroglancer/pinky100_v0/father_of_alignment",
+			"path":"gs://neuroglancer/output/output",
 			"mip":0,
 			"interpolation":true,
 			"downsample":[1,2,3,4,5,6]
 		},
 		"match_image":{
-			"path":"gs://neuroglancer/pinky100_v0/image_single_slices/nccnet",
+			"path":"gs://neuroglancer/drosophila_v0/image_v14_single_slices/nccnet",
 			"mip":2,
 			"value":0
 		},
 		"defect_mask":{
 			"apply":false,
-			"path":"gs://neuroglancer/pinky100_v0/image_single_slices/cfmanual",
+			"path":"gs://neuroglancer/drosophila_v0/image_v14_single_slices/manual_defect",
 			"mip":5,
 			"value":0
 		},
 		"defect_split":{
-			"apply":true,
-			"path":"gs://neuroglancer/pinky100_v0/image_single_slices/cfsplit_manual_cc",
+			"apply":false,
+			"path":"gs://neuroglancer/drosophila_v0/image_v14_single_slices/manual_defect_split",
 			"mip":5,
 			"value":0
 		},
 		"roi_mask":{
 			"apply":true,
-			"path":"gs://neuroglancer/pinky100_v0/image_single_slices/roicc",
-			"mip":6,
-			"value":1
+			"path":"gs://neuroglancer/drosophila_v0/image_v14_single_slices/manual_roi",
+			"mip":5,
+			"value":255
 		},
 		"src_match":{
 			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v0/match/src_match",
@@ -60,18 +60,18 @@
 		}
 	},
 	"mesh":{
-		"path":"gs://neuroglancer/pinky100_v0/father_of_alignment/mesh",
-		"z_start": 1,
-		"z_stop": 4,
+		"path":"gs://neuroglancer/drosophila_v0/test1/mesh",
+		"z_start": 2213,
+		"z_stop": 2223,
 		"mesh_length": 200
 	},
 	"match":{
-		"path":"gs://neuroglancer/pinky100_v0/father_of_alignment/match",
+		"path":"gs://neuroglancer/drosophila_v0/z2213_2223/match",
 		"block_r": 100,
 		"search_r": 400,
 		"bandpass_sigmas": [0,0],
 		"symmetric": false,
-		"depth": 6
+		"depth": 4
 	},
 	"filter":{
 		"sigma_filter_high": 6.5,

@@ -23,7 +23,7 @@ spec:
             mountPath: /dev/shm
           resources:
             requests:
-              memory: 42Gi
+              memory: 108Gi
       volumes:
       - name: secrets
         secret:
