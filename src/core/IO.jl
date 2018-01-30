@@ -217,6 +217,7 @@ end
 
 function get_image(cv::CloudVolumeWrapper, slice)
   img = cv[slice...]
+  println("$(sizeof(img) / 1e6) MB downloaded")
   return img
 end
 
