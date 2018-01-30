@@ -786,8 +786,8 @@ function get_matches{T}(src_mesh::Mesh{T}, dst_mesh::Mesh{T})
       push!(matches, Match(src_mesh, dst_mesh, src_index, dst_index, 
                                                   src_image, dst_image))
     end
-    @everywhere gc();
-    @everywhere gc();
+    gc();
+    gc();
     return matches
 end
 
