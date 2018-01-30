@@ -1,3 +1,8 @@
+function get_correspondence_patches(ms::MeshSet, src_index, dst_index, ind)
+  m = ms.matches[find_match_index(ms, src_index, dst_index)]
+  return get_correspondence_patches(m, ind)
+end
+
 function get_correspondence_patches(m::Match, ind)
   src_index, dst_index = get_index(m)
   src_z, dst_z = map(get_z, (src_index, dst_index));
@@ -13,8 +18,8 @@ function get_correspondence_patches(m::Match, ind)
     return r[1] + offset[1], r[2] + offset[2]
   end
 
-  mip = m.properties[:params][:match][:mip]
-  offset = get_offset(:src_image, mip=mip)
+  mip = m.properties[:params][:match_image][:mip]
+  offset = get_offset(:match_image, mip=mip)
   src_range = props[:ranges_src_range][1]
   dst_range = props[:ranges_dst_range][1]
 
@@ -78,18 +83,18 @@ function get_url()
   url = "https://neuromni-dot-neuromancer-seung-import.appspot.com/#!"
   url = string(url, "{'layers':")
   url = string(url, "{'xc':{'type':'image'_'source':")
-  url = string(url, "'precomputed://$(get_path("xc"))'}")
+  url = string(url, "'precomputed://$(get_path(:xc))'}")
   url = string(url, "_'dst_patch':{'type':'image'_'source':")
-  url = string(url, "'precomputed://$(get_path("dst_patch"))'_")
+  url = string(url, "'precomputed://$(get_path(:dst_patch))'_")
   url = string(url, "'shader':'void main() {\nfloat val = toNormalized(getDataValue());\n if (val == 0.0) {\n emitRGBA(vec4(0.0));\n }\n else{\n emitRGBA(vec4(0.0, val, 0.0, 1.0));\n }\n}'}")
   url = string(url, "_'dst_match':{'type':'image'_'source':")
-  url = string(url, "'precomputed://$(get_path("dst_match"))'_")
+  url = string(url, "'precomputed://$(get_path(:dst_match))'_")
   url = string(url, "'shader':'void main() {\nfloat val = toNormalized(getDataValue());\n if (val == 0.0) {\n emitRGBA(vec4(0.0));\n }\n else{\n emitRGBA(vec4(0.0, val, 0.0, 1.0));\n }\n}'}")
   url = string(url, "_'src_patch':{'type':'image'_'source':")
-  url = string(url, "'precomputed://$(get_path("src_patch"))'_")
+  url = string(url, "'precomputed://$(get_path(:src_patch))'_")
   url = string(url, "'shader':'void main() {\nfloat val = toNormalized(getDataValue());\n if (val == 0.0) {\n emitRGBA(vec4(0.0));\n }\n else{\n emitRGBA(vec4(val, 0.0, 0.0, 1.0));\n }\n}'}")
   url = string(url, "_'src_match':{'type':'image'_'source':")
-  url = string(url, "'precomputed://$(get_path("src_match"))'_")
+  url = string(url, "'precomputed://$(get_path(:src_match))'_")
   url = string(url, "'shader':'void main() {\nfloat val = toNormalized(getDataValue());\n if (val == 0.0) {\n emitRGBA(vec4(0.0));\n }\n else{\n emitRGBA(vec4(val, 0.0, 0.0, 1.0));\n }\n}'}")
   url = string(url, "}_")
   url = string(url, "'navigation':{'pose':{'position':")
@@ -106,4 +111,3 @@ function xc_to_uint8(xc)
   b[isnan(b)] = 0
   return round.(UInt8, b)
 end
-
