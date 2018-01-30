@@ -1,0 +1,62 @@
+FROM centos:7
+
+# install julia
+ENV JULIA_PATH /usr/local/julia
+RUN curl -fL -o julia.tar.gz https://julialang-s3.julialang.org/bin/linux/x64/0.6/julia-0.6.1-linux-x86_64.tar.gz
+RUN mkdir "$JULIA_PATH"
+RUN tar -xzf julia.tar.gz -C "$JULIA_PATH" --strip-components 1;
+RUN rm julia.tar.gz
+ENV PATH $JULIA_PATH/bin:$PATH
+
+RUN yum install -y \
+        bzip2 \
+        cmake \
+        gcc \
+        gcc-c++ \
+        gcc-gfortran \
+        git \
+        make \
+        m4 \
+        openssl \
+        openssl-devel \
+        patch \
+        perl \
+        pkgconfig \
+        python \
+        wget \
+        which \
+        vim \
+        python-devel \
+        libblas liblapack liblapacke gfortran git \
+        curl
+
+# install cloudvolume
+RUN pwd
+RUN wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm 
+RUN yum install -y epel-release-latest-7.noarch.rpm 
+RUN yum install -y python-pip 
+RUN pip install pip --upgrad 
+RUN git clone https://github.com/seung-lab/cloud-volume.git --branch gsutil_new \
+    && cd cloud-volume  \
+    && pip install . \
+    && cd .. \
+    && rm -rf cloud-volume \
+    && git clone https://github.com/wongwill86/gsutil.git --branch superhack \
+    && cd gsutil \
+    && git submodule update --init \
+    && pip install . \
+    && cd .. \
+    && rm -rf gsutil
+
+RUN mkdir -p /root/.cloudvolume/ 
+RUN echo $GOOGLE_STORAGE_PROJECT > /root/.cloudvolume/project_name 
+RUN pip uninstall -y requests 
+RUN pip install requests
+
+# Install Alembic
+RUN julia -e 'Pkg.clone("https://github.com/seung-lab/Alembic.git")' \
+ && julia /root/.julia/v0.6/Alembic/UNREGISTERED_REQUIRE.jl \
+ && julia -e 'using Alembic' \
+ && ln -s /root/.julia/v0.6/Alembic/src/tasks
+RUN cd /root/.julia/v0.6/CloudVolume/ \
+    && git pull && git checkout origin/gsutil
