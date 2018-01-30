@@ -18,7 +18,7 @@ function receive_messages(queue_name)
             task = params["task"]
             println("Received $(task["name"])")
             func = getfield(Main, Symbol(task["method"]))
-            func(params)
+            @time func(params)
             sqs_delete_message(q, m)
         else
             sleep(5)
