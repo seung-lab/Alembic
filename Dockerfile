@@ -44,6 +44,9 @@ RUN pip3 uninstall -y requests
 RUN pip3 install requests
 RUN pip3 install protobuf==3.1.0
 
+RUN pwd
+RUN pwd
+
 # Install Alembic
 RUN ls 
 ENV PYTHON /usr/bin/python3
