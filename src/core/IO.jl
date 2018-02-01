@@ -248,8 +248,8 @@ end
 Rescope image to be chunk-aligned with cloudvolume data
 """
 function chunk_align(obj_name::Symbol, img, slice; mip::Int64=get_mip(:dst_image))
-  padded_slice = chunk_align(obj_name, slice, mip=mip)
-  return rescope(img, slice, dst_slice), padded_slice
+  dst_slice = chunk_align(obj_name, slice, mip=mip)
+  return rescope(img, slice, dst_slice), dst_slice
 end
 
 function save_image(obj_name::Symbol, img, offset::Array{Int64,1}, z::Int64; mip::Int64=get_mip(:dst_image), cdn_cache=true)
@@ -260,22 +260,29 @@ function save_image(obj_name::Symbol, img, offset::Array{Int64,1}, z::Int64; mip
 end
 
 function save_image(obj_name::Symbol, img, slice; mip::Int64=get_mip(:dst_image), cdn_cache=true)
-  println("Saving $(slice[end][1]) @ mip=$mip to $(get_path(obj_name))")
+  z = slice[3][1]
+  println("Saving $z @ mip=$mip to $(get_path(obj_name))")
   cv = get_cloudvolume(obj_name, mip=mip, cdn_cache=cdn_cache)
-  padded_slice = chunk_align(obj_name, slice, mip=mip)
-  if padded_slice != slice
-    img = rescope(img, slice, padded_slice)
+  # dst_slice = chunk_align(obj_name, slice, mip=mip)
+  dst_slice = get_image_slice(z, obj_name, mip=mip)
+  dst_slice = (dst_slice[1], dst_slice[2], dst_slice[3]:dst_slice[3])
+  println("Initial size: $(size(img))")
+  println("Initial slice: $slice")
+  println("Destination slice: $dst_slice")
+  if dst_slice != slice
+    println("Rescoping image")
+    img = rescope(img, slice, dst_slice)
   end
-  index = slice[3][1]
-  k = (index, obj_name, mip)
+  println("Destination size: $(size(img))")
+  k = (z, obj_name, mip)
   if !haskey(IMG_CACHE_DICT, k)
-    println("Adding $index, $obj_name, at miplevel $mip to the image cache.")
+    println("Adding $z, $obj_name, at miplevel $mip to the image cache.")
     push!(IMG_CACHE_LIST, k)
   else
-    println("Overwriting $index, $obj_name, at miplevel $mip in the image cache.")
+    println("Overwriting $z, $obj_name, at miplevel $mip in the image cache.")
   end
-  @time IMG_CACHE_DICT[k] = img
-  return save_image(cv, padded_slice, img)
+  IMG_CACHE_DICT[k] = img
+  return save_image(cv, dst_slice, img)
 end
 
 """
