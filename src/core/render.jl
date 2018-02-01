@@ -160,7 +160,7 @@ function render(ms::MeshSet, z_range=unique(collect_z(ms)))
         println("Applying defect split mask to $index for subsection $mask_id")
         unsafe_copy_image!(src_image, src_image_sub)
         unsafe_mask_image!(src_image, src_defect_split, mask_id, src_image_sub, keep_id=true)
-        println("Defect mask applied")
+        println("Defect split mask applied")
         println("Warping ", index)
         @time (dst_image, dst_offset), _ = meshwarp_mesh(src_image_sub, mesh)
         merged_image, merged_slice = merge_images([dst_image, merged_image], 

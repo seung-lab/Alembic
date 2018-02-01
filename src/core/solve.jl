@@ -146,7 +146,7 @@ function elastic_solve_piecewise!(meshset::MeshSet; from_current = true)
 	return meshset;
 end
 
-function elastic_collate(meshset; from_current = true, manual_only=false)
+function elastic_collate(meshset; from_currenty=true, manual_only=false)
 	sanitize!(meshset);
   match_spring_coeff = PARAMS[:solve][:match_spring_coeff]
   mesh_spring_coeff = PARAMS[:solve][:mesh_spring_coeff]
