@@ -10,7 +10,13 @@ function receive_messages(queue_name)
     secret_path = joinpath(homedir(), secrets_subpath)
     aws_secrets = JSON.parsefile(secret_path)
     env = aws_config(creds=AWSCredentials(collect(values(aws_secrets))...))
-    q = sqs_get_queue(env, queue_name)
+    # q = sqs_get_queue(env, queue_name)
+    # This is a hack, using https://github.com/jingpengw/AWSCore.jl
+    # + expanding the sqs_get_queue function. Should fork AWSCore
+    # for Alembic.
+    r = AWSSQS.sqs(env, "GetQueueUrl", QueueName = queue_name)
+    url = r["QueueUrl"]
+    q = merge(env, Dict(:resource => HTTP.URI(url).path))
     while true
         m = sqs_receive_message(q)
         if m != nothing

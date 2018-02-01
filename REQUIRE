@@ -10,5 +10,5 @@ JSON
 Primes
 MKLSparse
 DataFrames
-AWSCore
+#AWSCore
 AWSSQS
