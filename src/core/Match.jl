@@ -197,8 +197,8 @@ end
 
 ### counting
 function count_correspondences(match::Match) return size(match.src_points, 2);  end
-function count_filtered_correspondences(match::Match; manual_only=false) return sum(get_filtered_indices(match)); end
-function count_rejected_correspondences(match::Match; manual_only=false) return sum(get_rejected_indices(match)); end
+function count_filtered_correspondences(match::Match; manual_only=false) return sum(get_filtered_indices(match, manual_only=manual_only)); end
+function count_rejected_correspondences(match::Match; manual_only=false) return sum(get_rejected_indices(match, manual_only=manual_only)); end
 
 function count_filters(match::Match) return size(match.filters, 2); end
 function count_filtered_properties(match::Match, property_name, compare, threshold)
