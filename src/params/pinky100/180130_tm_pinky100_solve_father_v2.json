@@ -1,22 +1,22 @@
 {
 	"task":{
-		"method":"render_task",
+		"method":"match_task",
 		"name":"",
-		"pairs":[[2222]]
+		"pairs":[[162,163],[162,164]]
 	},
 	"data":{
 		"src_image":{
-			"path":"gs://neuroglancer/drosophila_v0/image_v14_single_slices",
+			"path":"gs://neuroglancer/pinky100_v0/image_single_slices",
 			"mip":0
 		},
 		"dst_image":{
-			"path":"gs://neuroglancer/drosophila_v0/test_render",
+			"path":"gs://neuroglancer/pinky100_v0/father_of_alignment",
 			"mip":0,
 			"interpolation":true,
-			"downsample":[1,2,3,4,5]
+			"downsample":[1,2,3,4,5,6]
 		},
 		"match_image":{
-			"path":"gs://neuroglancer/drosophila_v0/image_v14_single_slices",
+			"path":"gs://neuroglancer/pinky100_v0/image_single_slices/nccnet",
 			"mip":2,
 			"value":0
 		},
@@ -27,15 +27,15 @@
 			"value":0
 		},
 		"defect_split":{
-			"apply":false,
-			"path":"gs://neuroglancer/pinky100_v0/image_single_slices/cfsplit",
-			"mip":2,
+			"apply":true,
+			"path":"gs://neuroglancer/pinky100_v0/image_single_slices/cfsplit_manual_cc",
+			"mip":5,
 			"value":0
 		},
 		"roi_mask":{
 			"apply":true,
-			"path":"gs://neuroglancer/drosophila_v0/image_v14_single_slices/manual_roi",
-			"mip":5,
+			"path":"gs://neuroglancer/pinky100_v0/image_single_slices/roicc",
+			"mip":6,
 			"value":1
 		},
 		"src_match":{
@@ -60,18 +60,18 @@
 		}
 	},
 	"mesh":{
-		"path":"gs://neuroglancer/drosophila_v0/test1/mesh",
-		"z_start": 4322,
-		"z_stop": 4323,
+		"path":"gs://neuroglancer/pinky100_v0/father_of_alignment/mesh",
+		"z_start": 1,
+		"z_stop": 2177,
 		"mesh_length": 200
 	},
 	"match":{
-		"path":"gs://neuroglancer/drosophila_v0/test1/match",
+		"path":"gs://neuroglancer/pinky100_v0/father_of_alignment/match",
 		"block_r": 100,
-		"search_r": 400,
+		"search_r": 800,
 		"bandpass_sigmas": [0,0],
 		"symmetric": false,
-		"depth": 4
+		"depth": 6
 	},
 	"filter":{
 		"sigma_filter_high": 6.5,
@@ -97,3 +97,4 @@
      	"ftol_newton": 0
 	}
 }
+
