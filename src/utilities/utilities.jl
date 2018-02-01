@@ -50,7 +50,7 @@ Create scaling transform and apply to image
 """
 function imscale(img, scale_factor; kwargs...)
   tform = [scale_factor 0 0; 0 scale_factor 0; 0 0 1];
-  return imwarp(img, tform; parallel=true);
+  return imwarp(img, tform; parallel=true, kwargs...);
 end
 #=
 function imscale!(result, img, scale_factor)
@@ -118,7 +118,50 @@ function adjust_contrast_inplace(fn)
   close(f)
 end
 
+"""
+Create upsampled image, using whole number factors only.
 
+Since imscale is based on imwarp, the center of the pixel movements 
+introduces interpolation and border issues for pure-pixel operations. 
+"""
+function upsample{T}(src_img::SharedArray{T,2}, factor::Int64; parallel=true)
+  dst_img = SharedArray{T}(size(src_img,1)*factor, size(src_img,2)*factor)
 
-    
+  if parallel && nprocs() != 1 
+    @sync for p in procs()
+      j_range = proc_range(p, 1:size(dst_img, 2))
+      @async remotecall_wait(upsample_columns!, p, src_img, dst_img, factor, j_range)
+    end
+  else
+    upsample_columns!(src_img, dst_img, factor, 1:size(dst_img,2))
+  end
 
+  return dst_img
+end
+
+function upsample_columns!{T}(src_img::SharedArray{T,2}, dst_img::SharedArray{T,2}, factor::Int64, j_range::UnitRange{Int64})
+  if length(j_range) > 0
+    x = 0
+    for i in 1:size(dst_img,1)
+      if i % factor == 1
+        x += 1
+      end
+      y = floor(Int64, j_range[1]/factor)
+      for j in j_range
+        if j % factor == 1
+          y += 1
+        end
+        @inbounds dst_img[i,j] = src_img[x,y]
+      end
+    end
+  end
+end
+
+function proc_range(idx, arr)
+  worker_procs = setdiff(procs(), myid());
+  nchunks = length(worker_procs);
+  if nchunks == 0 return 1:length(arr); end
+  if idx == myid() return 1:0; end
+  splits = [round(Int64, s) for s in linspace(0, length(arr), nchunks + 1)];
+  return splits[findfirst(worker_procs, idx)]+1:splits[findfirst(worker_procs, idx) + 1]
+end

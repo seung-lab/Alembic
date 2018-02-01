@@ -204,7 +204,11 @@ function get_image(index::Number, obj_name::Symbol; mip::Int64=get_mip(:match_im
       scale = get_scale(mip) / get_scale(input_mip)
       println("Scaling $index, $obj_name by $(scale)x.")
       push!(IMG_CACHE_LIST, k)
-      @time IMG_CACHE_DICT[k] = SharedArray(imscale(img, scale)[1])
+      if (scale < 1) | (scale % 1 != 0)
+        @time IMG_CACHE_DICT[k] = SharedArray(imscale(img, scale)[1])
+      else
+        @time IMG_CACHE_DICT[k] = upsample(SharedArray(img), round(Int64, scale))
+      end
     end
   end
   return IMG_CACHE_DICT[(index, obj_name, mip)]::SharedArray{IMG_ELTYPE, 2}
