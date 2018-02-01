@@ -1,6 +1,13 @@
 FROM centos:7
 
-#install MKL julia prereq's
+# install julia
+ENV JULIA_PATH /usr/local/julia
+RUN curl -fL -o julia.tar.gz https://julialang-s3.julialang.org/bin/linux/x64/0.6/julia-0.6.1-linux-x86_64.tar.gz
+RUN mkdir "$JULIA_PATH"
+RUN tar -xzf julia.tar.gz -C "$JULIA_PATH" --strip-components 1;
+RUN rm julia.tar.gz
+ENV PATH $JULIA_PATH/bin:$PATH
+
 RUN yum install -y \
         bzip2 \
         cmake \
@@ -21,51 +28,26 @@ RUN yum install -y \
         vim \
         python-devel \
         libblas liblapack liblapacke gfortran git \
-        curl \
-    && mkdir tmp_install \
-    && pushd tmp_install \
-    && wget -q https://cmake.org/files/v3.7/cmake-3.7.1.tar.gz \
-    && tar zxf cmake-3.7.1.tar.gz \
-    && cd cmake-3.7.1 \
-    && cmake . \
-    && make \
-    && make install \
-    && popd \
-    && rm -rf tmp_install
+        curl
 
-RUN rpm --import http://yum.repos.intel.com/2017/setup/RPM-GPG-KEY-intel-psxe-runtime-2017 \
-    && rpm -Uhv http://yum.repos.intel.com/2017/setup/intel-psxe-runtime-2017-reposetup-1-0.noarch.rpm \
-    && yum install -y intel-ifort-runtime-64 \
-                      intel-mkl-runtime-64   \
-    && cp -r /opt/intel/psxe_runtime_2017.5.239/linux/compiler/lib/intel64_lin/* /lib64 \
-    && cp -r /opt/intel/psxe_runtime/linux/mkl/lib/intel64/* /lib64 \
-    && rm -rf /opt/intel
-
-# build Julia
-RUN git clone https://github.com/JuliaLang/julia.git \
-    && cd julia \
-    && git checkout v0.6.1 \
-    && echo LLVM_VER=4.0.0 > Make.user \
-    && echo USE_INTEL_MKL=1 >> Make.user \
-    && echo USE_INTEL_LIBM=1 >> Make.user \
-    && make -j8 && make install \
-    && yes | cp -rf /julia/usr / \ 
-    && rm -rf /julia
-
-#install cloudvolume
-RUN wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm \
-    && yum install -y epel-release-latest-7.noarch.rpm \
-    && yum install -y python-pip \
-    && pip install pip --upgrad \
-    && pip install cloud-volume==0.6.3 \
-    && mkdir -p /root/.cloudvolume/ \
-    && echo $GOOGLE_STORAGE_PROJECT > /root/.cloudvolume/project_name \
-    && pip uninstall -y requests \
-    && pip install requests
+# install cloudvolume
+RUN    wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm  \
+    && yum install -y epel-release-latest-7.noarch.rpm  \
+    && yum install -y python34-setuptools \
+    && yum install -y python34-devel \
+    && easy_install-3.4 pip
+RUN pip3 install pip --upgrade 
+RUN pip3 install cloud-volume
+RUN mkdir -p /root/.cloudvolume/ 
+RUN echo $GOOGLE_STORAGE_PROJECT > /root/.cloudvolume/project_name 
+RUN pip3 uninstall -y requests 
+RUN pip3 install requests
+RUN pip3 install protobuf==3.1.0
 
 # Install Alembic
-RUN pwd
+RUN ls 
+ENV PYTHON /usr/bin/python3
 RUN julia -e 'Pkg.clone("https://github.com/seung-lab/Alembic.git")' \
- && julia /root/.julia/v0.6/Alembic/UNREGISTERED_REQUIRE.jl \
- && julia -e 'using Alembic' \
- && ln -s /root/.julia/v0.6/Alembic/src/tasks
+    && julia /root/.julia/v0.6/Alembic/UNREGISTERED_REQUIRE.jl \
+    && julia -e 'using Alembic' \
+    && ln -s /root/.julia/v0.6/Alembic/src/tasks
