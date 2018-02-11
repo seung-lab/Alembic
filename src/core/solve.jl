@@ -146,7 +146,7 @@ function elastic_solve_piecewise!(meshset::MeshSet; from_current = true)
 	return meshset;
 end
 
-function elastic_collate(meshset; from_current=true, manual_only=false)
+function elastic_collate(meshset; from_current=true, manual_only=false, batch_size=1)
 	sanitize!(meshset);
   match_spring_coeff = PARAMS[:solve][:match_spring_coeff]
   mesh_spring_coeff = PARAMS[:solve][:mesh_spring_coeff]
@@ -362,7 +362,7 @@ function elastic_collate(meshset; from_current=true, manual_only=false)
 
   res = pmap(compute_sparse_matrix_matches, matches_ref, 
   	meshes_ref[map(getindex, repeated(meshes_order), src_indices)], meshes_ref[map(getindex, repeated(meshes_order), dst_indices)], 
-	noderange_src_list, noderange_dst_list, edgerange_list);
+	noderange_src_list, noderange_dst_list, edgerange_list, batch_size=batch_size);
 
 	i_inds_match = vcat([r[1] for r in res]...)
 	j_inds_match = vcat([r[2] for r in res]...)
@@ -386,9 +386,9 @@ end
 """
 Elastic solve
 """
-function elastic_solve!(meshset; from_current=true, manual_only=false)
+function elastic_solve!(meshset; from_current=true, manual_only=false, batch_size=1)
 	sanitize!(meshset);
-	collation, noderanges, edgeranges = elastic_collate(meshset; from_current=from_current, manual_only=manual_only)
+	collation, noderanges, edgeranges = elastic_collate(meshset; from_current=from_current, manual_only=manual_only, batch_size=batch_size)
 	BLAS.set_num_threads(Sys.CPU_CORES);
   @time SolveMeshConjugateGradient!(collation...)
   setblas();
