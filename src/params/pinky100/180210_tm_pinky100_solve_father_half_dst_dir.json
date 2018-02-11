@@ -60,18 +60,18 @@
 		}
 	},
 	"mesh":{
-		"path":"gs://neuroglancer/pinky100_v0/father_of_alignment/mesh",
-		"z_start": 1787,
-		"z_stop": 1792,
+		"path":"gs://neuroglancer/pinky100_v0/father_of_alignment_v3/mesh",
+		"z_start": 1088,
+		"z_stop": 2176,
 		"mesh_length": 200
 	},
 	"match":{
-		"path":"gs://neuroglancer/pinky100_v0/father_of_alignment/match",
+		"path":"gs://neuroglancer/pinky100_v0/father_of_alignment_v3/match",
 		"block_r": 100,
 		"search_r": 800,
 		"bandpass_sigmas": [0,0],
-		"symmetric": false
-,		"depth": 6
+		"symmetric": false,
+		"depth": 6
 	},
 	"filter":{
 		"sigma_filter_high": 6.5,
@@ -97,3 +97,4 @@
      	"ftol_newton": 0
 	}
 }
+
