@@ -154,8 +154,8 @@ function Base.deepcopy(m::Match; src_index=m.src_index, dst_index=m.dst_index,
 end
 
 ## IO
-function get_correspondences_df(match::Match; globalized=true)
-    pre, post, filter = get_correspondences(match, globalized=globalized)
+function get_correspondences_df(match::Match; globalized=true, manual_only=true)
+    pre, post, filter = get_correspondences(match, globalized=globalized, manual_only=manual_only)
     pre_z, post_z = get_index(match)
     n = length(filter)
     df = DataFrame(vcat(pre, ones(n)'*pre_z, post, ones(n)'*post_z, filter')')
@@ -163,15 +163,15 @@ function get_correspondences_df(match::Match; globalized=true)
     return df
 end
 
-function to_dataframe(match::Match)
-    return hcat(get_correspondences_df(match), match.correspondence_properties)
+function to_dataframe(match::Match; manual_only=true)
+    return hcat(get_correspondences_df(match, manual_only=manual_only), match.correspondence_properties)
 end
 
-function to_csv(match::Match)
+function to_csv(match::Match; manual_only=true)
     check_local_dir(:match)
     fn = joinpath(get_local_path(:match), get_name(match))
     println("Writing correspondences to $fn")
-    writetable(fn, to_dataframe(match), separator=',')
+    writetable(fn, to_dataframe(match, manual_only=manual_only), separator=',')
 end
 
 function load_manual_filters!(match::Match)

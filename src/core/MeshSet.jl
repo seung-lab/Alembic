@@ -22,9 +22,9 @@ function Base.string(ms::MeshSet)
 end
 
 # IO
-function to_csv(ms::MeshSet)
+function to_csv(ms::MeshSet; manual_only=true)
   for match in ms.matches
-    to_csv(match)
+    to_csv(match, manual_only=manual_only)
   end
 end
 
@@ -451,7 +451,7 @@ end
 Remove unconnected meshes & matches below correspondence threshold. 
 Return those meshes & matches in their own meshset.
 """
-function prune!(ms::MeshSet, min_match_count=3, manual_only=false)
+function prune!(ms::MeshSet; min_match_count=3, manual_only=true)
   meshes_match_count = Dict(get_index(mesh) => 0 for mesh in ms.meshes)
   mesh_indices = keys(meshes_match_count)
   matches_ret = fill(true, count_matches(ms))
@@ -467,7 +467,8 @@ function prune!(ms::MeshSet, min_match_count=3, manual_only=false)
   end
 
   for (i, match) in enumerate(ms.matches)
-    if size(match.filters, 1) > 0
+    match_count = count_filtered_correspondences(match, manual_only=manual_only)
+    if (size(match.filters, 1) > 0) & (match_count > 0)
       src_index, dst_index = get_index(match)
       if (src_index in mesh_indices) & (dst_index in mesh_indices)
         src_count = meshes_match_count[src_index]
