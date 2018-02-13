@@ -456,7 +456,8 @@ function prune!(ms::MeshSet; min_match_count=3, manual_only=true)
   mesh_indices = keys(meshes_match_count)
   matches_ret = fill(true, count_matches(ms))
   for (i, match) in enumerate(ms.matches)
-    if size(match.filters, 1) > 0
+    match_count = count_filtered_correspondences(match, manual_only=manual_only)
+    if (size(match.filters, 1) > 0) & (match_count > min_match_count)
       src_index, dst_index = get_index(match)
       if (src_index in mesh_indices) & (dst_index in mesh_indices)
         match_count = count_filtered_correspondences(match, manual_only=manual_only)
@@ -468,7 +469,7 @@ function prune!(ms::MeshSet; min_match_count=3, manual_only=true)
 
   for (i, match) in enumerate(ms.matches)
     match_count = count_filtered_correspondences(match, manual_only=manual_only)
-    if (size(match.filters, 1) > 0) & (match_count > 0)
+    if (size(match.filters, 1) > 0) & (match_count > min_match_count)
       src_index, dst_index = get_index(match)
       if (src_index in mesh_indices) & (dst_index in mesh_indices)
         src_count = meshes_match_count[src_index]
