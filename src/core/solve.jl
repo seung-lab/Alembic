@@ -250,7 +250,7 @@ function elastic_collate(meshset; from_current=true, manual_only=false, batch_si
 	return i_inds, j_inds, vals
   end
 
-  res_meshes = pmap(compute_sparse_matrix_meshes, meshes_ref, noderange_mesh_list, edgerange_mesh_list)
+  res_meshes = pmap(compute_sparse_matrix_meshes, meshes_ref, noderange_mesh_list, edgerange_mesh_list, batch_size=batch_size)
 
   i_inds_mesh = vcat([r[1] for r in res_meshes]...)
   j_inds_mesh = vcat([r[2] for r in res_meshes]...)
