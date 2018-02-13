@@ -1,6 +1,6 @@
 {
 	"task":{
-		"method":"match_task",
+		"method":"render_task",
 		"name":"",
 		"pairs":[[162,163],[162,164]]
 	},
@@ -10,7 +10,7 @@
 			"mip":0
 		},
 		"dst_image":{
-			"path":"gs://neuroglancer/pinky100_v0/father_of_alignment",
+			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v24",
 			"mip":0,
 			"interpolation":true,
 			"downsample":[1,2,3,4,5,6]
@@ -60,13 +60,13 @@
 		}
 	},
 	"mesh":{
-		"path":"gs://neuroglancer/pinky100_v0/father_of_alignment/mesh",
-		"z_start": 1088,
-		"z_stop": 2176,
+		"path":"gs://neuroglancer/pinky100_v0/aligned_test_v24/mesh",
+		"z_start": 1,
+		"z_stop": 2177,
 		"mesh_length": 200
 	},
 	"match":{
-		"path":"gs://neuroglancer/pinky100_v0/father_of_alignment/match",
+		"path":"gs://neuroglancer/pinky100_v0/aligned_test_v24/match",
 		"block_r": 100,
 		"search_r": 800,
 		"bandpass_sigmas": [0,0],

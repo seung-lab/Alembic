@@ -10,7 +10,7 @@
 			"mip":0
 		},
 		"dst_image":{
-			"path":"gs://neuroglancer/pinky100_v0/father_of_alignment",
+			"path":"gs://neuroglancer/pinky100_v0/father_of_alignment_v3",
 			"mip":0,
 			"interpolation":true,
 			"downsample":[1,2,3,4,5,6]
@@ -62,7 +62,7 @@
 	"mesh":{
 		"path":"gs://neuroglancer/pinky100_v0/father_of_alignment/mesh",
 		"z_start": 1,
-		"z_stop": 1088,
+		"z_stop": 2177,
 		"mesh_length": 200
 	},
 	"match":{
@@ -87,7 +87,7 @@
 	"solve":{
 		"method": "elastic",
 		"mesh_spring_coeff": 1.0,
-		"match_spring_coeff": 100.0,
+		"match_spring_coeff": 10.0,
 		"ftol_cg": 1e-6,
 		"max_iters": 4000,
 		"use_cg": true,
