@@ -1,6 +1,6 @@
 {
 	"task":{
-		"method":"match_task",
+		"method":"render_task",
 		"name":"",
 		"pairs":[[162,163],[162,164]]
 	},
