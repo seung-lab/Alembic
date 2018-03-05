@@ -181,9 +181,19 @@ function render(ms::MeshSet, z_range=unique(collect_z(ms)))
   end
 end
 
-function dilate{T}(img::Array{T,2}; val=0, radius=25)
+function dilate{T}(img::Array{T,2}; val=0, radius=50)
   f = ones(radius, radius)
   return convert(Array{T,2}, same_convolve(img .== val, f) .> eps)
+end
+
+"""
+Load the src_image at index z, dilate it, and save to dst_image
+"""
+function dilate(z::Int64; val=0, radius=50)
+  src_image = get_image(z, :src_image, mip=get_mip(:dst_image), input_mip=get_mip(:src_image))
+  src_offset = get_offset(:src_image, mip=get_mip(:dst_image))
+  dilated_img = dilate(Array(src_image), val=val, radius=radius)
+  @time save_image(:dst_image, dilated_img, src_offset, z, mip=get_mip(:dst_image), cdn_cache=false);
 end
 
 function make_mips(z; mips=collect(1:6), data_name=:dst_image)
