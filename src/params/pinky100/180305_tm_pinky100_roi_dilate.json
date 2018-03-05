@@ -1,19 +1,19 @@
 {
 	"task":{
-		"method":"match_task",
+		"method":"render_task",
 		"name":"",
 		"pairs":[[162,163],[162,164]]
 	},
 	"data":{
 		"src_image":{
-			"path":"gs://neuroglancer/pinky100_v0/father_of_alignment_v3",
-			"mip":0
+			"path":"gs://neuroglancer/pinky100_v0/father_of_alignment_v3/roi",
+			"mip":6
 		},
 		"dst_image":{
-			"path":"gs://neuroglancer/pinky100_v0/son_of_alignment",
-			"mip":0,
-			"interpolation":true,
-			"downsample":[1,2,3,4,5,6]
+			"path":"gs://neuroglancer/pinky100_v0/father_of_alignment_v3/roi_dilated",
+			"mip":6,
+			"interpolation":false,
+			"downsample":[]
 		},
 		"match_image":{
 			"path":"gs://neuroglancer/pinky100_v0/father_of_alignment_v3/nccnet",
