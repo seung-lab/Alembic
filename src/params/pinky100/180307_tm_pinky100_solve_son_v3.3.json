@@ -60,13 +60,13 @@
 		}
 	},
 	"mesh":{
-		"path":"gs://neuroglancer/pinky100_v0/son_of_alignment/mesh",
+		"path":"gs://neuroglancer/pinky100_v0/son_of_alignment_v3/mesh",
 		"z_start": 1053,
 		"z_stop": 1113,
 		"mesh_length": 160
 	},
 	"match":{
-		"path":"gs://neuroglancer/pinky100_v0/son_of_alignment/match",
+		"path":"gs://neuroglancer/pinky100_v0/son_of_alignment_v3/match",
 		"block_r": 100,
 		"search_r": 120,
 		"bandpass_sigmas": [0,0],
