@@ -61,8 +61,8 @@
 	},
 	"mesh":{
 		"path":"gs://neuroglancer/pinky100_v0/son_of_alignment/mesh",
-		"z_start": 1790,
-		"z_stop": 1791,
+		"z_start": 1190,
+		"z_stop": 1200,
 		"mesh_length": 100
 	},
 	"match":{
