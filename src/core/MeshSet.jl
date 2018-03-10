@@ -102,12 +102,12 @@ end
 
 # Mesh.jl extensions
 function fix!(ms::MeshSet, mesh_index::Int64) 	
-  fix!(ms.meshes[mesh_index]); 	
+  fix!(get_mesh(ms, mesh_index)); 	
 end
 
 function fix!(ms::MeshSet, mesh_indices)
-	for i in mesh_indices	
-    fix!(ms.meshes[i]);		
+	for mesh_index in mesh_indices	
+    fix!(ms, mesh_index);		
   end
 end
 
@@ -122,12 +122,12 @@ function fix_ends!(ms::MeshSet)
 end
 
 function unfix!(ms::MeshSet, mesh_index::Int64)	
-  unfix!(ms.meshes[mesh_index]);	
+  unfix!(get_mesh(ms, mesh_index));	
 end
 
 function unfix!(ms::MeshSet, mesh_indices)
 	for mesh_index in mesh_indices
-  	unfix!(ms.meshes[mesh_index]);
+  	unfix!(ms, mesh_index);
   end
 end
 
@@ -359,14 +359,16 @@ function mark_solved!(ms::MeshSet)
   ms.properties[:meta][:solved] = author()
 end
 
-function reset!(ms::MeshSet)
-  m = string("Are you sure you want to reset all the meshes in ", get_name(ms), "?")
-  if user_approves(m)
-    for mesh in ms.meshes
-      reset!(mesh)
-    end
-    ms.properties[:meta][:reset] = author()
+function reset!(ms::MeshSet, index)
+  try
+    mi = find_mesh_index(ms, index)
+    m = ms.meshes[mi]
+    ms.meshes[mi] = deepcopy(m, dst_nodes=m.src_nodes)
   end
+end
+
+function reset!(ms::MeshSet)
+  map(reset!, Iterators.repeated(ms), collect_mesh_indices(ms))
 end
 
 ### match

@@ -386,15 +386,15 @@ end
 """
 Elastic solve
 """
-function elastic_solve!(meshset; from_current=true, manual_only=false, batch_size=1)
-	sanitize!(meshset);
-	collation, noderanges, edgeranges = elastic_collate(meshset; from_current=from_current, manual_only=manual_only, batch_size=batch_size)
+function elastic_solve!(ms; from_current=true, manual_only=false, batch_size=1)
+	sanitize!(ms);
+	collation, noderanges, edgeranges = elastic_collate(ms; from_current=from_current, manual_only=manual_only, batch_size=batch_size)
 	BLAS.set_num_threads(Sys.CPU_CORES);
   @time SolveMeshConjugateGradient!(collation...)
   setblas();
-  for mesh in meshset.meshes
-    dst_nodes = collation[1][:, noderanges[get_index(mesh)]]
-  	broadcast!(-, mesh.dst_nodes, dst_nodes, get_offset(mesh));
+  for m in ms.meshes
+    dst_nodes = collation[1][:, noderanges[get_index(m)]]
+  	broadcast!(-, m.dst_nodes, dst_nodes, get_offset(m));
   end
 end
 
@@ -1008,3 +1008,54 @@ function decomp_affine(tform::Array{Float64, 2})
 
   return t_i, t_j, p, r, q, theta
 end
+
+"""
+Solve script for loading, solving, & saving meshes
+"""
+function solve(z_start, z_stop; fix_list=[], reset_list=[], from_current=false, manual_only=true)
+  if z_start > z_stop; z_start, z_stop = z_stop, z_start; end
+  println("Solving from $z_start to $z_stop, fixing $fix_list, reseting $reset_list.")
+  PARAMS[:mesh][:z_start] = z_start
+  PARAMS[:mesh][:z_stop] = z_stop
+  ms = compile_meshset()
+  removed_ms = prune!(ms, manual_only=manual_only); 
+  unfix!(ms)
+  fix!(ms, fix_list)
+  map(reset!, Iterators.repeated(ms), reset_list)
+  elastic_solve!(ms, from_current=from_current, manual_only=manual_only, batch_size=2048);
+  b = get_bbox(ms, globalized=true, use_post=true, scale=get_scale(:dst_image)/get_scale(:match_image)) 
+  name = string((z_start, z_stop))
+  write(joinpath(homedir(), "$(name).txt"), string(b)) 
+  unfix!(ms)
+  split_meshset(ms); 
+end
+
+"""
+Solve a meshset in blocks
+
+Args:
+  * z_start: starting z index
+  * z_stop: final z index (can be <= or > z_start)
+  * z_increment: signed increment
+  * z_offset: amount to decrement z_start for block #2-N
+  * start_offset: amount to decrement z_start for block #1
+"""
+function piecewise_solve(z_start, z_stop; z_increment=20, z_offset=2, start_offset=0)
+  z_splits = collect(z_start:z_increment-1:z_stop-1)
+  if z_splits[end] != z_stop
+    push!(z_splits, z_stop)
+  end
+  z_ranges = zip(z_splits[1:end-1], z_splits[2:end])
+  reset_increment = z_increment > 0 ? 1 : -1
+  for (k, (z_range_start, z_range_stop)) in enumerate(z_ranges)
+    offset = z_offset
+    if k == 1
+      offset = start_offset
+    end
+    reset_list = z_range_start:reset_increment:z_range_stop
+    fix_list = [z_range_start - offset]
+    # println((z_range_start-offset, z_range_stop, fix_list, reset_list))
+    @time solve(z_range_start-offset, z_range_stop, fix_list=fix_list, reset_list=reset_list, from_current=true, manual_only=true)
+  end
+end
+
