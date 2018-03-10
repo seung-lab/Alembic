@@ -10,7 +10,7 @@
 			"mip":0
 		},
 		"dst_image":{
-			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v36",
+			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v37",
 			"mip":0,
 			"interpolation":true,
 			"downsample":[1,2,3,4,5,6]
@@ -60,13 +60,13 @@
 		}
 	},
 	"mesh":{
-		"path":"gs://neuroglancer/pinky100_v0/aligned_test_v36/mesh",
+		"path":"gs://neuroglancer/pinky100_v0/son_of_alignment_v3/mesh",
 		"z_start": 1970,
 		"z_stop": 2000,
 		"mesh_length": 160
 	},
 	"match":{
-		"path":"gs://neuroglancer/pinky100_v0/aligned_test_v36/match",
+		"path":"gs://neuroglancer/pinky100_v0/son_of_alignment_v3/match",
 		"block_r": 100,
 		"search_r": 120,
 		"bandpass_sigmas": [0,0],
