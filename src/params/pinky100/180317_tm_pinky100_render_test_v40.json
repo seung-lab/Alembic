@@ -10,7 +10,7 @@
 			"mip":0
 		},
 		"dst_image":{
-			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v39",
+			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v40",
 			"mip":0,
 			"interpolation":true,
 			"downsample":[1,2,3,4,5,6]
