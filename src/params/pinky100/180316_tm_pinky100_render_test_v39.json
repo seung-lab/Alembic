@@ -1,6 +1,6 @@
 {
 	"task":{
-		"method":"match_task",
+		"method":"render_task",
 		"name":"",
 		"pairs":[[162,163],[162,164]]
 	},
@@ -10,7 +10,7 @@
 			"mip":0
 		},
 		"dst_image":{
-			"path":"gs://neuroglancer/pinky100_v0/son_of_alignment",
+			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v39",
 			"mip":0,
 			"interpolation":true,
 			"downsample":[1,2,3,4,5,6]
@@ -34,9 +34,9 @@
 		},
 		"roi_mask":{
 			"apply":true,
-			"path":"gs://neuroglancer/pinky100_v0/father_of_alignment_v3/roi",
+			"path":"gs://neuroglancer/pinky100_v0/father_of_alignment_v3/roi_dilated",
 			"mip":6,
-			"value":1
+			"value":0
 		},
 		"src_match":{
 			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v0/match/src_match",
@@ -60,15 +60,15 @@
 		}
 	},
 	"mesh":{
-		"path":"gs://neuroglancer/pinky100_v0/son_of_alignment/mesh",
-		"z_start": 800,
-		"z_stop": 899,
-		"mesh_length": 100
+		"path":"gs://neuroglancer/pinky100_v0/aligned_test_v39/mesh",
+		"z_start": 1,
+		"z_stop": 1083,
+		"mesh_length": 160
 	},
 	"match":{
-		"path":"gs://neuroglancer/pinky100_v0/son_of_alignment/match",
-		"block_r": 60,
-		"search_r": 100,
+		"path":"gs://neuroglancer/pinky100_v0/aligned_test_v39/match",
+		"block_r": 100,
+		"search_r": 120,
 		"bandpass_sigmas": [0,0],
 		"symmetric": false,
 		"depth": 6
@@ -87,8 +87,8 @@
 	"solve":{
 		"method": "elastic",
 		"mesh_spring_coeff": 1.0,
-		"match_spring_coeff": 20.0,
-		"ftol_cg": 1e-6,
+		"match_spring_coeff": 100.0,
+		"ftol_cg": 1e-8,
 		"max_iters": 4000,
 		"use_cg": true,
      	"eta_gd": 0,
