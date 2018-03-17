@@ -1039,8 +1039,12 @@ Args:
   * z_increment: signed increment
   * z_offset: amount to decrement z_start for block #2-N
   * start_offset: amount to decrement z_start for block #1
+
+Loops through range in blocks of size z_increment. Solves block, fixing first
+section of the block, and letting the tail float. Next block overlaps with 
+prior block by z_offset sections.
 """
-function piecewise_solve(z_start, z_stop; z_increment=20, z_offset=2, start_offset=0)
+function piecewise_solve(z_start, z_stop; z_increment=20, z_offset=2, z_offset_fixed=1, start_offset=0)
   z_splits = collect(z_start:z_increment-1:z_stop-1)
   if z_splits[end] != z_stop
     push!(z_splits, z_stop)
@@ -1048,12 +1052,15 @@ function piecewise_solve(z_start, z_stop; z_increment=20, z_offset=2, start_offs
   z_ranges = zip(z_splits[1:end-1], z_splits[2:end])
   reset_increment = z_increment > 0 ? 1 : -1
   for (k, (z_range_start, z_range_stop)) in enumerate(z_ranges)
-    offset = z_offset
+    fixed_offset = z_offset_fixed
+    offset = z_offset-reset_increment
     if k == 1
       offset = start_offset
+      fixed_offset = start_offset
     end
-    reset_list = z_range_start:reset_increment:z_range_stop
-    fix_list = [z_range_start - offset]
+    fix_list = collect(z_range_start-offset:reset_increment:z_range_start-fixed_offset)
+    full_list = z_range_start-offset:reset_increment:z_range_stop
+    reset_list = setdiff(full_list, fix_list)
     # println((z_range_start-offset, z_range_stop, fix_list, reset_list))
     @time solve(z_range_start-offset, z_range_stop, fix_list=fix_list, reset_list=reset_list, from_current=true, manual_only=true)
   end
