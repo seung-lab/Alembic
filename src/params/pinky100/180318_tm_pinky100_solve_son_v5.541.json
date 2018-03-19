@@ -61,8 +61,8 @@
 	},
 	"mesh":{
 		"path":"gs://neuroglancer/pinky100_v0/son_of_alignment_v5/mesh",
-		"z_start": 541,
-		"z_stop": 558,
+		"z_start": 1,
+		"z_stop": 100,
 		"mesh_length": 100
 	},
 	"match":{
@@ -87,7 +87,7 @@
 	"solve":{
 		"method": "elastic",
 		"mesh_spring_coeff": 1.0,
-		"match_spring_coeff": 20.0,
+		"match_spring_coeff": 100.0,
 		"ftol_cg": 1e-6,
 		"max_iters": 4000,
 		"use_cg": true,
