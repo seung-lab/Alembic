@@ -61,8 +61,8 @@
 	},
 	"mesh":{
 		"path":"gs://neuroglancer/pinky100_v0/son_of_alignment_v2/mesh",
-		"z_start": 541,
-		"z_stop": 558,
+		"z_start": 230,
+		"z_stop": 502,
 		"mesh_length": 160
 	},
 	"match":{
@@ -71,7 +71,7 @@
 		"search_r": 120,
 		"bandpass_sigmas": [0,0],
 		"symmetric": false,
-		"depth": 20
+		"depth": 6
 	},
 	"filter":{
 		"sigma_filter_high": 6.5,
