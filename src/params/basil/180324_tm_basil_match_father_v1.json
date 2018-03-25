@@ -1,0 +1,100 @@
+{
+	"task":{
+		"method":"match_task",
+		"name":"",
+		"pairs":[[162,163],[162,164]]
+	},
+	"data":{
+		"src_image":{
+			"path":"gs://neuroglancer/basil_v0/raw_image",
+			"mip":3
+		},
+		"dst_image":{
+			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v1",
+			"mip":3,
+			"interpolation":true,
+			"downsample":[4,5,6,7,8,9]
+		},
+		"match_image":{
+			"path":"gs://neuroglancer/basil_v0/raw_image",
+			"mip":4,
+			"value":0
+		},
+		"defect_mask":{
+			"apply":false,
+			"path":"gs://neuroglancer/basil_v0/mask",
+			"mip":5,
+			"value":0
+		},
+		"defect_split":{
+			"apply":false,
+			"path":"gs://neuroglancer/basil_v0/mask",
+			"mip":5,
+			"value":0
+		},
+		"roi_mask":{
+			"apply":false,
+			"path":"gs://neuroglancer/basil_v0/mask",
+			"mip":6,
+			"value":1
+		},
+		"src_match":{
+			"path":"gs://neuroglancer/basil_v0/src_match",
+			"mip":0
+		},
+		"src_patch":{
+			"path":"gs://neuroglancer/basil_v0/src_patch",
+			"mip":0
+		},
+		"dst_match":{
+			"path":"gs://neuroglancer/basil_v0/dst_match",
+			"mip":0
+		},
+		"dst_patch":{
+			"path":"gs://neuroglancer/basil_v0/dst_patch",
+			"mip":0
+		},
+		"xc":{
+			"path":"gs://neuroglancer/basil_v0/xc",
+			"mip":0
+		}
+	},
+	"mesh":{
+		"path":"gs://neuroglancer/basil_v0/father_of_alignment/v1/mesh",
+		"z_start": 0,
+		"z_stop": 24,
+		"mesh_length": 200
+	},
+	"match":{
+		"path":"gs://neuroglancer/basil_v0/father_of_alignment/v1/match",
+		"block_r": 128,
+		"search_r": 512,
+		"bandpass_sigmas": [0,0],
+		"symmetric": false,
+		"depth": 2
+	},
+	"filter":{
+		"sigma_filter_high": 6.5,
+		"sigma_filter_mid": 20,
+		"sigma_filter_low": 150,
+		"dyn_range_filter": 0.5,
+		"r_filter": 0.0275,
+		"kurtosis_filter": 25,
+		"kurtosis_filter_dst": 50,
+		"kurtosis_filter_edge": -1.60,
+		"r_delta_low": 0.07
+	},
+	"solve":{
+		"method": "elastic",
+		"mesh_spring_coeff": 1.0,
+		"match_spring_coeff": 20.0,
+		"ftol_cg": 1e-6,
+		"max_iters": 4000,
+		"use_cg": true,
+     	"eta_gd": 0,
+     	"ftol_gd": 0,
+     	"eta_newton": 0,
+     	"ftol_newton": 0
+	}
+}
+
