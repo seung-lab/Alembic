@@ -196,10 +196,21 @@ function dilate(z::Int64; val=0, radius=50)
   @time save_image(:dst_image, dilated_img, src_offset, z, mip=get_mip(:dst_image), cdn_cache=false);
 end
 
-function make_mips(z; mips=collect(1:6), data_name=:dst_image)
+function make_mips(z; mips=collect(1:6), data_name=:dst_image, cdn_cache=true)
   for mip in mips
     img = get_image(z, data_name, mip=mip, input_mip=mip-1)
     offset = get_offset(data_name, mip=mip)
-    @time save_image(data_name, Array(img), offset, z, mip=mip)
+    @time save_image(data_name, Array(img), offset, z, mip=mip, cdn_cache=cdn_cache)
   end
+end
+
+function threshold{T}(img::Array{T,2}; val=180, comparator=:>)
+  return convert(Array{T,2}, broadcast(eval(comparator), img, val))
+end
+
+function threshold(z::Int64; val=180, comparator=:>)
+  src_image = get_image(z, :src_image, mip=get_mip(:dst_image), input_mip=get_mip(:src_image))
+  src_offset = Alembic.get_offset(:src_image, mip=get_mip(:dst_image))
+  dst_image = threshold(Array(src_image), val=val, comparator=comparator)
+  @time save_image(:dst_image, dst_image, src_offset, z, mip=get_mip(:dst_image), cdn_cache=false);
 end
