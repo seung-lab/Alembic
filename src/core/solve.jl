@@ -1037,32 +1037,34 @@ Args:
   * z_start: starting z index
   * z_stop: final z index (can be <= or > z_start)
   * z_increment: signed increment
-  * z_offset: amount to decrement z_start for block #2-N
-  * start_offset: amount to decrement z_start for block #1
+  * z_overlap: unsigned amount of overlap between pieces
+  * fixed_indices: 0-indexed range for sections in each piece to be fixed
+  * reset_indices: 0-indexed range for sections in each piece to be reset
 
 Loops through range in blocks of size z_increment. Solves block, fixing first
 section of the block, and letting the tail float. Next block overlaps with 
-prior block by z_offset sections.
+prior block by z_overlap sections.
 """
-function piecewise_solve(z_start, z_stop; z_increment=20, z_offset=2, z_offset_fixed=1, start_offset=0)
-  z_splits = collect(z_start:z_increment-1:z_stop-1)
-  if z_splits[end] != z_stop
-    push!(z_splits, z_stop)
+function piecewise_solve(z_start, z_stop; z_increment=20, z_overlap=2, fixed_indices=1, reset_indices=4:19, manual_only=true)
+  increment = z_increment > 0 ? 1 : -1
+  z_overlap *= increment
+  fixed_indices *= increment
+  reset_indices *= increment
+  assert(length(intersect(fixed_indices, reset_indices)) == 0)
+  assert(length(intersect(0:increment:z_increment+z_overlap-increment, fixed_indices)) == length(fixed_indices))
+  assert(length(intersect(0:increment:z_increment+z_overlap-increment, reset_indices)) == length(reset_indices))
+  z_starts = z_start:z_increment:z_stop-increment
+  z_stops = collect(z_start+z_increment+z_overlap-increment:z_increment:z_stop)
+  if z_stops[end] != z_stop
+    push!(z_stops, z_stop)
   end
-  z_ranges = zip(z_splits[1:end-1], z_splits[2:end])
-  reset_increment = z_increment > 0 ? 1 : -1
-  for (k, (z_range_start, z_range_stop)) in enumerate(z_ranges)
-    fixed_offset = z_offset_fixed
-    offset = z_offset-reset_increment
-    if k == 1
-      offset = start_offset
-      fixed_offset = start_offset
-    end
-    fix_list = collect(z_range_start-offset:reset_increment:z_range_start-fixed_offset)
-    full_list = z_range_start-offset:reset_increment:z_range_stop
-    reset_list = setdiff(full_list, fix_list)
-    # println((z_range_start-offset, z_range_stop, fix_list, reset_list))
-    @time solve(z_range_start-offset, z_range_stop, fix_list=fix_list, reset_list=reset_list, from_current=true, manual_only=true)
+  z_ranges = zip(z_starts, z_stops)
+  for (k, (range_start, range_stop)) in enumerate(z_ranges)
+    full_range = range_start:increment:range_stop
+    reset_range = intersect(full_range, range_start + collect(reset_indices))
+    fixed_range = intersect(full_range, range_start + collect(fixed_indices))
+    # println((range_start, range_stop, fixed_range, reset_range))
+    @time solve(range_start, range_stop, fix_list=fixed_range, reset_list=reset_range, from_current=true, manual_only=manual_only)
   end
 end
 
