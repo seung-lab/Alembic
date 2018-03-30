@@ -10,7 +10,7 @@
 			"mip":2
 		},
 		"dst_image":{
-			"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.02",
+			"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.02/test01",
 			"mip":2,
 			"interpolation":true,
 			"downsample":[3,4,5,6,7,8,9]
@@ -33,10 +33,10 @@
 			"value":0
 		},
 		"roi_mask":{
-			"apply":false,
-			"path":"gs://neuroglancer/basil_v0/mask",
+			"apply":true,
+			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3/mask/defect_dilated",
 			"mip":6,
-			"value":1
+			"value":0
 		},
 		"src_match":{
 			"path":"gs://neuroglancer/basil_v0/src_match",
@@ -71,7 +71,7 @@
 		"search_r": 256,
 		"bandpass_sigmas": [0,0],
 		"symmetric": false,
-		"depth": 3
+		"depth": 2
 	},
 	"filter":{
 		"sigma_filter_high": 6.5,

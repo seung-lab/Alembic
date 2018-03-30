@@ -71,7 +71,7 @@
 		"search_r": 256,
 		"bandpass_sigmas": [0,0],
 		"symmetric": false,
-		"depth": 2
+		"depth": 3
 	},
 	"filter":{
 		"sigma_filter_high": 6.5,
