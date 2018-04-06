@@ -221,6 +221,7 @@ end
 
 function get_image(cv::CloudVolumeWrapper, slice)
   img = cv[slice...]
+  gc(); gc(); # free image from python memory
   println("$(sizeof(img) / 1e6) MB downloaded")
   return img
 end
