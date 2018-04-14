@@ -161,7 +161,7 @@ end
 function get_cloudvolume(obj_name::Symbol; mip::Int64=get_mip(:match_image), cdn_cache=false)
   path = get_path(obj_name)
   return CloudVolumeWrapper(path, mip=mip, bounded=false, fill_missing=true, 
-                                  cdn_cache=cdn_cache, progress=false)
+                                  cdn_cache=cdn_cache, progress=false, parallel=true)
 end
 
 function get_image_size(obj_name::Symbol; mip::Int64=get_mip(:match_image))
@@ -277,6 +277,7 @@ function save_image(obj_name::Symbol, img, slice; mip::Int64=get_mip(:dst_image)
   if dst_slice != slice
     println("Rescoping image")
     img = rescope(img, slice, dst_slice)
+    gc(); gc();
   end
   println("Destination size: $(size(img))")
   k = (z, obj_name, mip)
@@ -285,9 +286,12 @@ function save_image(obj_name::Symbol, img, slice; mip::Int64=get_mip(:dst_image)
     push!(IMG_CACHE_LIST, k)
   else
     println("Overwriting $z, $obj_name, at miplevel $mip in the image cache.")
+    delete!(IMG_CACHE_DICT, k)
   end
+  save_image(cv, dst_slice, img)
+  cv = 0
+  gc(); gc();
   IMG_CACHE_DICT[k] = img
-  return save_image(cv, dst_slice, img)
 end
 
 """
