@@ -61,14 +61,14 @@
 	},
 	"mesh":{
 		"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3/mesh",
-		"z_start": 0,
-		"z_stop": 100,
+		"z_start": 199,
+		"z_stop": 302,
 		"mesh_length": 128
 	},
 	"match":{
 		"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3/match",
 		"block_r": 128,
-		"search_r": 512,
+		"search_r": 800,
 		"bandpass_sigmas": [0,0],
 		"symmetric": false,
 		"depth": 4

@@ -61,8 +61,8 @@
 	},
 	"mesh":{
 		"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3/mesh",
-		"z_start": 0,
-		"z_stop": 100,
+		"z_start": 898,
+		"z_stop": 999,
 		"mesh_length": 128
 	},
 	"match":{

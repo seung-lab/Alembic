@@ -6,7 +6,7 @@
 	},
 	"data":{
 		"src_image":{
-			"path":"gs://neuroglancer/basil_v0/raw_image_cropped",
+			"path":"gs://neuroglancer/basil_v0/raw_image_cropped/permuted",
 			"mip":2
 		},
 		"dst_image":{
@@ -16,7 +16,7 @@
 			"downsample":[3,4,5,6,7,8,9]
 		},
 		"match_image":{
-			"path":"gs://neuroglancer/basil_v0/raw_image_cropped",
+			"path":"gs://neuroglancer/basil_v0/raw_image_cropped/permuted",
 			"mip":4,
 			"value":0
 		},
