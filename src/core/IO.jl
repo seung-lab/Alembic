@@ -138,10 +138,14 @@ end
 
 ## Non-image related (Storage)
 
+function load(path::String, fn::String)
+  s = StorageWrapper(path)
+  return s[fn]
+end
+
 function load(obj_name::Symbol, fn::String)
   println("Loading $obj_name for $fn")
-  s = StorageWrapper(get_path(obj_name))
-  return s[fn]
+  return load(get_path(obj_name), fn)
 end
 
 function load(obj_name::Symbol, filenames::Array{String,1})
@@ -150,10 +154,14 @@ function load(obj_name::Symbol, filenames::Array{String,1})
   return s[filenames]
 end
 
+function save(obj, path::String, fn::String)
+  s = StorageWrapper(path)
+  s[fn] = obj;
+end
+
 function save(obj, obj_name::Symbol, fn::String=get_name(obj))
   println("Saving $fn to $(get_path(obj_name))")
-  s = StorageWrapper(get_path(obj_name))
-  s[fn] = obj;
+  return save(obj, get_path(obj_name), fn)
 end
 
 ## Image related (CloudVolume)
