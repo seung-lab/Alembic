@@ -166,7 +166,7 @@ function render(ms::MeshSet, z_range=unique(collect_z(ms)))
         merged_image, merged_slice = merge_images([dst_image, merged_image], 
                                                   [dst_offset, merged_offset])
         merged_offset = [merged_slice[1].start, merged_slice[2].start]
-        gc(); gc();
+        @time @everywhere gc();
       end
       println("All subsections rendered")
       merged_slice = tuple(merged_slice..., z:z)
@@ -184,18 +184,28 @@ function render(ms::MeshSet, z_range=unique(collect_z(ms)))
   end
 end
 
-function dilate{T}(img::Array{T,2}; val=0, radius=50)
+function dilate{T}(img::Array{T,2}; val=0, radius=50, comparator= ==)
   f = ones(radius, radius)
-  return convert(Array{T,2}, same_convolve(img .== val, f) .> eps)
+  return convert(Array{T,2}, same_convolve(broadcast(comparator, img, val), f) .> eps)
 end
 
 """
 Load the src_image at index z, dilate it, and save to dst_image
 """
-function dilate(z::Int64; val=0, radius=50)
+function dilate(z::Int64; val=0, radius=50, comparator= ==)
   src_image = get_image(z, :src_image, mip=get_mip(:dst_image), input_mip=get_mip(:src_image))
   src_offset = get_offset(:src_image, mip=get_mip(:dst_image))
-  dilated_img = dilate(Array(src_image), val=val, radius=radius)
+  dilated_img = dilate(Array(src_image), val=val, radius=radius, comparator=comparator)
+  @time save_image(:dst_image, dilated_img, src_offset, z, mip=get_mip(:dst_image), cdn_cache=false);
+end
+
+function dilateN(z::Int64; val=[0,1], radius=[50,20])
+  src_image = get_image(z, :src_image, mip=get_mip(:dst_image), input_mip=get_mip(:src_image))
+  src_offset = Alembic.get_offset(:src_image, mip=get_mip(:dst_image))
+  dilated_img = Array(src_image)
+  for (v, r) in zip(val, radius)
+    dilated_img = dilate(dilated_img, val=v, radius=r)
+  end
   @time save_image(:dst_image, dilated_img, src_offset, z, mip=get_mip(:dst_image), cdn_cache=false);
 end
 
