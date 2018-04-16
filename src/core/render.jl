@@ -179,7 +179,8 @@ function render(ms::MeshSet, z_range=unique(collect_z(ms)))
       src_image = 0
       reset_cache()
       @time @everywhere gc();
-      @time save_image(:dst_image, dst_image, offset, z, mip=get_mip(:dst_image))
+      dst_z = get(Z_MAP, z, z)
+      @time save_image(:dst_image, dst_image, offset, dst_z, mip=get_mip(:dst_image))
     end
   end
 end
