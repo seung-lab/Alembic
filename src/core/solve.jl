@@ -1068,3 +1068,28 @@ function piecewise_solve(z_start, z_stop; z_increment=20, z_overlap=2, fixed_ind
   end
 end
 
+"""
+Filter a meshset in pieces (for large meshsets)
+
+Hard-coded filter operations for basil SOA_v3.02
+"""
+function piecewise_filter(z_start, z_stop; z_increment=20, z_overlap=2)
+  increment = z_increment > 0 ? 1 : -1
+  z_overlap *= increment
+  z_starts = z_start:z_increment:z_stop-increment
+  z_stops = collect(z_start+z_increment+z_overlap-increment:z_increment:z_stop)
+  if z_stops[end] != z_stop
+    push!(z_stops, z_stop)
+  end
+  z_ranges = zip(z_starts, z_stops)
+  for (k, (range_start, range_stop)) in enumerate(z_ranges)
+    if range_start > range_stop; range_start, range_stop = range_stop, range_start; end
+    println("Filtering $range_start to $range_stop")
+    PARAMS[:mesh][:z_start] = range_start
+    PARAMS[:mesh][:z_stop] = range_stop
+    ms = compile_meshset()
+    filter!(ms, (1, :get_correspondence_properties, :<=, 0.07, Symbol("xcorr_delta_15")))
+    filter!(ms, (2, :get_correspondence_properties, :>=, 120, Symbol("vects_norm")))
+    split_meshset(ms)
+  end
+end
