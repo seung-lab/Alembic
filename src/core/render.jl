@@ -95,7 +95,8 @@ function rescope{T}(image::Array{T}, src_slice, dst_slice)
     if intersects(src_bb, dst_bb)
         src_roi = translate_bb(dst_bb-src_bb, -src_offset+[1,1])
         dst_roi = translate_bb(dst_bb-src_bb, -dst_offset+[1,1])
-        dst[bb_to_slice(dst_roi)...] = image[bb_to_slice(src_roi)...]
+        # dst[bb_to_slice(dst_roi)...] = image[bb_to_slice(src_roi)...]
+        dst[bb_to_slice(dst_roi)...] = view(image, bb_to_slice(src_roi)...)
     end
     return dst
 end
