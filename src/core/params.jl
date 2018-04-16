@@ -1,4 +1,6 @@
 global PARAMS = Dict()
+# map src_z to dst_z
+global Z_MAP = Dict()
 
 function load_params(fn::AbstractString)
 	params = JSON.parsefile(fn)
@@ -11,6 +13,7 @@ function load_params(params::Dict)
 	match = params["match"]
 	filter = params["filter"]
 	solve = params["solve"]
+	z_map = get(params["mesh"], "z_map", nothing)
 	global PARAMS = Dict(
 		 :src_image => Dict(
 		 	:path => data["src_image"]["path"],
@@ -69,7 +72,8 @@ function load_params(params::Dict)
 		 	:path => mesh["path"],
 	     	:z_start => mesh["z_start"],
 	     	:z_stop => mesh["z_stop"],
-			:mesh_length => mesh["mesh_length"]
+			:mesh_length => mesh["mesh_length"],
+			:z_map => z_map
 		 	),
 		 :match => Dict(
 		 	:path => match["path"],
@@ -109,4 +113,11 @@ function load_params(params::Dict)
 			:ratio_edge_proximity => (:get_ratio_edge_proximity, Symbol(>), 0.80)
 			)
 		)
+	load_z_map();
+end
+
+function load_z_map()
+	try
+		global Z_MAP = load(PARAMS[:mesh][:z_map], "z_map")
+	end
 end
