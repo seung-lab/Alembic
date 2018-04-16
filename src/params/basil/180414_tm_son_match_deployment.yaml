@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: alembic-tasks
 spec:
-  replicas: 40
+  replicas: 160
   template:
     metadata:
       labels:
@@ -23,7 +23,7 @@ spec:
             mountPath: /dev/shm
           resources:
             requests:
-              memory: 190Gi
+              memory: 42Gi
       volumes:
       - name: secrets
         secret:

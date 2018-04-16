@@ -6,18 +6,18 @@
 	},
 	"data":{
 		"src_image":{
-			"path":"gs://neuroglancer/basil_v0/raw_image_cropped",
+			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3",
 			"mip":2
 		},
 		"dst_image":{
-			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3",
+			"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.03",
 			"mip":2,
 			"interpolation":true,
 			"downsample":[3,4,5,6,7,8,9]
 		},
 		"match_image":{
-			"path":"gs://neuroglancer/basil_v0/raw_image_cropped",
-			"mip":4,
+			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3",
+			"mip":2,
 			"value":0
 		},
 		"defect_mask":{
@@ -60,18 +60,18 @@
 		}
 	},
 	"mesh":{
-		"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3/mesh",
-		"z_start": 15,
-		"z_stop": 19,
-		"mesh_length": 128
+		"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.03/mesh",
+		"z_start": 460,
+		"z_stop": 480,
+		"mesh_length": 160
 	},
 	"match":{
-		"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3/match",
+		"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.03/match",
 		"block_r": 128,
-		"search_r": 512,
+		"search_r": 256,
 		"bandpass_sigmas": [0,0],
 		"symmetric": false,
-		"depth": 4
+		"depth": 3
 	},
 	"filter":{
 		"sigma_filter_high": 6.5,

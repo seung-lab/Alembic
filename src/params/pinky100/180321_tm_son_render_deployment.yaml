@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: alembic-tasks
 spec:
-  replicas: 100
+  replicas: 40
   template:
     metadata:
       labels:
