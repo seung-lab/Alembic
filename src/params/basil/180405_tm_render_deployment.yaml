@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: alembic-tasks-64cpu-416gb
 spec:
-  replicas: 3
+  replicas: 1
   template:
     metadata:
       labels:
