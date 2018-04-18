@@ -1,6 +1,7 @@
 global PARAMS = Dict()
 # map src_z to dst_z
 global Z_MAP = Dict()
+global PARALLEL = true
 
 function load_params(fn::AbstractString)
 	params = JSON.parsefile(fn)
@@ -14,6 +15,7 @@ function load_params(params::Dict)
 	filter = params["filter"]
 	solve = params["solve"]
 	z_map = get(params["mesh"], "z_map", nothing)
+	global PARALLEL = get(params["task"], "parallel", true)
 	global PARAMS = Dict(
 		 :src_image => Dict(
 		 	:path => data["src_image"]["path"],
