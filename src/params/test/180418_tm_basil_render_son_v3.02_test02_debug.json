@@ -2,17 +2,16 @@
 	"task":{
 		"method":"render_task",
 		"name":"",
-		"parallel":8,
 		"pairs":[[162,163],[162,164]]
 	},
 	"data":{
 		"src_image":{
 			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3",
-			"mip":0
+			"mip":4
 		},
 		"dst_image":{
-			"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.02/test02",
-			"mip":0,
+			"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.02/test02_debug",
+			"mip":4,
 			"interpolation":true,
 			"downsample":[]
 		},

@@ -2,6 +2,7 @@
 	"task":{
 		"method":"render_task",
 		"name":"",
+		"parallel":8,
 		"pairs":[[162,163],[162,164]]
 	},
 	"data":{

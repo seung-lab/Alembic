@@ -1,13 +1,13 @@
 {
 	"task":{
-		"method":"render_task",
+		"method":"mask_task",
 		"name":"",
 		"parallel":8,
 		"pairs":[[162,163],[162,164]]
 	},
 	"data":{
 		"src_image":{
-			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3",
+			"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.02/test02",
 			"mip":0
 		},
 		"dst_image":{
@@ -35,7 +35,7 @@
 		},
 		"roi_mask":{
 			"apply":true,
-			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3/mask/crack_detector_v2_dilated",
+			"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.02/test02/mask/crack_detector_v2_dilated",
 			"mip":6,
 			"value":0
 		},
