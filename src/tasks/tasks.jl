@@ -35,7 +35,7 @@ function mask_task(params::Dict)
           roi_value = get_mask_value(:roi_mask)
           unsafe_mask_image!(src_image, src_roi, roi_value, src_image, keep_id=true)
         end
-        @time save_image(:dst_image, src_image, src_offset, z, mip=get_mip(:dst_image))
+        @time save_image(:dst_image, Array(src_image), src_offset, z, mip=get_mip(:dst_image))
         reset_cache()
     end
 end
