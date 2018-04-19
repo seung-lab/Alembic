@@ -169,7 +169,8 @@ end
 function get_cloudvolume(obj_name::Symbol; mip::Int64=get_mip(:match_image), cdn_cache=false)
   path = get_path(obj_name)
   return CloudVolumeWrapper(path, mip=mip, bounded=false, fill_missing=true, 
-                                  cdn_cache=cdn_cache, progress=false, parallel=PARALLEL)
+                                  cdn_cache=cdn_cache, progress=false, parallel=PARALLEL,
+                                  output_to_shared_memory=true)
 end
 
 function get_image_size(obj_name::Symbol; mip::Int64=get_mip(:match_image))
