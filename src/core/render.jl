@@ -62,7 +62,7 @@ end
   in 'images` in global space
 
 """ 
-function merge_images{T}(images::Array{Array{T,2},1}, offsets)
+function merge_images{T}(images::Array{AbstractArray{T,2},1}, offsets)
     # T = typeof(images[1][1])
     bbs = []
     for (image, offset) in zip(images, offsets)
@@ -86,12 +86,13 @@ end
 """
 Rescope image from one bounding box to another
 """
-function rescope{T}(image::Array{T}, src_slice, dst_slice)
+function rescope{T}(image::AbstractArray{T}, src_slice, dst_slice)
     src_bb = ImageRegistration.slice_to_bb(src_slice)
     dst_bb = ImageRegistration.slice_to_bb(dst_slice)
     src_offset = ImageRegistration.get_offset(src_bb)
     dst_offset = ImageRegistration.get_offset(dst_bb)
-    dst = zeros(T, dst_bb.h, dst_bb.w)
+    shm_seg_name = "/dev/shm/cvjl_$(lpad(string(getpid() % 10^6), 6, "0"))_$(randstring(15))"
+    dst = SharedArray{T}(shm_seg_name, (dst_bb.h, dst_bb.w); mode="w+")
     if intersects(src_bb, dst_bb)
         src_roi = translate_bb(dst_bb-src_bb, -src_offset+[1,1])
         dst_roi = translate_bb(dst_bb-src_bb, -dst_offset+[1,1])
@@ -177,11 +178,17 @@ function render(ms::MeshSet, z_range=unique(collect_z(ms)))
       mesh = get_mesh(ms, z)
       println("Warping ", z)
       @time (dst_image, offset), _ = meshwarp_mesh(src_image, mesh)
-      src_image = 0
+      finalize(src_image)
+      src_image = nothing
       reset_cache()
       @time @everywhere gc();
       dst_z = get(Z_MAP, z, z)
       @time save_image(:dst_image, dst_image, offset, dst_z, mip=get_mip(:dst_image))
+      if isfile(dst_image.segname) # Leftover from rescope
+        rm(dst_image.segname)
+      end
+      finalize(dst_image)
+      dst_image = nothing
     end
   end
 end
