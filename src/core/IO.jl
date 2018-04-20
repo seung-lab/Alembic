@@ -229,7 +229,7 @@ function get_image(obj_name::Symbol, slice; mip::Int64=get_mip(:match_image))
 end
 
 function get_image(cv::CloudVolumeWrapper, slice)
-  img = cv[slice...]
+  img = cv[slice...]::SharedArray{IMG_ELTYPE, 2}
   gc(); gc(); # free image from python memory
   println("$(sizeof(img) / 1e6) MB downloaded")
   return img
@@ -306,8 +306,8 @@ end
 """
 Save 2D image to slice in CloudVolume
 """
-function save_image(cv::CloudVolumeWrapper, slice, img)
-  cv[slice...] = reshape(img, (size(img)..., 1, 1))
+function save_image(cv::CloudVolumeWrapper, slice, img::AbstractArray)
+  upload_from_shared_memory(cv, reshape(img, (size(img)..., 1, 1)), slice...)
 end
 
 function get_local_root()
