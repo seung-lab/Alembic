@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: alembic-tasks
 spec:
-  replicas: 30
+  replicas: 5
   template:
     metadata:
       labels:
@@ -14,7 +14,7 @@ spec:
           image: seunglab/alembic:python3
           imagePullPolicy: Always
           command: ["/bin/sh"]
-          args: ["-c", "julia /tasks/sqs_subscriber.jl task-queue-alembic-highmem64"]
+          args: ["-c", "julia /tasks/sqs_subscriber.jl task-queue-alembic-highmem32"]
           volumeMounts:
           - name: secrets
             mountPath: /root/.cloudvolume/secrets
@@ -23,7 +23,7 @@ spec:
             mountPath: /dev/shm
           resources:
             requests:
-              memory: 386Gi
+              memory: 190Gi
       volumes:
       - name: secrets
         secret:
