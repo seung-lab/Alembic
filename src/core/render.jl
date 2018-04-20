@@ -222,7 +222,7 @@ function make_mips(z; mips=collect(1:6), data_name=:dst_image, cdn_cache=true)
   for mip in mips
     img = get_image(z, data_name, mip=mip, input_mip=mip-1)
     offset = get_offset(data_name, mip=mip)
-    @time save_image(data_name, Array(img), offset, z, mip=mip, cdn_cache=cdn_cache)
+    @time save_image(data_name, img, offset, z, mip=mip, cdn_cache=cdn_cache)
   end
 end
 

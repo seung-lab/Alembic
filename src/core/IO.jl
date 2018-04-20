@@ -283,11 +283,12 @@ function save_image(obj_name::Symbol, img, slice; mip::Int64=get_mip(:dst_image)
   println("Initial size: $(size(img))")
   println("Initial slice: $slice")
   println("Destination slice: $dst_slice")
-  if dst_slice != slice
-    println("Rescoping image")
-    img = rescope(img, slice, dst_slice)
-    gc(); gc();
-  end
+  # Force rescoping for now, so that we define the shared memory name location
+  # if dst_slice != slice
+  println("Rescoping image")
+  img = rescope(img, slice, dst_slice)
+  gc(); gc();
+  # end
   println("Destination size: $(size(img))")
   k = (z, obj_name, mip)
   if !haskey(IMG_CACHE_DICT, k)
