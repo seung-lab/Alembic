@@ -2,15 +2,21 @@
 	"task":{
 		"method":"render_task",
 		"name":"",
+		"parallel":true,
+		"kwargs":{
+			"val":20,
+			"radius":50,
+			"comparator":"<"
+		},
 		"pairs":[[162,163],[162,164]]
 	},
 	"data":{
 		"src_image":{
-			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3/mask/crack_detector_v2",
+			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3/mask/fold_detector_v1",
 			"mip":5
 		},
 		"dst_image":{
-			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3/mask/crack_detector_v2_dilated",
+			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3/mask/fold_detector_v1_dilated",
 			"mip":5,
 			"interpolation":false,
 			"downsample":[6,7,8,9]
