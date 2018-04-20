@@ -201,7 +201,7 @@ end
 """
 Load the src_image at index z, dilate it, and save to dst_image
 """
-function dilate(z::Int64, val::Int64=0, radius::Int64=50, comparator::Symbol= ==)
+function dilate(z::Int64; val::Int64=0, radius::Int64=50, comparator::Symbol= ==)
   src_image = get_image(z, :src_image, mip=get_mip(:dst_image), input_mip=get_mip(:src_image))
   src_offset = get_offset(:src_image, mip=get_mip(:dst_image))
   dilated_img = dilate(src_image, val=val, radius=radius, comparator=comparator)
@@ -209,7 +209,7 @@ function dilate(z::Int64, val::Int64=0, radius::Int64=50, comparator::Symbol= ==
 end
 
 function dilate(z::Int64; val::Int64=0, radius::Int64=50, comparator::String="==")
-  dilate(z, val, radius, Symbol(comparator))
+  dilate(z, val=val, radius=radius, comparator=Symbol(comparator))
 end
 
 function dilateN(z::Int64; val=[0,1], radius=[50,20])
