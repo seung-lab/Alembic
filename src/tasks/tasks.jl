@@ -39,3 +39,13 @@ function mask_task(params::Dict)
         reset_cache()
     end
 end
+
+function mip_task(params::Dict)
+    load_params(params)
+    pairs = params["task"]["pairs"]
+    z_indices = unique(vcat(pairs...))
+    for z in z_indices
+        println("Mip Task $(z)")
+        make_mips(z; mips=get_downsample_mips(:dst_image))
+        reset_cache()
+    end
