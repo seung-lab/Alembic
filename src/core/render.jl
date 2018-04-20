@@ -193,7 +193,7 @@ function render(ms::MeshSet, z_range=unique(collect_z(ms)))
   end
 end
 
-function dilate{T}(img::AbstractArray{T}; val=0, radius=50, comparator::Symbol= ==)
+function dilate{T}(img::AbstractArray{T}; val=0, radius=50, comparator= ==)
   f = ones(radius, radius)
   return convert(AbstractArray{T}, same_convolve(broadcast(comparator, img, val), f) .> eps)
 end
@@ -214,7 +214,7 @@ end
 
 function dilateN(z::Int64; val=[0,1], radius=[50,20])
   src_image = get_image(z, :src_image, mip=get_mip(:dst_image), input_mip=get_mip(:src_image))
-  src_offset = Alembic.get_offset(:src_image, mip=get_mip(:dst_image))
+  src_offset = get_offset(:src_image, mip=get_mip(:dst_image))
   dilated_img = Array(src_image)
   for (v, r) in zip(val, radius)
     dilated_img = dilate(dilated_img, val=v, radius=r)
