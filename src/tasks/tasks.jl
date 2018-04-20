@@ -50,3 +50,27 @@ function mip_task(params::Dict)
         reset_cache()
     end
 end
+
+function combine_masks(params::Dict)
+    load_params(params)
+    pairs = params["task"]["pairs"]
+    z_indices = unique(vcat(pairs...))
+    for z in z_indices
+        println("Mip Task $(z)")
+        make_mips(z; mips=get_downsample_mips(:dst_image))
+        reset_cache()
+    end
+end  
+
+function dilation_task(params::Dict)
+    load_params(params)
+    pairs = params["task"]["pairs"]
+    kwargs = params["task"]["kwargs"]
+    z_indices = unique(vcat(pairs...))
+    for z in z_indices
+        println("Dilation Task $(z)")
+        dilate(z; kwargs...);
+        make_mips(z; mips=get_downsample_mips(:dst_image))
+        reset_cache()
+    end
+end    
