@@ -193,15 +193,15 @@ function render(ms::MeshSet, z_range=unique(collect_z(ms)))
   end
 end
 
-function dilate{T}(img::AbstractArray{T}; val=0, radius=50, comparator= ==)
+function dilate{T}(img::AbstractArray{T}; val::Int64=0, radius::Int64=50, comparator=:==)
   f = ones(radius, radius)
-  return convert(AbstractArray{T}, same_convolve(broadcast(comparator, img, val), f) .> eps)
+  return convert(AbstractArray{T}, same_convolve(broadcast(eval(comparator), img, val), f) .> Alembic.eps)
 end
 
 """
 Load the src_image at index z, dilate it, and save to dst_image
 """
-function dilate(z::Int64; val::Int64=0, radius::Int64=50, comparator::Symbol= ==)
+function dilate(z::Int64; val::Int64=0, radius::Int64=50, comparator::Symbol=:==)
   src_image = get_image(z, :src_image, mip=get_mip(:dst_image), input_mip=get_mip(:src_image))
   src_offset = get_offset(:src_image, mip=get_mip(:dst_image))
   dilated_img = dilate(src_image, val=val, radius=radius, comparator=comparator)
