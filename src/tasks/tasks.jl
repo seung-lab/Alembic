@@ -49,3 +49,4 @@ function mip_task(params::Dict)
         make_mips(z; mips=get_downsample_mips(:dst_image))
         reset_cache()
     end
+end
