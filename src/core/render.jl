@@ -193,19 +193,23 @@ function render(ms::MeshSet, z_range=unique(collect_z(ms)))
   end
 end
 
-function dilate{T}(img::Array{T,2}; val=0, radius=50, comparator= ==)
+function dilate{T}(img::AbstractArray{T}; val=0, radius=50, comparator::Symbol= ==)
   f = ones(radius, radius)
-  return convert(Array{T,2}, same_convolve(broadcast(comparator, img, val), f) .> eps)
+  return convert(AbstractArray{T}, same_convolve(broadcast(comparator, img, val), f) .> eps)
 end
 
 """
 Load the src_image at index z, dilate it, and save to dst_image
 """
-function dilate(z::Int64; val=0, radius=50, comparator= ==)
+function dilate(z::Int64, val::Int64=0, radius::Int64=50, comparator::Symbol= ==)
   src_image = get_image(z, :src_image, mip=get_mip(:dst_image), input_mip=get_mip(:src_image))
   src_offset = get_offset(:src_image, mip=get_mip(:dst_image))
-  dilated_img = dilate(Array(src_image), val=val, radius=radius, comparator=comparator)
+  dilated_img = dilate(src_image, val=val, radius=radius, comparator=comparator)
   @time save_image(:dst_image, dilated_img, src_offset, z, mip=get_mip(:dst_image), cdn_cache=false);
+end
+
+function dilate(z::Int64; val::Int64=0, radius::Int64=50, comparator::String="==")
+  dilate(z, val, radius, Symbol(comparator))
 end
 
 function dilateN(z::Int64; val=[0,1], radius=[50,20])
