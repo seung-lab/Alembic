@@ -266,14 +266,14 @@ function chunk_align(obj_name::Symbol, img, slice; mip::Int64=get_mip(:dst_image
   return rescope(img, slice, dst_slice), dst_slice
 end
 
-function save_image(obj_name::Symbol, img::AbstractArray, offset::Array{Int64,1}, z::Int64; mip::Int64=get_mip(:dst_image), cdn_cache=true)
+function save_image(obj_name::Symbol, img, offset::Array{Int64,1}, z::Int64; mip::Int64=get_mip(:dst_image), cdn_cache=true)
   bbox = BoundingBox(offset..., size(img)...)
   slice = bb_to_slice(bbox)
   slice = tuple(slice..., z:z)
   save_image(obj_name, img, slice, mip=mip, cdn_cache=cdn_cache)
 end
 
-function save_image(obj_name::Symbol, img::AbstractArray, slice; mip::Int64=get_mip(:dst_image), cdn_cache=true)
+function save_image(obj_name::Symbol, img, slice; mip::Int64=get_mip(:dst_image), cdn_cache=true)
   z = slice[3][1]
   println("Saving $z @ mip=$mip to $(get_path(obj_name))")
   cv = get_cloudvolume(obj_name, mip=mip, cdn_cache=cdn_cache)
