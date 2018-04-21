@@ -65,7 +65,7 @@ end
 function dilation_task(params::Dict)
     load_params(params)
     pairs = params["task"]["pairs"]
-    kwargs = params["task"]["kwargs"]
+    kwargs = symbol_dict(params["task"]["kwargs"])
     z_indices = unique(vcat(pairs...))
     for z in z_indices
         println("Dilation Task $(z)")
@@ -74,3 +74,7 @@ function dilation_task(params::Dict)
         reset_cache()
     end
 end    
+
+function symbol_dict(d::Dict)
+    return Dict(Symbol(k) => v for (k,v) in d)
+end
