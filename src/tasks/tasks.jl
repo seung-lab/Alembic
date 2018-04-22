@@ -51,12 +51,17 @@ function mip_task(params::Dict)
     end
 end
 
-function combine_masks(params::Dict)
+function mask_union_task(params::Dict)
     load_params(params)
     pairs = params["task"]["pairs"]
     z_indices = unique(vcat(pairs...))
     for z in z_indices
-        println("Mip Task $(z)")
+        println("Mask Union Task $(z)")
+        offset = get_offset(:roi_mask, mip=get_mip(:roi_mask))
+        roi_mask = get_image(z, :roi_mask, mip=get_mip(:roi_mask), input_mip=get_mip(:roi_mask))
+        defect_mask = get_image(z, :defect_mask, mip=get_mip(:roi_mask), input_mip=get_mip(:defect_mask))
+        mask_union = convert(Array{UInt8,2}, (roi_mask + defect_mask) .> 0)
+        @time save_image(:dst_image, mask_union, offset, z, mip=get_mip(:roi_mask), cdn_cache=false)
         make_mips(z; mips=get_downsample_mips(:dst_image))
         reset_cache()
     end
