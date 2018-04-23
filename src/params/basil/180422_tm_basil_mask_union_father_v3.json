@@ -1,22 +1,22 @@
 {
 	"task":{
-		"method":"dilation_task",
+		"method":"mask_union_task",
 		"name":"",
 		"parallel":1,
 		"kwargs":{
 			"val":20,
-			"radius":20,
+			"radius":40,
 			"comparator":"<"
 		},
-		"pairs":[[162,163],[162,164]]
+		"pairs":[[301]]
 	},
 	"data":{
 		"src_image":{
-			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3/mask/fold_detector_v1",
+			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3/mask/crack_detector_v3",
 			"mip":5
 		},
 		"dst_image":{
-			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3/mask/fold_detector_v1_dilated",
+			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3/mask/defect_mask",
 			"mip":5,
 			"interpolation":false,
 			"downsample":[6,7,8,9]
@@ -28,7 +28,7 @@
 		},
 		"defect_mask":{
 			"apply":false,
-			"path":"gs://neuroglancer/basil_v0/mask",
+			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3/mask/crack_detector_v3_dilated",
 			"mip":5,
 			"value":0
 		},
@@ -40,9 +40,9 @@
 		},
 		"roi_mask":{
 			"apply":false,
-			"path":"gs://neuroglancer/basil_v0/mask",
-			"mip":6,
-			"value":1
+			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3/mask/fold_detector_v1_dilated",
+			"mip":5,
+			"value":0
 		},
 		"src_match":{
 			"path":"gs://neuroglancer/basil_v0/src_match",

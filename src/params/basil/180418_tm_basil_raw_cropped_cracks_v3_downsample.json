@@ -1,24 +1,18 @@
 {
 	"task":{
-		"method":"dilation_task",
+		"method":"match_task",
 		"name":"",
-		"parallel":1,
-		"kwargs":{
-			"val":20,
-			"radius":20,
-			"comparator":"<"
-		},
 		"pairs":[[162,163],[162,164]]
 	},
 	"data":{
 		"src_image":{
-			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3/mask/fold_detector_v1",
+			"path":"gs://neuroglancer/basil_v0/raw_image_cropped/mask/crack_detector_v3",
 			"mip":5
 		},
 		"dst_image":{
-			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3/mask/fold_detector_v1_dilated",
+			"path":"gs://neuroglancer/basil_v0/raw_image_cropped/mask/crack_detector_v3",
 			"mip":5,
-			"interpolation":false,
+			"interpolation":true,
 			"downsample":[6,7,8,9]
 		},
 		"match_image":{
