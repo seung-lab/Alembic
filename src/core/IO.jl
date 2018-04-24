@@ -18,6 +18,8 @@ end
 function reset_cache()
   println("Reseting the image cache.")
   for k in keys(IMG_CACHE_DICT)
+    finalize(IMG_CACHE_DICT[k])
+    IMG_CACHE_DICT[k] = nothing
     delete!(IMG_CACHE_DICT, k)
   end
   while length(IMG_CACHE_LIST) > 0
