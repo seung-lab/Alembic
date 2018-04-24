@@ -137,6 +137,8 @@ function render(ms::MeshSet, z_range=unique(collect_z(ms)))
       src_roi = get_image(z, :roi_mask, mip=get_mip(:dst_image), input_mip=get_mip(:roi_mask))
       roi_value = get_mask_value(:roi_mask)
       unsafe_mask_image!(src_image, src_roi, roi_value, src_image, keep_id=true)
+      finalize(src_roi)
+      src_roi = nothing
     end
     if use_defect_split()
       if use_defect_mask()
