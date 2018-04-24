@@ -180,17 +180,10 @@ function render(ms::MeshSet, z_range=unique(collect_z(ms)))
       mesh = get_mesh(ms, z)
       println("Warping ", z)
       @time (dst_image, offset), _ = meshwarp_mesh(src_image, mesh)
-      finalize(src_image)
-      src_image = nothing
       reset_cache()
       @time @everywhere gc();
       dst_z = get(Z_MAP, z, z)
       @time save_image(:dst_image, dst_image, offset, dst_z, mip=get_mip(:dst_image))
-      if isfile(dst_image.segname) # Leftover from rescope
-        rm(dst_image.segname)
-      end
-      finalize(dst_image)
-      dst_image = nothing
     end
   end
 end

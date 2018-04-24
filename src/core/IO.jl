@@ -301,7 +301,10 @@ function save_image(obj_name::Symbol, img, slice; mip::Int64=get_mip(:dst_image)
     delete!(IMG_CACHE_DICT, k)
   end
   save_image(cv, dst_slice, img)
-  cv = 0
+  if isfile(img.segname) # Leftover from rescope
+    rm(img.segname)
+  end
+  cv = nothing
   gc(); gc();
   IMG_CACHE_DICT[k] = img
 end
