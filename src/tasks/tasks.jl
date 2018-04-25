@@ -17,7 +17,8 @@ function render_task(params::Dict)
         ms = load(:mesh, string(z))
         println("Render Task $(z)")
         render(ms)
-        make_mips(z; mips=get_downsample_mips(:dst_image))
+        dst_z = get(Z_MAP, z, z)
+        make_mips(dst_z; mips=get_downsample_mips(:dst_image))
         reset_cache()
     end
 end
