@@ -219,13 +219,13 @@ function make_mips(z; mips=collect(1:6), data_name=:dst_image, cdn_cache=true)
   end
 end
 
-function threshold{T}(img::Array{T,2}; val=180, comparator=:>)
-  return convert(Array{T,2}, broadcast(eval(comparator), img, val))
+function threshold{T}(img::AbstractArray{T,2}; val=180, comparator::Symbol=:>)
+  return convert(AbstractArray{T,2}, broadcast(eval(comparator), img, val))
 end
 
-function threshold(z::Int64; val=180, comparator=:>)
+function threshold(z::Int64; val=180, comparator::String=">")
   src_image = get_image(z, :src_image, mip=get_mip(:dst_image), input_mip=get_mip(:src_image))
-  src_offset = Alembic.get_offset(:src_image, mip=get_mip(:dst_image))
-  dst_image = threshold(Array(src_image), val=val, comparator=comparator)
+  src_offset = get_offset(:src_image, mip=get_mip(:dst_image))
+  dst_image = threshold(src_image, val=val, comparator=Symbol(comparator))
   @time save_image(:dst_image, dst_image, src_offset, z, mip=get_mip(:dst_image), cdn_cache=false);
 end
