@@ -7,7 +7,7 @@ addprocs();
 using Alembic
 
 params = JSON.parsefile(param_file)
-println("Runnign render task...")
+println("Running render task...")
 @time begin
    render_task(params)
 end
