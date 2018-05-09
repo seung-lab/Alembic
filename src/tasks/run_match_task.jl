@@ -19,7 +19,7 @@ println("Importing Alembic...")
 end
 
 params = JSON.parsefile(param_file)
-println("Runnign match task...")
+println("Running match task...")
 @time begin
    match_task(params)
 end
