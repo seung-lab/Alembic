@@ -11,10 +11,10 @@
 			"mip":0
 		},
 		"dst_image":{
-			"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.03",
-			"mip":1,
+			"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.04",
+			"mip":0,
 			"interpolation":true,
-			"downsample":[2,3,4,5,6,7,8,9]
+			"downsample":[1,2,3,4,5,6,7,8,9]
 		},
 		"match_image":{
 			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3",

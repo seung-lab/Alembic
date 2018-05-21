@@ -1,20 +1,20 @@
 {
 	"task":{
-		"method":"render_task",
+		"method":"mask_union_task",
 		"name":"",
-		"parallel":8,
+		"parallel":1,
 		"pairs":[[162,163],[162,164]]
 	},
 	"data":{
 		"src_image":{
-			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3",
-			"mip":0
+			"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.04",
+			"mip":5
 		},
 		"dst_image":{
-			"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.03",
-			"mip":1,
+			"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.04/mask/roi_union",
+			"mip":5,
 			"interpolation":true,
-			"downsample":[2,3,4,5,6,7,8,9]
+			"downsample":[6,7,8,9]
 		},
 		"match_image":{
 			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3",
@@ -23,7 +23,7 @@
 		},
 		"defect_mask":{
 			"apply":false,
-			"path":"gs://neuroglancer/basil_v0/mask",
+			"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.04/mask/roi_threshold_dilated",
 			"mip":5,
 			"value":0
 		},
@@ -34,9 +34,9 @@
 			"value":0
 		},
 		"roi_mask":{
-			"apply":true,
-			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3/mask/defect_mask",
-			"mip":5,
+			"apply":false,
+			"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.04/mask/roi_threshold_eroded_dilated",
+			"mip":9,
 			"value":0
 		},
 		"src_match":{
@@ -64,8 +64,7 @@
 		"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.03/mesh",
 		"z_start": 460,
 		"z_stop": 480,
-		"mesh_length": 160,
-		"z_map": "gs://neuroglancer/basil_v0/father_of_alignment/v3"
+		"mesh_length": 160
 	},
 	"match":{
 		"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.03/match",

@@ -2,7 +2,7 @@
 	"task":{
 		"method":"render_task",
 		"name":"",
-		"pairs":[[400]]
+		"pairs":[[401]]
 	},
 	"data":{
 		"src_image":{
@@ -13,7 +13,7 @@
 			"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.02/test02_debug",
 			"mip":4,
 			"interpolation":true,
-			"downsample":[]
+			"downsample":[5]
 		},
 		"match_image":{
 			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3",

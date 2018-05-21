@@ -11,10 +11,10 @@
 			"mip":0
 		},
 		"dst_image":{
-			"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.03",
-			"mip":1,
+			"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.04/raw",
+			"mip":0,
 			"interpolation":true,
-			"downsample":[2,3,4,5,6,7,8,9]
+			"downsample":[1,2,3,4,5,6,7,8,9]
 		},
 		"match_image":{
 			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3",
@@ -35,7 +35,7 @@
 		},
 		"roi_mask":{
 			"apply":true,
-			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3/mask/defect_mask",
+			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3/mask/defect_masks_all_cracks_single_folds_v1",
 			"mip":5,
 			"value":0
 		},
@@ -62,8 +62,8 @@
 	},
 	"mesh":{
 		"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.03/mesh",
-		"z_start": 460,
-		"z_stop": 480,
+		"z_start": 0,
+		"z_stop": 749,
 		"mesh_length": 160,
 		"z_map": "gs://neuroglancer/basil_v0/father_of_alignment/v3"
 	},

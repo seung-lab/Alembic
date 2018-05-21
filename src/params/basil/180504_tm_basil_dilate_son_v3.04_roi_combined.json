@@ -1,24 +1,29 @@
 {
 	"task":{
-		"method":"render_task",
+		"method":"dilation_task",
 		"name":"",
-		"parallel":8,
+		"parallel":1,
+		"kwargs":{
+			"val":0,
+			"radius":8,
+			"comparator":"=="
+		},
 		"pairs":[[162,163],[162,164]]
 	},
 	"data":{
 		"src_image":{
-			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3",
-			"mip":0
+			"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.04/mask/roi_combined",
+			"mip":5
 		},
 		"dst_image":{
-			"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.03",
-			"mip":1,
-			"interpolation":true,
-			"downsample":[2,3,4,5,6,7,8,9]
+			"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.04/mask/roi_combined_dilated",
+			"mip":5,
+			"interpolation":false,
+			"downsample":[6,7,8,9]
 		},
 		"match_image":{
-			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3",
-			"mip":2,
+			"path":"gs://neuroglancer/basil_v0/raw_image_cropped",
+			"mip":4,
 			"value":0
 		},
 		"defect_mask":{
@@ -34,10 +39,10 @@
 			"value":0
 		},
 		"roi_mask":{
-			"apply":true,
-			"path":"gs://neuroglancer/basil_v0/father_of_alignment/v3/mask/defect_mask",
-			"mip":5,
-			"value":0
+			"apply":false,
+			"path":"gs://neuroglancer/basil_v0/mask",
+			"mip":6,
+			"value":1
 		},
 		"src_match":{
 			"path":"gs://neuroglancer/basil_v0/src_match",
@@ -61,19 +66,18 @@
 		}
 	},
 	"mesh":{
-		"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.03/mesh",
-		"z_start": 460,
-		"z_stop": 480,
-		"mesh_length": 160,
-		"z_map": "gs://neuroglancer/basil_v0/father_of_alignment/v3"
+		"path":"gs://neuroglancer/basil_v0/father_of_alignment/v4/mesh",
+		"z_start": 99,
+		"z_stop": 200,
+		"mesh_length": 128
 	},
 	"match":{
-		"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.03/match",
+		"path":"gs://neuroglancer/basil_v0/father_of_alignment/v4/match",
 		"block_r": 128,
-		"search_r": 256,
+		"search_r": 800,
 		"bandpass_sigmas": [0,0],
 		"symmetric": false,
-		"depth": 2
+		"depth": 4
 	},
 	"filter":{
 		"sigma_filter_high": 6.5,
@@ -89,8 +93,8 @@
 	"solve":{
 		"method": "elastic",
 		"mesh_spring_coeff": 1.0,
-		"match_spring_coeff": 100.0,
-		"ftol_cg": 1e-8,
+		"match_spring_coeff": 20.0,
+		"ftol_cg": 1e-6,
 		"max_iters": 4000,
 		"use_cg": true,
      	"eta_gd": 0,
