@@ -106,26 +106,6 @@ function get_dims_and_dists(mesh::Mesh)
 	return (i_dim, j_dim), [i_dist, j_dist];
 end
 
-function get_mesh_index(dims, i, j)
-	ind = 0;
-	if iseven(i) && (j == dims[2]) return ind; end
-	if ((i < 1) || (j < 1) || (i > dims[1]) || (j > dims[2])) return ind; end
-	@fastmath @inbounds ind += div(i-1, 2) * (dims[2] - 1); #even rows
-	@fastmath @inbounds ind += div(i, 2) * dims[2]; #odd rows
-	ind += j;
-	ind = convert(Int64, ind);
-	return ind;
-end
-
-function get_mesh_coord(dims, total_offset, dists, i, j)
-	if iseven(i) && (j == dims[2]) return (0, 0); end
-	@fastmath @inbounds pi = (i-1) * dists[1] + total_offset[1];
-	if iseven(i)	@fastmath @inbounds pj = (j-0.5) * dists[2] + total_offset[2];
-	else		@fastmath @inbounds pj = (j-1) * dists[2] + total_offset[2];
-	end
-	return [pi; pj];
-end
-
 ### edge-length related
 
 # returns the endpoints of the edges for all edges - returns two Points arrays, where each edge runs from endpoint_a[i] to endpoint_b[i]
@@ -169,167 +149,78 @@ function get_edge_lengths{T}(mesh::Mesh{T}; kwargs...)
 	end
       return edgelengths
 end
-#=
-# removes the edge at ind
-function remove_edge!(mesh::Mesh, ind)
-	if !haskey(mesh.properties, "removed_indices")
-		mesh.properties["removed_indices"] = Set{Int64}()
-	end
-	push!(mesh.properties["removed_indices"], ind)
-	# edges_to_keep = get_edge_indices(mesh)
-	# deleteat!(edges_to_keep, ind)
-	# mesh.edges = mesh.edges[:, [edges_to_keep]]
-end
-
-function get_removed_edge_indices(mesh::Mesh)
-	if haskey(mesh.properties, "removed_indices")
-		return collect(mesh.properties["removed_indices"])
-	end
-	return []
-end
-
-function get_fixed_edge_indices(mesh::Mesh)
-	if haskey(mesh.properties, "fixed_indices")
-		return collect(mesh.properties["fixed_indices"])
-	end
-	return []
-end
-
-function get_edge_indices(mesh::Mesh)
-	return collect(1:count_edges(mesh))
-end
-
-# Not sure why this doesn't work
-function isless(meshA::Mesh, meshB::Mesh)
-  return get_index(meshA) < get_index(meshB)
-end
-
-function isequal(meshA::Mesh, meshB::Mesh)
-  return get_index(meshA) == get_index(meshB)
-end
-=#
 
 ### INIT
 function Mesh(index, fixed=false; T=Float64)
 	println("Creating mesh for $index")
 	# mesh lengths in each dimension
-	dists = [PARAMS[:mesh][:mesh_length] * sin(pi / 3); PARAMS[:mesh][:mesh_length]];
+	dists = [PARAMS[:mesh][:mesh_length]; PARAMS[:mesh][:mesh_length]];
 
 	# dimensions of the mesh as a rectangular grid, maximal in each dimension
-	# e.g. a mesh with 5-4-5-4-5-4-5-4 nodes in each row will have dims = (8, 5)
-	# 1 is added because of 1-indexing (in length)
-	# 2 is added to pad the mesh to extend it beyond by one meshpoint in each direction
-	dims = round.(Int64, div.(get_image_size(:match_image, mip=get_mip(:match_image)), dists)) + 1 + 2;
-
+	# 1 added because of 1-indexing (in length)
+	# 2 added to pad mesh to extend beyond by one meshpoint in each direction
+	sz = get_image_size(:match_image, mip=get_mip(:match_image))
+	dims = round.(Int64, div.(sz, dists)) + 1 + 2;
 	# location of the first node (top left)
 	# TODO: Julia does not support rem() for two arrays, so divrem() cannot be used
-	topleft_offset = (get_image_size(:match_image, mip=get_mip(:match_image)) .% dists) / 2 - dists;
+	topleft_offset = (sz .% dists) / 2 - dists;
 
-	n = maximum([get_mesh_index(dims, dims[1], dims[2]); get_mesh_index(dims, dims[1], dims[2]-1)]);
+	# number of mesh indices
+	n = 0;
+	@fastmath @inbounds n_max = dims[1] * dims[2];
+	# tracking number of edges
 	m = 0;
-	m_upperbound = 6 * n;
+	@fastmath @inbounds m_max = 3*(dims[1]-1)*(dims[2]-1) + dims[1] + dims[2] - 2;
 
-	src_nodes = Points{T}(2, n);
-	edges = spzeros(T, n, m_upperbound);
-	
-	edges_meshinds = Array{Int64}(m_upperbound)
-	edges_edgeinds = Array{Int64}(m_upperbound)
-	edges_vals = Array{Float64}(m_upperbound)
+	src_nodes = Points{T}(2, n_max);
+	edges_I = Array{Int64}(2*m_max); # no. of edges in flat list of vertex pairs
+	edges_J = Array{Int64}(2*m_max);
+	edges_V = Array{Float64}(2*m_max);
 
-	meshindex = fill(0, dims[1], dims[2])
+	@fastmath @inbounds meshindex = fill(0, dims[1], dims[2])
 	@fastmath @inbounds for i in 1:dims[1], j in 1:dims[2]
-		k = get_mesh_index(dims, i, j); if k == 0 continue; end
-		meshindex[i,j] = k
-		view(src_nodes,:,k)[:] = get_mesh_coord(dims, topleft_offset, dists, i, j);
-		end
+		n += 1
+		meshindex[i,j] = n
+		@fastmath @inbounds di = (i-1)*dims[1] + topleft_offset[1]
+		@fastmath @inbounds dj = (j-1)*dims[2] + topleft_offset[2]
+		view(src_nodes,:,n)[:] = [di; dj];
+	end
 
-	function addedge(m, cur, k, i, j, meshindex, edges_meshinds, edges_edgeinds, edges_vals)
-		  edges_meshinds[cur] = k
-		  edges_edgeinds[cur] = m
-		  edges_vals[cur] = -1.0
+	function addedge(cur, m, k, i, j)
+		  edges_I[cur] = k
+		  edges_J[cur] = m
+		  edges_V[cur] = -1.0
 
 		  cur += 1;
-		  edges_meshinds[cur] = meshindex[i, j]
-		  edges_edgeinds[cur] = m
-		  edges_vals[cur] = +1.0
+		  edges_I[cur] = meshindex[i, j]
+		  edges_J[cur] = m
+		  edges_V[cur] = +1.0
 	end
 
 	cur = -1
 	@fastmath @inbounds for i in 1:dims[1], j in 1:dims[2]
-	  	k = meshindex[i, j]; if k== 0 continue; end
-		if (j != 1)
-		  	m += 1;
-			cur += 2;
-			addedge(m, cur, k, i, j-1, meshindex, edges_meshinds, edges_edgeinds, edges_vals);
+	  	k = meshindex[i, j];
+		@fastmath @inbounds if (i < dims[1])
+			m += 1
+			cur += 2
+			addedge(cur, m, k, i+1, j)
 		end
-
-		if (i != 1)
-			if iseven(i) || j != dims[2]
-		  	m += 1;
-			cur += 2;
-			addedge(m, cur, k, i-1, j, meshindex, edges_meshinds, edges_edgeinds, edges_vals);
-			end
-			if iseven(i) && (j != dims[2]) 			
-		  	m += 1;
-			cur += 2;
-			addedge(m, cur, k, i-1, j+1, meshindex, edges_meshinds, edges_edgeinds, edges_vals);
-			end
-			if isodd(i) && (j != 1)
-		  	m += 1;
-			cur += 2;
-			addedge(m, cur, k, i-1, j-1, meshindex, edges_meshinds, edges_edgeinds, edges_vals);
-			end
-			if isodd(i) && ((j == 1) || (j == dims[2]))
-		  	m += 1;
-			cur += 2;
-			addedge(m, cur, k, i-2, j, meshindex, edges_meshinds, edges_edgeinds, edges_vals);
-			end
+		@fastmath @inbounds if (j < dims[2])
+			m += 1
+			cur += 2
+			addedge(cur, m, k, i, j+1)
+		end
+		@fastmath @inbounds if (i < dims[1]) & (j < dims[2])
+			m += 1
+			cur += 2
+			addedge(cur, m, k, i+1, j+1)
 		end
 	end
-	cur += 1;
-	edges_I = edges_meshinds[1:cur];
-	edges_J = edges_edgeinds[1:cur];
-	edges_V = edges_vals[1:cur];
-	#edges = sparse(edges_meshinds[1:cur], edges_edgeinds[1:cur], edges_vals[1:cur], n, m);
-
-	#= legacy code
-      @time begin
-	@fastmath @inbounds for i in 1:dims[1], j in 1:dims[2]
-		k = get_mesh_index(dims, i, j); if k == 0 continue; end
-		view(src_nodes,:,k)[:] = get_mesh_coord(dims, topleft_offset, dists, i, j);
-		if (j != 1)
-			m += 1;	edges[k, m] = -1; edges[get_mesh_index(dims, i, j-1), m] = 1;
-		end
-
-		if (i != 1)
-			if iseven(i) || j != dims[2]
-				m += 1;	edges[k, m] = -1; edges[get_mesh_index(dims, i-1, j), m] = 1;
-			end
-			if iseven(i) && (j != dims[2]) 			
-				m += 1; edges[k, m] = -1; edges[get_mesh_index(dims, i-1, j+1), m] = 1;
-			end
-			if isodd(i) && (j != 1)
-				m += 1; edges[k, m] = -1; edges[get_mesh_index(dims, i-1, j-1), m] = 1;
-			end
-			if isodd(i) && ((j == 1) || (j == dims[2]))
-				m += 1; edges[k, m] = -1; edges[get_mesh_index(dims, i-2, j), m] = 1;
-			end
-		end
-		
-	end
-
-      end
-
-
-	@inbounds edges = edges[:, 1:m];
-	=#
 	dst_nodes = deepcopy(src_nodes);
-
-	properties = Dict{Symbol, Any}(
+	props = Dict{Symbol, Any}(
 				    :params => PARAMS,
 				    :fixed => fixed);
-
-	return Mesh(index, src_nodes, dst_nodes, edges_I, edges_J, edges_V, properties);
+	return Mesh(index, src_nodes, dst_nodes, edges_I, edges_J, edges_V, props);
 end
 
 function remesh!(mesh::Mesh)
