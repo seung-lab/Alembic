@@ -1,0 +1,100 @@
+{
+	"task":{
+		"method":"render_task",
+		"name":"",
+		"pairs":[[162,163],[162,164]]
+	},
+	"data":{
+		"src_image":{
+			"path":"gs://neuroglancer/pinky100_v0/father_of_alignment_v3",
+			"mip":0
+		},
+		"dst_image":{
+			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v44",
+			"mip":0,
+			"interpolation":true,
+			"downsample":[1,2,3,4,5,6]
+		},
+		"match_image":{
+			"path":"gs://neuroglancer/pinky100_v0/father_of_alignment_v3/nccnet",
+			"mip":2,
+			"value":0
+		},
+		"defect_mask":{
+			"apply":false,
+			"path":"gs://neuroglancer/pinky100_v0/image_single_slices/cfmanual",
+			"mip":5,
+			"value":0
+		},
+		"defect_split":{
+			"apply":false,
+			"path":"gs://neuroglancer/pinky100_v0/image_single_slices/cfsplit_manual_cc",
+			"mip":5,
+			"value":0
+		},
+		"roi_mask":{
+			"apply":true,
+			"path":"gs://neuroglancer/pinky100_v0/father_of_alignment_v3/roi_dilated",
+			"mip":6,
+			"value":0
+		},
+		"src_match":{
+			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v0/match/src_match",
+			"mip":0
+		},
+		"src_patch":{
+			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v0/match/src_patch",
+			"mip":0
+		},
+		"dst_match":{
+			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v0/match/dst_match",
+			"mip":0
+		},
+		"dst_patch":{
+			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v0/match/dst_patch",
+			"mip":0
+		},
+		"xc":{
+			"path":"gs://neuroglancer/pinky100_v0/aligned_test_v0/match/xc",
+			"mip":0
+		}
+	},
+	"mesh":{
+		"path":"gs://neuroglancer/pinky100_v0/son_of_alignment_v2/mesh",
+		"z_start": 700,
+		"z_stop": 900,
+		"mesh_length": 160
+	},
+	"match":{
+		"path":"gs://neuroglancer/pinky100_v0/son_of_alignment_v2/match",
+		"block_r": 100,
+		"search_r": 120,
+		"bandpass_sigmas": [0,0],
+		"symmetric": false,
+		"depth": 6
+	},
+	"filter":{
+		"sigma_filter_high": 6.5,
+		"sigma_filter_mid": 20,
+		"sigma_filter_low": 150,
+		"dyn_range_filter": 0.5,
+		"r_filter": 0.0275,
+		"kurtosis_filter": 25,
+		"kurtosis_filter_dst": 50,
+		"kurtosis_filter_edge": -1.60,
+		"r_delta_low": 0.07
+	},
+	"solve":{
+		"method": "elastic",
+		"mesh_spring_coeff": 1.0,
+		"match_spring_coeff": 20.0,
+		"ftol_cg": 1e-6,
+		"max_iters": 4000,
+		"use_cg": true,
+     	"eta_gd": 0,
+     	"ftol_gd": 0,
+     	"eta_newton": 0,
+     	"ftol_newton": 0
+	}
+}
+

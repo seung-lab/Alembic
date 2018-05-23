@@ -1,9 +1,9 @@
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: alembic-tasks-64
+  name: alembic-tasks
 spec:
-  replicas: 10
+  replicas: 180
   template:
     metadata:
       labels:
@@ -14,7 +14,7 @@ spec:
           image: seunglab/alembic:python3
           imagePullPolicy: Always
           command: ["/bin/sh"]
-          args: ["-c", "julia /tasks/sqs_subscriber_one_time.jl task-queue-alembic-highmem64"]
+          args: ["-c", "julia /tasks/sqs_subscriber.jl task-queue-pinky"]
           volumeMounts:
           - name: secrets
             mountPath: /root/.cloudvolume/secrets
@@ -23,7 +23,7 @@ spec:
             mountPath: /dev/shm
           resources:
             requests:
-              memory: 380Gi
+              memory: 18Gi
       volumes:
       - name: secrets
         secret:

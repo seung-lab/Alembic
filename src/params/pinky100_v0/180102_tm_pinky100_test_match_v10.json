@@ -1,0 +1,65 @@
+{
+	"name":"alignment",
+	"task_method":"match_task",
+	"dirs":{
+		"bucket":"gs://neuroglancer",
+		"dataset":"pinky100_v0",
+		"src_image":"image_single_slices",
+		"dst_image":"aligned_test_v10",
+		"match_image":"image_single_slices/nccnet",
+		"mask":"image_single_slices/cfsplit",
+		"roi":"image_single_slices/roicc",
+		"mesh":"aligned_test_v10/mesh",
+		"match":"aligned_test_v10/match",
+		"meshset":"aligned_test_v10/meshset",
+		"src_patch":"aligned_test_v0/match/src_patch",
+		"dst_patch":"aligned_test_v0/match/dst_patch",
+		"src_match":"aligned_test_v0/match/src_match",
+		"dst_match":"aligned_test_v0/match/dst_match",
+		"xc":"aligned_test_v0/match/xc"
+	},
+	"mesh":{
+		"z_start": 5000,
+		"z_stop": 5010,
+		"mesh_length": 100
+	},
+	"match":{
+		"mip": 2,
+		"ignore_value": 0,
+		"block_r": 180,
+		"search_r": 240,
+		"bandpass_sigmas": [0,0],
+		"symmetric": false,
+		"depth": 2
+	},
+	"roi":{
+		"mip":6,
+		"mask_value": 1
+	},
+	"filter":{
+		"sigma_filter_high": 6.5,
+		"sigma_filter_mid": 20,
+		"sigma_filter_low": 150,
+		"dyn_range_filter": 0.5,
+		"r_filter": 0.0275,
+		"kurtosis_filter": 25,
+		"kurtosis_filter_dst": 50,
+		"kurtosis_filter_edge": -1.60,
+		"r_delta_low": 0.07
+	},
+	"solve":{
+		"method": "elastic",
+		"mesh_spring_coeff": 1.0,
+		"match_spring_coeff": 100.0,
+		"ftol_cg": 1e-6,
+		"max_iters": 4000,
+		"use_cg": true,
+     	"eta_gd": 0,
+     	"ftol_gd": 0,
+     	"eta_newton": 0,
+     	"ftol_newton": 0
+	},
+	"render":{
+		"mip": 0
+	}
+}
