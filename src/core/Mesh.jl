@@ -181,8 +181,8 @@ function Mesh(index, fixed=false; T=Float64)
 	@fastmath @inbounds for i in 1:dims[1], j in 1:dims[2]
 		n += 1
 		meshindex[i,j] = n
-		@fastmath @inbounds di = (i-1)*dims[1] + topleft_offset[1]
-		@fastmath @inbounds dj = (j-1)*dims[2] + topleft_offset[2]
+		@fastmath @inbounds di = (i-1)*dists[1] + topleft_offset[1]
+		@fastmath @inbounds dj = (j-1)*dists[2] + topleft_offset[2]
 		view(src_nodes,:,n)[:] = [di; dj];
 	end
 
@@ -234,14 +234,54 @@ function remesh!(mesh::Mesh)
 	return mesh
 end
 
-
-
-
-
-
 # find the triangular mesh indices for a given point in mesh image coordinates
 function find_mesh_triangle{T}(mesh::Mesh{T}, point::Union{Point{T}, SubArray{T, 1}})
   @inbounds begin	
+	dists = [PARAMS[:mesh][:mesh_length]; PARAMS[:mesh][:mesh_length]];
+	sz = get_image_size(:match_image, mip=get_mip(:match_image))
+	dims = round.(Int64, div.(sz, dists)) + 1 + 2;
+	topleft_offset = (sz .% dists) / 2 - dists;
+
+	@fastmath @inbounds pt = [point[1]-topleft_offset[1], point[2]-topleft_offset[2]]
+
+	#  pt1		pt3
+	#	   ____
+	#	  |\   |
+	#	  |	\  |
+	#	  |	 \ |
+	#	  |___\|
+	#		
+	#  pt4	    pt2
+	#
+	# points on the diagonal are assigned to the upper right triangle
+
+	i1 = floor(Int64, pt[1]/dists[1])
+	j1 = floor(Int64, pt[2]/dists[2])
+
+	if (i1 < 0) | (j1 < 0)
+		return NO_TRIANGLE;
+	end
+
+	ind1 = j1*dims[1] + i1
+	i2 = ceil(Int64, pt[1]/dists[1])
+	j2 = ceil(Int64, pt[2]/dists[2])
+	ind2 = j2*dims[1] + i2
+
+	pt1 = mesh.src_nodes[:,ind1]
+	pt2 = mesh.src_nodes[:,ind2]
+	# calculate cross product of (pt2-pt1) x (point-pt1)
+	d = (pt2[1]-pt1[1])*(point[2]-pt1[2]) - (pt2[2]-pt1[2])*(point[1]-pt1[1])
+	if d >= 0
+		ind3 = j1*dims[1] + i2
+	else
+		ind3 = j2*dims[1] + i1
+	end
+
+	return ind1, ind2, ind3
+  end
+end
+
+function find_mesh_triangle_legacy{T}(mesh::Mesh{T}, point::Union{Point{T}, SubArray{T, 1}})
 	dims, dists = get_dims_and_dists(mesh); 
 	@fastmath point_padded = point - get_topleft_offset(mesh);
 	@fastmath indices_raw = point_padded ./ dists
