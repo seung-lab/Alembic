@@ -3,7 +3,8 @@ using Alembic
 
 # NOTE: Need to change global const IMG_ELTYPE to UInt16/UInt32 for segmentation files
 # layers = ["seg_original"] # UInt16
-layers = ["seg_invagination_new", "mit_new", "psd"] #UInt32
+#layers = ["seg_invagination_new", "mit_new", "psd"] #UInt32
+layers = ["seg_invagination_new_fp_removed", "seg_new"]
 for l in layers
 	load_params(joinpath(homedir(), ".julia/v0.6/Alembic/src/params/pinky10/stitched_vol19-vol34_$l.json"))
 

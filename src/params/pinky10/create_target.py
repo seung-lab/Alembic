@@ -34,7 +34,9 @@ dirs = {'img': 'image',
 		'mit_new': 'mit_new',
 		'seg_original': 'seg_original',
 		'seg_invagination_new': 'seg_invagination_new',
-		'psd': 'psd'}
+		'psd': 'psd',
+		'seg_new': 'seg_new',
+		'seg_invagination_new_fp_removed': 'seg_invagination_new_fp_removed'}
 for old_dir, new_dir in dirs.items():
 	src = CloudVolume('gs://neuroglancer/kisuk/pinky/ground_truth/stitched_vol19-vol34/{0}'.format(old_dir), mip=0, fill_missing=True, bounded=False)
 	info = deepcopy(src.info)
