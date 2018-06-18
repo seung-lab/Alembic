@@ -68,7 +68,45 @@ function mask_union_task(params::Dict)
         make_mips(z; mips=get_downsample_mips(:dst_image))
         reset_cache()
     end
-end  
+end 
+
+function conjunction_task(params::Dict)
+    load_params(params)
+    output_z = params["task"]["pairs"]
+    z_range = params["task"]["z_range"] + output_z
+    println("Conjunction Task $(output_z)")
+    input_masks = []
+    for z in z_range
+        push!(input_masks, get_image(z, :src_image, mip=get_mip(:dst_image), input_mip=get_mip(:src_image)))
+    end
+    output = SharedArray(ones(UInt8, get_image_size(:dst_image, mip=get_mip(:dst_image))...))
+    for mask in input_masks
+        output .&= mask
+    end
+    offset = get_offset(:dst_image, mip=get_mip(:dst_image))
+    @time save_image(:dst_image, output, offset, output_z, mip=get_mip(:dst_image), cdn_cache=false)
+    make_mips(output_z; mips=get_downsample_mips(:dst_image))
+    reset_cache()
+end
+
+function disjunction_task(params::Dict)
+    load_params(params)
+    output_z = params["task"]["pairs"]
+    z_range = params["task"]["z_range"] + output_z
+    println("Disjunction Task $(output_z)")
+    input_masks = []
+    for z in z_range
+        push!(input_masks, get_image(z, :src_image, mip=get_mip(:dst_image), input_mip=get_mip(:src_image)))
+    end
+    output = SharedArray(zeros(UInt8, get_image_size(:dst_image, mip=get_mip(:dst_image))...))
+    for mask in input_masks
+        output .|= mask
+    end
+    offset = get_offset(:dst_image, mip=get_mip(:dst_image))
+    @time save_image(:dst_image, output, offset, output_z, mip=get_mip(:dst_image), cdn_cache=false)
+    make_mips(output_z; mips=get_downsample_mips(:dst_image))
+    reset_cache()
+end
 
 function dilation_task(params::Dict)
     load_params(params)
