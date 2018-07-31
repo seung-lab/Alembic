@@ -1,19 +1,21 @@
 {
 	"task":{
-		"method":"conjunction_task",
-		"output_z":3,
-		"z_range":[-1,0,1],
+		"method":"threshold_task",
 		"name":"",
 		"parallel":1,
+		"kwargs":{
+			"val":0,
+			"comparator":"=="
+		},
 		"pairs":[[162,163],[162,164]]
 	},
 	"data":{
 		"src_image":{
-			"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.04/mask/roi_cracks_only_union",
+			"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.04/mask/roi_cracks_only_union_logic_three_consecutive",
 			"mip":5
 		},
 		"dst_image":{
-			"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.04/mask/roi_cracks_only_union_logic_prior_and_post",
+			"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.04/mask/roi_cracks_only_union_logic_three_consecutive_keep_ones",
 			"mip":5,
 			"interpolation":false,
 			"downsample":[6,7,8,9]
@@ -25,7 +27,7 @@
 		},
 		"defect_mask":{
 			"apply":false,
-			"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.04/mask/crack_detector_v3_dilated_dilated",
+			"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.04/mask/roi_cracks_only_union_logic_temp",
 			"mip":5,
 			"value":1
 		},
@@ -37,8 +39,8 @@
 		},
 		"roi_mask":{
 			"apply":false,
-			"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.04/mask/roi_threshold_eroded_dilated",
-			"mip":9,
+			"path":"gs://neuroglancer/basil_v0/son_of_alignment/v3.04/mask/roi_cracks_only_union_logic_two_post",
+			"mip":5,
 			"value":1
 		},
 		"src_match":{
