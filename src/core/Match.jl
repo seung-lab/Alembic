@@ -171,13 +171,15 @@ function to_csv(match::Match; manual_only=true)
     check_local_dir(:match)
     fn = joinpath(get_local_path(:match), get_name(match))
     println("Writing correspondences to $fn")
-    writetable(fn, to_dataframe(match, manual_only=manual_only), separator=',')
+    # writetable(fn, to_dataframe(match, manual_only=manual_only), separator=',')
+    CSV.write(fn, to_dataframe(match, manual_only=manual_only))
 end
 
 function load_manual_filters!(match::Match)
     fn = joinpath(get_local_path(:match), get_name(match))
     println("Loading manual inspection filters from $fn")
-    df = readtable(fn)
+    # df = readtable(fn)
+    df = CSV.read(fn)
     match.filters[:manual] = .~convert(Array{Bool,1}, df[:filter])
 end
 

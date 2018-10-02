@@ -6,6 +6,7 @@ module Alembic
     setblas()
     # using OffsetArrays
     using DataFrames
+    using CSV
     using FixedPointNumbers
     using IterativeSolvers
     using ImageRegistration
