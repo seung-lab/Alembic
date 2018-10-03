@@ -10,10 +10,10 @@
 			"mip":2
 		},
 		"dst_image":{
-			"path":"gs://neuroglancer/Phase2_partials/father_of_alignment/v1",
+			"path":"gs://neuroglancer/Phase2_partials/father_of_alignment/v2",
 			"mip":2,
 			"interpolation":true,
-			"downsample":[3,4,5,6,7,8,9]
+			"downsample":[3,4,5,6,7,8]
 		},
 		"match_image":{
 			"path":"gs://neuroglancer/Phase2_partials/raw_image",
@@ -60,15 +60,15 @@
 		}
 	},
 	"mesh":{
-		"path":"gs://neuroglancer/Phase2_partials/father_of_alignment/v1/mesh",
+		"path":"gs://neuroglancer/Phase2_partials/father_of_alignment/v2/mesh",
 		"z_start": 140,
-		"z_stop": 142,
-		"mesh_length": 64
+		"z_stop": 150,
+		"mesh_length": 128
 	},
 	"match":{
-		"path":"gs://neuroglancer/Phase2_partials/father_of_alignment/v1/match",
-		"block_r": 128,
-		"search_r": 512,
+		"path":"gs://neuroglancer/Phase2_partials/father_of_alignment/v2/match",
+		"block_r": 64,
+		"search_r": 256,
 		"bandpass_sigmas": [0,0],
 		"symmetric": false,
 		"depth": 2

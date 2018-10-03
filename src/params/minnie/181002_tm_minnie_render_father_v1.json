@@ -1,6 +1,6 @@
 {
 	"task":{
-		"method":"match_task",
+		"method":"render_task",
 		"name":"",
 		"pairs":[[162,163],[162,164]]
 	},
@@ -13,7 +13,7 @@
 			"path":"gs://neuroglancer/Phase2_partials/father_of_alignment/v1",
 			"mip":2,
 			"interpolation":true,
-			"downsample":[3,4,5,6,7,8,9]
+			"downsample":[3,4,5,6,7,8]
 		},
 		"match_image":{
 			"path":"gs://neuroglancer/Phase2_partials/raw_image",
@@ -39,30 +39,30 @@
 			"value":1
 		},
 		"src_match":{
-			"path":"gs://neuroglancer/Phase2_partials/father_of_alignment/match_sample/src_match",
+			"path":"gs://neuroglancer/Phase2_partials/father_of_alignment/src_match",
 			"mip":0
 		},
 		"src_patch":{
-			"path":"gs://neuroglancer/Phase2_partials/father_of_alignment/match_sample/src_patch",
+			"path":"gs://neuroglancer/Phase2_partials/father_of_alignment/src_patch",
 			"mip":0
 		},
 		"dst_match":{
-			"path":"gs://neuroglancer/Phase2_partials/father_of_alignment/match_sample/dst_match",
+			"path":"gs://neuroglancer/Phase2_partials/father_of_alignment/dst_match",
 			"mip":0
 		},
 		"dst_patch":{
-			"path":"gs://neuroglancer/Phase2_partials/father_of_alignment/match_sample/dst_patch",
+			"path":"gs://neuroglancer/Phase2_partials/father_of_alignment/dst_patch",
 			"mip":0
 		},
 		"xc":{
-			"path":"gs://neuroglancer/Phase2_partials/father_of_alignment/match_sample/xc",
+			"path":"gs://neuroglancer/Phase2_partials/father_of_alignment/xc",
 			"mip":0
 		}
 	},
 	"mesh":{
 		"path":"gs://neuroglancer/Phase2_partials/father_of_alignment/v1/mesh",
 		"z_start": 140,
-		"z_stop": 142,
+		"z_stop": 150,
 		"mesh_length": 64
 	},
 	"match":{
